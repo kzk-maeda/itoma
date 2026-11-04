@@ -8,9 +8,9 @@ const modes = [
   {
     id: 'gentle',
     title: 'ひと呼吸',
-    description: '開く前に、少し立ち止まる。',
+    description: '開く前に立ち止まるモードのサンプルです。',
   },
-  { id: 'focus', title: '集中', description: '自分の時間を、しっかり守る。' },
+  { id: 'focus', title: '集中', description: '制限を強めるモードのサンプルです。' },
 ] as const;
 type Mode = (typeof modes)[number]['id'];
 type Editor = 'apps' | 'mode' | null;
@@ -45,12 +45,14 @@ export function HomeScreen() {
   const [draftApps, setDraftApps] = useState<MockApp[]>([]);
   const [draftMode, setDraftMode] = useState<Mode | null>(null);
   const [editor, setEditor] = useState<Editor>(null);
+  const [feedback, setFeedback] = useState('');
   const modeTitle = modes.find((item) => item.id === mode)?.title ?? '未設定';
-  const appSummary = apps.length ? apps.join('・') : 'まずは、気になるアプリから';
+  const appSummary = apps.length ? apps.join('・') : '未選択';
   const isApps = editor === 'apps';
   const editorTitle = isApps ? '制限するアプリを選択' : '制限モードを設定';
 
   function openEditor(next: Exclude<Editor, null>) {
+    setFeedback('');
     setDraftApps([...apps]);
     setDraftMode(mode);
     setEditor(next);
@@ -59,7 +61,13 @@ export function HomeScreen() {
   function save() {
     if (isApps) setApps(draftApps);
     else setMode(draftMode);
+    setFeedback(isApps ? 'アプリの選択を反映しました。' : 'モードの選択を反映しました。');
     setEditor(null);
+  }
+
+  function cancel() {
+    setEditor(null);
+    setFeedback('変更を反映せずに閉じました。');
   }
 
   return (
@@ -74,17 +82,21 @@ export function HomeScreen() {
           </Text>
         </View>
         <View style={styles.hero}>
-          <Text style={[styles.eyebrow, { color: colors.muted }]}>余白のある、毎日を。</Text>
           <Text accessibilityRole="header" style={[styles.headline, { color: colors.text }]}>
-            スマホを置いて、自分の時間へ。
+            自分の時間をつくる準備
           </Text>
           <Text style={[styles.body, { color: colors.muted }]}>
-            つい開いてしまう、その前に。{'\n'}
-            小さなひと呼吸から、はじめましょう。
+            対象のアプリと、使い方に合うモードを選びましょう。
+          </Text>
+        </View>
+        <View style={[styles.note, { backgroundColor: colors.soft }]}>
+          <Text style={[styles.noteTitle, { color: colors.text }]}>設定のお試し</Text>
+          <Text style={[styles.caption, { color: colors.muted }]}>
+            実際のアプリは制限されません。選択はこの画面を開いている間だけ保持されます。
           </Text>
         </View>
         <Text accessibilityRole="header" style={[styles.sectionTitle, { color: colors.text }]}>
-          自分の時間をつくる準備
+          現在の選択
         </Text>
         <View style={styles.cards}>
           <Pressable
@@ -102,18 +114,18 @@ export function HomeScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.step, { color: colors.muted }]}>01</Text>
+
             <View style={styles.cardText}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>制限するアプリを選択</Text>
+              <Text style={[styles.caption, { color: colors.muted }]}>対象のアプリ</Text>
               <Text
                 testID="selected-apps-summary"
-                style={[styles.caption, { color: colors.muted }]}
+                style={[styles.cardTitle, { color: colors.text }]}
               >
                 {appSummary}
               </Text>
             </View>
             <Text accessible={false} style={[styles.chevron, { color: colors.muted }]}>
-              ›
+              変更 ›
             </Text>
           </Pressable>
           <Pressable
@@ -129,44 +141,43 @@ export function HomeScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.step, { color: colors.muted }]}>02</Text>
+
             <View style={styles.cardText}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>制限モードを設定</Text>
+              <Text style={[styles.caption, { color: colors.muted }]}>モード</Text>
               <Text
                 testID="selected-mode-summary"
-                style={[styles.caption, { color: colors.muted }]}
+                style={[styles.cardTitle, { color: colors.text }]}
               >
-                {mode ? modeTitle : 'あなたのペースに合わせて'}
+                {modeTitle}
               </Text>
             </View>
             <Text accessible={false} style={[styles.chevron, { color: colors.muted }]}>
-              ›
+              変更 ›
             </Text>
           </Pressable>
         </View>
-        <View style={[styles.note, { backgroundColor: colors.soft }]}>
-          <Text style={[styles.noteTitle, { color: colors.text }]}>いまは、お試しの設定です</Text>
-          <Text style={[styles.caption, { color: colors.muted }]}>
-            実際のアプリは制限されません。設定はこの画面を開いている間だけ保持されます。
-          </Text>
-        </View>
-        <Text style={[styles.footer, { color: colors.muted }]}>空いた時間に、何をしよう。</Text>
+        <Text
+          testID="settings-feedback"
+          accessibilityLiveRegion="polite"
+          style={[styles.caption, styles.feedback, { color: colors.text }]}>
+          {feedback || '選択内容は、あとから変更できます。'}
+        </Text>
       </ScrollView>
       <Modal
         visible={editor !== null}
-        animationType="slide"
+        animationType="none"
         presentationStyle="pageSheet"
-        onRequestClose={() => setEditor(null)}
+        onRequestClose={cancel}
       >
-        <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
-          <ScrollView contentContainerStyle={styles.editorContent} accessibilityViewIsModal>
+        <SafeAreaView accessibilityViewIsModal style={[styles.screen, { backgroundColor: colors.background }]}>
+          <ScrollView style={styles.editorScroll} contentContainerStyle={styles.editorContent}>
             <Text accessibilityRole="header" style={[styles.editorTitle, { color: colors.text }]}>
               {editorTitle}
             </Text>
             <Text style={[styles.body, { color: colors.muted }]}>
               {isApps
-                ? 'サンプルから選んで、使い心地を試せます。'
-                : '心地よい距離感を、選びましょう。'}
+                ? '複数選択できます。選び直すと選択を外せます。'
+                : 'どちらか1つを選べます。今は使い心地のお試しです。'}
               {'\n'}実際のアプリ制限は行われません。
             </Text>
             <View style={styles.cards}>
@@ -234,10 +245,15 @@ export function HomeScreen() {
                     </Pressable>
                   ))}
             </View>
+          </ScrollView>
+          <View style={[styles.editorActions, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+            <Text style={[styles.caption, { color: colors.muted }]}>
+              {isApps ? `${draftApps.length}個選択中` : `選択中：${modes.find((item) => item.id === draftMode)?.title ?? '未設定'}`}
+            </Text>
             <Pressable
               testID="save-settings-button"
               accessibilityRole="button"
-              accessibilityLabel="設定を保存"
+              accessibilityLabel="選択を反映"
               onPress={save}
               style={({ pressed }) => [
                 styles.saveButton,
@@ -245,18 +261,18 @@ export function HomeScreen() {
                 pressed && styles.pressed,
               ]}
             >
-              <Text style={[styles.buttonText, { color: colors.onAccent }]}>設定を保存</Text>
+              <Text style={[styles.buttonText, { color: colors.onAccent }]}>選択を反映</Text>
             </Pressable>
             <Pressable
               testID="cancel-settings-button"
               accessibilityRole="button"
               accessibilityLabel="変更をキャンセル"
-              onPress={() => setEditor(null)}
-              style={({ pressed }) => [styles.cancelButton, pressed && styles.pressed]}
+              onPress={cancel}
+              style={({ pressed }) => [styles.cancelButton, { borderColor: colors.accent }, pressed && styles.pressed]}
             >
               <Text style={[styles.buttonText, { color: colors.text }]}>キャンセル</Text>
             </Pressable>
-          </ScrollView>
+          </View>
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
@@ -271,7 +287,7 @@ const styles = StyleSheet.create({
     maxWidth: 560,
     alignSelf: 'center',
     paddingHorizontal: 24,
-    paddingTop: 28,
+    paddingTop: 20,
     paddingBottom: 32,
   },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -285,19 +301,17 @@ const styles = StyleSheet.create({
   markText: { fontSize: 24, fontWeight: '500' },
   brandName: { fontSize: 22, fontWeight: '600', letterSpacing: 2 },
   wordmark: { fontSize: 11, letterSpacing: 3 },
-  hero: { paddingTop: 54, paddingBottom: 44, gap: 18 },
-  eyebrow: { fontSize: 13, letterSpacing: 2 },
+  hero: { paddingTop: 28, paddingBottom: 20, gap: 8 },
   headline: {
-    fontSize: 32,
-    lineHeight: 48,
+    fontSize: 24,
+    lineHeight: 36,
     fontWeight: '600',
-    letterSpacing: 1,
   },
   body: { fontSize: 15, lineHeight: 27 },
-  sectionTitle: { fontSize: 14, fontWeight: '600', marginBottom: 16 },
+  sectionTitle: { fontSize: 14, fontWeight: '600', marginTop: 28, marginBottom: 12 },
   cards: { gap: 12 },
   card: {
-    minHeight: 104,
+    minHeight: 88,
     padding: 18,
     borderWidth: 1,
     borderRadius: 20,
@@ -305,19 +319,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
   },
-  step: { fontSize: 12, fontVariant: ['tabular-nums'] },
-  cardText: { flex: 1, gap: 6 },
+  cardText: { flex: 1, minWidth: 0, gap: 6 },
   cardTitle: { fontSize: 16, fontWeight: '600', lineHeight: 24 },
   caption: { fontSize: 13, lineHeight: 23 },
-  chevron: { fontSize: 26 },
-  note: { padding: 20, borderRadius: 18, marginTop: 28, gap: 8 },
+  chevron: { fontSize: 14, flexShrink: 0 },
+  note: { padding: 16, borderRadius: 16, gap: 4 },
   noteTitle: { fontSize: 14, fontWeight: '600', lineHeight: 22 },
-  footer: {
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 32,
-    letterSpacing: 1,
+  feedback: { marginTop: 16 },
+  editorActions: {
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
+    padding: 16,
+    gap: 8,
+    borderTopWidth: 1,
+    flexShrink: 0,
   },
+  editorScroll: { flex: 1 },
   editorContent: {
     width: '100%',
     maxWidth: 560,
@@ -346,7 +364,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelButton: {
-    minHeight: 48,
+    minHeight: 52,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
