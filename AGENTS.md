@@ -19,6 +19,8 @@ Read and follow `DESIGN.md` before UI, interaction, or copy changes. Explain the
 
 ## Architecture
 
+Read `docs/system/README.md` before changing domain rules, persistence, native boundaries, or OS integration. Track unresolved decisions in linked issues; keep specifications and models in `docs/system/` and significant decision rationale in `docs/adr/`. Initial design documents are proposals, not accepted requirements or verified OS behavior. Resolve applicable design prerequisites through reviewed PRs before dependent implementation; small explicitly scoped PoCs may proceed to test those proposals. Update affected documents and link decisions in the implementation PR. Do not mark a decision accepted without human review or equate acceptance with device validation.
+
 - Keep UI and presentation logic in TypeScript.
 - Implement Screen Time API integration in Swift.
 - Native extensions must operate independently of the JavaScript runtime.
