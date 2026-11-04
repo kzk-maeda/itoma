@@ -5,7 +5,7 @@
 - 決定PR: https://github.com/kzk-maeda/itoma/pull/29 （提案レビュー中。採用未決定）
 - 採用日: 未定（人間のレビュー・採用PRのmainへのマージ後に記載）
 - 関連・置換するADR: なし（初回）
-- 検証状況: 一部確認。既存Webの操作確認とローカルcfのバージョン確認のみ。Cloudflare配信・CI認証・アクセス制御は未検証
+- 検証状況: 一部実施。ユーザー依頼の限定セットアップでWorkers静的配信・本人認証・匿名アクセス拒否を確認。CI配信・メンバー追加・OS実機動作は未検証。状態はProposedのまま
 
 ## 背景と解決する問い
 
@@ -88,7 +88,18 @@ Workersは静的配信先として使う案で、アプリのLocal-first方針�
 - [Pages previews](https://developers.cloudflare.com/pages/configuration/preview-deployments/): 代替案のURLとアクセス制御。Pagesの機能をWorkersにも同じように使えるとは仮定しない。
 - [Expo static rendering](https://docs.expo.dev/router/web/static-rendering/): 静的出力の参考。今回、設定変更やexportのPoCは行っていない。
 
-採用前／配信前に、Expo静的出力とcfの接続方法、直接URLの再読込、固定URLの保持、閲覧者ごとの初期化、秘密を使わない検証、認証なし閲覧の拒否、復旧手順を確認する。未確認条件を満たせなければ配信を保留し、Pages等を再比較する。
+### 2026-11-04の限定セットアップ結果（採用判断とは別）
+
+ユーザーから、ADRレビューと並行して現在のアプリをCloudflareへデプロイし、閲覧者はまず本人だけに限定する明示的な依頼を受けた。これを限定的なセットアップ・PoCとして実施し、ADRの状態や採用日は変更しない。
+
+- 対象コミット: `ccbf7c22a78a4042ae782002f1fc27c9a552c9f7`。main `25b05d0` のアプリを維持し、配信設定を追加。成果物のdirty=false。
+- Expo静的exportとcfのWrangler委譲ビルドが成立。cf `1.0.0-beta.27` / Wrangler `4.157.0`。
+- Workers Static Assetsで https://itoma-demo.kzk-maeda.com に配信。Worker Version ID: `168b1c3f-a65a-4a32-88a1-c3392d62fde9`。
+- 既存Zero Trust組織・メールワンタイムコードIdPを利用し、本人メール1件だけの専用Accessポリシーとアプリを作成。workers.devとversion previewは無効。
+- ブラウザ相当の匿名GETでHTML・JS・画像・ビルド情報が302でAccessへ転送されることを確認。認証済みブラウザで本人identityと配信SHA一致、デモ画面の表示を確認。
+- 作成リソース・設定・操作手順の正本は、セットアップPRの `docs/cloudflare-resources.md` / `docs/demo-environment.md` に記録する。PR作成後にリンクする。
+
+CIでの配信資格情報、自動PRプレビュー、拒否対象メールの実試験、複数メンバー、直リンク・再読込の全経路、復旧・削除の実施、費用・保持期間の運用、monorepo化は残る検討事項である。実機PoCは進めていない。恒常運用への採用時にはこれらの範囲・採否条件をレビューし、必要に応じて再比較する。
 
 ## 再検討条件
 
