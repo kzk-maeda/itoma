@@ -2,6 +2,8 @@
 
 ユーザーの明示的な依頼に基づくデモ配信のセットアップです。[ADRの提案PR](https://github.com/kzk-maeda/itoma/pull/29)の採用判断とは分けます。画面は現在のmainを基準とし、未マージの画面改善PRは含めません。
 
+Cloudflareで作成したリソース・設定値・検証済み事項は [リソース一覧](cloudflare-resources.md) に記録しています。
+
 ## 閲覧
 
 - URL: https://itoma-demo.kzk-maeda.com
