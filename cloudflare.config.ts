@@ -12,6 +12,6 @@ export default defineConfig({
     previewUrls: false,
     triggers: target.routes.map(pattern => triggers.fetch({ pattern, zone: DEMO_ZONE })),
     observability: { enabled: false },
-    assets: { basePath: target.basePath, notFoundHandling: '404-page' },
+    assets: { notFoundHandling: '404-page' },
   },
 });

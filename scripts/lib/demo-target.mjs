@@ -40,7 +40,7 @@ export function assertDemoDeployment({ sha, branch, dirty, manifest, packaged, c
     throw new Error('Commit changes, then run npm run demo:package on this exact branch and commit.');
   }
   if (manifest.key !== target.key || manifest.basePath !== target.basePath || manifest.workerName !== target.workerName ||
-      config.name !== target.workerName || config.assets?.basePath !== target.basePath || config.workersDev !== false || config.previewUrls !== false ||
+      config.name !== target.workerName || config.assets?.basePath !== undefined || config.workersDev !== false || config.previewUrls !== false ||
       (config.domains?.length ?? 0) !== 0 || JSON.stringify(config.triggers) !== JSON.stringify(target.routes.map(pattern => ({ type: 'fetch', pattern, zone: DEMO_ZONE })))) {
     throw new Error('Packaged Worker configuration does not match the branch demo target. Rebuild before deploying.');
   }

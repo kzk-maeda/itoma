@@ -52,7 +52,7 @@ npm run demo:deploy
 
 - `demo:package` は現在のブランチ用の静的exportとcf buildを行います。生成先 `dist/demo` の以前のファイルは消してからexportします。
 - デモビルドだけ `web.output=static` と `experiments.baseUrl=/demos/<branch-key>` を適用します。通常のWeb・iOS設定は維持します。
-- Workerのassets.basePathも同じ値とし、HTML・JS・画像のリクエストをブランチ別に処理します。
+- export結果を `dist/demo/demos/<branch-key>/` に配置し、通常の静的ファイル配信でパスを処理します。Cloudflareの非ルート `assets.basePath` はアカウントで未有効（API 100343）だったため使用しません。
 - `demo:deploy` は現在のbranch・SHA・dirty状態、manifest、Worker名・Route・basePathと公開設定を照合します。古いビルドや別ブランチの成果物は拒否します。
 - ブランチを切り替えたら、同じSHAでも必ず再パッケージします。ローカルdetached HEADは拒否します。GitHub PRのdetached checkoutはGITHUB_HEAD_REFを使います。
 - cfとWranglerは版固定です。rootのpackage type未指定によるNodeの警告は出ますが、ビルド可能です。

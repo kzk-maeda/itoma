@@ -9,7 +9,7 @@ function fixture(branch = 'feat/settings', sha = 'abc123') {
     sha, branch, dirty: '', manifest, packaged: structuredClone(manifest),
     config: {
       name: target.workerName, workersDev: false, previewUrls: false,
-      assets: { basePath: target.basePath },
+      assets: { notFoundHandling: '404-page' },
       triggers: target.routes.map(pattern => ({ type: 'fetch', pattern, zone: DEMO_ZONE })),
     },
   };

@@ -58,7 +58,8 @@ Expo HostingやクラウドiOS Simulatorも選択肢だが、今回のCloudflare
 - URLは同じホストの `/demos/<branch-key>/` とする。branch-keyはブランチ名を小文字ASCIIのslugへ変換した先頭36文字と、元の名前のSHA-256先頭12桁を結合する。`feat/a` と `feat-a`、大文字小文字、長い名前を区別するためで、フルのブランチ名もmanifestに記録する。ハッシュ衝突が判明した場合は配信を止めて識別方式を見直す。
 - 同じブランチは同じURLとWorkerを更新する。別ブランチは別Workerと2本のRoute（パスそのもの／パス配下）を持ち、ほかの成果物やRouteを更新しない。
 - 共通ホストのCustom DomainとAccessを再利用する。ルートの初期デモWorkerは維持し、サブドメイン・DNS・Accessアプリをブランチごとに増やさない。RouteがCustom Domainより優先される構成を使う。
-- Expoの `experiments.baseUrl` とCloudflare assetsの `basePath` を同じ値にする。HTML、遷移、JS・画像、ビルド情報をそのパスに閉じ、直接アクセス・再読み込みを検証する。
+- Expoの `experiments.baseUrl` を配信パスにし、exportしたHTML・JS・画像を同じパスのディレクトリへ配置する。通常の静的配信で直接アクセス・再読み込みを検証する。
+- `assets.basePath` でもローカル配信は成立したが、対象アカウントの本番APIでは100343「非ルートbase_path未有効」で拒否された。採用には依存させず、成果物のディレクトリ配置で対応する。
 - 同一オリジンなので、パスはセキュリティ境界ではない。現在のメモリ状態は閲覧者・ページごとに独立するが、将来localStorageやIndexedDBを使うならbranch-keyを保存キーの名前空間に含める。信頼できない他者のコードを同じホストで実行しない。
 - 成果物と現在のbranch・SHA・Worker名・Route・basePathが一致しなければ配信を拒否する。別ブランチへ切り替えたら、同じSHAでも再ビルドが必要。
 - CIのdetached PR checkoutではGITHUB_HEAD_REFを利用する。ローカルのdetached HEADやタグを勝手にブランチへ割り当てない。
@@ -102,7 +103,7 @@ Workersは静的配信先として使う案で、アプリのLocal-first方針�
 - 既存CI・Web設定・モック画面をコードから確認。過去の[ホームレビュー](../itoma-home-review.md)はChromium / React Native Webの記録であり、Cloudflareの配信記録ではない。
 - ローカルで`cf --version`は`1.0.0-beta.27`。ログイン成功はユーザー確認。提案作成時点では対象アカウント・配信・アクセス制御等は未確認だった。後続の限定PoC結果は下記に記載する。
 - [Workers Routes](https://developers.cloudflare.com/workers/configuration/routing/routes/): 同一ホストのRouteがCustom Domainより優先される。
-- [Serving a subdirectory](https://developers.cloudflare.com/workers/static-assets/routing/advanced/serving-a-subdirectory/): assets.basePathでファイルをサブパスに配置する。
+- [Serving a subdirectory](https://developers.cloudflare.com/workers/static-assets/routing/advanced/serving-a-subdirectory/): 比較したbasePath機能。対象アカウントでは本番利用できなかったため使用せず、実ファイルの配置で対応する。
 - [Expo SDK 58 baseUrl](https://docs.expo.dev/versions/v58.0.0/config/app/#baseurl): バンドルされたリソース・リンクの配信パス設定。実験的設定で、ビルドと画面操作の確認が必要。
 - [cf projects](https://developers.cloudflare.com/cf/projects/): Workers用のビルドと配信、自動設定の挙動。Expoとの直接互換を実証する資料ではない。
 - [Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/): 静的配信の候補。今回のアカウントでの成立・アクセス制御は別確認。
