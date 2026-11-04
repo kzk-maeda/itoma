@@ -3,6 +3,7 @@
 - 状態: Proposed
 - 検討Issue: https://github.com/kzk-maeda/itoma/issues/28
 - 自動撤去の追加実装Issue: https://github.com/kzk-maeda/itoma/issues/32
+- 自動撤去の実装PR: https://github.com/kzk-maeda/itoma/pull/33
 - 決定PR: 初期提案 https://github.com/kzk-maeda/itoma/pull/29 （マージ済み、状態はProposed）。ブランチ別パス・Actions配信は https://github.com/kzk-maeda/itoma/pull/30 でレビュー
 - 採用日: 未定（人間のレビュー・採用PRのmainへのマージ後に記載）
 - 関連・置換するADR: なし（初回）

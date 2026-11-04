@@ -104,6 +104,23 @@ itoma-demo.kzk-maeda.com/demos/demo-path-isolation-check-98eb139cc452/*
 
 - `.github/workflows/cleanup-demo.yml` と `scripts/cleanup-demo.mjs` を追加。GitHubのdeleteイベントでブランチ専用Worker・Routeを撤去する。手動実行はdry-runを標準とする。
 - 配信と同じアカウント変数・APIトークンを再利用。対象zone名とアカウントを照合し、専用Workerと完全一致するパスだけを削除する。共通Custom Domain・DNS・Access・IdPは保持する。
-- 新しいSecret・GitHub App・Cloudflareサービスは追加しない。トークンの削除権限は既存設定に依存し、権限不足は失敗として確認する。
+- 撤去処理自体は新しいSecret・GitHub App・Cloudflareサービスを追加しない。トークンの削除権限は既存設定に依存し、権限不足は失敗として確認する。
 - 先行の認証設定の状況更新: `CLOUDFLARE_API_TOKEN` は登録済み。Actions実行 `41828277172` / job `126574264444` は配信まで成功。SHA `6103338`、Version `5eccbac6-19fd-4654-ae8a-3d51fb91536d`。上記の未登録・配信未確認の記載は初期設定時点の記録。
 - 自動撤去はworkflowがmainに入った後の削除イベントから有効。ローカルmockテストは実施したが、本番のdeleteイベントによる撤去はマージ後の検証が必要。過去の削除済みブランチは手動実行で整理する。
+
+### PR #33の配信確認で作成された環境
+
+既存の自動配信workflowが作業ブランチへのpushで作成した環境です。自動撤去処理の本番検証結果ではありません。
+
+| 対象 | 値 |
+| --- | --- |
+| Gitブランチ | `feat/cleanup-branch-demos` |
+| Worker | `itoma-demo-feat-cleanup-branch-demos-4fbd8d172b99` |
+| Worker ID | `c482435e5cdb400490adabdbe6e32719` |
+| 配信パス | `/demos/feat-cleanup-branch-demos-4fbd8d172b99/` |
+| Route | `itoma-demo.kzk-maeda.com/demos/feat-cleanup-branch-demos-4fbd8d172b99` と同パスの `/*` |
+| 初回配信SHA | `e5988f7ce0de0a6ae1caf8e411e2b175cd775b1b` |
+| 初回Worker Version | `54e24246-e47f-46db-93e7-174082ac13be` |
+| Actions証跡 | https://github.com/kzk-maeda/itoma/actions/runs/41832234714 |
+
+初回配信は成功。Cloudflare APIでworkers.devとpreviewが無効、Custom Domainや他リソースの参照が空であることを確認しました。この記録以降の同ブランチの配信は同じWorkerを更新します。撤去workflowをmainへマージ後、このブランチを削除すれば自動撤去の対象になります。共通DNS・Custom Domain・Accessには変更を加えていません。
