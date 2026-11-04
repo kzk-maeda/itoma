@@ -13,7 +13,7 @@ ITOMAはiOS向けReact Native / Expo / TypeScriptとSwiftを使うLocal-firstア
 画面構成・文言・解除フローの理解を、複数人がスマートフォンやPCから同じURLで確認できるデモ環境を用意したい。
 デモの確認結果は製品仕様を決める材料とし、Screen TimeのOS動作確認とは分ける。
 
-現状は単一のExpoアプリで、`src/app/`、React Native Web、メモリ上のモック設定、型チェック・lint・テストのCIが存在する。`app.json`の`web.output`は`server`で、Cloudflare設定・配信CIはない。
+初期提案時点では単一のExpoアプリで、`src/app/`、React Native Web、メモリ上のモック設定、型チェック・lint・テストのCIが存在する。`app.json`の`web.output`は`server`で、Cloudflare設定・配信CIはない。
 Cloudflare CLIのインストールとユーザーによるログイン完了の申告はあるが、対象アカウントの配信権限やプレビューの利用条件は確認していない。
 
 判断する問いは、初期デモを何から作り、どこへ配信し、ネイティブ本体とどこで分離するかである。Notion連携・自律実装基盤・monorepo移行を同時に必須化しない。
@@ -93,7 +93,7 @@ Expo HostingやクラウドiOS Simulatorも選択肢だが、今回のCloudflare
 一方、初期は本体とデモが同じソースなので、デモ専用コードの混入やネイティブ依存によるWebビルド失敗を監視する必要がある。共有を維持するコストが増えた時点で分離する。
 Workersは静的配信先として使う案で、アプリのLocal-first方針は変えない。配信・権限・秘密・費用・削除の運用責任は増える。
 
-想定する後続変更は、デモ用のビルド設定、必要なWeb互換層、Cloudflare設定、再現シナリオ、プレビューCI、証跡の記録である。このADRのPRではそれらを実装・配信しない。
+初期提案PRでは実装・配信を行わず、後続のユーザー依頼でデモ用ビルド設定・Cloudflare配信・証跡記録を追加した。自動プレビューCIや再現シナリオの拡充は後続検討とする。
 本体のMVP・ドメイン・保存・Swift責務の提案は確定させず、[#21](https://github.com/kzk-maeda/itoma/issues/21)〜[#26](https://github.com/kzk-maeda/itoma/issues/26)の設計を継続する。[#8](https://github.com/kzk-maeda/itoma/issues/8)の環境確認と[#18](https://github.com/kzk-maeda/itoma/issues/18)のクラウドQAとは検証範囲を分ける。
 
 ## 証拠と未解決事項
@@ -123,6 +123,14 @@ Workersは静的配信先として使う案で、アプリのLocal-first方針�
 - 作成リソース・設定・操作手順の正本は、セットアップPRの `docs/cloudflare-resources.md` / `docs/demo-environment.md` に記録する。今回のセットアップPRで取り込む。
 
 CIでの配信資格情報、自動PRプレビュー、拒否対象メールの実試験、複数メンバー、直リンク・再読込の全経路、復旧・削除の実施、費用・保持期間の運用、monorepo化は残る検討事項である。実機PoCは進めていない。恒常運用への採用時にはこれらの範囲・採否条件をレビューし、必要に応じて再比較する。
+
+### ブランチ別パスの限定検証
+
+- 配信コミット: `5313ad1531a5bd424faf47714d1826c1f713c059`、dirty=false。
+- `feat/branch-path-demos` と `demo/path-isolation-check` の2ブランチから、共通ホストの異なるパスへ別Worker・各2本のRouteを配信。2番目の配信で最初のWorkerの配信日時が変わらないことを確認。
+- 初回Worker作成直後のcf betaの10007/404・null tagエラーは、APIでWorkerを確認した後に同じ成果物を再実行して解消。恒常運用時のCLI安定性は継続確認する。
+- 両パスのHTML・直リンク・manifest・JS・PNGの匿名GETはAccessへ302。サブパスでの静的配信はローカルで確認したが、新しい本番パスの本人ログイン後表示は未確認。
+- 各URL・Worker ID・Version ID・設定・残る制約は [リソース一覧](../cloudflare-resources.md) を正本とする。本人限定Accessとルートの初期デモを維持し、自動配信・自動削除は追加していない。
 
 ## 再検討条件
 

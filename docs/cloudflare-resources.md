@@ -1,7 +1,7 @@
 # Cloudflare デモ環境の設定・リソース一覧
 
 確認日: 2026-11-04（JST）。ユーザーの依頼で作成・配信したデモ用リソースです。ADRの採用判断とは別の、限定的なセットアップ・動作確認の記録です。
-閲覧・更新手順は [demo-environment.md](demo-environment.md)、判断案は [ADR提案PR #29](https://github.com/kzk-maeda/itoma/pull/29) を参照してください。
+閲覧・更新手順は [demo-environment.md](demo-environment.md)、判断案は [ADR 0001](adr/0001-cloudflare-web-demo.md) を参照してください。
 
 ## 作成したリソース
 
@@ -54,6 +54,35 @@
 - 型チェック・lint・コンポーネントテスト2件: 成功。expo-doctor: 19/20、既存の推奨依存バージョン不一致あり。
 
 拒否対象メールによる認証の実試験、スマートフォン実機でのメール認証、長時間のセッション更新、旧版への再配信は未実施。許可リストの構造確認と、未認証時の拒否を分けて記録しています。
+
+## ブランチ別パスの追加リソース（2026-11-04）
+
+共通ホストの `/demos/<branch-key>/` を使います。新規DNS・Custom Domain・Accessアプリ・許可ポリシーは追加せず、既存の本人限定Accessを維持しました。
+
+| Gitブランチ | Worker名 / ID | 配信パス | Worker Version |
+| --- | --- | --- | --- |
+| `feat/branch-path-demos` | `itoma-demo-feat-branch-path-demos-c79089418710` / `970a2d8f9a864abd992f1d9c72e0fdfa` | `/demos/feat-branch-path-demos-c79089418710/` | `601c3673-5fd9-4c8d-b968-e2a2d0419544` |
+| `demo/path-isolation-check`（ローカル検証用ブランチ） | `itoma-demo-demo-path-isolation-check-98eb139cc452` / `057f76dcb96244c39574aad2a84f4fb2` | `/demos/demo-path-isolation-check-98eb139cc452/` | `bc71ef3b-43a2-47f8-9bfd-2b2957668a56` |
+
+両Workerはcommit `5313ad1531a5bd424faf47714d1826c1f713c059`、dirty=falseの成果物です。各Workerに次の2本ずつ、合計4本のWorkers Routeを追加しました（zone: `kzk-maeda.com`）。
+
+```text
+itoma-demo.kzk-maeda.com/demos/feat-branch-path-demos-c79089418710
+itoma-demo.kzk-maeda.com/demos/feat-branch-path-demos-c79089418710/*
+itoma-demo.kzk-maeda.com/demos/demo-path-isolation-check-98eb139cc452
+itoma-demo.kzk-maeda.com/demos/demo-path-isolation-check-98eb139cc452/*
+```
+
+- 各Workerのworkers.dev・Version previewは無効、Custom Domainの直接割り当て・bindings・独自APIなし。
+- 2番目のブランチ配信後、最初のWorkerの `deployed_on=2026-11-04T11:19:05.025962Z` / `updated_on=2026-11-04T11:19:06.138006Z` が変わっていないことをAPIで確認。ルートの初期Workerも以前の配信日時を維持。
+- 両パスのHTML・`explore`・manifest・実在JS・実在PNGへの匿名GETはすべて302でAccessへ転送。ブラウザ相当User-Agentで検査。
+- ブランチ切替後に再パッケージせず配信すると、対象ブランチのmanifestが存在せず配信前に終了することを実行確認。
+- サブパスのHTML・JS・manifest・直リンクはローカル静的配信で確認。Chromiumで表示、リソース読込エラーなし、YouTube選択の保存も確認。新しい本番パスの認証後表示は未確認（以前のルートURLの認証済み確認とは区別する）。
+- Cloudflareの非ルート `assets.basePath` はAPI 100343で拒否されたため使用しない。ファイルを対応ディレクトリへ配置して配信。
+- cf betaで新規Workerのアップロード直後に10007/404、再実行でnullのtag参照エラーを観測。WorkerをAPIで確認できた後、同じ成果物で再実行すると配信・Route設定が成功。自動リトライや成功扱いへの置換は行っていない。
+- 型チェック・lint・Jest 2件・配信ガード等のテスト3件は成功。expo-doctorは19/20で既存依存バージョン不一致。
+
+検証用ブランチの環境も現存します。自動削除はありません。ブランチ別の撤去は [手順](demo-environment.md#終了削除復旧) に従い、該当する2本のRouteとWorkerだけを対象にします。
 
 ## 停止・削除・復旧
 
