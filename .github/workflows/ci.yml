@@ -25,4 +25,5 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run lint
       - run: npm test -- --ci --runInBand
+      - run: npm run test:demo
       - run: npm run demo:package

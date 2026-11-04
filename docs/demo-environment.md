@@ -1,60 +1,81 @@
-# ITOMA Webデモ環境
+# ブランチ別のITOMA Webデモ
 
-ユーザーの明示的な依頼に基づくデモ配信のセットアップです。[ADRの提案PR](https://github.com/kzk-maeda/itoma/pull/29)の採用判断とは分けます。画面は現在のmainを基準とし、未マージの画面改善PRは含めません。
+[ADR 0001](adr/0001-cloudflare-web-demo.md) に関連するセットアップです。ADRの状態はProposedのまま、ユーザー依頼のパス分離を実装・検証します。
 
-Cloudflareで作成したリソース・設定値・検証済み事項は [リソース一覧](cloudflare-resources.md) に記録しています。
+## URLと環境の単位
+
+```text
+https://itoma-demo.kzk-maeda.com/demos/<branch-key>/
+```
+
+`branch-key` はブランチ名の小文字slug（先頭36文字）＋元の名前のSHA-256先頭12桁です。例えば `feat/a` と `feat-a` でも識別子は異なります。完全なブランチ名はmanifestに残します。
+
+- 同じブランチを更新すると同じURLの内容だけが更新されます。
+- ブランチごとにWorkerと2本のRouteを持ちます。別ブランチのファイルを集め直す必要はありません。
+- `https://itoma-demo.kzk-maeda.com/` の初期デモはそのまま残します。新スクリプトは初期デモWorkerを更新しません。
+- カスタムドメイン・DNS・本人限定Accessはホスト全体で共通です。ブラウザ保存領域は同一オリジンで共有されるため、将来永続保存する場合はbranch-keyごとに分離します。
+
+現在のブランチのURL・Worker名・Routeを確認します。
+
+```bash
+npm run demo:info
+```
 
 ## 閲覧
 
-- URL: https://itoma-demo.kzk-maeda.com
-- Cloudflare Accessのメール認証を使用します。初期はCloudflareにログイン中の本人メールのみ許可しています。
-- ログイン画面で許可されたメールを入力し、届いたコードで認証してください。コードやセッションCookieを共有しないでください。
-- 画面の選択・反映・キャンセルを試せます。実際のアプリ制限・保存・課金はありません。ブラウザを再読込するとメモリ内の選択は初期化されます。
-- `/demo-build.json` に配信対象コミット・ビルド時刻・Webデモであることを記録します。このファイルも認証対象です。
+1. `demo:info` のURLを末尾の `/` を含めて開く。
+2. Cloudflare Accessで許可された本人メールに届くワンタイムコードで認証する。
+3. アプリ・モードの選択や取消を試す。OS制限・実課金は行われない。
 
-## 構成
+`<URL>demo-build.json` でブランチ名・SHA・ビルド日時を確認できます。URLと対象SHAを検証Issue・PRに記録してください。ページを再読込すると、現在のメモリ内設定は初期化されます。
 
-- Expoの既存Webを静的exportし、Cloudflare Workers Static Assetsで配信します。独自APIやDBはありません。
-- `ITOMA_DEMO_BUILD=1` の場合だけ `web.output` を `static` にします。通常時は `app.json` の `server` 設定とiOS設定を引き継ぎます。
-- `cf` とビルド委譲先のWranglerはdevDependenciesに版固定しています。Node.js 24 / `npm ci` を基準にします。
-- `cloudflare.config.ts` はデモ専用Workerとカスタムドメインを指定し、`workers.dev` とversion preview URLを無効にします。
-- Accessアプリはホスト全体を保護し、HTML・JS・CSS・画像・ビルド情報をまとめて認証対象にします。AccessポリシーはCloudflare側で管理し、メール・資格情報をソースに埋め込みません。
-- ビルド成果物、`.cloudflare/`、`.wrangler/`、`.env` はGit管理外です。
+## ビルド・配信
 
-## 更新手順
+Node.js 24とnpmを使用します。実際の作業ブランチをチェックアウトしてから実行してください。
 
 ```bash
 npm ci
 npx tsc --noEmit
 npm run lint
 npm test -- --ci --runInBand
+npm run test:demo
 ```
 
-レビュー対象の変更を作業ブランチにコミットし、作業ツリーをクリーンにしてから以下を実行します。
+変更をコミットし、作業ツリーをクリーンにしてから実行します。
 
 ```bash
+npm run demo:info
 npm run demo:package
 npx cf deploy --prebuilt --dry-run
 npm run demo:deploy
 ```
 
-`demo:deploy` はコミットと成果物の情報が一致することを確認してから配信します。HTMLや設定を変更したら再パッケージしてください。`cf`はbetaなので、更新時は別PRでビルド・配信互換性を確認します。現状、rootのpackage type未指定によるNodeの警告が出る場合がありますがビルドは可能です。
+- `demo:package` は現在のブランチ用の静的exportとcf buildを行います。生成先 `dist/demo` の以前のファイルは消してからexportします。
+- デモビルドだけ `web.output=static` と `experiments.baseUrl=/demos/<branch-key>` を適用します。通常のWeb・iOS設定は維持します。
+- Workerのassets.basePathも同じ値とし、HTML・JS・画像のリクエストをブランチ別に処理します。
+- `demo:deploy` は現在のbranch・SHA・dirty状態、manifest、Worker名・Route・basePathと公開設定を照合します。古いビルドや別ブランチの成果物は拒否します。
+- ブランチを切り替えたら、同じSHAでも必ず再パッケージします。ローカルdetached HEADは拒否します。GitHub PRのdetached checkoutはGITHUB_HEAD_REFを使います。
+- cfとWranglerは版固定です。rootのpackage type未指定によるNodeの警告は出ますが、ビルド可能です。
 
-配信先アカウントが複数になった場合は、対象の `CLOUDFLARE_ACCOUNT_ID` を明示してください。ローカルでは `cf auth login` を使い、CI配信には最小権限の専用トークンを別途用意します。
+配信対象は既存の本人Cloudflareアカウントです。複数アカウントを使う場合は `CLOUDFLARE_ACCOUNT_ID` を明示します。CIは配信せずビルド・テストのみを実施し、CI用トークンは未登録です。
 
-## 閲覧者と保護の確認
+## 保護と再現性
 
-Cloudflare OneのAccess Applicationsで `ITOMA demo` の許可ポリシーを編集します。メンバー追加は明示的な依頼に基づいて行い、メールドメイン全体の許可やBypassは追加しません。
+Accessはデモホスト全体を対象にするため、新しいパスにも適用されます。未ログインでHTML・JS・画像・manifestがAccessへ転送されることと、本人ログイン後の表示を確認します。
 
-認証のない別ブラウザやcurlで、`/`、`/demo-build.json`、実在するJS・画像URLがAccessのログインに転送されることを確認します。許可された本人のログインと操作は別途確認します。設定変更後も両方を確認してください。
+workers.dev・version previewは各Workerで無効にし、認証を迂回するURLを作りません。各配信のVersion IDも記録してください。
+パスはセキュリティ境界ではありません。Cookie・localStorage等は自動的に分離されず、別デモのコードも同じオリジンで動きます。未信頼の第三者コードはこの構成の対象外です。
 
-## CIと復旧
+## 終了・削除・復旧
 
-CIは型チェック・lint・テストに加えて、資格情報なしの `demo:package` を実行します。外部配信は自動化せず、明示的な手動実行に限定します。アカウントの対話ログイン資格情報をGitHubへコピーしません。
+1. 対象のGitブランチをチェックアウトし、`npm run demo:info` でWorker名と2本のRouteを確認する。
+2. Cloudflareの対象zoneのWorkers Routesで、そのWorkerに紐付く2本だけを削除する。
+3. 対象Workerを削除する。共通Worker `itoma-demo`、Custom Domain、DNS、Access、ほかのWorkerは削除しない。
+4. 該当パスがデモを返さないことと、別ブランチが引き続き表示されることを確認する。
 
-更新に問題があれば、前回確認したコミットを別のクリーンな作業ツリーにチェックアウトし、同じ版の依存関係で再パッケージ・再配信します。デモ用コードをmainへ直接巻き戻す必要はありません。配信コミットとCloudflareのversion IDは検証記録に残します。
+削除は明示的な依頼で実行し、自動化はしていません。Gitブランチを消しただけではCloudflare環境は消えません。Worker・Routeの上限と費用を考慮して不要環境を整理します。
+旧版へ戻す場合は、元の名前のブランチで対象コミットを再パッケージ・配信します。ブランチ名を変えるとURLも変わります。SHAだけのdetached checkoutで配信しません。
 
-## 検証の限界
+## リソース・検証範囲
 
-Webの操作確認は、iPhoneのScreen Time・バックグラウンド処理・署名・Family Controlsの実機検証ではありません。Dynamic Type、VoiceOver、ネイティブシートも別途確認が必要です。
-閲覧制限があることと、アプリ内のデータが永続保存されることは無関係です。デモには個人の実データを入力しないでください。
+作成したリソースは [Cloudflare一覧](cloudflare-resources.md) に記録します。Webでの表示・操作確認はScreen Time、実機、VoiceOver、Dynamic Typeの確認とは別です。実データや秘密情報はデモに入力しません。

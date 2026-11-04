@@ -37,6 +37,7 @@ npx expo start --dev-client --localhost
 npx tsc --noEmit
 npm run lint
 npm test -- --ci --runInBand
+npm run test:demo
 npx expo-doctor
 ```
 
@@ -56,7 +57,7 @@ GitHub Actions の `quality` ジョブは main への push と PR で依存関�
 
 ## PR の運用
 
-Webデモの閲覧・更新手順は [デモ環境](docs/demo-environment.md) を参照してください。Cloudflareへの配信は明示的な手動実行で、CIではビルドのみを検証します。
+Webデモはブランチごとに `/demos/<branch-key>/` へ分離します。`npm run demo:info` でそのブランチのURLを確認できます。[閲覧・更新手順](docs/demo-environment.md) を参照してください。Cloudflareへの配信は明示的な手動実行で、CIではテストとビルドを検証します。
 
 作業ブランチから PR を提出し、人間が確認・マージします。
 PR テンプレートにテスト結果、対象コミット、UI 変更時の画像、未検証事項を記録してください。

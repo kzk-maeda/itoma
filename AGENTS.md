@@ -57,6 +57,7 @@ Run these checks before declaring any task done:
 npx tsc --noEmit
 npm run lint
 npm test -- --ci --runInBand
+npm run test:demo
 npx expo-doctor
 ```
 

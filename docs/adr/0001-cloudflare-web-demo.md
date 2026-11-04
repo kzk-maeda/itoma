@@ -2,10 +2,10 @@
 
 - 状態: Proposed
 - 検討Issue: https://github.com/kzk-maeda/itoma/issues/28
-- 決定PR: https://github.com/kzk-maeda/itoma/pull/29 （提案レビュー中。採用未決定）
+- 決定PR: 初期提案 https://github.com/kzk-maeda/itoma/pull/29 （マージ済み、状態はProposed）。ブランチ別パス対応は後続PRでレビュー
 - 採用日: 未定（人間のレビュー・採用PRのmainへのマージ後に記載）
 - 関連・置換するADR: なし（初回）
-- 検証状況: 一部確認。既存Webの操作確認とローカルcfのバージョン確認のみ。Cloudflare配信・CI認証・アクセス制御は未検証
+- 検証状況: 一部実施。ユーザー依頼の限定セットアップでWorkers静的配信・本人認証・匿名アクセス拒否を確認。CI配信・メンバー追加・OS実機動作は未検証。状態はProposedのまま
 
 ## 背景と解決する問い
 
@@ -51,6 +51,25 @@ Expo HostingやクラウドiOS Simulatorも選択肢だが、今回のCloudflare
 - 実際の選択トークン・理由入力・利用履歴・個人情報は持ち込まず、固定の模擬データを使う。共有の入力保存・分析SDK・実課金は追加しない。
 - 将来デモ専用の状態切替やOSモックが増えるときは、`apps/mobile` / `apps/demo-web`への分離を別設計Issueで判断する。共有候補はデザイントークンとOS非依存の型・純粋なロジックとし、本体からデモへの依存を作らない。
 
+### ブランチ名に基づくパス分離（今回の更新提案）
+
+ユーザーが求める単位は、デモごとのGitブランチと独立した確認環境である。固定Workerへ全ブランチを上書きする初期セットアップだけでは満たさない。
+
+- URLは同じホストの `/demos/<branch-key>/` とする。branch-keyはブランチ名を小文字ASCIIのslugへ変換した先頭36文字と、元の名前のSHA-256先頭12桁を結合する。`feat/a` と `feat-a`、大文字小文字、長い名前を区別するためで、フルのブランチ名もmanifestに記録する。ハッシュ衝突が判明した場合は配信を止めて識別方式を見直す。
+- 同じブランチは同じURLとWorkerを更新する。別ブランチは別Workerと2本のRoute（パスそのもの／パス配下）を持ち、ほかの成果物やRouteを更新しない。
+- 共通ホストのCustom DomainとAccessを再利用する。ルートの初期デモWorkerは維持し、サブドメイン・DNS・Accessアプリをブランチごとに増やさない。RouteがCustom Domainより優先される構成を使う。
+- Expoの `experiments.baseUrl` とCloudflare assetsの `basePath` を同じ値にする。HTML、遷移、JS・画像、ビルド情報をそのパスに閉じ、直接アクセス・再読み込みを検証する。
+- 同一オリジンなので、パスはセキュリティ境界ではない。現在のメモリ状態は閲覧者・ページごとに独立するが、将来localStorageやIndexedDBを使うならbranch-keyを保存キーの名前空間に含める。信頼できない他者のコードを同じホストで実行しない。
+- 成果物と現在のbranch・SHA・Worker名・Route・basePathが一致しなければ配信を拒否する。別ブランチへ切り替えたら、同じSHAでも再ビルドが必要。
+- CIのdetached PR checkoutではGITHUB_HEAD_REFを利用する。ローカルのdetached HEADやタグを勝手にブランチへ割り当てない。
+- 終了時は `demo:info` で対象ブランチのWorker・Routeを確認し、該当する2本のRouteとWorkerを削除する。共通ホスト・Access・他ブランチは残す。自動削除・自動配信はこの変更では有効化しない。
+
+| 比較案 | 判断 |
+| --- | --- |
+| ブランチ別サブドメイン | オリジンを分離できるが、今回のパス分離の希望に合わない。個別権限や未信頼コードが必要なら再検討 |
+| 1つのWorkerのassetsに全ブランチを集約 | 毎回全成果物の保持・再取得・競合制御が必要になり、更新・削除で別デモを失うリスクが増える |
+| **共通ホスト＋ブランチ別Worker/Route** | **今回の提案**。一つのデモだけをビルド・配信でき、別デモの成果物を扱わずに更新・削除できる。Worker数・Route数の上限管理は増える |
+
 ### 3. 検証結果をIssue・PRに結び付ける
 
 - 仮説はGitHub Issueに記録する。問い、受入条件、模擬する範囲、操作手順、採用・見送りの結果を残す。
@@ -81,14 +100,28 @@ Workersは静的配信先として使う案で、アプリのLocal-first方針�
 確認日: 2026-11-04（JST）。リポジトリの基準SHA: `25b05d0120d24d1e1aeca6103b3b3235e83685df`。
 
 - 既存CI・Web設定・モック画面をコードから確認。過去の[ホームレビュー](../itoma-home-review.md)はChromium / React Native Webの記録であり、Cloudflareの配信記録ではない。
-- ローカルで`cf --version`は`1.0.0-beta.27`。ログイン成功はユーザー確認。対象アカウント・API権限・料金・配信・アクセス制御は未確認。
+- ローカルで`cf --version`は`1.0.0-beta.27`。ログイン成功はユーザー確認。提案作成時点では対象アカウント・配信・アクセス制御等は未確認だった。後続の限定PoC結果は下記に記載する。
+- [Workers Routes](https://developers.cloudflare.com/workers/configuration/routing/routes/): 同一ホストのRouteがCustom Domainより優先される。
+- [Serving a subdirectory](https://developers.cloudflare.com/workers/static-assets/routing/advanced/serving-a-subdirectory/): assets.basePathでファイルをサブパスに配置する。
+- [Expo SDK 58 baseUrl](https://docs.expo.dev/versions/v58.0.0/config/app/#baseurl): バンドルされたリソース・リンクの配信パス設定。実験的設定で、ビルドと画面操作の確認が必要。
 - [cf projects](https://developers.cloudflare.com/cf/projects/): Workers用のビルドと配信、自動設定の挙動。Expoとの直接互換を実証する資料ではない。
 - [Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/): 静的配信の候補。今回のアカウントでの成立・アクセス制御は別確認。
 - [cf CI](https://developers.cloudflare.com/cf/ci/): 版固定・非対話認証・成果物を使う配信の参考。cfはbetaであり、実装時に仕様を再確認する。
 - [Pages previews](https://developers.cloudflare.com/pages/configuration/preview-deployments/): 代替案のURLとアクセス制御。Pagesの機能をWorkersにも同じように使えるとは仮定しない。
-- [Expo static rendering](https://docs.expo.dev/router/web/static-rendering/): 静的出力の参考。今回、設定変更やexportのPoCは行っていない。
+- [Expo static rendering](https://docs.expo.dev/router/web/static-rendering/): 静的出力の参考。提案作成時点では未実施。後続の限定PoC結果は下記に記載する。
 
-採用前／配信前に、Expo静的出力とcfの接続方法、直接URLの再読込、固定URLの保持、閲覧者ごとの初期化、秘密を使わない検証、認証なし閲覧の拒否、復旧手順を確認する。未確認条件を満たせなければ配信を保留し、Pages等を再比較する。
+### 2026-11-04の限定セットアップ結果（採用判断とは別）
+
+ユーザーから、ADRレビューと並行して現在のアプリをCloudflareへデプロイし、閲覧者はまず本人だけに限定する明示的な依頼を受けた。これを限定的なセットアップ・PoCとして実施し、ADRの状態や採用日は変更しない。
+
+- 対象コミット: `ccbf7c22a78a4042ae782002f1fc27c9a552c9f7`。main `25b05d0` のアプリを維持し、配信設定を追加。成果物のdirty=false。
+- Expo静的exportとcfのWrangler委譲ビルドが成立。cf `1.0.0-beta.27` / Wrangler `4.157.0`。
+- Workers Static Assetsで https://itoma-demo.kzk-maeda.com に配信。Worker Version ID: `168b1c3f-a65a-4a32-88a1-c3392d62fde9`。
+- 既存Zero Trust組織・メールワンタイムコードIdPを利用し、本人メール1件だけの専用Accessポリシーとアプリを作成。workers.devとversion previewは無効。
+- ブラウザ相当の匿名GETでHTML・JS・画像・ビルド情報が302でAccessへ転送されることを確認。認証済みブラウザで本人identityと配信SHA一致、デモ画面の表示を確認。
+- 作成リソース・設定・操作手順の正本は、セットアップPRの `docs/cloudflare-resources.md` / `docs/demo-environment.md` に記録する。今回のセットアップPRで取り込む。
+
+CIでの配信資格情報、自動PRプレビュー、拒否対象メールの実試験、複数メンバー、直リンク・再読込の全経路、復旧・削除の実施、費用・保持期間の運用、monorepo化は残る検討事項である。実機PoCは進めていない。恒常運用への採用時にはこれらの範囲・採否条件をレビューし、必要に応じて再比較する。
 
 ## 再検討条件
 
@@ -98,5 +131,6 @@ Workersは静的配信先として使う案で、アプリのLocal-first方針�
 - 同時に検証する仮説が増え、単一アプリでのシナリオ・版管理が難しくなる。
 - 本物のデータ、共有保存、認証、外部連携が必要になる。
 - cfのbeta仕様が変わり、版固定でも運用を維持できない。
+- Worker / Route数が利用可能な上限に近づく、または共通オリジンでの分離では不十分になる。
 
 変更時はこのADRの理由を消さず、新しい設計Issue・ADRから関連付ける。
