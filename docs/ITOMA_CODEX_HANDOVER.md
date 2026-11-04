@@ -6,6 +6,8 @@
 
 ## 0. 最初に読むこと（Agentへの依頼）
 
+現在の詳細設計・モデル・未決定事項の管理入口は [システム設計](system/README.md) です。本書の仕様案を自動的に確定要件へ昇格させず、検討Issue・設計資料・ADR・検証結果を確認してください。
+
 **ユーザーが確認した事実**: Codex Cloud の接続までは完了している。
 
 **未確認**: リポジトリ内の現在の実装、Expo SDK バージョン、ローカルMacでの起動成否、GitHub Actions、Expo/EAS の接続・Simulator 利用資格、Apple Developer の設定、Family Controls Entitlement。これらを「完了済み」と仮定しない。
