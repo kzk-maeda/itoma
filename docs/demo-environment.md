@@ -12,7 +12,7 @@ https://itoma-demo.kzk-maeda.com/demos/<branch-key>/
 
 - 同じブランチを更新すると同じURLの内容だけが更新されます。
 - ブランチごとにWorkerと2本のRouteを持ちます。別ブランチのファイルを集め直す必要はありません。
-- `https://itoma-demo.kzk-maeda.com/` の初期デモはそのまま残します。新スクリプトは初期デモWorkerを更新しません。
+- `https://itoma-demo.kzk-maeda.com/` は環境一覧に置き換えます。ブランチ配信スクリプトはルートWorkerを更新せず、一覧専用workflowが更新します。
 - カスタムドメイン・DNS・本人限定Accessはホスト全体で共通です。ブラウザ保存領域は同一オリジンで共有されるため、将来永続保存する場合はbranch-keyごとに分離します。
 
 現在のブランチのURL・Worker名・Routeを確認します。
@@ -136,3 +136,29 @@ workers.dev・version previewは各Workerで無効にし、認証を迂回する
 ## リソース・検証範囲
 
 作成したリソースは [Cloudflare一覧](cloudflare-resources.md) に記録します。Webでの表示・操作確認はScreen Time、実機、VoiceOver、Dynamic Typeの確認とは別です。実データや秘密情報はデモに入力しません。
+
+## ドメイン直下のデモ環境一覧
+
+`https://itoma-demo.kzk-maeda.com/` はブランチデモの一覧ページとして使用します。初期デモのルート表示を置き換え、`/demos/<branch-key>/` の各Worker・Routeはそのまま維持します。Cloudflare Access、DNS、許可ポリシーは変更しません。
+
+### 掲載対象とサマリー
+
+- Cloudflare上に同じbranch-keyの専用Workerと、末尾スラッシュなし・`/*` の両Routeが存在する環境を掲載します。Gitブランチが存在するだけでは掲載しません。HTTPでのアプリ正常動作まで検査するヘルスチェックではありません。
+- GitHubの同名ブランチに関連する自リポジトリの最新PRのタイトル・説明をサマリーにします。PRがなければブランチ先頭コミットの件名を使います。forkの同名ブランチのPRは使いません。
+- Gitブランチが削除済みでも、WorkerとRouteが残っていれば環境は掲載し、ブランチ不明・削除済み・ローカル配信と表示します。#33の撤去完了後に次回更新で消えます。
+- PR/ブランチの概要は現在のソース情報で、配信成功したSHAと同一とは限りません。実際の配信内容は各カードの「配信情報」（`demo-build.json`）で確認します。
+- Worker更新時刻と一覧の確認時刻は日本時間で表示します。リアルタイム一覧ではなく、最後に成功した照合時点のスナップショットです。
+
+### 更新と配信
+
+`.github/workflows/demo-index.yml` はmainの信頼済みコードだけを使います。Deploy demo / Cleanup demo完了後、15分おき、main上の一覧関連ファイル変更時、または手動実行で更新します。Cleanup demoはPR #33で追加されるworkflow名に対応しています。
+
+1. 既存の `CLOUDFLARE_ACCOUNT_ID`・`CLOUDFLARE_API_TOKEN` とGitHubの読取トークンで対象zoneのRoutes、専用Workers、Gitブランチ・PRを照合。
+2. `scripts/build-demo-index.mjs` で静的HTMLを `dist/demo-index/` へ生成。秘密情報は出力しません。
+3. 固定済みWranglerで `wrangler.demo-index.jsonc` を配信。既存ルートWorker `itoma-demo` と既存Custom Domainだけを使い、workers.dev・Version previewは無効のままにします。
+
+取得や配信が失敗した場合、空一覧を成功扱いで公開しません。前回の一覧を保持し、Actionsの失敗を確認して再実行します。Route照合と配信の間の追加・削除は次回更新で反映されます。定期workflowの実行は遅延する場合があります。
+
+初回はこのworkflowをmainへマージ後、Actionsの「Update demo index」を実行します。更新には既存トークンのWorker更新・Route読取・zone読取権限が必要です。新しいSecretや閲覧用の独自認証・製品バックエンドは追加しません。
+
+ローカルで構成だけ検証する場合は、テスト用の静的HTMLを `dist/demo-index/` に置き、`npx --no-install wrangler deploy --config wrangler.demo-index.jsonc --dry-run` を使います。API取得には専用の環境変数が必要です。認証値をログやファイルに出さないでください。

@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "itoma-demo",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "itoma-demo.kzk-maeda.com", "custom_domain": true }],
+  "assets": { "directory": "./dist/demo-index", "not_found_handling": "404-page" },
+  "observability": { "enabled": false }
+}
