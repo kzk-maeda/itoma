@@ -2,7 +2,7 @@
 
 - 状態: Proposed（利用者との合意を文書化。採用PRのマージ待ち）
 - 検討Issue: https://github.com/kzk-maeda/itoma/issues/21
-- 決定PR: 本ADRを追加するPR（作成後にリンク）
+- 決定PR: https://github.com/kzk-maeda/itoma/pull/31
 - 採用日: 未定
 - 関連・置換するADR: なし。0001のWebデモとは別の製品仕様
 - 検証状況: 未実施。会話での要件確認のみ。OS・実機の成立は未確認
