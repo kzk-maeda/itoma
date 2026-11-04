@@ -4,6 +4,8 @@
 
 ITOMA (いとま) helps users reclaim personal time by reducing impulsive smartphone app usage.
 
+Read `docs/ITOMA_CODEX_HANDOVER.md` for the agreed direction and Factory roadmap. Treat proposed specifications and unconfirmed permissions as unverified until checked against code and actual results.
+
 ## Technology & Scope
 
 - Target iOS only for now. Prioritize mobile-first patterns, performance, and native iOS behavior.
@@ -48,6 +50,7 @@ Run these checks before declaring any task done:
 ```bash
 npx tsc --noEmit
 npm run lint
+npm test -- --ci --runInBand
 npx expo-doctor
 ```
 
@@ -77,6 +80,9 @@ Docs: https://docs.expo.dev/eas/index.md
 - Do not add a backend without approval.
 - Do not introduce actual payments yet.
 - Never commit credentials or signing keys.
+- Do not add custom authentication or Android functionality.
+- Submit changes from a working branch through a PR. Do not merge into main, enable auto-merge, distribute builds, or publish without explicit authorization.
+- Do not run `create-expo-app` or `expo prebuild --clean` over the existing project without a verified regeneration strategy that preserves custom native functionality.
 
 ## Pull Requests
 
@@ -87,3 +93,8 @@ Include:
 - Screenshots for UI changes
 - Known limitations
 - Native behaviors not yet verified
+- Tested commit SHA / JS bundle and, for native verification, build ID and native configuration match
+
+Swift, native module, extension, entitlement, or config plugin changes require a build containing those changes. Label older build results as `stale native build`; do not count them as verification of the PR. Identify the JS bundle version or commit for UI verification too.
+
+Keep Simulator/UI evidence separate from physical-device Screen Time validation. Report failures and skipped checks honestly. Cloud QA access and signing approval must not be inferred from a connected Codex Cloud repository.

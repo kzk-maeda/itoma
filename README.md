@@ -1,56 +1,60 @@
-# Welcome to your Expo app 👋
+# ITOMA（いとま）
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+無意識のスマートフォン利用を減らし、自分の時間を取り戻す iOS アプリです。
+React Native + Expo + TypeScript を使い、OS 連携は Swift / Expo Modules API で開発します。
+MVP は Local-first とし、バックエンド・独自認証・実課金は導入しません。
 
-## Get started
+背景・確定方針は [引き継ぎ資料](docs/ITOMA_CODEX_HANDOVER.md)、開発ルールは [AGENTS.md](AGENTS.md) を参照してください。
 
-1. Install dependencies
+## セットアップ
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+CI と同じ Node.js 24 と npm を使用します。
 
 ```bash
-npm run reset-project
+npm ci
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+iOS のローカル開発には Mac、Xcode、インストール済みの iOS Simulator ランタイムが必要です。
 
-### Other setup steps
+```bash
+npm run ios
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+開発ビルドをインストール済みで JavaScript / TypeScript のみを変更する場合は、次を実行して `i` で Simulator に接続します。開発中はサーバーを起動したままにします。
 
-## Learn more
+```bash
+npx expo start --dev-client --localhost
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+ネイティブ依存関係や Swift の変更後は開発ビルドを作り直します。
+`ios/` は Git 管理外の生成物です。ネイティブ設定は Expo 設定・config plugin、独自機能はローカル Expo Module で再現可能にします。既存構成を無条件に初期化しないでください。
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 品質チェック
 
-## Join the community
+```bash
+npx tsc --noEmit
+npm run lint
+npm test -- --ci --runInBand
+npx expo-doctor
+```
 
-Join our community of developers creating universal apps.
+`npm test` は Jest / jest-expo による一度の実行です。開発時の監視は `npm run test:watch` を使用します。
+ホーム画面のテストは React Native Testing Library を使い、モックのアプリ・モード選択、保存、キャンセルを検証します。OS の制限機能を検証するものではありません。
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+GitHub Actions の `quality` ジョブは main への push と PR で依存関係のインストール、型チェック、lint、テストを実行します。
+`expo-doctor` はローカルで実行し、結果を PR に記載します。オンライン照会の失敗と依存関係の不一致は区別してください。
+
+## 現在の実装と未設定事項
+
+- ホームはアプリとモードを選択できるモックです。設定は画面内のメモリに保持され、永続保存・OS 制限は行いません。
+- FamilyControls / ManagedSettings / DeviceActivity、Swift モジュール、App Extensions、App Groups は未実装です。
+- iOS ネイティブビルド・UI 自動操作・証跡収集の CI は未整備です。
+- Expo 接続、EAS ビルド設定、クラウド Simulator の利用資格、Apple の署名・Family Controls 権限は別途確認が必要です。
+- Simulator の UI 確認と iPhone 実機での Screen Time 検証は分けて扱います。
+
+## PR の運用
+
+作業ブランチから PR を提出し、人間が確認・マージします。
+PR テンプレートにテスト結果、対象コミット、UI 変更時の画像、未検証事項を記録してください。
+ネイティブ変更はその変更を含むビルドで検証し、古いビルドの結果は `stale native build` と明記します。
+秘密情報をログ・ソース・PR に記載しないでください。
