@@ -99,3 +99,11 @@ itoma-demo.kzk-maeda.com/demos/demo-path-isolation-check-98eb139cc452/*
 - `CLOUDFLARE_API_TOKEN` Repository secretは未登録。専用トークンの作成・登録はユーザー操作が必要。[権限・登録手順](demo-environment.md#認証設定初回のみ)を参照。
 - 今回の自動化追加ではCloudflareのWorker・Route・DNS・Access・IdPは作成・変更していない。CloudflareのGit連携アプリ・Workers Buildsも設定していない。
 - 認証設定後のActions経由の本番配信、連続push時の実際の配信順は未検証。既存の2ブランチ手動配信の結果とは区別する。
+
+## ブランチ削除時の自動撤去（Issue #32）
+
+- `.github/workflows/cleanup-demo.yml` と `scripts/cleanup-demo.mjs` を追加。GitHubのdeleteイベントでブランチ専用Worker・Routeを撤去する。手動実行はdry-runを標準とする。
+- 配信と同じアカウント変数・APIトークンを再利用。対象zone名とアカウントを照合し、専用Workerと完全一致するパスだけを削除する。共通Custom Domain・DNS・Access・IdPは保持する。
+- 新しいSecret・GitHub App・Cloudflareサービスは追加しない。トークンの削除権限は既存設定に依存し、権限不足は失敗として確認する。
+- 先行の認証設定の状況更新: `CLOUDFLARE_API_TOKEN` は登録済み。Actions実行 `41828277172` / job `126574264444` は配信まで成功。SHA `6103338`、Version `5eccbac6-19fd-4654-ae8a-3d51fb91536d`。上記の未登録・配信未確認の記載は初期設定時点の記録。
+- 自動撤去はworkflowがmainに入った後の削除イベントから有効。ローカルmockテストは実施したが、本番のdeleteイベントによる撤去はマージ後の検証が必要。過去の削除済みブランチは手動実行で整理する。

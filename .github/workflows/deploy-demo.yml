@@ -8,14 +8,13 @@ on:
 permissions:
   contents: read
 
-# Do not interrupt an upload. A newer run waits, then checks the branch head.
-concurrency:
-  group: deploy-demo-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   deploy:
-    if: github.ref_type == 'branch' && github.ref_name != 'main'
+    if: github.ref_type == 'branch' && github.ref_name != 'main' && github.event.deleted != true
+    # Shared with cleanup. Skipped branch-deletion pushes must not take this lock.
+    concurrency:
+      group: deploy-demo-${{ github.ref }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
