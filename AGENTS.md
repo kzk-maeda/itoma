@@ -13,6 +13,10 @@ Read `docs/ITOMA_CODEX_HANDOVER.md` for the agreed direction and Factory roadmap
 - Use Swift for native iOS functionality and the Expo Modules API for native bridging.
 - Keep the application local-first, with no custom backend.
 
+## Design
+
+Read and follow `DESIGN.md` before UI, interaction, or copy changes. Explain the user's task, the information hierarchy, and the reason for visual choices in the PR. Preserve understandable state, cancellation, and honest mock/OS status. Do not optimize for engagement or introduce coercive friction; any deliberate friction must match the user's explicitly chosen rules. Record accessibility checks and unverified device behavior separately.
+
 ## Architecture
 
 - Keep UI and presentation logic in TypeScript.

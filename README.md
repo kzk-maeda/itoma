@@ -5,6 +5,7 @@ React Native + Expo + TypeScript を使い、OS 連携は Swift / Expo Modules A
 MVP は Local-first とし、バックエンド・独自認証・実課金は導入しません。
 
 背景・確定方針は [引き継ぎ資料](docs/ITOMA_CODEX_HANDOVER.md)、開発ルールは [AGENTS.md](AGENTS.md) を参照してください。
+UI・操作・文言の設計判断とレビュー基準は [DESIGN.md](DESIGN.md) にまとめています。
 
 ## セットアップ
 
