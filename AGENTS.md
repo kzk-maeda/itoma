@@ -1,4 +1,24 @@
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+# ITOMA Development Guidelines
+
+## Product
+
+ITOMA (いとま) helps users reclaim personal time by reducing impulsive smartphone app usage.
+
+## Technology & Scope
+
+- Target iOS only for now. Prioritize mobile-first patterns, performance, and native iOS behavior.
+- Use React Native, Expo, and TypeScript for the application.
+- Use Swift for native iOS functionality and the Expo Modules API for native bridging.
+- Keep the application local-first, with no custom backend.
+
+## Architecture
+
+- Keep UI and presentation logic in TypeScript.
+- Implement Screen Time API integration in Swift.
+- Native extensions must operate independently of the JavaScript runtime.
+- Use typed interfaces for native modules.
+- Keep business logic independently testable.
+- Keep custom native functionality in local Expo modules and use config plugins for native project configuration, consistent with Continuous Native Generation (CNG).
 
 ## Expo has changed — do not trust your training data
 
@@ -21,7 +41,19 @@ npx expo-doctor             # diagnose dependency and config issues
 npx expo install --fix      # fix incompatible package versions
 ```
 
-Run lint and typecheck before declaring any task done.
+## Verification
+
+Run these checks before declaring any task done:
+
+```bash
+npx tsc --noEmit
+npm run lint
+npx expo-doctor
+```
+
+For Bun projects, use `bun run lint` and substitute `bunx` for `npx`.
+
+Report what was tested on Simulator and what was tested on a physical device separately. Do not claim physical-device behavior is verified without testing it on a device. Explicitly identify native behaviors that remain unverified.
 
 ## Navigation & Routing
 
@@ -39,3 +71,19 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Restrictions
+
+- Do not add a backend without approval.
+- Do not introduce actual payments yet.
+- Never commit credentials or signing keys.
+
+## Pull Requests
+
+Include:
+
+- Summary of the changes
+- Test results
+- Screenshots for UI changes
+- Known limitations
+- Native behaviors not yet verified
