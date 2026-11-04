@@ -20,6 +20,7 @@
 - [React Native・Swift・Extensionの責務と更新プロトコルを決定する](architecture.md) — https://github.com/kzk-maeda/itoma/issues/24
 - [ローカル保存・App Groups共有・プライバシー方針を決定する](data.md) — https://github.com/kzk-maeda/itoma/issues/25
 - [Screen Time実機PoCの採否基準と検証手順を確定する](poc-plan.md) — https://github.com/kzk-maeda/itoma/issues/26
+- [仮説検証用WebデモとCloudflare配信の方針案](../adr/0001-cloudflare-web-demo.md) — https://github.com/kzk-maeda/itoma/issues/28。Proposed。製品の仕様・OS動作を確定せず、配信前条件と分離時期を検討する。
 
 ## 着手から完了まで
 
