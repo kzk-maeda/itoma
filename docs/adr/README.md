@@ -15,3 +15,4 @@
 | ADR | 状態 | 検討Issue |
 | --- | --- | --- |
 | [0001: 仮説検証用WebデモをCloudflareで段階導入する](0001-cloudflare-web-demo.md) | Proposed | [#28](https://github.com/kzk-maeda/itoma/issues/28) |
+| [0002: 編集可能な時間帯ルールとルール別の解除条件をMVPとする](0002-mvp-scheduled-restrictions.md) | Proposed（利用者合意を反映、マージ待ち） | [#21](https://github.com/kzk-maeda/itoma/issues/21) |
