@@ -27,7 +27,7 @@
 
 既存の別Accessアプリ・その許可リストは変更していません。D1・KV・R2・Queues・Pagesプロジェクト・CI用トークン・新しいIdPは作成していません。
 
-## 設定した内容
+## 初回セットアップで設定した内容
 
 - 閲覧URL: **https://itoma-demo.kzk-maeda.com**
 - Accessは本人メールだけを許可。セッションは24時間、HTTP-only cookie有効、preflight bypassなし。
@@ -37,7 +37,7 @@
 - Workerのcompatibility dateは `2026-11-01`。カスタムAPIコード・bindingsなし。
 - 配信ファイルに `X-Robots-Tag: noindex, nofollow` を設定。検索除外は認証の代替にはしない。
 - `/demo-build.json` にSHA・作業ツリーの状態・ビルド時刻・mock-onlyであることを記録し、キャッシュを無効化する。
-- ローカルの資格情報を用いた明示的な手動デプロイのみ。GitHub Actionsには配信資格情報を登録せず、静的ビルドだけを追加した。
+- 初回はローカルの資格情報を用いた明示的な手動デプロイのみ。GitHub Actionsには配信資格情報を登録せず、静的ビルドだけを追加した。後続のActions配信の追加設定は末尾に記録する。
 
 ## 初回配信と検証結果
 
@@ -91,3 +91,11 @@ itoma-demo.kzk-maeda.com/demos/demo-path-isolation-check-98eb139cc452/*
 - 撤去操作は今回は未実施。実行前に対象IDを再確認し、改めて明示的な依頼に基づいて行う。
 - 表示内容を戻す場合は、前回確認したコミットから再パッケージ・再配信する。元のAccess制御を維持し、反映後のSHAと匿名アクセスを再確認する。
 - リソースが存在することと費用が発生しないことは同義ではない。今回、有料プランへの変更や課金設定の変更は行っていない。利用量・保持・課金条件の継続管理は残る。
+
+## GitHub Actions配信の追加設定
+
+- 既存PR #30に `.github/workflows/deploy-demo.yml` を追加。main以外のブランチへのpushと手動実行で検証・ビルド・配信を行う。
+- GitHub Repository variable `CLOUDFLARE_ACCOUNT_ID` に既存デモのアカウントID `7d660105fcd8d3e983ac8f9c354b19d8` を登録。
+- `CLOUDFLARE_API_TOKEN` Repository secretは未登録。専用トークンの作成・登録はユーザー操作が必要。[権限・登録手順](demo-environment.md#認証設定初回のみ)を参照。
+- 今回の自動化追加ではCloudflareのWorker・Route・DNS・Access・IdPは作成・変更していない。CloudflareのGit連携アプリ・Workers Buildsも設定していない。
+- 認証設定後のActions経由の本番配信、連続push時の実際の配信順は未検証。既存の2ブランチ手動配信の結果とは区別する。

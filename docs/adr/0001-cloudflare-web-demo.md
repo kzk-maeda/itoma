@@ -2,7 +2,7 @@
 
 - 状態: Proposed
 - 検討Issue: https://github.com/kzk-maeda/itoma/issues/28
-- 決定PR: 初期提案 https://github.com/kzk-maeda/itoma/pull/29 （マージ済み、状態はProposed）。ブランチ別パス対応は後続PRでレビュー
+- 決定PR: 初期提案 https://github.com/kzk-maeda/itoma/pull/29 （マージ済み、状態はProposed）。ブランチ別パス・Actions配信は https://github.com/kzk-maeda/itoma/pull/30 でレビュー
 - 採用日: 未定（人間のレビュー・採用PRのmainへのマージ後に記載）
 - 関連・置換するADR: なし（初回）
 - 検証状況: 一部実施。ユーザー依頼の限定セットアップでWorkers静的配信・本人認証・匿名アクセス拒否を確認。CI配信・メンバー追加・OS実機動作は未検証。状態はProposedのまま
@@ -63,13 +63,23 @@ Expo HostingやクラウドiOS Simulatorも選択肢だが、今回のCloudflare
 - 同一オリジンなので、パスはセキュリティ境界ではない。現在のメモリ状態は閲覧者・ページごとに独立するが、将来localStorageやIndexedDBを使うならbranch-keyを保存キーの名前空間に含める。信頼できない他者のコードを同じホストで実行しない。
 - 成果物と現在のbranch・SHA・Worker名・Route・basePathが一致しなければ配信を拒否する。別ブランチへ切り替えたら、同じSHAでも再ビルドが必要。
 - CIのdetached PR checkoutではGITHUB_HEAD_REFを利用する。ローカルのdetached HEADやタグを勝手にブランチへ割り当てない。
-- 終了時は `demo:info` で対象ブランチのWorker・Routeを確認し、該当する2本のRouteとWorkerを削除する。共通ホスト・Access・他ブランチは残す。自動削除・自動配信はこの変更では有効化しない。
+- 終了時は `demo:info` で対象ブランチのWorker・Routeを確認し、該当する2本のRouteとWorkerを削除する。共通ホスト・Access・他ブランチは残す。自動削除は追加せず、Actions配信は下記の更新提案で扱う。
 
 | 比較案 | 判断 |
 | --- | --- |
 | ブランチ別サブドメイン | オリジンを分離できるが、今回のパス分離の希望に合わない。個別権限や未信頼コードが必要なら再検討 |
 | 1つのWorkerのassetsに全ブランチを集約 | 毎回全成果物の保持・再取得・競合制御が必要になり、更新・削除で別デモを失うリスクが増える |
 | **共通ホスト＋ブランチ別Worker/Route** | **今回の提案**。一つのデモだけをビルド・配信でき、別デモの成果物を扱わずに更新・削除できる。Worker数・Route数の上限管理は増える |
+
+### GitHub Actionsでのブランチ配信（追加提案）
+
+- ユーザーの追加依頼により、main以外のブランチへのpushで、Actionsが型チェック・lint・テスト・デモビルド後に配信する。PRの有無には依存させず、mainの固定デモは上書きしない。
+- CloudflareのGit連携（Workers Builds）も候補だが、独自のbranch-key・Worker/Route・配信照合を既存スクリプトで一元管理できるActionsを選ぶ。Cloudflare側に別の自動ビルドは設定しない。
+- ローカルの対話ログインを流用せず、専用APIトークンをGitHub Secretに保管。配信先アカウントはGitHub Variableへ明示する。トークンは配信ステップに限定し、既存の資格情報なしPR CIは維持する。
+- 新規Workerの作成には対象アカウントのWorkers product Admin、Routeの更新には対象zoneのWorkers Routes Writeが必要。将来のWorkerを個別指定できないため、トークンをブランチ名の接頭辞だけに制限できるとはみなさない。リポジトリへpushできる人のコードを信頼する運用とし、fork PRへ配信資格情報を渡さない。
+- 同一ブランチの配信を直列化し、配信前にGitHubの先頭SHAを照合する。進行中のアップロードを後続pushで中断せず、古い実行の再実行はスキップする。
+- URL・配信SHA・Worker名をActions Summaryへ残す。Version IDは配信ログに残す。削除・メンバー追加・Access設定変更は自動化しない。
+- 認証設定手順の正本は [demo-environment.md](../demo-environment.md)。アカウント変数は登録済み、専用トークンは未登録であり、Actionsからの本番配信成功はまだ確認していない。ADRはProposedを維持する。
 
 ### 3. 検証結果をIssue・PRに結び付ける
 
@@ -93,7 +103,7 @@ Expo HostingやクラウドiOS Simulatorも選択肢だが、今回のCloudflare
 一方、初期は本体とデモが同じソースなので、デモ専用コードの混入やネイティブ依存によるWebビルド失敗を監視する必要がある。共有を維持するコストが増えた時点で分離する。
 Workersは静的配信先として使う案で、アプリのLocal-first方針は変えない。配信・権限・秘密・費用・削除の運用責任は増える。
 
-初期提案PRでは実装・配信を行わず、後続のユーザー依頼でデモ用ビルド設定・Cloudflare配信・証跡記録を追加した。自動プレビューCIや再現シナリオの拡充は後続検討とする。
+初期提案PRでは実装・配信を行わず、後続のユーザー依頼でデモ用ビルド設定・Cloudflare配信・証跡記録を追加した。追加依頼によりActionsでのブランチ配信を用意する。再現シナリオの拡充は後続検討とする。
 本体のMVP・ドメイン・保存・Swift責務の提案は確定させず、[#21](https://github.com/kzk-maeda/itoma/issues/21)〜[#26](https://github.com/kzk-maeda/itoma/issues/26)の設計を継続する。[#8](https://github.com/kzk-maeda/itoma/issues/8)の環境確認と[#18](https://github.com/kzk-maeda/itoma/issues/18)のクラウドQAとは検証範囲を分ける。
 
 ## 証拠と未解決事項

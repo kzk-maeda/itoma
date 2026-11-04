@@ -1,0 +1,83 @@
+name: Deploy demo
+
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Do not interrupt an upload. A newer run waits, then checks the branch head.
+concurrency:
+  group: deploy-demo-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref_type == 'branch' && github.ref_name != 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CF_SEND_TELEMETRY: 'false'
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test -- --ci --runInBand
+      - run: npm run test:demo
+      - run: npm run demo:package
+
+      - name: Check current branch head
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync } from 'node:fs';
+          const { GITHUB_API_URL, GITHUB_REPOSITORY, GITHUB_REF_NAME, GITHUB_SHA, GH_TOKEN, GITHUB_OUTPUT } = process.env;
+          const response = await fetch(`${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/ref/heads/${encodeURIComponent(GITHUB_REF_NAME)}`, {
+            headers: { Authorization: `Bearer ${GH_TOKEN}`, Accept: 'application/vnd.github+json' },
+          });
+          if (response.status === 404) {
+            appendFileSync(GITHUB_OUTPUT, 'current=false\n');
+            console.log('Branch no longer exists; skipping deployment.');
+          } else {
+            if (!response.ok) throw new Error(`Cannot verify branch head: HTTP ${response.status}`);
+            const ref = await response.json();
+            const current = ref.object.sha === GITHUB_SHA;
+            appendFileSync(GITHUB_OUTPUT, `current=${current}\n`);
+            if (!current) console.log('A newer commit exists; skipping this deployment.');
+          }
+          JS
+
+      - name: Deploy branch demo
+        if: steps.head.outputs.current == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo '::error::Set the CLOUDFLARE_API_TOKEN repository secret and CLOUDFLARE_ACCOUNT_ID repository variable. See docs/demo-environment.md.'
+            exit 1
+          fi
+          npm run demo:deploy
+
+      - name: Record deployment URL
+        if: steps.head.outputs.current == 'true'
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync, readFileSync } from 'node:fs';
+          const { url, commit, workerName } = JSON.parse(readFileSync('dist/demo-meta.json', 'utf8'));
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Branch demo deployed\n\n[Open demo](${url}) (Cloudflare Access login required)\n\nCommit: \`${commit}\`\n\nWorker: \`${workerName}\`\n\nVersion ID: see the deploy step log.\n`);
+          JS
