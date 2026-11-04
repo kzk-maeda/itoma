@@ -2,7 +2,7 @@
 
 - 状態: Proposed
 - 検討Issue: https://github.com/kzk-maeda/itoma/issues/28
-- 決定PR: 作成後に記載
+- 決定PR: https://github.com/kzk-maeda/itoma/pull/29 （提案レビュー中。採用未決定）
 - 採用日: 未定（人間のレビュー・採用PRのmainへのマージ後に記載）
 - 関連・置換するADR: なし（初回）
 - 検証状況: 一部確認。既存Webの操作確認とローカルcfのバージョン確認のみ。Cloudflare配信・CI認証・アクセス制御は未検証
