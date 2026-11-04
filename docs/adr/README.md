@@ -9,3 +9,9 @@
 5. Acceptedは設計判断の採用であり、実機検証合格ではない。検証状況と残るリスクを別欄に持つ。
 
 現時点で採用済みの新規ADRはありません。既に確定したiOS/React Native/Swift/Local-firstの方針はhandoverを参照し、再選定しません。
+
+## 検討中のADR
+
+| ADR | 状態 | 検討Issue |
+| --- | --- | --- |
+| [0001: 仮説検証用WebデモをCloudflareで段階導入する](0001-cloudflare-web-demo.md) | Proposed | [#28](https://github.com/kzk-maeda/itoma/issues/28) |
