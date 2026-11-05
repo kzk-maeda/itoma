@@ -2,7 +2,7 @@
 
 - 状態: **Proposed**（人間の比較レビュー・採用待ち）
 - 検討Issue: https://github.com/kzk-maeda/itoma/issues/22
-- 決定PR: このADRを含む設計PR。作成後に相互リンクする
+- 決定PR: https://github.com/kzk-maeda/itoma/pull/36 （比較レビュー中・採用未決定）
 - 採用日: 未定
 - 検証状況: 設計上の検討のみ。純粋ロジックのテスト仕様を作成、実装・実機は未検証
 - 関連ADR: [0002 MVP](0002-mvp-scheduled-restrictions.md)。0003〜0006は同じ設計PRの相互依存する提案
