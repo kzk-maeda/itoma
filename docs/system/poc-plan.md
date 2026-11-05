@@ -34,3 +34,16 @@
 - 残る不確実性 / ADR / 次のIssue:
 
 計画追加時点では全試験が**未実施**です。古いビルドは `stale native build` とし、この設計の動作証明には使いません。証跡には個人のトークンや理由入力を含めません。
+
+
+## 本設計PRから追加する検証ゲート（未実施）
+
+- 状態D01〜D12、ルールR01〜R10、保存S01〜S08は各設計文書のテスト仕様。単体/プロセス競合/実機で適切に分けて実行する。
+- writer lock保持中のkill/OS操作/Extension時間予算を確認。短い同期Adapterで成立しなければADR 0005/0006を再検討する。
+- private理由保存とshared intent/履歴outboxの間で中断し、重複・成功誤認・本文漏えいがないことを確認。
+- 第三者の制限と自分のstoreを区別し、own-store readbackでOS全体の制限成功と誤表示しない。
+- 再認可後の本人承認、期限精度、DST/時計変更、OS再起動後の最初のアンロック前を検証条件に含める。
+- 容量80/100MiB・outbox1万件は設計提案値。実ファイル/WAL増加・処理時間・復旧を測定し、しきい値をレビューする。
+- 画面往復100回でstack/購読/timerが増え続けないか測定する。
+
+必要な公式資料の確認先: [SQLite transactions](https://www.sqlite.org/lang_transaction.html)、[SQLite WAL](https://www.sqlite.org/wal.html)、[App Groups](https://developer.apple.com/documentation/xcode/configuring-app-groups)、[File Protection](https://developer.apple.com/documentation/foundation/fileprotectiontype)、[FamilyControls](https://developer.apple.com/documentation/familycontrols)、[ManagedSettings](https://developer.apple.com/documentation/managedsettings)、[DeviceActivity](https://developer.apple.com/documentation/deviceactivity)。本環境ではSQLite/Apple公式ページの取得がプロキシ403だったため、現行API仕様・制約は実装前に到達可能な環境で確認する。

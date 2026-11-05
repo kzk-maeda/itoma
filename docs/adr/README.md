@@ -16,3 +16,7 @@
 | --- | --- | --- |
 | [0001: 仮説検証用WebデモをCloudflareで段階導入する](0001-cloudflare-web-demo.md) | Proposed | [#28](https://github.com/kzk-maeda/itoma/issues/28) |
 | [0002: 編集可能な時間帯ルールとルール別の解除条件をMVPとする](0002-mvp-scheduled-restrictions.md) | Proposed（利用者合意を反映、マージ待ち） | [#21](https://github.com/kzk-maeda/itoma/issues/21) |
+| [0003: 設定・認可・一時解除・OS観測の状態](0003-domain-state.md) | Proposed | [#22](https://github.com/kzk-maeda/itoma/issues/22) |
+| [0004: 日跨ぎと本人が選ぶ優先順](0004-rule-precedence.md) | Proposed | [#23](https://github.com/kzk-maeda/itoma/issues/23) |
+| [0005: 小さいMVVMと共通Swift Domain](0005-native-domain-and-mvvm.md) | Proposed | [#24](https://github.com/kzk-maeda/itoma/issues/24) |
+| [0006: controlと本文・履歴のSQLite分離](0006-local-storage-and-history.md) | Proposed | [#25](https://github.com/kzk-maeda/itoma/issues/25) |
