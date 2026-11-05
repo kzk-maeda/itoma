@@ -50,7 +50,7 @@
     "demo:package": "npm run demo:build && cf build",
     "demo:deploy": "node scripts/deploy-demo.mjs",
     "demo:info": "node scripts/demo-info.mjs",
-    "test:demo": "node --test tests/demo*.test.mjs",
+    "test:demo": "node --test tests/demo-*.test.mjs",
     "lint": "expo lint",
     "test": "jest",
     "test:watch": "jest --watch"

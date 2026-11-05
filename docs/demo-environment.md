@@ -45,7 +45,7 @@ push → npm ci → 型チェック・lint・テスト → demo:package
 - 本人限定Accessは既存ホスト全体に適用されます。配信トークンにはAccessを変更する権限を付けません。
 - 配信に成功するとActionsのSummaryにURL・SHA・Worker名を記録します。Version IDは配信ステップのログに出ます。初回のcf betaエラーを成功扱いにせず、必要なら下記の再実行手順を使います。
 - `workflow_dispatch` も用意しています。workflowをmainへマージした後、Actions → Deploy demo → Run workflowで対象ブランチを選択できます。古いSHAを配信したい場合は、その内容をブランチ先頭へ新しいコミットとして反映します。
-- Gitブランチの削除ではWorker・Routeを自動削除しません。下記の撤去手順で整理してください。
+- GitHub上でブランチを削除すると `Cleanup demo` が専用Worker・Routeを撤去します。PRを閉じるだけ・ローカルのブランチ削除だけでは撤去しません。詳細は下記を参照してください。
 
 ### 認証設定（初回のみ）
 
@@ -69,7 +69,7 @@ CloudflareとGitHubのGit連携アプリは不要です。ActionsからAPIトー
 
    | 種類 | 名前 | 値 |
    | --- | --- | --- |
-   | Repository secret | `CLOUDFLARE_API_TOKEN` | 手順1で作成したトークン（要登録） |
+   | Repository secret | `CLOUDFLARE_API_TOKEN` | 手順1で作成したトークン（登録済み） |
    | Repository variable | `CLOUDFLARE_ACCOUNT_ID` | `7d660105fcd8d3e983ac8f9c354b19d8`（登録済み） |
 
    CLIで登録する場合は下記を実行し、対話プロンプトにトークンを入力します。チャット・コマンド引数・ソースへ貼りません。
@@ -82,7 +82,9 @@ CloudflareとGitHubのGit連携アプリは不要です。ActionsからAPIトー
 
 Secretやアカウント変数が未登録の場合は配信ステップで設定手順を示して失敗します。Workers Adminなど作成権限の不足・失効・対象zoneの不一致はAPIエラーとして失敗するため、ログの権限エラーを確認してください。トークンの値はログへ出しません。設定を止める場合はworkflowを無効化し、トークンを失効します。環境自体の撤去は別操作です。
 
-参考: [cf in CI](https://developers.cloudflare.com/cf/ci/)、[GitHub concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。APIトークン登録後のActionsからの本番配信は、現時点では未検証です。
+2026-11-04、[Actions再実行](https://github.com/kzk-maeda/itoma/actions/runs/41828277172/job/126574264444)で配信まで成功しました。対象SHAは `6103338f981b330c4490bf20b3192e45cd23c20a`、Worker Versionは `5eccbac6-19fd-4654-ae8a-3d51fb91536d`。
+
+参考: [cf in CI](https://developers.cloudflare.com/cf/ci/)、[GitHub concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。新規ブランチ削除イベントによる本番撤去は、この変更をmainへマージした後に確認が必要です。
 
 ## ローカルからのビルド・配信
 
@@ -125,12 +127,45 @@ workers.dev・version previewは各Workerで無効にし、認証を迂回する
 
 ## 終了・削除・復旧
 
+### GitHub上のブランチ削除による自動撤去
+
+`.github/workflows/cleanup-demo.yml` がdefault branch（現在main）へマージされた後から有効です。
+
+```bash
+git push origin --delete demo/example
+```
+
+GitHubの「Delete branch」でも同じです。PRのclose/mergeだけでは撤去せず、リモートのブランチが実際に削除された時に動きます。GitHubのマージ後ブランチ自動削除を利用している場合も、発生したdeleteイベントが対象です。過去の削除イベントには遡って動きません。
+
+- タグ・main・default branchを除外し、削除されたブランチ名は `github.event.ref` から取得。削除済みブランチのコードはcheckoutせず、default branchのコードとNode標準モジュールだけを実行します。
+- 配信と同じ `deploy-demo-refs/heads/<branch>` のconcurrencyで直列化します。削除pushを配信対象から除外し、後続イベントで進行中のアップロードを中断しません。
+- GitHub APIでブランチの不存在を確認し、同名ブランチが再作成されていればスキップ。各削除の前にも確認し、途中で再作成されていたら残りの削除を止めます。
+- 指定アカウントの `kzk-maeda.com` zoneのみを参照します。branch-keyに完全一致する2本のRouteとWorker名を照合し、Routeが他Workerを向く、対象Workerに別パスがある、Custom Domainや他リソースの参照がある場合は削除前に停止します。
+- Route IDの現在の所有先を再確認してから削除し、その後Workerと関連Versionを削除します。強制削除は使いません。共通Worker `itoma-demo`・DNS・Custom Domain・Access・他ブランチは削除しません。
+- 削除後にWorker・Routeの不存在をAPIで確認し、Actions Summaryへ対象と結果を記録。存在しないリソースは削除済みとして扱い、部分失敗からも再実行できます。APIの403・500等を不存在として処理しません。
+- 使用するSecret/Variableは配信と同じです。既存トークンにWorkersの削除権限と対象zoneのWorkers Routes Writeが必要です。DNSやAccessの変更権限は追加しません。
+
+Actionsの中断・キュー入替・API障害で完了しなかった場合は、対象実行のRe-run failed jobs、または下記の手動実行で復旧します。新しく同じブランチを作成した場合は削除せず、通常のpush配信を優先します。ブランチ再作成のタイミングによって一部Routeだけが削除された場合も、次の配信でRouteを再設定します。
+
+### 削除対象の確認・手動復旧
+
+Actions → **Cleanup demo** → **Run workflow** を開きます。
+
+1. 実行元ブランチはmainを選択（コードは常にdefault branchから取得）。
+2. `branch` に削除済みの元のブランチ名を入力。
+3. 最初は `dry_run` をオンにして、Summary/ログのWorker名・URL・Route IDを確認。
+4. 対象が正しければ `dry_run` をオフにして再実行。
+
+ブランチがGitHub上に存在する場合は、手動実行でもスキップします。最初からデモ未配信のブランチや、削除完了済みのブランチに実行しても共通リソースを削除しません。認証前のURLはホスト全体のAccessへ転送され続けるため、匿名GETの302だけを撤去成功の証拠にしません。
+
+### Cloudflareでの手動撤去
+
 1. 対象のGitブランチをチェックアウトし、`npm run demo:info` でWorker名と2本のRouteを確認する。
 2. Cloudflareの対象zoneのWorkers Routesで、そのWorkerに紐付く2本だけを削除する。
 3. 対象Workerを削除する。共通Worker `itoma-demo`、Custom Domain、DNS、Access、ほかのWorkerは削除しない。
 4. 該当パスがデモを返さないことと、別ブランチが引き続き表示されることを確認する。
 
-削除は明示的な依頼で実行し、自動化はしていません。Gitブランチを消しただけではCloudflare環境は消えません。Worker・Routeの上限と費用を考慮して不要環境を整理します。
+自動撤去導入前から残る環境も、削除済みブランチ名を指定する手動実行で整理できます。Worker・Routeの上限と費用を考慮して不要環境を確認します。
 旧版へ戻す場合は、元の名前のブランチで対象コミットを再パッケージ・配信します。ブランチ名を変えるとURLも変わります。SHAだけのdetached checkoutで配信しません。
 
 ## リソース・検証範囲
