@@ -75,7 +75,7 @@ Expo HostingやクラウドiOS Simulatorも選択肢だが、今回のCloudflare
 
 ### GitHub Actionsでのブランチ配信（追加提案）
 
-- ユーザーの追加依頼により、main以外のブランチへのpushで、Actionsが型チェック・lint・テスト・デモビルド後に配信する。PRの有無には依存させず、mainの固定デモは上書きしない。
+- 当初はmain以外のブランチへのpushを対象としていたが、設計用ブランチも配信されたため、ユーザーの追加依頼により **`demo/**` へのpushだけ**へ限定する。手動jobと配信スクリプトも同じprefixを要求し、Actionsが型チェック・lint・テスト・デモビルド後に配信する。PRの有無には依存させず、mainの固定デモは上書きしない。
 - CloudflareのGit連携（Workers Builds）も候補だが、独自のbranch-key・Worker/Route・配信照合を既存スクリプトで一元管理できるActionsを選ぶ。Cloudflare側に別の自動ビルドは設定しない。
 - ローカルの対話ログインを流用せず、専用APIトークンをGitHub Secretに保管。配信先アカウントはGitHub Variableへ明示する。トークンは配信ステップに限定し、既存の資格情報なしPR CIは維持する。
 - 新規Workerの作成には対象アカウントのWorkers product Admin、Routeの更新には対象zoneのWorkers Routes Writeが必要。将来のWorkerを個別指定できないため、トークンをブランチ名の接頭辞だけに制限できるとはみなさない。リポジトリへpushできる人のコードを信頼する運用とし、fork PRへ配信資格情報を渡さない。
@@ -181,3 +181,8 @@ CIでの配信資格情報、自動PRプレビュー、拒否対象メールの�
 ユーザー依頼により、既存ルートWorkerを環境一覧へ置き換える。Gitブランチだけの静的リストやブラウザーからのCloudflare API呼出しではなく、CIでWorker・Routeを照合し、静的HTMLを配信する。新しい製品API・共有DB・閲覧者向け資格情報は不要。
 
 配信・撤去workflowの完了と定期実行で更新し、API失敗は更新失敗として扱う。概要はPR/ブランチ情報、実配信SHAは各デモのmanifestを正本とする。既存Accessとブランチ専用Routeを維持する。ルート初期デモの表示だけは一覧へ置き換わる。詳細は [運用手順](../demo-environment.md#ドメイン直下のデモ環境一覧) を参照。リモートでの実行結果はPRに分けて記録する。
+
+
+### 配信prefixの制限と既存環境
+
+`demo/**` の制限は新しい配信に適用し、既存の非demoブランチ環境は自動撤去しない。撤去のprefixは限定せず、これまでの環境の終了処理を保つ。既存ブランチが古いworkflowを持っている場合は更新後mainの取込みが必要。過去の実行やリソース記録は当時の仕様の証拠として残す。
