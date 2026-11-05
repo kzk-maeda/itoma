@@ -31,7 +31,7 @@ npm run demo:info
 
 ## GitHub Actionsからの自動配信
 
-`.github/workflows/deploy-demo.yml` は、このリポジトリの **main以外のすべてのブランチへのpush** で起動します。PRがないブランチも対象です。main・タグ・forkからのPRでは配信しません。既存の `CI / quality` は引き続きPRとmainの品質チェックを担当します。
+`.github/workflows/deploy-demo.yml` は、このリポジトリの **`demo/**` ブランチへのpushだけ**で起動します。`demo/rule-settings`、`demo/unlock/reason` のような名前が対象で、PRの有無には依存しません。main・`feat/**`・`docs/**`・`ci/**`・タグ・forkからのPRでは配信しません。既存の `CI / quality` は引き続きPRとmainの品質チェックを担当します。
 
 ```text
 push → npm ci → 型チェック・lint・テスト → demo:package
@@ -44,8 +44,24 @@ push → npm ci → 型チェック・lint・テスト → demo:package
 - この自動化はリポジトリへpushできるメンバーを信頼する構成です。配信スクリプトもブランチのコードを実行します。未信頼コードを取り込むブランチへpushする前にレビューし、fork PRのコードを資格情報付きで実行する `pull_request_target` 等は使いません。
 - 本人限定Accessは既存ホスト全体に適用されます。配信トークンにはAccessを変更する権限を付けません。
 - 配信に成功するとActionsのSummaryにURL・SHA・Worker名を記録します。Version IDは配信ステップのログに出ます。初回のcf betaエラーを成功扱いにせず、必要なら下記の再実行手順を使います。
-- `workflow_dispatch` も用意しています。workflowをmainへマージした後、Actions → Deploy demo → Run workflowで対象ブランチを選択できます。古いSHAを配信したい場合は、その内容をブランチ先頭へ新しいコミットとして反映します。
+- `workflow_dispatch` も用意しています。workflowをmainへマージした後、Actions → Deploy demo → Run workflowで `demo/` から始まる対象ブランチを選択できます。その他のブランチを選ぶとjobはskipされ、配信stepや資格情報を使いません。古いSHAを配信したい場合は、その内容をブランチ先頭へ新しいコミットとして反映します。
 - GitHub上でブランチを削除すると `Cleanup demo` が専用Worker・Routeを撤去します。PRを閉じるだけ・ローカルのブランチ削除だけでは撤去しません。詳細は下記を参照してください。
+
+### デモを作るブランチ
+
+実装・設計のブランチはそのまま使い、共有したい内容から明示的にデモ用ブランチを作ります。
+
+```bash
+git switch demo/rule-settings  # 既存のデモを更新する場合
+# 初回は、共有したい実装ブランチ上で git switch -c demo/rule-settings
+git push -u origin demo/rule-settings
+```
+
+同じブランチへのpushで同じURLを更新します。`demo:deploy` も `demo/` 以外を配信前に拒否します。品質CIのデモビルド検証は通常のPRでも維持します。
+
+既存の非demoブランチ環境はこの変更だけでは消しません。これまでの `feat/`・`docs/` 環境を撤去できるよう、Cleanup demoは削除済みブランチのprefixを限定しません。新しいブランチ名は別のWorker/URLとなり、既存環境の移設ではありません。
+
+**既存ブランチへの反映**：GitHubのpush workflowはpushしたブランチの定義を使います。この変更がmainへ入っても、古いworkflowを持つブランチや過去runへ遡って制限されるわけではありません。既存の作業ブランチには更新後mainを取り込んでからpushしてください。prefix制限は運用ガードで、Cloudflare APIトークン自体の権限制限ではありません。
 
 ### 認証設定（初回のみ）
 
@@ -88,7 +104,7 @@ Secretやアカウント変数が未登録の場合は配信ステップで設�
 
 ## ローカルからのビルド・配信
 
-Node.js 24とnpmを使用します。実際の作業ブランチをチェックアウトしてから実行してください。
+Node.js 24とnpmを使用します。ビルド・検査は通常の作業ブランチでも可能ですが、配信は `demo/<name>` ブランチだけに限定します。
 
 ```bash
 npm ci

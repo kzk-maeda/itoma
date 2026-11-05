@@ -3,6 +3,11 @@ import { createHash } from 'node:crypto';
 export const DEMO_HOST = 'itoma-demo.kzk-maeda.com';
 export const DEMO_ZONE = 'kzk-maeda.com';
 
+/** Build/inspect any branch, but deploy only an explicit demo namespace. */
+export function isDemoDeploymentBranch(branch) {
+  return typeof branch === 'string' && branch.startsWith('demo/') && branch.length > 'demo/'.length;
+}
+
 /** @param {string} branch */
 export function demoTarget(branch) {
   if (!branch || branch === 'HEAD' || branch.trim() !== branch || /[\x00-\x20\x7f]/.test(branch)) {
@@ -35,6 +40,9 @@ export function resolveDemoBranch(env, gitBranch) {
 
 /** @param {{sha: string, branch: string, dirty: string, manifest: any, packaged: any, config: any}} input */
 export function assertDemoDeployment({ sha, branch, dirty, manifest, packaged, config }) {
+  if (!isDemoDeploymentBranch(branch)) {
+    throw new Error('Demo deployment requires a demo/<name> branch. Create a demo branch and rebuild.');
+  }
   const target = demoTarget(branch);
   if (dirty || manifest.dirty || manifest.commit !== sha || manifest.branch !== branch || JSON.stringify(manifest) !== JSON.stringify(packaged)) {
     throw new Error('Commit changes, then run npm run demo:package on this exact branch and commit.');

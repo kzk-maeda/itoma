@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assertDemoDeployment, demoTarget, resolveDemoBranch, DEMO_ZONE } from '../scripts/lib/demo-target.mjs';
+import { assertDemoDeployment, demoTarget, isDemoDeploymentBranch, resolveDemoBranch, DEMO_ZONE } from '../scripts/lib/demo-target.mjs';
 
-function fixture(branch = 'feat/settings', sha = 'abc123') {
+function fixture(branch = 'demo/settings', sha = 'abc123') {
   const target = demoTarget(branch);
   const manifest = { ...target, commit: sha, dirty: false };
   return {
@@ -14,6 +14,17 @@ function fixture(branch = 'feat/settings', sha = 'abc123') {
     },
   };
 }
+
+test('only explicit demo branches may deploy, including nested demo names', () => {
+  for (const branch of ['demo/settings', 'demo/unlock/reason']) {
+    assert.equal(isDemoDeploymentBranch(branch), true);
+    assert.equal(assertDemoDeployment(fixture(branch)).branch, branch);
+  }
+  for (const branch of ['main', 'feat/settings', 'docs/design', 'ci/demo', 'demo', 'demo/', 'Demo/settings', 'demo-other/settings']) {
+    assert.equal(isDemoDeploymentBranch(branch), false);
+    assert.throws(() => assertDemoDeployment(fixture(branch)), /demo\/<name>/);
+  }
+});
 
 test('branch identity is stable, bounded, and distinct after normalization', () => {
   const branches = ['feat/a', 'feat-a', 'Feat/A', 'a'.repeat(150) + '/a', 'a'.repeat(150) + '/b', '検証/初回'];
