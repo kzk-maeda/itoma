@@ -2,6 +2,8 @@
 
 - 状態: Proposed
 - 検討Issue: https://github.com/kzk-maeda/itoma/issues/28
+- 自動撤去の追加実装Issue: https://github.com/kzk-maeda/itoma/issues/32
+- 自動撤去の実装PR: https://github.com/kzk-maeda/itoma/pull/33
 - 決定PR: 初期提案 https://github.com/kzk-maeda/itoma/pull/29 （マージ済み、状態はProposed）。ブランチ別パス・Actions配信は https://github.com/kzk-maeda/itoma/pull/30 でレビュー
 - 採用日: 未定（人間のレビュー・採用PRのmainへのマージ後に記載）
 - 関連・置換するADR: なし（初回）
@@ -63,7 +65,7 @@ Expo HostingやクラウドiOS Simulatorも選択肢だが、今回のCloudflare
 - 同一オリジンなので、パスはセキュリティ境界ではない。現在のメモリ状態は閲覧者・ページごとに独立するが、将来localStorageやIndexedDBを使うならbranch-keyを保存キーの名前空間に含める。信頼できない他者のコードを同じホストで実行しない。
 - 成果物と現在のbranch・SHA・Worker名・Route・basePathが一致しなければ配信を拒否する。別ブランチへ切り替えたら、同じSHAでも再ビルドが必要。
 - CIのdetached PR checkoutではGITHUB_HEAD_REFを利用する。ローカルのdetached HEADやタグを勝手にブランチへ割り当てない。
-- 終了時は `demo:info` で対象ブランチのWorker・Routeを確認し、該当する2本のRouteとWorkerを削除する。共通ホスト・Access・他ブランチは残す。自動削除は追加せず、Actions配信は下記の更新提案で扱う。
+- 終了時は `demo:info` で対象ブランチのWorker・Routeを確認し、該当する2本のRouteとWorkerを削除する。共通ホスト・Access・他ブランチは残す。削除イベントによる自動撤去は下記の追加提案で扱う。
 
 | 比較案 | 判断 |
 | --- | --- |
@@ -78,8 +80,28 @@ Expo HostingやクラウドiOS Simulatorも選択肢だが、今回のCloudflare
 - ローカルの対話ログインを流用せず、専用APIトークンをGitHub Secretに保管。配信先アカウントはGitHub Variableへ明示する。トークンは配信ステップに限定し、既存の資格情報なしPR CIは維持する。
 - 新規Workerの作成には対象アカウントのWorkers product Admin、Routeの更新には対象zoneのWorkers Routes Writeが必要。将来のWorkerを個別指定できないため、トークンをブランチ名の接頭辞だけに制限できるとはみなさない。リポジトリへpushできる人のコードを信頼する運用とし、fork PRへ配信資格情報を渡さない。
 - 同一ブランチの配信を直列化し、配信前にGitHubの先頭SHAを照合する。進行中のアップロードを後続pushで中断せず、古い実行の再実行はスキップする。
-- URL・配信SHA・Worker名をActions Summaryへ残す。Version IDは配信ログに残す。削除・メンバー追加・Access設定変更は自動化しない。
-- 認証設定手順の正本は [demo-environment.md](../demo-environment.md)。アカウント変数は登録済み、専用トークンは未登録であり、Actionsからの本番配信成功はまだ確認していない。ADRはProposedを維持する。
+- URL・配信SHA・Worker名をActions Summaryへ残す。Version IDは配信ログに残す。メンバー追加・Access設定変更は自動化せず、削除は次の追加提案で扱う。
+- 認証設定手順の正本は [demo-environment.md](../demo-environment.md)。アカウント変数は登録済み、専用トークン登録後、Actions実行 `41828277172` の再実行でSHA `6103338` の本番配信成功を確認した。ADRはProposedを維持する。
+
+### Gitブランチ削除時のデモ自動撤去（追加提案、Issue #32）
+
+ユーザーの依頼により、GitHub上のブランチ削除をデモ環境の終了条件とする。今回もADRはProposedのまま実装・検証結果を記録する。
+
+| 案 | 判断 |
+| --- | --- |
+| 手動撤去だけを継続 | 操作は少ないが、不要Worker/Routeが残りやすく、今回の自動削除の要望を満たさない |
+| PRのclose/mergeで撤去 | 継続利用するブランチの環境も失い、PRなしのデモを扱えない |
+| **GitHub deleteイベントで撤去** | **今回の提案**。環境の単位であるGitブランチと寿命を合わせる。タグやdefault branchは除外 |
+| 定期的な全環境の照合・削除 | イベント漏れを補えるが、全Workerの列挙・保持期間の判断が増えるため今回の範囲外 |
+
+- 削除されたブランチではなく、default branch上の撤去コードを実行する。配信とはブランチ単位のconcurrencyを共有し、途中のアップロードを強制中断しない。
+- 削除前と各変更前にGitHubの同名ブランチの不存在を確認。再作成されていたらスキップする。確認APIの失敗は削除許可とみなさない。
+- 同じbranch-keyの専用Workerと2本のRouteだけを対象にし、所有先と既存参照を検査。共通Worker・Custom Domain・DNS・Accessを保持する。別の参照があるWorkerの強制削除は行わない。
+- CloudflareのWorker/Route APIへ、既存のGitHub Secretのトークンを使ってアクセスする。cf CLIのRoute操作を推測せず、公開APIで対象IDを指定する。追加依存・製品バックエンドは不要。
+- 既に存在しないリソースへの再実行と部分失敗からの復旧を可能にする。手動実行はdry-runを標準とし、削除済みブランチだけを扱う。mainへの導入前に削除された環境は自動では遡及しない。
+- ローカルのAPI mockテストで削除範囲・共有資源保護・再作成・APIエラー・再実行を検証する。実際のdeleteイベントによる撤去はmainへマージ後に確認が必要で、計画を成功実績とは記載しない。
+
+参考: [GitHub deleteイベント](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#delete)、[Worker削除API](https://developers.cloudflare.com/api/resources/workers/subresources/beta/subresources/workers/methods/delete/)、[Route削除API](https://developers.cloudflare.com/api/resources/workers/subresources/routes/methods/delete/)。確認日: 2026-11-04。
 
 ### 3. 検証結果をIssue・PRに結び付ける
 

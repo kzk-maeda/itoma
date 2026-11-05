@@ -57,7 +57,7 @@ GitHub Actions の `quality` ジョブは main への push と PR で依存関�
 
 ## PR の運用
 
-Webデモはブランチごとに `/demos/<branch-key>/` へ分離します。`npm run demo:info` でそのブランチのURLを確認できます。[閲覧・更新手順](docs/demo-environment.md) を参照してください。`Deploy demo` workflowがmain以外のブランチへのpushで検証・ビルド後にCloudflareへ配信します。初回は[認証設定](docs/demo-environment.md#認証設定初回のみ)が必要です。ローカル手動配信も利用できます。
+Webデモはブランチごとに `/demos/<branch-key>/` へ分離します。`npm run demo:info` でそのブランチのURLを確認できます。[閲覧・更新手順](docs/demo-environment.md) を参照してください。`Deploy demo` workflowがmain以外のブランチへのpushで検証・ビルド後にCloudflareへ配信します。初回は[認証設定](docs/demo-environment.md#認証設定初回のみ)が必要です。ローカル手動配信も利用できます。GitHub上のブランチ削除では `Cleanup demo` が専用Worker・Routeを自動撤去します。PRを閉じるだけでは削除しません。
 
 作業ブランチから PR を提出し、人間が確認・マージします。
 PR テンプレートにテスト結果、対象コミット、UI 変更時の画像、未検証事項を記録してください。
