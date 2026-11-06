@@ -1,6 +1,6 @@
 # 責務・更新プロトコル・画面の寿命
 
-状態: **構成方針了承済み・P1/P2修正の再レビュー待ち**。Issue [#24](https://github.com/kzk-maeda/itoma/issues/24)、[ADR 0005](../adr/0005-native-domain-and-mvvm.md)。根拠: [利用者回答](https://github.com/kzk-maeda/itoma/issues/24#issuecomment-6654590223)、[7項目の了承](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。実装・実機検証は未実施。
+状態: **採用済み・実装/実機未検証**（[PR #36](https://github.com/kzk-maeda/itoma/pull/36)、2026-11-06 JSTにmainへマージ）。Issue [#24](https://github.com/kzk-maeda/itoma/issues/24)、[ADR 0005](../adr/0005-native-domain-and-mvvm.md)。根拠: [利用者回答](https://github.com/kzk-maeda/itoma/issues/24#issuecomment-6654590223)、[7項目の了承](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。実装・実機検証は未実施。
 
 ## 比較と推奨
 

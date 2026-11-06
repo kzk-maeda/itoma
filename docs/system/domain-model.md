@@ -1,6 +1,6 @@
 # ドメインモデルと状態遷移
 
-状態: **方針了承済み・P1/P2修正の再レビュー待ち**。[了承コメント](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。Issue [#22](https://github.com/kzk-maeda/itoma/issues/22)。判断理由は [ADR 0003](../adr/0003-domain-state.md)。実装・OS動作の検証済み宣言ではない。
+状態: **採用済み・実装/実機未検証**（[PR #36](https://github.com/kzk-maeda/itoma/pull/36)、2026-11-06 JSTにmainへマージ）。[了承コメント](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。Issue [#22](https://github.com/kzk-maeda/itoma/issues/22)。判断理由は [ADR 0003](../adr/0003-domain-state.md)。実装・OS動作の検証済み宣言ではない。
 
 要望の根拠: [利用者回答](https://github.com/kzk-maeda/itoma/issues/22#issuecomment-6654445560)。ホームに現在の制限・次の開始・解除残時間を表示、編集中の破棄は確認、適用失敗でも設定を保持、解除期限は絶対日時、再認可後の再適用は本人に確認する。
 

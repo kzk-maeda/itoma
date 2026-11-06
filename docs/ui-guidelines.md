@@ -1,6 +1,6 @@
 # ITOMA UI実装ガイドライン
 
-状態: **実装用のレビュー案**。デザインの方向と本人の明示要望を具体化する。新しい製品判断は下表のP項目、PR #36由来の設計は依存案として区別する。全体を採用済み・実装済み・実機検証済みとは扱わない。
+状態: **実装用のレビュー案**。デザインの方向と本人の明示要望を具体化する。新しい製品判断は下表のP項目、PR #36由来の設計は採用済みの依存仕様として区別する（実機未検証）。全体を採用済み・実装済み・実機検証済みとは扱わない。
 
 原則は [DESIGN.md](../DESIGN.md)、テスト・レビュー手順は [UI受入条件](ui-acceptance.md)。制限評価・保存・OS操作の正本は [システム設計](system/README.md) と [PR #36](https://github.com/kzk-maeda/itoma/pull/36)。UI仕様からドメインの制約を上書きしない。
 
@@ -9,7 +9,7 @@
 2026-11-06 JSTの本チャットと次の固定版を根拠にする。
 
 - [B案デモ #40 / a5779a3](https://github.com/kzk-maeda/itoma/blob/a5779a3f42ce3acc9cfda99038bb374a2bee729e/public/design-b.html): 視覚・操作の参考。
-- [#36 / 02106a2 の状態モデル](https://github.com/kzk-maeda/itoma/blob/02106a2955bada8ebbaf116f036a642049ce5e0e/docs/system/domain-model.md)、[ルール](https://github.com/kzk-maeda/itoma/blob/02106a2955bada8ebbaf116f036a642049ce5e0e/docs/system/rules.md)、[保存](https://github.com/kzk-maeda/itoma/blob/02106a2955bada8ebbaf116f036a642049ce5e0e/docs/system/data.md): 未マージの依存設計。採用時には採用版との差分を確認する。
+- [#36 / 6c17ac9 の状態モデル](https://github.com/kzk-maeda/itoma/blob/6c17ac9a334a020a6833268a2f1a5762dc9aabc6/docs/system/domain-model.md)、[ルール](https://github.com/kzk-maeda/itoma/blob/6c17ac9a334a020a6833268a2f1a5762dc9aabc6/docs/system/rules.md)、[保存](https://github.com/kzk-maeda/itoma/blob/6c17ac9a334a020a6833268a2f1a5762dc9aabc6/docs/system/data.md): 人間がmainへマージした採用版。P1/P2修正を含み、OS動作は未検証。
 
 | ID | 位置づけ | 実装に落とす内容 |
 | --- | --- | --- |
@@ -26,7 +26,7 @@
 | P06 | 未決定・保存設計依存 | 理由の最大長と保存側の制約。#25の採用仕様に合わせる。デモの200文字を流用しない |
 | P07 | 表現案・モデル追加は採用待ち | 本人が守りたい目的の登録・保存先。#36のRuleへ無断でフィールドを足さない。利用可能な本人データがなければ引用領域を省く |
 
-P01〜P03はこのUI仕様レビューで判断する。P04〜P07は担当の状態/ルール/保存設計で決め、該当する機能の製品実装前に反映する。#36の優先順・保存方式・時間設定等はそのPRのレビューで判断し、本書ではAcceptedへ変更しない。UIの静的部品・モックは並行して進められるが、実解除の実装は依存判断の採用とPoCゲートを満たす。
+P01〜P03はこのUI仕様レビューで判断する。P04〜P07は担当の状態/ルール/保存設計で決め、該当する機能の製品実装前に反映する。#36の優先順・保存方式・時間設定等はPR #36で採用済み。本書のP01〜P07をそれに伴って自動採用しない。UIの静的部品・モックは並行して進められるが、実解除の実装は依存判断の採用とPoCゲートを満たす。
 
 ## 2. 体験モデルと責務
 

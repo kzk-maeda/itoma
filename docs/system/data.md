@@ -1,6 +1,6 @@
 # 保存・共有・プライバシー
 
-状態: **方針了承済み・P1/P2修正の再レビュー待ち**。[了承コメント](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。Issue [#25](https://github.com/kzk-maeda/itoma/issues/25)、[ADR 0006](../adr/0006-local-storage-and-history.md)。端末での保存・移行・保護は未実装・未検証。
+状態: **採用済み・実装/実機未検証**（[PR #36](https://github.com/kzk-maeda/itoma/pull/36)、2026-11-06 JSTにmainへマージ）。[了承コメント](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。Issue [#25](https://github.com/kzk-maeda/itoma/issues/25)、[ADR 0006](../adr/0006-local-storage-and-history.md)。端末での保存・移行・保護は未実装・未検証。
 
 利用者合意: 確定設定・対象・絶対解除期限を保持し、将来の履歴用に**解除理由本文と取得可能な操作記録も保存**する。破損時に黙って全消去しない。履歴UI・詳細分析・同期・バックアップ機能は後続。「理由を保存しない」という旧案は採用しない。
 
@@ -39,7 +39,7 @@ ruleID/commandID/grantID/eventIDはランダムID。opaque native tokenはSwift�
 
 ## 初版の保持・容量の提案
 
-自動期間削除なし・本人削除・容量警告/新規payload停止の方針は[了承済み](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。**80/100MiBは実測後に確定する暫定値**で、outbox上限1万件は提案のまま。
+自動期間削除なし・本人削除・容量警告/新規payload停止の方針は[了承済み](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。**80/100MiBは実測後に確定する暫定値**で、outbox上限1万件も実測前の暫定候補とする。
 
 - 自動の期間削除を初版では行わず、本人が履歴/理由を削除できるようにする。永久保存やアンインストール後復元は保証しない。
 - 理由と履歴payloadの論理容量を合算し、80 MiBで警告、100 MiBで新規payload保存を停止して削除を案内する案。DB/WAL/復旧用snapshotの実ファイルサイズは別途計測し、これを端末全体の使用量上限と誤表示しない。閾値は実機測定後に見直す。

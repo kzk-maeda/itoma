@@ -1,6 +1,6 @@
 # 時間帯・競合・一時解除のルール
 
-状態: **方針了承済み・P1/P2修正の再レビュー待ち**。[了承コメント](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。Issue [#23](https://github.com/kzk-maeda/itoma/issues/23)、[ADR 0004](../adr/0004-rule-precedence.md)。根拠: [利用者回答](https://github.com/kzk-maeda/itoma/issues/23#issuecomment-6654535064)。以下の合意事項、P2修正、未確定の細部を区別する。
+状態: **採用済み・実装/実機未検証**（[PR #36](https://github.com/kzk-maeda/itoma/pull/36)、2026-11-06 JSTにmainへマージ）。[了承コメント](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。Issue [#23](https://github.com/kzk-maeda/itoma/issues/23)、[ADR 0004](../adr/0004-rule-precedence.md)。根拠: [利用者回答](https://github.com/kzk-maeda/itoma/issues/23#issuecomment-6654535064)。以下の合意事項、P2修正、未確定の細部を区別する。
 
 ## 合意済みの要件
 

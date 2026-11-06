@@ -21,7 +21,7 @@ U/Pはガイドラインの合意・提案ID。D/Rは[#36](https://github.com/kz
 | UI11 | 確認中にruleVersion/revision/認可が変わる | 差分と再確認。旧条件で新grantを発行しない。draft保持 | component・native / D02 |
 | UI12 | 確定を連打/画面を離れる/再表示 | 同commandの状況。期限・grant数が増えず、画面stackも増えない | component・native / D03/D11 |
 | UI13 | Pending/Applying/Failed/Uncertainを個別注入 | 解除済みと断定しない。許可された再試行/状況確認が見える | fixture・native / D06/D09/D12 |
-| UI14 | 5分解除から2分経過して再表示 | 同じexpiresAtから約3分。新たな5分を始めない | 表示unit・native / D04 |
+| UI14 | 5分解除から2分経過して再表示 | 同じeffectiveExpiresAtから約3分。新たな5分を始めない | 表示unit・native / D04 |
 | UI15 | 期限到達、OS結果は未確認 | 期限終了/再制限中を表示。成功観測まで「制限に戻りました」としない | fixture・実機 / D05/D10 |
 | UI16 | Xの早期終了、別アプリのgrantあり | Xだけを終了要求。別grantを暗黙終了しない | component・native・実機 |
 | UI17 | 権限拒否/取消→再許可 | 設定保持。未適用を表示。本人の再開承認なしに自動適用しない | fixture・実機 / D08 |
@@ -48,7 +48,7 @@ U/Pはガイドラインの合意・提案ID。D/Rは[#36](https://github.com/kz
 ## 3. 実装PRに記録すること
 
 1. 対象U/P/UI ID、画面の利用場面、完了条件。P項目を採用する場合は決定PRをリンクする。
-2. 依存する#36/ADRの採用版、変更されたモデルとUI差分。未採用ならPoCと明記する。
+2. 依存する#36/ADRの採用版、変更されたモデルとUI差分。#36は6c17ac9で採用済み、UIの未採用P項目やPoCは区別する。
 3. テーマの再利用・情報順・色/文字/余白の判断。デモから何を移し、何を除いたか。
 4. 実行した条件IDとPASS/FAIL/未実施。対象SHA・bundle・native build ID/構成・端末/OS・観測日時。
 5. Light/Dark・狭い幅・大きい文字・長い名前・キーボード・エラーの画像と、保存/取消/復旧の操作結果。
