@@ -1,6 +1,6 @@
 # 保存・共有・プライバシー
 
-状態: **採用提案・レビュー待ち**。Issue [#25](https://github.com/kzk-maeda/itoma/issues/25)、[ADR 0006](../adr/0006-local-storage-and-history.md)。端末での保存・移行・保護は未実装・未検証。
+状態: **方針了承済み・P1/P2修正の再レビュー待ち**。[了承コメント](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。Issue [#25](https://github.com/kzk-maeda/itoma/issues/25)、[ADR 0006](../adr/0006-local-storage-and-history.md)。端末での保存・移行・保護は未実装・未検証。
 
 利用者合意: 確定設定・対象・絶対解除期限を保持し、将来の履歴用に**解除理由本文と取得可能な操作記録も保存**する。破損時に黙って全消去しない。履歴UI・詳細分析・同期・バックアップ機能は後続。「理由を保存しない」という旧案は採用しない。
 
@@ -19,7 +19,7 @@ WAL＋短いwriter transactionを第一候補とする。WAL自体が複数write
 
 | 場所 | データ | 読み書き |
 | --- | --- | --- |
-| App Groupのcontrol.sqlite | PolicySnapshot、opaque Selection、Activation、Command、Grant、Evaluation/Observation、操作台帳、履歴転送outbox | 本体と必要なExtension。理由本文なし |
+| App Groupのcontrol.sqlite | 有効PolicySnapshot、Pending候補policy、opaque Selection、Activation、Command、Grantの初期/実効期限、DeadlineRegistrationのreceipt/世代、Evaluation/Observation、操作台帳、履歴転送outbox | 本体と必要なExtension。理由本文なし |
 | 本体privateのhistory.sqlite | 理由本文、ダミー金額選択、自アプリ操作/成否/取消/エラーの履歴 | 本体のみ。Extensionに読取APIを設けない |
 | 画面メモリ | 未反映Draft、未送信理由 | ViewModelのみ。破棄承認後は保存しない |
 
@@ -31,7 +31,7 @@ ruleID/commandID/grantID/eventIDはランダムID。opaque native tokenはSwift�
 
 1. 本体private DBへ、本人が反映した理由とlogical commandIDをPreparedとしてcommitする。空白判定後の本文を保存し、入力途中/確定前に取消した本文は保存しない案。
 2. private DBのtransactionを閉じてから、共有DBへ本文を含めない解除intentとcommandIDをcommitする。
-3. 共通プロトコルでOS適用し、共有outboxへメタデータのeventを追記する。
+3. [共通プロトコル](architecture.md)で期限予定を登録してreceiptを保存し、前提を再確認してから解除を適用する。登録失敗/不明なら新解除は行わない。共有outboxへ成否のメタデータeventを追記する。
 4. 本体がoutboxをprivate履歴へ取込み、eventIDのUNIQUE制約で重複排除。private commit後にだけ共有outboxへackする。privateと共有のwrite lockを同時に保持しない。
 5. 本体起動時にPreparedと共有commandを照合。共有受理がなければ未完了として記録し、解除成功とは扱わない。確定した操作に理由を後付けで推測しない。
 
@@ -39,7 +39,7 @@ ruleID/commandID/grantID/eventIDはランダムID。opaque native tokenはSwift�
 
 ## 初版の保持・容量の提案
 
-以下は利用者の追加回答ではなく**今回レビューする提案値**。
+自動期間削除なし・本人削除・容量警告/新規payload停止の方針は[了承済み](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。**80/100MiBは実測後に確定する暫定値**で、outbox上限1万件は提案のまま。
 
 - 自動の期間削除を初版では行わず、本人が履歴/理由を削除できるようにする。永久保存やアンインストール後復元は保証しない。
 - 理由と履歴payloadの論理容量を合算し、80 MiBで警告、100 MiBで新規payload保存を停止して削除を案内する案。DB/WAL/復旧用snapshotの実ファイルサイズは別途計測し、これを端末全体の使用量上限と誤表示しない。閾値は実機測定後に見直す。
@@ -52,7 +52,7 @@ ruleID/commandID/grantID/eventIDはランダムID。opaque native tokenはSwift�
 ## 版管理・更新・復旧
 
 - 各DBにschemaVersion。policyRevisionは設定の競合検出、ruleVersionはgrantの有効性、eventIDは取込の重複排除に使う。
-- 書込はtransaction内、OS副作用は [architecture.md](architecture.md) のdurable intentと照合する。
+- 書込はtransaction内、OS副作用は [architecture.md](architecture.md) のdurable intent/予定receiptと照合する。候補policyを有効snapshotへ混ぜず、非同期の予定登録はwriter lockの外で行う。最終TXでbase revisionと確認済み影響を再検証し、実効期限・有効policy・結果をcommitする。
 - 移行は本体が共有writer lockを取りtransactionで行う。Extensionは対応schema範囲を確認し、未対応なら書き込まずunknown/errorを残せる範囲で報告する。
 - 新版schemaを読めない旧ビルドへロールバックしても勝手にdown-migrate/初期化しない。互換範囲と復旧手順を変更PRに記載する。
 - 共有DBには直近の検証済みpolicy snapshotも保持。ただしDB全体破損からの復旧を保証しない。DBを開けない場合はOSを推測で変更せず、エラー・本人の復旧選択へ進む。
@@ -70,7 +70,7 @@ DB/付随ファイルをOSバックアップ対象から除外する案。これ
 
 - 履歴/理由の削除は制限設定を変えない。未反映outboxは削除cutoffを記録し再取込で復活させない。本文参照が残る場合は削除済みを表示。
 - ルール削除は先に影響と残るルールを提示し、OS再評価を伴う。履歴はrule snapshotを最小保持し、削除済みruleと表示する。
-- 全初期化は自分のOS制限・予定・共有DB・private DBの処理が分かれるため、部分失敗を表示。途中で成功と見せず、次回も復旧できる手順にする。
+- 全初期化は自分のOS制限・予定・共有DB・private DBの処理が分かれるため、部分失敗を表示。停止を記録し自分の制限停止の反映を確認してから予定取消・台帳の整理へ進む。失敗/不明なら復旧用intent/receiptを消さず、古いcallbackでも停止済みruleを再適用しない。途中で成功と見せず、次回も復旧できる手順にする。
 
 ## 検証仕様
 
@@ -84,5 +84,9 @@ DB/付随ファイルをOSバックアップ対象から除外する案。これ
 | S06 | 理由/履歴削除後に古いoutboxを処理 | 削除したデータを復活させない |
 | S07 | 容量/lock/履歴障害 | 解除の未保存を成功にせず、再制限・停止を履歴障害だけで妨げない |
 | S08 | private/shareのバックアップ・端末ロック | 対象ファイルと付随ファイルの保護を実機で確認 |
+| S09 | 予定API拒否/結果不明、receipt保存失敗 | 新解除なし。旧有効policy/期限/予定を保持し、候補は未反映と表示 |
+| S10 | intent保存・予定登録・receipt保存・最終OS操作/commitの各境界でkill | 候補と有効設定を区別。未確認解除を成功扱いせず、残るcallbackは最新有効状態で評価 |
+| S11 | 旧予定取消失敗・古い/重複callback | 新しい実効期限を延長せず、grant復活・停止済みruleの再適用なし |
+| S12 | R11の短縮登録中に競合更新、または登録失敗 | 有効化時にbase/影響を再検証。失敗時は旧policy/12:05期限/予定を保持し、候補12:03を現在残時間として表示しない |
 
 本表は未実施。SQLite・File Protection・App Groupsの現行公式資料は実装前に確認する。本環境ではSQLite/Apple公式ページがプロキシ403で取得できなかったため、設定名や動作を検証済みと扱わない。

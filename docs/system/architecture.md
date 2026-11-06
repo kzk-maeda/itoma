@@ -1,6 +1,6 @@
 # 責務・更新プロトコル・画面の寿命
 
-状態: **採用提案・レビュー待ち**。Issue [#24](https://github.com/kzk-maeda/itoma/issues/24)、[ADR 0005](../adr/0005-native-domain-and-mvvm.md)。根拠: [利用者回答](https://github.com/kzk-maeda/itoma/issues/24#issuecomment-6654590223)。実装・実機検証は未実施。
+状態: **構成方針了承済み・P1/P2修正の再レビュー待ち**。Issue [#24](https://github.com/kzk-maeda/itoma/issues/24)、[ADR 0005](../adr/0005-native-domain-and-mvvm.md)。根拠: [利用者回答](https://github.com/kzk-maeda/itoma/issues/24#issuecomment-6654590223)、[7項目の了承](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。実装・実機検証は未実施。
 
 ## 比較と推奨
 
@@ -8,10 +8,10 @@
 | --- | --- | --- | --- |
 | MVC相当（画面が状態・native呼出しを兼務） | 初期は少ない層 | 画面寿命と制限処理が結合しやすい | 小さいモックには十分だが中核には不採用提案 |
 | **View＋ViewModel＋薄いService/Repository** | 画面、状態、Swiftの役割を追いやすい | I/O境界だけ差替え、純粋Swift評価を本体/Extensionで共有 | 推奨。MVVMはUI側の整理で、ドメインの正本はSwift |
-| Redux等の全状態を持つグローバルstore | イベントの追跡はしやすいが学習・依存増 | TS側とSwift側に2つの正本が生じやすい | 初版は採用しない |
+| Redux等によるUI状態管理 | イベントの追跡はしやすいが学習・依存増 | MVVMと併用可能。Swiftをドメインの正本としたまま使える | 初版は追加依存・同期処理を増やさずhook/reducerから始める |
 | 完全なClean Architecture・全操作のUseCase層 | 境界は厳密だが型・変換が多い | 強い分離を得られる | 必要なI/O境界は採用し、定型の層は増やさない |
 
-UIのMVC/MVVMとプロセス間の正本設計は別の問題。SwiftUIへの全面変更や、UIライブラリの追加は提案しない。
+UIのMVC/MVVMと状態管理ライブラリ、プロセス間の正本設計は別の問題。Redux自体が二重正本を必然的に生むわけではない。SwiftUIへの全面変更や、UIライブラリの追加は提案しない。
 
 ## 構成案
 
@@ -44,44 +44,84 @@ flowchart TD
 
 同ID/同payloadは同じ受理結果、異payloadは拒否。payload照合にはimmutableなreasonRefを使い、本文や本文由来の単純hashをshared DBに出さない。結果はgetSnapshot/getCommandResultで再取得可能。イベント通知は更新のヒントであり配信保証のある正本ではない。画面復帰時・通知欠落後にはsnapshotを読む。
 
-本人の再試行は同commandに新しいattempt番号を付け、grantID/expiresAtは維持する。重複した同attemptの呼出しは再適用しない。途中でpolicy変更・期限切れならsuperseded/expiredとし、古い操作を強制再生しない。
+本人の再試行は同commandに新しいattempt番号を付け、grantID/initialExpiresAtは維持し、effectiveExpiresAtは延長しない。重複した同attemptの呼出しは再適用しない。途中でpolicy変更・期限切れならsuperseded/expiredとし、古い操作を強制再生しない。
 
-## 保存とOS適用の途中失敗
+## 予定登録・設定有効化・OS適用の契約（P1/P2対応）
 
-SQLiteとOS設定を同じ原子トランザクションにはできない。2段階のdurable intentを提案する。
+SQLite、OSの予定登録、OS制限操作は単一トランザクションにできない。**解除前に、その実効期限で再評価を発火するOS予定の登録成功を確認する**。DBに期限を書いただけ、JS timerを作っただけでは解除しない。
+
+責務はCommandService/Extension Reconcilerが処理順序を管理、DeadlineScheduler Adapterが予定登録/取消、ControlRepositoryがintent/登録receipt/世代を保存、Restriction Adapterが自分のstoreのplanを反映する。イベント名はgrantID・commandID・generationへ対応付け、理由本文を含めない。
+
+以下の登録前提は新規解除と既存grantの期限更新に適用する。予定が不要な停止・即時再制限や、未認可で解除を伴わない設定保存を、解除用予定の登録失敗だけで妨げない。
+
+### 処理の順序
+
+1. 本人確認時のpolicyRevision・snapshotSequence・実効期限・影響するgrantを記録し、短いTXでPending intentをcommit。設定編集は**候補policy**を保存し、有効なPolicySnapshotをまだ上書きしない。失敗した候補も保持して本人が再試行/取消できる。
+2. 最新状態から準備する期限予定を算出。新規解除だけでなく、既存grantの未来の優先切替が早まる編集も対象とする。API呼出し前にregistrationID/generation/scheduledForをPreparingとして短いTXで保存し、登録直後のkillでも残る予定を追跡できるようにする。
+3. **DB lockの外**で新しいgenerationの予定を登録。OS APIが正常に受理したことをreceiptに記録し、短いTXでintentに関連付ける。影響する全grantの予定準備を必須とし、一部成功だけでは候補を有効化しない。API失敗・結果不明・receipt保存失敗なら新規解除も候補policyの有効化もしない。既存の有効policy/期限/保護予定を保持する。
+4. writer TXを取り、現在の有効policyRevisionがbaseと一致すること、本人が確認した影響・期限が変わらないこと、認可/Activation、登録generation、未失効を再確認。変わっていれば有効化せず再確認または再準備。準備済みの古いplanを適用しない。
+5. 登録済み保護予定を前提に、候補policy・grantの実効期限を有効化し、評価したOS planを短い同期区間で反映。結果と観測の限界を記録してcommit。OS操作とDB commitの隙間は残るため、Uncertainを区別する。
+6. 旧予定の取消は、新状態がcommitされ必要な保護予定が登録済みになった後。既存grantの終了/停止時は再評価した制限状態の反映を確認してから不要予定を取消す。取消失敗は余分なcallbackとして扱えるようにし、解除成功と混同しない。
+
+確認時のsnapshotSequenceと現在値が違う場合は影響を再計算する。終了時刻・対象・残る制限が確認内容と異なるなら再確認を要求する。未有効化候補を本人が取消した場合も最終TXで拒否し、有効状態を変えず候補予定を整理する。
 
 ```mermaid
 sequenceDiagram
   participant UI as UI/ViewModel
-  participant N as 本体Swift
+  participant N as CommandService
   participant DB as 共有SQLite
-  participant OS as 自分のOS store
-  UI->>N: command＋expectedRevision
-  N->>DB: 短いTXでpolicy/command PendingとacceptedPolicyRevisionをcommit
-  N-->>UI: 受理。画面は離れてよい
-  N->>DB: BEGIN IMMEDIATE、acceptedPolicyRevisionと現在の前提を再確認
-  N->>N: 最新状態でplanを評価
-  N->>OS: 同期的な設定操作のみ
-  N->>DB: 結果/証拠/期限をcommitしlockを解放
-  N-->>UI: 更新通知（欠落時はsnapshot取得）
+  participant S as DeadlineScheduler
+  participant OS as 自分の制限store
+  UI->>N: commandとbase revision、影響確認
+  N->>DB: Pending intentと候補policyをcommit
+  N-->>UI: 受理・予定準備中
+  N->>S: 新generationの実効期限を登録（DB lock外）
+  S-->>N: 登録受理 / 失敗 / 不明
+  alt 登録受理を永続化できた
+    N->>DB: writer TX・base/期限/世代の再確認
+    N->>OS: 新planの設定操作
+    N->>DB: 有効policy/実効期限/結果をcommit
+    N->>S: 不要な旧予定を取消
+  else 失敗または不明
+    N->>DB: 候補は未反映のまま結果を記録
+    N-->>UI: 解除・変更は未反映、本人再試行
+  end
 ```
 
-expectedRevisionはUIが編集を開始した時点の比較値。受理TXで更新した後のacceptedPolicyRevisionとは異なる。OS操作前は後者と現行policyRevisionを照合する。設定変更commandならbaseRevisionより1つ進んだ版、grant要求なら受理時の設定版となる。
+### revisionと非同期処理
 
-本体内actorは順序付けに使うが、**actor単体は別プロセスのExtensionを排他しない**。共有DBのwriter transactionを本体/Extension共通の調停点とする。DB lock中に認可要求、Picker、ネットワーク、UI待機、任意のasync処理を入れない。
+expectedPolicyRevisionはUIの編集開始版。受理しても有効policyRevisionを進めず、候補はcommandIDで隔離する。設定編集のcandidatePolicyRevisionはbase+1の候補であり、最終TXでbaseをCASしてから有効にする。別commandが先に同じbaseからcommitすれば残りはconflict。grant要求はpolicy版を変えずsnapshotSequenceを進める。
 
-OS設定操作を含むwriter区間は小さくするが、実APIで同期的・短時間に完了できる保証は #26 で確認する。lock timeoutは黙って制限緩和せずbusy/unknownとして記録・報告する。同期Adapterで成立しない、Extensionの時間予算に合わない場合は本方式を採用できず、新しい調停方式をADRで比較する。
+最終TX内でOS操作が失敗しても、登録準備が成立している候補は希望設定として保持し、反映失敗/不明を表示できる。ただし登録準備失敗の候補は有効化しない。この区別により、短縮した新期限を表示・有効化したのに、それを守る予定がない状態を作らない。
 
-| 失敗点 | 期待する扱い |
+actorは本体内の順序付けのみ。プロセス間は短い共有SQLite writer TXで調停し、予定登録・認可要求・Picker・ネットワーク・UI待機のawaitをlock内へ入れない。OS制限設定自体が短い同期区間に収まるかは #26 で確認し、成立しなければ方式を再検討する。
+
+Extensionも同じ排他・評価・結果記録を使う。lock timeoutは制限を緩和せずbusy/unknownとして扱う。期限や時間帯の新イベントによる評価と、失敗commandの再試行は別であり、失敗commandを無制限に自動再送しない。
+
+### 登録receiptの意味とイベント処理
+
+DeadlineRegistrationはregistrationID、grantID、commandID、generation、候補/有効policy版、scheduledFor、firedAt、状態（Preparing/Registered/Fired/Unknown/Failed/Obsolete）を保持。callback受信をfiredAtに記録し、最終TXの未発火/未失効照合に使う。RegisteredはAPI受理の証拠であり、将来の配信時刻・端末状態を保証しない。APIが期限を表現できない/登録を拒否する/結果不明なら、JS timerや別時刻への丸めで代替せず解除を拒否する。
+
+- callbackはpayloadだけで旧grantを操作せず、**現在の有効policyとgrant**を再取得して評価する。候補policyは読めても有効設定として評価しない。
+- 未有効化候補・旧世代・重複callbackは新grantを作らず、旧grantを復活させない。必要な現在状態の再評価は可能だが、古い期限を根拠に現grantを短縮/解除しない。
+- 有効化前に予定が発火済み、または実効期限を過ぎた場合は解除しない。最新の有効policyに基づく再制限は別に行い、未有効化候補を勝手に適用しない。
+- OS副作用後にDB rollbackしても、登録済みcallbackが最新の有効状態から再評価する経路を残す。予定そのものが呼ばれない障害までは保証できず、復帰時の確認と #26 の実測が必要。
+- 停止・権限取消・rule更新時は先にgrantを無効化/再評価。取消失敗の古いcallbackでも、停止済みのruleを再適用しない。
+
+### 失敗・中断の期待動作
+
+| 条件 | 期待する扱い |
 | --- | --- |
-| intent commit前 | 確定設定は不変。本人へ保存失敗を返す |
-| intent後・OS操作前 | Pendingが残る。中断時は未確定として本人の再試行へ |
-| OS操作後・結果commit前 | Pendingが残り、成功とは断定しない。復帰時に取得可能な自分のstore値を再観測 |
-| OS操作失敗 | Failedをcommit。確定policyは保持、本人が再試行 |
-| 古いcommandの処理前にpolicy更新 | expected revisionを再確認しsuperseded。旧planを適用しない |
-| ロック保持中にプロセスkill | SQLite回復後もintentを基に不明を検出。OS副作用はrollback済みと仮定しない |
+| intent保存失敗 | 旧有効状態を保持。新解除なし |
+| 予定登録失敗/不明・receipt保存失敗 | 新解除なし。候補変更は未反映、旧grantの期限/予定は維持 |
+| 登録成功後・有効化前にkill | 旧有効状態を維持。残った候補予定は最新有効状態を評価し、復帰時に整理 |
+| 非同期登録中に別の設定/期限が変化 | 最終CAS/影響照合で拒否。勝手に新しい短縮を確定せず再確認 |
+| 解除後・結果保存前にkill | Pending/Uncertain。保護予定は取消さず、callback/復帰で現在の有効状態を再評価 |
+| 新しい短縮予定の登録失敗 | 編集を有効化せず旧期限を表示。旧予定を先に取消さない |
+| 旧予定の取消失敗 | 新期限を延ばさない。古い世代のcallbackを冪等処理し、後で整理 |
+| 過去版の「解除成功・予定登録失敗」を復旧時に検出 | 新解除を許さず、最新有効policyから即時の再制限を試みる。失敗はUncertainとして残し、適用済みと表示しない |
 
-Extensionも同じ排他・評価・結果記録を使う。期限や時間帯の新イベントは現在の確定状態を評価し、古いcallbackのpayloadをそのまま適用しない。失敗commandの無制限自動retryは行わず、次の正規イベントによる評価と本人の再試行を区別する。
+通常プロトコルで「登録未確認のまま解除成功」へ進むことは禁止。この禁止と、OS登録APIの成功後に将来イベントが届かないリスクは別であり、後者の許容/代替はPoC結果で判断する。
 
 ## ViewModelとナビゲーション
 
