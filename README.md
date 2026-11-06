@@ -6,6 +6,7 @@ MVP は Local-first とし、バックエンド・独自認証・実課金は導
 
 背景・確定方針は [引き継ぎ資料](docs/ITOMA_CODEX_HANDOVER.md)、開発ルールは [AGENTS.md](AGENTS.md) を参照してください。
 UI・操作・文言の設計判断とレビュー基準は [DESIGN.md](DESIGN.md) にまとめています。
+全体配色の[5案比較デモ](docs/color-variations.md)は、対象ブランチのURLに `color-overview.html`（一覧）または `design-colors.html`（操作）を付けて開けます。
 実装時は [UIガイドライン](docs/ui-guidelines.md) の画面・状態・操作・部品契約と、[UI受入条件](docs/ui-acceptance.md) の検証IDを併せて使います。合意した要望と採用待ちの仕様案は区別しています。
 MVP仕様・状態モデル・責務・保存・PoC計画と検討Issueの入口は [システム設計](docs/system/README.md) です。未決定事項はIssue、仕様は設計資料、重要な判断理由は [ADR](docs/adr/README.md) で管理します。
 
