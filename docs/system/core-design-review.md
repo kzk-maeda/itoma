@@ -12,7 +12,7 @@
 4. [責務と処理手順](architecture.md) / [ADR 0005](../adr/0005-native-domain-and-mvvm.md)
 5. [保存と保護](data.md) / [ADR 0006](../adr/0006-local-storage-and-history.md)
 
-## 合意事項と今回の提案
+## 合意事項と採用した設計
 
 | 領域 | 利用者の回答 | 採用した設計 |
 | --- | --- | --- |
@@ -61,7 +61,7 @@
 
 | 順序 | 対象 | 完了の証拠 |
 | --- | --- | --- |
-| 1 | 純粋Swift型/評価/単体テスト、#9 bridge、#8 環境確認 | 変更を含むiOSビルドと呼出し。ここでOS全体の成立を約束しない |
+| 1 | 純粋Swift型/評価/単体テスト、#9 bridge、#8 環境確認 | 純粋Swiftはswift test。bridgeは変更を含むiOSビルドと呼出し。OS全体の成立は別 |
 | 2 | #11 control/private Repositoryと状態遷移 | D/Sケースのunit・プロセス競合/kill/保存失敗テスト |
 | 3 | #12/#13 認可・対象・自分のstoreへの適用 | iPhone実機、未認可/取消/手動再試行、正直な観測表示 |
 | 4 | #14/#15 Extensionと時間帯・再制限 | Rケースと本体停止中の実機結果、次境界・競合の証跡 |

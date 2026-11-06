@@ -7,7 +7,7 @@
 - 採用日: 2026-11-06 JST
 - 採用版: `6c17ac9a334a020a6833268a2f1a5762dc9aabc6`（PR #36のmerge commit）
 - 検証状況: 設計上の検討のみ。純粋ロジックのテスト仕様を作成、実装・実機は未検証
-- 関連ADR: [0002 MVP](0002-mvp-scheduled-restrictions.md)。0003〜0006は同じ設計PRの相互依存する提案
+- 関連ADR: [0002 MVP](0002-mvp-scheduled-restrictions.md)。0003〜0006は同じ設計PRで採用した相互依存する判断
 
 ## 背景
 

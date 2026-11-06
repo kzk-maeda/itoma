@@ -7,7 +7,7 @@
 - 採用日: 2026-11-06 JST
 - 採用版: `6c17ac9a334a020a6833268a2f1a5762dc9aabc6`（PR #36のmerge commit）
 - 検証状況: 設計上の検討のみ。純粋ロジックのテスト仕様を作成、実装・実機は未検証
-- 関連ADR: [0002 MVP](0002-mvp-scheduled-restrictions.md)。0003〜0006は同じ設計PRの相互依存する提案
+- 関連ADR: [0002 MVP](0002-mvp-scheduled-restrictions.md)。0003〜0006は同じ設計PRで採用した相互依存する判断
 
 ## 背景
 
@@ -25,7 +25,7 @@
 
 ## 決定
 
-iOS標準SQLiteを薄いSwift Repositoryで扱い、shared controlを状態の正本、private DBを理由/履歴の正本とする。controlには有効policyとPending候補、grantの初期/実効期限、予定receipt/世代を別々に保持する。shared outboxをeventIDで冪等取込。本体はprivateとsharedのwrite lockを同時保持しない。理由本文は本人の反映後のみ保存し、入力途中の取消は本文を保存しない案。
+iOS標準SQLiteを薄いSwift Repositoryで扱い、shared controlを状態の正本、private DBを理由/履歴の正本とする。controlには有効policyとPending候補、grantの初期/実効期限、予定receipt/世代を別々に保持する。shared outboxをeventIDで冪等取込。本体はprivateとsharedのwrite lockを同時保持しない。理由本文は本人の反映後のみ保存し、入力途中の取消は本文を保存しない。
 
 詳細仕様の正本は [data.md](../system/data.md)。採用した設計仕様であり、実装・OS動作の検証済み宣言ではない。
 
