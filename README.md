@@ -6,6 +6,7 @@ MVP は Local-first とし、バックエンド・独自認証・実課金は導
 
 背景・確定方針は [引き継ぎ資料](docs/ITOMA_CODEX_HANDOVER.md)、開発ルールは [AGENTS.md](AGENTS.md) を参照してください。
 UI・操作・文言の設計判断とレビュー基準は [DESIGN.md](DESIGN.md) にまとめています。
+B案の[デザイン更新デモ](docs/design-b.md)は、デモブランチのURLに `design-b.html` を付けて開けます。円形の残り時間表示・理由の自由入力・アプリ別の一時解除を試せます。
 MVP仕様・状態モデル・責務・保存・PoC計画と検討Issueの入口は [システム設計](docs/system/README.md) です。未決定事項はIssue、仕様は設計資料、重要な判断理由は [ADR](docs/adr/README.md) で管理します。
 
 ## セットアップ
