@@ -17,7 +17,7 @@ Read `docs/ITOMA_CODEX_HANDOVER.md` for the agreed direction and Factory roadmap
 
 Read and follow `DESIGN.md` before UI, interaction, or copy changes. Explain the user's task, the information hierarchy, and the reason for visual choices in the PR. Preserve understandable state, cancellation, and honest mock/OS status. Do not optimize for engagement or introduce coercive friction; any deliberate friction must match the user's explicitly chosen rules. Record accessibility checks and unverified device behavior separately.
 
-Also read `docs/ui-guidelines.md` for screen/state/interaction/token/component contracts and `docs/ui-acceptance.md` for acceptance IDs. Cite the applicable principle and UI acceptance IDs in implementation PRs. Keep explicit user requirements separate from the documents' proposed choices and PR #36's unaccepted system design. The B demo is visual evidence, not the authority for multi-app grants, persistence, or OS success. Consolidate theme values through `src/constants/theme.ts` when implementing; the documentation does not mean that migration has happened.
+Also read `docs/ui-guidelines.md` for screen/state/interaction/token/component contracts and `docs/ui-acceptance.md` for acceptance IDs. Cite the applicable principle and UI acceptance IDs in implementation PRs. Keep explicit user requirements separate from the documents' proposed choices and PR #36's accepted system design (merged 2026-11-06; OS/device behavior remains unverified). The B demo is visual evidence, not the authority for multi-app grants, persistence, or OS success. Consolidate theme values through `src/constants/theme.ts` when implementing; the documentation does not mean that migration has happened.
 
 ## Architecture
 
@@ -50,6 +50,10 @@ npx tsc --noEmit            # typecheck
 npx expo-doctor             # diagnose dependency and config issues
 npx expo install --fix      # fix incompatible package versions
 ```
+
+## Task workflow
+
+Read `docs/development-workflow.md` before selecting implementation work. GitHub Issues and Milestones track scope and dependencies. Pick open leaf issues labelled `Ready`; exclude `Blocked`, `In Progress`, and `epic`. Claim the issue before changing code, keep human merge as the completion gate, and never equate a label or a passing mock test with device validation.
 
 ## Verification
 

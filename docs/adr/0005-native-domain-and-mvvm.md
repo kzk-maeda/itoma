@@ -1,12 +1,13 @@
 # 0005: UIは小さいMVVM、制限評価は共通Swift層を正本とする
 
-- 状態: **Proposed**（7項目の方針了承済み、P1/P2修正の再レビュー待ち）
+- 状態: **Accepted**（PR #36の人間によるmainマージで採用）
 - 検討Issue: https://github.com/kzk-maeda/itoma/issues/24
-- 決定PR: https://github.com/kzk-maeda/itoma/pull/36 （方針了承済み、修正全体は再レビュー待ち）
+- 決定PR: https://github.com/kzk-maeda/itoma/pull/36 （2026-11-06 JST、人間がmainへマージ）
 - 方針了承: 2026-11-06 JST、[利用者判断](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)
-- 採用日: 修正全体の再レビュー後に記録
+- 採用日: 2026-11-06 JST
+- 採用版: `6c17ac9a334a020a6833268a2f1a5762dc9aabc6`（PR #36のmerge commit）
 - 検証状況: 設計上の検討のみ。純粋ロジックのテスト仕様を作成、実装・実機は未検証
-- 関連ADR: [0002 MVP](0002-mvp-scheduled-restrictions.md)。0003〜0006は同じ設計PRの相互依存する提案
+- 関連ADR: [0002 MVP](0002-mvp-scheduled-restrictions.md)。0003〜0006は同じ設計PRで採用した相互依存する判断
 
 ## 背景
 
@@ -21,11 +22,11 @@ Swiftを学びやすく、仕組みをシンプルに保ち、画面を離れて
 | Redux等のUI状態store | MVVMと併用可能で、Swiftを正本としたまま使える。初版は追加依存・同期処理を増やさずhook/reducerを選ぶ |
 | 完全Clean Architecture | 厳密な境界の代わりに初版の型・変換・層が増える |
 
-## 提案
+## 決定
 
 React Native画面はhook/reducer等のViewModelでdraft・表示状態を扱う。型付きNative Clientを通し、本体SwiftのCommandServiceが処理を所有する。純粋Swift Evaluatorを本体とExtensionで共有。TSにOS制限の優先評価を複製しない。I/O境界はRepository/Adapterへ寄せるが全操作に定型層を作らない。
 
-詳細仕様の正本は [architecture.md](../system/architecture.md)。採用前にコードの確定仕様と扱わない。
+詳細仕様の正本は [architecture.md](../system/architecture.md)。採用した設計仕様であり、実装・OS動作の検証済み宣言ではない。
 
 ## 影響・限界
 
@@ -33,7 +34,7 @@ React Native画面はhook/reducer等のViewModelでdraft・表示状態を扱う
 
 ## 証拠と採用条件
 
-Issueの利用者回答とPR上の7項目の了承を根拠とする。P1/P2の修正は今回の了承で解消済みとはせず、再レビュー待ち。OS APIの現行仕様と端末条件は [PoC計画](../system/poc-plan.md) で確認する。提案の採用と実機での成立を分け、失敗したら範囲/方式を見直す。比較対象のAPIを実装済み・動作済みと記載しない。
+Issueの利用者回答とPR上の7項目の了承を根拠とする。P1/P2を含む修正版はPR #36のmainマージで設計として採用された。登録APIの制約・配信・再制限の実機検証は未実施。OS APIの現行仕様と端末条件は [PoC計画](../system/poc-plan.md) で確認する。提案の採用と実機での成立を分け、失敗したら範囲/方式を見直す。比較対象のAPIを実装済み・動作済みと記載しない。
 
 ## 再検討条件
 
