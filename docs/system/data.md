@@ -89,4 +89,10 @@ DB/付随ファイルをOSバックアップ対象から除外する案。これ
 | S11 | 旧予定取消失敗・古い/重複callback | 新しい実効期限を延長せず、grant復活・停止済みruleの再適用なし |
 | S12 | R11の短縮登録中に競合更新、または登録失敗 | 有効化時にbase/影響を再検証。失敗時は旧policy/12:05期限/予定を保持し、候補12:03を現在残時間として表示しない |
 
-本表は未実施。SQLite・File Protection・App Groupsの現行公式資料は実装前に確認する。本環境ではSQLite/Apple公式ページがプロキシ403で取得できなかったため、設定名や動作を検証済みと扱わない。
+本表全体を実施済みとは扱わない。SQLite・File Protection・App Groupsの現行公式資料は実装前に確認する。初期設計時はSQLite/Apple公式ページがプロキシ403で取得できず、API/動作の確認を残していた。
+
+## control保存Packageの実装範囲
+
+[#69](https://github.com/kzk-maeda/itoma/issues/69)の[ItomaStorage](../../packages/itoma-storage/README.md)で、SQLite公式GitHubのC API仕様を確認し、明示的な新規作成/既存DBのopen、schema/application ID、WAL、snapshot/Selection/Activation、snapshotSequenceのCASを実装する。CoreからSQLite依存を分離し、JSON policyの検証とSQLの版列を照合する。Selection refは不変とし、対象編集は新refを候補ruleへ束縛する。
+
+一時SQLiteのS01のwriter/CAS部分とS05の破損/未対応版をテストする。command/候補は#70、grant/receiptは#71、履歴/outboxは#46、実行順序は#47。iOSリンク・App Groups・端末ロック・File Protection・バックアップ除外・実プロセスkillは#49へ残し、Linuxの単体成功を実機の証拠にしない。DB異常時に空設定で復旧したことにも、制限を停止できたことにも扱わない。
