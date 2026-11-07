@@ -162,7 +162,7 @@ func invalidBudgetsAreRejected(values: (Int64, Int64)) throws {
     #expect(throws: StorageError.unsupportedSchema(2)) { try ControlRepository.open(at: f.url) }
     let controlURL = f.directory.appendingPathComponent("control.sqlite")
     let control = try ControlRepository.create(at: controlURL, initialPolicy: PolicySnapshot(revision: PolicyRevision(0), rules: [], priorityOrder: []), activation: .paused)
-    #expect(throws: HistoryError.unsupportedSchema(5)) { try HistoryRepository.open(at: controlURL, capacity: capacity()) }
+    #expect(throws: HistoryError.unsupportedSchema(6)) { try HistoryRepository.open(at: controlURL, capacity: capacity()) }
     try control.close()
     try r.close()
 }

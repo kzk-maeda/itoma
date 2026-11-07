@@ -25,12 +25,13 @@ public struct ControlSnapshot: Equatable, Sendable {
     public let activation: Activation
     public let selections: [StoredSelection]
     public let application: StoredApplication?
+    public let activationCommandID: CommandID?
 }
 
 /// A connection is serialized locally; separate processes coordinate with SQLite transactions.
 /// This class is deliberately not Sendable. A controller owns it on one isolation domain.
 public final class ControlRepository {
-    static let schemaVersion: Int64 = 5
+    static let schemaVersion: Int64 = 6
     static let applicationID: Int64 = 0x49544F4D
     let database: SQLiteDatabase
     private let lock = NSRecursiveLock()
@@ -78,6 +79,7 @@ public final class ControlRepository {
                 try repository.createGrantTables()
                 try repository.createHistoryTables()
                 try repository.createApplicationTable()
+                try repository.createActivationTable()
                 try repository.database.execute("PRAGMA application_id=0x49544F4D")
                 try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
                 let data = try JSONEncoder().encode(initialPolicy)
@@ -198,7 +200,8 @@ public final class ControlRepository {
                       application.evaluation.snapshotSequence.rawValue <= sequence else { throw StorageError.corrupt }
             }
             return ControlSnapshot(policy: policy, lastValidPolicy: last, snapshotSequence: try SnapshotSequence(sequence),
-                                   activation: activation, selections: selections, application: application)
+                                   activation: activation, selections: selections, application: application,
+                                   activationCommandID: expectedSchema >= 6 ? try loadActivationCommandID() : nil)
         } catch let error as StorageError { throw error }
         catch let error as SQLiteFailure { return try StorageError.translating { throw error } }
         catch { throw StorageError.corrupt }
@@ -237,6 +240,10 @@ public final class ControlRepository {
         }
         if expected >= 5 {
             do { try database.execute("SELECT singleton,record FROM application_state LIMIT 0") }
+            catch SQLiteFailure.failure { throw StorageError.corrupt }
+        }
+        if expected >= 6 {
+            do { try database.execute("SELECT singleton,command_id FROM activation_state LIMIT 0") }
             catch SQLiteFailure.failure { throw StorageError.corrupt }
         }
     }

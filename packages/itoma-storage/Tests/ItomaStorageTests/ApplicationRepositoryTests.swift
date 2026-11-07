@@ -25,7 +25,7 @@ import Testing
     var handle: OpaquePointer?
     #expect(sqlite3_open_v2(url.path, &handle, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK)
     let db = try #require(handle)
-    #expect(sqlite3_exec(db, "DROP TABLE application_state; PRAGMA user_version=4", nil, nil, nil) == SQLITE_OK)
+    #expect(sqlite3_exec(db, "DROP TABLE activation_state; DROP TABLE application_state; PRAGMA user_version=4", nil, nil, nil) == SQLITE_OK)
     sqlite3_close(db)
     #expect(throws: StorageError.unsupportedSchema(4)) { try ControlRepository.open(at: url) }
     let migrated = try ControlRepository.migrate(at: url)

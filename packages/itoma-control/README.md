@@ -81,3 +81,13 @@ Applying markerを独立commitし、最終writerでmarker/現在policy/Activatio
 確定Rejectedは登録終了の否定事実として保存し、終了grantの当該予定を追加取消なしにobsoleteへ整理できる。取消待機中の後着Rejectedも取りこぼさない。取消前後は成功plan時のActivation/policy、観測ID、zone、時刻の上下限を照合し、現在状態が変わればRequiresRecoveryとする。別controllerの新しい観測は上書きせず、自分の古い観測だけをUncertainへ落とす。
 
 認可不明/取消時はenabled/確認待ちから空のstore適用を行わない。確定Deniedを保存し、Approvedに戻っても本人の再開確認待ちを維持する。既に保存された本人のpaused意図は、自分のstoreを停止する根拠として扱う。停止/明示再開commandの受理は[#91](https://github.com/kzk-maeda/itoma/issues/91)へ分ける。Linuxのfake callbackは、Appleの通知配信・iPhoneのkill/再起動・制限成功を検証しない。
+
+## 本人の停止・明示再開
+
+[#91](https://github.com/kzk-maeda/itoma/issues/91)の`stop`/`resume`は本人操作ごとのcommandIDを受け取り、immutable intentと最新`activationCommandID`を先にcommitする。停止ではpausedと全grant失効、再開ではfresh Approvedと本人操作を確認してenabledを保存する。再開で旧grantを復活させない。重複IDは現在snapshotと元commandの結果を参照し、過去の停止/再開意図を再適用しない。
+
+受理済みPendingを`executeAcceptedActivation`で進め、Applying commandと観測を同TXでcommitする。最終writerでは最新の本人操作ID・attempt/command・Applying marker・現在のActivationを照合し、Reconcilerが最新policyを同期反映する。command結果と観測は一緒にcommitする。新しい本人操作に置換された古いcommandはSupersededとなり、新しい意図のstoreを操作しない。
+
+失敗や中断でもpaused意図を戻さず、保護予定を先に消さない。`retryActivation`は本人の明示再試行で、新attemptとfresh Approved（再開のみ）を確認して最新設定を反映する。古いcommandの再試行が新しい本人操作を上書きすることはない。起動時のReconcilerは希望状態の回復と中断commandのUncertain化を行うが、commandの成功や新しい解除を捏造しない。
+
+control schema6へは本体だけが明示移行する。schema1〜5の設定/Activation/観測/履歴は保持し、本人操作IDはnilにする。private history schema2は不変。native adapter・build/署名・App Groups/Screen Time実機ゲートは引き続き別で、Swift/fake成功は実OSの停止・再開成功の証拠ではない。

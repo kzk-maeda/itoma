@@ -62,7 +62,7 @@ public struct CommandRunResult: Sendable {
 }
 
 public enum CommandServiceError: Error, Equatable, Sendable {
-    case invalidCommand, invalidState, confirmationRequired, confirmationChanged, superseded
+    case invalidCommand, invalidState, confirmationRequired, confirmationChanged, superseded, authorizationRequired
 }
 
 public enum ReconciliationDisposition: Sendable { case committed, requiresRecovery, uncertain }

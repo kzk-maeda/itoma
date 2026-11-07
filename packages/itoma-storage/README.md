@@ -1,5 +1,13 @@
 # ItomaStorage
 
+## 停止・再開intent（schema6）
+
+[#91](https://github.com/kzk-maeda/itoma/issues/91)でcontrol schema6へ進める。`stop`/`resumeAfterAuthorization`はimmutable commandとして受理し、最新の本人操作IDをsnapshotの`activationCommandID`へ返す。同じIDの再受理は元の結果と現在snapshotを返し、過去の停止/再開意図を再適用しない。
+
+停止は認可に依存せずpausedとgrant失効を先に保存する。再開は呼出元が明示操作とfresh Approvedを確認してから受理する。保存済みActivationは希望状態であり、OS反映の成功ではない。Applying/観測と実操作の順序はItomaControlが担う。
+
+schema1〜5の移行は本体の`migrate`だけが行い、既存policy・Activation・履歴・観測を維持して、新しい本人操作IDはnilにする。Extensionは移行しない。旧schema5実装はschema6を拒否し、未対応の新commandを空設定として扱わない。private history schema2は変更しない。以下のschema2〜5の説明は各機能を追加した版の記録。
+
 ItomaCoreの外側で、iOS標準のSQLite C APIを包む薄いSwift Package。UI・Expo・Screen Timeには依存せず、理由本文の保存先でもない。#45を[#69](https://github.com/kzk-maeda/itoma/issues/69) snapshot、[#70](https://github.com/kzk-maeda/itoma/issues/70) command/候補、[#71](https://github.com/kzk-maeda/itoma/issues/71) grant/receiptへ分割して実装する。
 
 本Packageの公開productは、共有control用`ItomaStorage`と本体private用[`ItomaHistory`](HISTORY.md)に分かれる。Extensionは`ItomaStorage`だけに依存し、理由本文のAPIをリンクしない。共通の`ItomaSQLite` targetはSQLite接続/bind/transactionの技術層だけを提供する。本体のItomaHistoryは共有outbox DTO/transferへ依存するが、逆の依存は作らない。
