@@ -1,4 +1,5 @@
 import Foundation
+import ItomaSQLite
 import ItomaCore
 
 public struct CommandAcceptance: Equatable, Sendable {
@@ -24,7 +25,7 @@ public final class ControlTransaction {
     func validateCommit() throws { try checkScope() }
     func checked<T>(_ body: () throws -> T) throws -> T {
         try checkScope()
-        do { return try body() }
+        do { return try StorageError.translating(body) }
         catch { rollbackOnly = true; throw error }
     }
 
@@ -166,21 +167,23 @@ extension ControlRepository {
     public static func migrate(at url: URL, busyTimeoutMilliseconds: Int32 = 100) throws -> ControlRepository {
         guard validFileURL(url) else { throw StorageError.unavailable }
         guard FileManager.default.fileExists(atPath: url.path) else { throw StorageError.missingDatabase }
-        let repository = try ControlRepository(url: url, busyTimeoutMilliseconds: busyTimeoutMilliseconds)
-        try repository.database.transaction(writer: true) {
-            let rows = try repository.database.rows("PRAGMA user_version")
-            guard case let .integer(version) = rows.first?.first else { throw StorageError.corrupt }
-            guard [Int64(1), 2, Self.schemaVersion].contains(version) else { throw StorageError.unsupportedSchema(version) }
-            _ = try repository.loadSnapshot(expectedSchema: version)
-            guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
-                  try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw StorageError.corrupt }
-            if version == 1 {
-                try repository.createCommandTables()
+        return try StorageError.translating {
+            let repository = try ControlRepository(url: url, busyTimeoutMilliseconds: busyTimeoutMilliseconds)
+            try repository.database.transaction(writer: true) {
+                let rows = try repository.database.rows("PRAGMA user_version")
+                guard case let .integer(version) = rows.first?.first else { throw StorageError.corrupt }
+                guard [Int64(1), 2, Self.schemaVersion].contains(version) else { throw StorageError.unsupportedSchema(version) }
+                _ = try repository.loadSnapshot(expectedSchema: version)
+                guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
+                      try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw StorageError.corrupt }
+                if version == 1 {
+                    try repository.createCommandTables()
+                }
+                if version < 3 { try repository.createGrantTables() }
+                try repository.database.execute("PRAGMA user_version=3")
             }
-            if version < 3 { try repository.createGrantTables() }
-            try repository.database.execute("PRAGMA user_version=3")
+            return repository
         }
-        return repository
     }
 
     func createCommandTables() throws {

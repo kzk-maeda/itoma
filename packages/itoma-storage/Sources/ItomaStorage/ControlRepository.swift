@@ -1,4 +1,5 @@
 import Foundation
+import ItomaSQLite
 import ItomaCore
 #if canImport(Darwin)
 import Darwin
@@ -55,56 +56,60 @@ public final class ControlRepository {
         #else
         Glibc.close(descriptor)
         #endif
-        let repository = try ControlRepository(url: url, busyTimeoutMilliseconds: busyTimeoutMilliseconds)
-        guard try repository.database.rows("PRAGMA journal_mode=WAL") == [[.text("wal")]] else {
-            throw StorageError.unavailable
+        return try StorageError.translating {
+            let repository = try ControlRepository(url: url, busyTimeoutMilliseconds: busyTimeoutMilliseconds)
+            guard try repository.database.rows("PRAGMA journal_mode=WAL") == [[.text("wal")]] else {
+                throw StorageError.unavailable
+            }
+            try repository.database.execute("PRAGMA synchronous=FULL")
+            try repository.database.transaction(writer: true) {
+                try repository.database.execute("""
+                    CREATE TABLE control_state (
+                        singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+                        policy BLOB NOT NULL, last_valid_policy BLOB NOT NULL,
+                        policy_revision INTEGER NOT NULL CHECK(policy_revision>=0),
+                        snapshot_sequence INTEGER NOT NULL CHECK(snapshot_sequence>=0),
+                        activation TEXT NOT NULL CHECK(activation IN ('enabled','paused','awaitingReauthorizationConfirmation'))
+                    )
+                    """)
+                try repository.database.execute("CREATE TABLE selections (ref TEXT PRIMARY KEY NOT NULL, targets BLOB NOT NULL, opaque_payload BLOB NOT NULL)")
+                try repository.createCommandTables()
+                try repository.createGrantTables()
+                try repository.database.execute("PRAGMA application_id=0x49544F4D")
+                try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
+                let data = try JSONEncoder().encode(initialPolicy)
+                try repository.database.execute("INSERT INTO control_state VALUES (1,?,?,?,?,?)", [
+                    .blob(data), .blob(data), .integer(initialPolicy.revision.rawValue), .integer(0), .text(activation.rawValue)
+                ])
+                for item in selections { try repository.insertSelection(item) }
+            }
+            return repository
         }
-        try repository.database.execute("PRAGMA synchronous=FULL")
-        try repository.database.transaction(writer: true) {
-            try repository.database.execute("""
-                CREATE TABLE control_state (
-                    singleton INTEGER PRIMARY KEY CHECK(singleton=1),
-                    policy BLOB NOT NULL, last_valid_policy BLOB NOT NULL,
-                    policy_revision INTEGER NOT NULL CHECK(policy_revision>=0),
-                    snapshot_sequence INTEGER NOT NULL CHECK(snapshot_sequence>=0),
-                    activation TEXT NOT NULL CHECK(activation IN ('enabled','paused','awaitingReauthorizationConfirmation'))
-                )
-                """)
-            try repository.database.execute("CREATE TABLE selections (ref TEXT PRIMARY KEY NOT NULL, targets BLOB NOT NULL, opaque_payload BLOB NOT NULL)")
-            try repository.createCommandTables()
-            try repository.createGrantTables()
-            try repository.database.execute("PRAGMA application_id=0x49544F4D")
-            try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
-            let data = try JSONEncoder().encode(initialPolicy)
-            try repository.database.execute("INSERT INTO control_state VALUES (1,?,?,?,?,?)", [
-                .blob(data), .blob(data), .integer(initialPolicy.revision.rawValue), .integer(0), .text(activation.rawValue)
-            ])
-            for item in selections { try repository.insertSelection(item) }
-        }
-        return repository
     }
 
     public static func open(at url: URL, busyTimeoutMilliseconds: Int32 = 100) throws -> ControlRepository {
         guard Self.validFileURL(url) else { throw StorageError.unavailable }
         guard FileManager.default.fileExists(atPath: url.path) else { throw StorageError.missingDatabase }
-        let repository = try ControlRepository(url: url, busyTimeoutMilliseconds: busyTimeoutMilliseconds)
-        guard try repository.database.rows("PRAGMA user_version") == [[.integer(schemaVersion)]] else {
-            let version = try repository.database.rows("PRAGMA user_version")
-            if case let .integer(number) = version.first?.first { throw StorageError.unsupportedSchema(number) }
-            throw StorageError.corrupt
+        return try StorageError.translating {
+            let repository = try ControlRepository(url: url, busyTimeoutMilliseconds: busyTimeoutMilliseconds)
+            guard try repository.database.rows("PRAGMA user_version") == [[.integer(schemaVersion)]] else {
+                let version = try repository.database.rows("PRAGMA user_version")
+                if case let .integer(number) = version.first?.first { throw StorageError.unsupportedSchema(number) }
+                throw StorageError.corrupt
+            }
+            guard try repository.database.rows("PRAGMA application_id") == [[.integer(applicationID)]] else {
+                throw StorageError.wrongDatabase
+            }
+            guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
+                  try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw StorageError.corrupt }
+            do { _ = try repository.readSnapshot() }
+            catch StorageError.databaseFailure { throw StorageError.corrupt }
+            return repository
         }
-        guard try repository.database.rows("PRAGMA application_id") == [[.integer(applicationID)]] else {
-            throw StorageError.wrongDatabase
-        }
-        guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
-              try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw StorageError.corrupt }
-        do { _ = try repository.readSnapshot() }
-        catch StorageError.databaseFailure { throw StorageError.corrupt }
-        return repository
     }
 
     init(url: URL, busyTimeoutMilliseconds: Int32) throws {
-        database = try SQLiteDatabase(path: url.path, busyTimeoutMilliseconds: busyTimeoutMilliseconds)
+        database = try StorageError.translating { try SQLiteDatabase(path: url.path, busyTimeoutMilliseconds: busyTimeoutMilliseconds) }
     }
 
     static func validFileURL(_ url: URL) -> Bool {
@@ -147,10 +152,10 @@ public final class ControlRepository {
         }
     }
 
-    func serialized<T>(_ body: () throws -> T) rethrows -> T {
+    func serialized<T>(_ body: () throws -> T) throws -> T {
         lock.lock()
         defer { lock.unlock() }
-        return try body()
+        return try StorageError.translating(body)
     }
 
     func loadSnapshot(expectedSchema: Int64 = ControlRepository.schemaVersion) throws -> ControlSnapshot {
@@ -179,6 +184,7 @@ public final class ControlRepository {
             return ControlSnapshot(policy: policy, lastValidPolicy: last, snapshotSequence: try SnapshotSequence(sequence),
                                    activation: activation, selections: selections)
         } catch let error as StorageError { throw error }
+        catch let error as SQLiteFailure { return try StorageError.translating { throw error } }
         catch { throw StorageError.corrupt }
     }
 
@@ -194,7 +200,7 @@ public final class ControlRepository {
                 try database.execute("SELECT command_id,kind,expected_revision,record,intent FROM commands LIMIT 0")
                 try database.execute("SELECT command_id,attempt,record FROM command_attempts LIMIT 0")
                 try database.execute("SELECT command_id,base_revision,proposed_policy FROM policy_candidates LIMIT 0")
-            } catch StorageError.databaseFailure { throw StorageError.corrupt }
+            } catch SQLiteFailure.failure { throw StorageError.corrupt }
         }
         if expected >= 3 {
             do {
@@ -203,7 +209,7 @@ public final class ControlRepository {
                 try database.execute("SELECT command_id,grant_id FROM command_grant_results LIMIT 0")
                 try database.execute("SELECT activated_revision FROM policy_candidates LIMIT 0")
                 guard try database.rows("SELECT name FROM sqlite_master WHERE type='index' AND name='grants_one_reserved_target'") == [[.text("grants_one_reserved_target")]] else { throw StorageError.corrupt }
-            } catch StorageError.databaseFailure { throw StorageError.corrupt }
+            } catch SQLiteFailure.failure { throw StorageError.corrupt }
         }
     }
 

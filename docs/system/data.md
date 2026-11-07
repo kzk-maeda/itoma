@@ -102,3 +102,9 @@ DB/付随ファイルをOSバックアップ対象から除外する案。これ
 [#71](https://github.com/kzk-maeda/itoma/issues/71)のschema3でgrant・登録世代/receipt・commandの解決先grant参照と候補有効化記録を追加する。同対象に合流した別commandも結果を固定し、終端後の再送で新しい期限を作らない。初期上限とidentityを維持し、非終端の短縮は候補確認と登録照合を伴う原子的更新へ限定する。過去の終端`hasEnded`も保存し、再制限のUncertain/Failedから解除へ復帰させない。
 
 Preparing、外部受理/発火事実、最終適用のcommit境界を分け、同TXでの迂回を拒否する。複数grantの短縮は全登録が揃った時だけpolicyと一括commit。D03/D11/D12、S09/S10/S12のRepository部分は合成receiptと一時SQLiteで検証し、実API/OS成功・kill・iOS保護とは区別する。
+
+## 本体private理由の実装範囲
+
+[#79](https://github.com/kzk-maeda/itoma/issues/79)の[`ItomaHistory`](../../packages/itoma-storage/HISTORY.md)は共有controlとは別product/別DBで、本体だけがimportする。SQLite技術層を共通targetへ分離し、Extension向け`ItomaStorage`に本文APIの依存を作らない。schema1は理由本文UTF8 BLOB・reasonRef・commandID・Prepared時刻・論理bytesを保持する。非空白判定にCoreを使い、判定後も原文を保持する。
+
+同identity/同UTF8の再送は元のPreparedを返し、別本文を拒否する。本人削除後も本文なしのidentity tombstoneを残し、再送で復活させない。容量閾値は注入し、原文payloadと実ファイルサイズを分ける。Preparedは共有受理や解除成功の証拠ではない。S03/S07のprivate単体部分を一時SQLiteで検証し、共有outboxとの順序・取込・削除cutoffは[#80](https://github.com/kzk-maeda/itoma/issues/80)、実機の保存先/保護は#49に残す。
