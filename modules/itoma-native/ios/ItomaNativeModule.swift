@@ -18,14 +18,25 @@ public final class ItomaNativeModule: Module {
         Name("ItomaNative")
         Constant("apiVersion") { 1 }
         AsyncFunction("screenTimePoC") { (action: String, selectionRef: String?, promise: Promise) in
+            // Expo's AppContext is Sendable; the Module itself must not cross actor isolation.
+            let context = self.appContext
             MainActor.assumeIsolated {
                 guard #available(iOS 16.0, *) else {
-                    promise.resolve(["availability": "unsupported-os", "authorization": "unknown", "storage": "not-created",
-                        "selections": [], "operation": "failed", "code": "unavailable", "observation": "unknown"] as [String: Any])
+                    promise.resolve(#"{"availability":"unsupported-os","authorization":"unknown","storage":"not-created","selections":[],"operation":"failed","code":"unavailable","observation":"unknown"}"#)
                     return
                 }
                 ScreenTimePoC.shared.perform(action, ref: selectionRef,
-                    presenter: self.appContext?.utilities?.currentViewController()) { result in promise.resolve(result) }
+                    presenter: context?.utilities?.currentViewController()) { result in
+                    // Serialize on the actor that owns the dictionary. Only a value-type String
+                    // crosses Expo's sending Promise API; no mutable Any graph crosses runtimes.
+                    do {
+                        let data = try JSONSerialization.data(withJSONObject: result)
+                        guard let json = String(data: data, encoding: .utf8) else {
+                            promise.reject("ERR_ITOMA_POC_RESPONSE", "Native PoC response unavailable"); return
+                        }
+                        promise.resolve(json)
+                    } catch { promise.reject("ERR_ITOMA_POC_RESPONSE", "Native PoC response unavailable") }
+                }
             }
         }.runOnQueue(.main)
         Function("validateDuration") { (minutes: Int) -> DurationValidationRecord in

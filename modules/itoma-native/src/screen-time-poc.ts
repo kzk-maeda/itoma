@@ -30,7 +30,11 @@ export function createScreenTimePoCClient(platform: string, load: () => unknown)
         if (!object(native) || native.apiVersion !== 1 || typeof native.screenTimePoC !== 'function') {
           return { status: 'error', code: 'incompatible-module' };
         }
-        const value: unknown = await native.screenTimePoC(action, ref ?? null);
+        const wire: unknown = await native.screenTimePoC(action, ref ?? null);
+        if (typeof wire !== 'string') return { status: 'error', code: 'invalid-response' };
+        let value: unknown;
+        try { value = JSON.parse(wire); }
+        catch { return { status: 'error', code: 'invalid-response' }; }
         if (!object(value) || !member(value.availability, ['device-poc', 'disabled', 'simulator-unavailable', 'unsupported-os'])
           || !member(value.authorization, ['unknown', 'denied', 'approved'])
           || !member(value.storage, ['not-created', 'ready', 'unavailable'])

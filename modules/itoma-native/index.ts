@@ -8,7 +8,7 @@ interface ItomaNativePort extends NativeModule {
   readonly apiVersion: number;
   validateDuration(minutes: number): unknown;
   reportSmokeResult(commit: string, passed: boolean): boolean;
-  screenTimePoC(action: string, ref: string | null): Promise<unknown>;
+  screenTimePoC(action: string, ref: string | null): Promise<string>;
 }
 
 const load = () => requireOptionalNativeModule<ItomaNativePort>('ItomaNative');
