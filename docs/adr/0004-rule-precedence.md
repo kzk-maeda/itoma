@@ -6,7 +6,7 @@
 - 方針了承: 2026-11-06 JST、[利用者判断](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)
 - 採用日: 2026-11-06 JST
 - 採用版: `6c17ac9a334a020a6833268a2f1a5762dc9aabc6`（PR #36のmerge commit）
-- 検証状況: 設計上の検討のみ。純粋ロジックのテスト仕様を作成、実装・実機は未検証
+- 検証状況: #43で週次評価の純粋Swift実装と固定instantの単体テストを追加。検証範囲は[rules.md](../system/rules.md#週次評価の実装契約)。grant・保存確認・OS予定・実機は別途検証
 - 関連ADR: [0002 MVP](0002-mvp-scheduled-restrictions.md)。0003〜0006は同じ設計PRで採用した相互依存する判断
 
 ## 背景
