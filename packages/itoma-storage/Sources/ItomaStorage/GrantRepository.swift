@@ -3,6 +3,28 @@ import ItomaSQLite
 import ItomaCore
 
 extension ControlTransaction {
+    public func grantForCommand(_ id: CommandID) throws -> StoredGrant? {
+        try checked { try repository.loadGrantForCommand(id) }
+    }
+
+    public func latestRegistration(grantID: GrantID) throws -> DeadlineRegistration? {
+        try checked { try repository.latestRegistration(grantID) }
+    }
+
+    public func registrations(grantID: GrantID) throws -> [DeadlineRegistration] {
+        try checked { try repository.loadRegistrations(grantID) }
+    }
+
+    public func activatedCandidateRevision(commandID: CommandID) throws -> PolicyRevision? {
+        try checked {
+            let rows = try repository.database.rows("SELECT activated_revision FROM policy_candidates WHERE command_id=?", [.text(commandID.rawValue.uuidString)])
+            guard let row = rows.first else { return nil }
+            if row[0] == .null { return nil }
+            guard case let .integer(value) = row[0] else { throw StorageError.corrupt }
+            return try PolicyRevision(value)
+        }
+    }
+
     public func grant(_ id: GrantID) throws -> StoredGrant? {
         try checked { try repository.loadGrant(id) }
     }
@@ -171,10 +193,14 @@ extension ControlRepository {
     public func registrations(grantID: GrantID) throws -> [DeadlineRegistration] {
         try serialized { try database.transaction(writer: false) {
             _ = try loadSnapshot()
-            return try database.rows("SELECT registration_id,grant_id,command_id,generation,record FROM registrations WHERE grant_id=? ORDER BY generation", [
-                .text(grantID.rawValue.uuidString)
-            ]).map(decodeRegistration)
+            return try loadRegistrations(grantID)
         } }
+    }
+
+    func loadRegistrations(_ grantID: GrantID) throws -> [DeadlineRegistration] {
+        try database.rows("SELECT registration_id,grant_id,command_id,generation,record FROM registrations WHERE grant_id=? ORDER BY generation", [
+            .text(grantID.rawValue.uuidString)
+        ]).map(decodeRegistration)
     }
 
     func createGrantTables() throws {

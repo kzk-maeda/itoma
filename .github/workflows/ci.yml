@@ -23,7 +23,8 @@ jobs:
             --mount "type=bind,src=$GITHUB_WORKSPACE/packages,dst=/packages,readonly" \
             itoma-swift-tests sh -c '\
               swift test --package-path /packages/itoma-core --scratch-path /tmp/core-build --cache-path /tmp/swift-cache --jobs 2 && \
-              swift test --package-path /packages/itoma-storage --scratch-path /tmp/storage-build --cache-path /tmp/swift-cache --jobs 2'
+              swift test --package-path /packages/itoma-storage --scratch-path /tmp/storage-build --cache-path /tmp/swift-cache --jobs 2 && \
+              swift test --package-path /packages/itoma-control --scratch-path /tmp/control-build --cache-path /tmp/swift-cache --jobs 2'
 
       - uses: actions/setup-node@v7
         with:

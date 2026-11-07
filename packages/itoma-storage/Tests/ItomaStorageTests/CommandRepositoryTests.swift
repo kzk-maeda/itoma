@@ -161,7 +161,7 @@ func cancelledCandidateCannotBeActivatedOrReturnedToAnInflightState(status: Comm
     let f = try Fixture(); defer { f.remove() }
     let before = try f.repository.readSnapshot()
     try f.repository.close()
-    try sql(f.url) { try execute($0, "DROP TABLE history_outbox; DROP TABLE history_event_ids; DROP TABLE history_state; DROP TABLE registrations; DROP TABLE command_grant_results; DROP TABLE grants; DROP TABLE policy_candidates; DROP TABLE command_attempts; DROP TABLE commands; PRAGMA user_version=1") }
+    try sql(f.url) { try execute($0, "DROP TABLE application_state; DROP TABLE history_outbox; DROP TABLE history_event_ids; DROP TABLE history_state; DROP TABLE registrations; DROP TABLE command_grant_results; DROP TABLE grants; DROP TABLE policy_candidates; DROP TABLE command_attempts; DROP TABLE commands; PRAGMA user_version=1") }
     #expect(throws: StorageError.unsupportedSchema(1)) { try ControlRepository.open(at: f.url) }
     let migrated = try ControlRepository.migrate(at: f.url)
     #expect(try migrated.readSnapshot() == before)
@@ -175,7 +175,7 @@ func cancelledCandidateCannotBeActivatedOrReturnedToAnInflightState(status: Comm
 @Test func failedMigrationRollsBackDDLAndVersionInsteadOfClearingData() throws {
     let f = try Fixture(); defer { f.remove() }
     try f.repository.close()
-    try sql(f.url) { try execute($0, "DROP TABLE history_outbox; DROP TABLE history_event_ids; DROP TABLE history_state; DROP TABLE registrations; DROP TABLE command_grant_results; DROP TABLE grants; DROP TABLE policy_candidates; DROP TABLE command_attempts; DROP TABLE commands; CREATE TABLE command_attempts(unexpected TEXT); PRAGMA user_version=1") }
+    try sql(f.url) { try execute($0, "DROP TABLE application_state; DROP TABLE history_outbox; DROP TABLE history_event_ids; DROP TABLE history_state; DROP TABLE registrations; DROP TABLE command_grant_results; DROP TABLE grants; DROP TABLE policy_candidates; DROP TABLE command_attempts; DROP TABLE commands; CREATE TABLE command_attempts(unexpected TEXT); PRAGMA user_version=1") }
     #expect(throws: StorageError.databaseFailure) { try ControlRepository.migrate(at: f.url) }
     try sql(f.url) {
         let version = try scalar($0, "PRAGMA user_version")
