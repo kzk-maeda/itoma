@@ -1,6 +1,6 @@
 # 時間帯・競合・一時解除のルール
 
-状態: **採用済み・実装/実機未検証**（[PR #36](https://github.com/kzk-maeda/itoma/pull/36)、2026-11-06 JSTにmainへマージ）。[了承コメント](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。Issue [#23](https://github.com/kzk-maeda/itoma/issues/23)、[ADR 0004](../adr/0004-rule-precedence.md)。根拠: [利用者回答](https://github.com/kzk-maeda/itoma/issues/23#issuecomment-6654535064)。以下の合意事項、P2修正、未確定の細部を区別する。
+状態: **設計採用済み・実装の検証範囲は下記、実機未検証**（[PR #36](https://github.com/kzk-maeda/itoma/pull/36)、2026-11-06 JSTにmainへマージ）。[了承コメント](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。Issue [#23](https://github.com/kzk-maeda/itoma/issues/23)、[ADR 0004](../adr/0004-rule-precedence.md)。根拠: [利用者回答](https://github.com/kzk-maeda/itoma/issues/23#issuecomment-6654535064)。以下の合意事項、P2修正、未確定の細部を区別する。
 
 ## 合意済みの要件
 
@@ -65,6 +65,16 @@ DSTの不存在境界は次の有効時刻へ進める案、重複境界は開�
 ## 純粋評価の入出力
 
 Swift共通ドメイン層で、PolicySnapshot・grant集合・now・timezone・Activationを入力し、desiredTargets・各対象のwinningRule・残時間・次境界・無効grantを返す。UIとExtensionは別の優先ロジックを実装しない。OS呼出し・DB更新は評価の外。
+
+### 週次評価の実装契約
+
+[#43](https://github.com/kzk-maeda/itoma/issues/43)の`RuleEvaluator`はgrant適用前の中間結果を返す。API・範囲・エラーは[ItomaCore](../../packages/itoma-core/README.md)を参照。`through`を明示した有限期間内で、対象ごとの勝者/次の勝者変更、全ルールの次境界、保存確認用の重複区間、無効occurrenceを算出する。nilの次境界は期間外も存在しないという意味ではなく、検索終端でも再評価する。重複確認もこの期間とtimezoneに限られ、本人確認・保存やgrantの失効は別の処理。
+
+重複時間はDST解決後の実instantで比較する。通常の壁時計では隣接する区間も、秋の重複時刻では重なることがある。同一ルールの連続した24時間occurrenceがDSTで重なった場合は、新しい開始instantを勝者とし、同じinstantなら新しい開始日を選ぶ。前日分の終了では前日のoccurrenceに戻さない。これは同一ルール内の識別を一意にする補足であり、別ルール間のpriorityOrderやモードの順序を変えない。
+
+認可approvedかつActivation enabledの場合だけ設定上の`desiredTargets`を返し、認可が戻っただけで再開承認待ちを解除しない。認可不明時の空集合は既存OS設定の削除指示ではない。OSの操作可否・観測鮮度・本当の反映結果はcontroller/adapterで扱う。
+
+Swift単体テストはR01/R02、R03の重複情報、R04の勝者選択、R06、R09のNY/Lord Howe/São Paulo/Apia固定instant、R10のtimezone再評価を扱う。R03の保存確認、R04のgrant適用、R10の時計変更時のgrant/復旧と、R05/R07/R08/R11〜R14はこの週次評価だけの検証に含めない。OS予定やiPhoneでの制限成功は未検証。
 
 | ID | 例 | 期待結果 |
 | --- | --- | --- |

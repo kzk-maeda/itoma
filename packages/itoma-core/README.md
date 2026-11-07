@@ -1,6 +1,6 @@
 # ItomaCore
 
-本体SwiftとExtensionで共有するための、UI・Expo・SQLite・Screen Timeに依存しないSwift Package。外部パッケージ依存はなく、Foundationと標準ライブラリだけを使う。現在の範囲は[#42](https://github.com/kzk-maeda/itoma/issues/42)の**値型と構造的な入力検証**。
+本体SwiftとExtensionで共有するための、UI・Expo・SQLite・Screen Timeに依存しないSwift Package。外部パッケージ依存はなく、Foundationと標準ライブラリだけを使う。[#42](https://github.com/kzk-maeda/itoma/issues/42)の値型・入力検証と、[#43](https://github.com/kzk-maeda/itoma/issues/43)の週次ルール評価を扱う。
 
 設計の根拠は[状態モデル](../../docs/system/domain-model.md)、[ルール](../../docs/system/rules.md)、[責務](../../docs/system/architecture.md)、[保存](../../docs/system/data.md)、ADR 0003〜0006（採用PR #36 / `6c17ac9`）。
 
@@ -57,8 +57,30 @@ managed cloudでは、runtimeのDocker手順に従って使用するdaemonを明
 
 この形式をSQLiteのschemaやTS bridgeのwire形式として自動採用しない。特にInt64をJSのnumberへ無条件に渡すと精度を失うため、bridgeで文字列等へ明示変換する。DBの版管理/移行・command/grant/receiptの行mapping・payload照合は#45/#47、bridge DTOは#9で扱う。
 
+## 週次ルールを評価する
+
+`RuleEvaluator.evaluate(policy:selections:context:through:)`へ、有効policy、native tokenを正規化した`Selection`、明示的な時刻/timezone/認可/Activation、検索終端のUTC instantを渡す。副作用や端末の現在値の取得はない。
+
+| 結果 | 意味 |
+| --- | --- |
+| `occurrences` / `activeOccurrences` | 検索区間と交差する有効な現地時間帯と、nowを含む時間帯。終了は含まない |
+| `targets[target].activeOccurrences` / `winner` | 対象ごとの優先順と現在の勝者。停止ルールを除外し、モードで並べ替えない |
+| `targets[target].nextWinnerChange` | 勝者の完全なoccurrenceKeyが次に変わる時刻。下位ルールだけの境界は除外 |
+| `desiredTargets` | grant適用前の設定上の制限対象。認可approvedかつActivation enabledのときだけ算出 |
+| `nextBoundary` / `nextEvaluationAt` | 全ルールの次の境界と、境界がなくても必要な検索終端での再評価 |
+| `overlaps` | 指定区間内の、別ルール間の共通対象・実際のUTC重複区間・優先順。本人確認や保存は呼出側 |
+| `invalidOccurrences` | DST解決後に開始>=終了となった時間帯。通知用の事実を返し、24時間へ変換しない |
+
+`through > now`、検索幅は最大366経過日。これは1回の検索の計算量の上限であり、週次設定の利用期間を制限しない。入力instantのUTC年は0002〜9998。範囲外、欠落した有効ルールのSelection、重複Selectionをエラーにし、空のplanへ修復しない。停止ルールのSelectionは不要。空の対象集合は有効。
+
+`nextBoundary`と`nextWinnerChange`のnilは**evaluatedThrough以内に見つからない**という意味。呼出側は`nextEvaluationAt`までに再評価する。grant期限を求めるときは、要求する期限全体を検索範囲へ含めるか、検索終端でも上限を切る。編集確認にも検査したtimezoneと期間を示し、この結果だけで全ての将来の重複がないとは扱わない。
+
+境界はtimezoneのオフセット候補と切替instantから解決する。不存在は次の有効instant、重複は開始を最早・終了を最遅とする。日付全体の欠落も同じ規則。通常の24時間は**現地暦の長さ**であり、DST日に経過23/25時間となることがある。同一ルールの連続した24時間occurrenceが重複した場合は、新しい解決済み開始を優先し、同一instantなら新しい開始日を優先する。前日分の終了で勝者が前日に戻ることはない。
+
+`RuleEvaluation`はgrant適用前の中間結果で、最終`Evaluation`/OS適用記録とは別。認可不明時の空`desiredTargets`は、既存OS設定を削除してよい指示ではない。認可の鮮度、停止/再開の状態遷移、OS操作の可否はcontroller/adapter側で扱う。認可観測がapprovedでも再開承認待ちを自動解除しない。
+
 ## 検証していないこと
 
-型を作れることと、その操作を今実行してよいことは別。勝者/次境界/DSTの評価は#43、grantの発行・単調短縮・再試行・失効は#44、保存/重複排他は#45、予定登録→解除の実行順序と障害注入は#47で実装する。structを再構築しただけで、同じgrantの延長防止や登録成功を保証しない。
+型を作れることと、その操作を今実行してよいことは別。grantの発行・単調短縮・再試行・失効は#44、保存/重複排他は#45、予定登録→解除の実行順序と障害注入は#47で実装する。structを再構築しただけで、同じgrantの延長防止や登録成功を保証しない。重複情報を返すことは、保存時の本人確認UIを実装したことではない。
 
 iOS向けのリンク、Expo Module・本体/Extensionへの組込みは#9/#14。対応iOS範囲、実機のOS API/期限精度は#8/#26で確認する。このLinuxでのコンパイル・単体テストを、SimulatorビルドやiPhoneのScreen Time動作の代わりにしない。
