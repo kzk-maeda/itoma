@@ -54,9 +54,71 @@ export function compilerDiagnostics(log) {
     .map((line) => line.replace(/\u001b\[[0-9;]*m/g, ''))
     .filter((line) => /error:|^✘|^\*\* .*FAILED|^Error:|\[!\]|^An error was encountered|^Underlying error|^Timed out|^Failed to|^Error Domain=/i.test(line))
     .slice(-8)
-    .map((line) => line.replace(/https?:\/\/\S+/gi, (url) => {
-      try { return `${new URL(url).origin}/[url omitted]`; } catch { return '[url omitted]'; }
-    }).slice(0, 1_200));
+    .map((line) => omitURLs(line).slice(0, 1_200));
+}
+
+function omitURLs(value) {
+  return String(value).replace(/https?:\/\/\S+/gi, (url) => {
+    try { return `${new URL(url).origin}/[url omitted]`; } catch { return '[url omitted]'; }
+  });
+}
+
+/** One final notice per run; stage count and future result fields cannot exhaust runner limits. */
+export function createQAReporter(result, { record, log = console.log }) {
+  return {
+    checkpoint(stage) {
+      result.stages[stage] = 'pass'; record();
+      log(`iOS QA stage ${JSON.stringify(stage)}: pass`);
+    },
+    fail(error, toolLog = '') {
+      result.status = 'fail'; result.error = omitURLs(error.message).slice(0, 1_200);
+      if (error.tool) result.failedTool = error.tool;
+      log(annotationCommand('error', 'iOS QA', result.error));
+      for (const line of compilerDiagnostics(toolLog)) {
+        log(annotationCommand('error', 'Compiler/test diagnostic', line));
+      }
+    },
+    finish(cleanup) {
+      if (cleanup !== undefined) result.cleanup = cleanup;
+      if (cleanup === 'failed') {
+        result.status = 'fail'; result.error ??= 'Created Simulator cleanup failed';
+      }
+      result.completedAt = new Date().toISOString(); record();
+      log(annotationCommand('notice', 'iOS QA result', JSON.stringify(qaResultSummary(result))));
+    },
+  };
+}
+
+/** Fixed field/length budget keeps the decoded message below the runner's 4096-character cap.
+ * Complete metadata and stage history remain in result.json, including fields added later.
+ */
+function qaResultSummary(result) {
+  const summary = {};
+  const bounded = (value, limit) => {
+    if (value == null) return null;
+    const text = omitURLs(value);
+    let end = Math.min(text.length, limit);
+    // JSON escaping of control characters must fit the same budget as ordinary text.
+    while (JSON.stringify(text.slice(0, end)).length > limit + 2) end--;
+    return text.slice(0, end);
+  };
+  const fields = {
+    requestedCommit: 40, sourceCommit: 40, nativeSourceCommit: 40, jsSourceCommit: 40,
+    buildID: 100, workflowCommit: 40, status: 16, cleanup: 16,
+    configuration: 32, sdk: 32, signing: 16, architecture: 16, sdkVersion: 32,
+    nativeConfigurationSHA256: 64, jsBundleSHA256: 64,
+    xcode: 160, swift: 240, cocoaPods: 32,
+  };
+  for (const [field, limit] of Object.entries(fields)) {
+    summary[field] = bounded(result[field], limit);
+  }
+  summary.passedStages = Object.values(result.stages).filter((status) => status === 'pass').length;
+  summary.sharedSwiftTests = Object.fromEntries(['core', 'storage', 'control'].map((name) => [
+    name, Number.isSafeInteger(result.sharedSwiftTests?.[name]) ? result.sharedSwiftTests[name] : null,
+  ]));
+  summary.error = bounded(result.error, 600);
+  summary.details = 'Full stages, tool context and metadata: artifact result.json';
+  return summary;
 }
 
 export function annotationCommand(level, title, message) {

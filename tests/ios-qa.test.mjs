@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { annotationCommand, assertCleanSource, claimOutputDirectory, compilerDiagnostics, passedSwiftTestCount, simulatorSpec, smokeOutcome, validatedCommit, validatedSimulatorID } from '../scripts/lib/ios-qa.mjs';
+import { annotationCommand, assertCleanSource, claimOutputDirectory, compilerDiagnostics, createQAReporter, passedSwiftTestCount, simulatorSpec, smokeOutcome, validatedCommit, validatedSimulatorID } from '../scripts/lib/ios-qa.mjs';
 
 const commit = 'a'.repeat(40);
 test('mutable refs and injected or incomplete identities are refused', () => {
@@ -113,4 +113,91 @@ test('Simulator tool failures retain bounded context while signed URLs stay priv
   assert.match(result[1], /code=60/);
   assert.equal(result[2], 'Timed out: https://example.invalid/[url omitted]');
   assert.ok(result.every((line) => !line.includes('credential') && !line.includes('private')));
+});
+
+function reportingRun({ failure, cleanup = 'pass', built = true, extras = {} } = {}) {
+  const result = {
+    requestedCommit: commit, sourceCommit: commit,
+    nativeSourceCommit: built ? commit : null, jsSourceCommit: built ? commit : null,
+    buildID: '12345-1', status: 'pass', stages: {}, ...extras,
+  };
+  const lines = [], records = [];
+  const reporter = createQAReporter(result, {
+    record: () => records.push(structuredClone(result)), log: (line) => lines.push(line),
+  });
+  for (let i = 0; i < 100; i++) reporter.checkpoint(`stage-${i}`);
+  if (failure) reporter.fail(failure, `${'error: download HTTPS://user:secret@example.invalid/path?sig=private-token\n'.repeat(20)}error: ${'x'.repeat(2_000)}`);
+  reporter.finish(cleanup);
+  // Model the runner's per-step/type cap after decoding workflow command escapes.
+  const annotations = { notice: [], error: [] };
+  for (const line of lines) {
+    assert.equal(line.includes('\n'), false);
+    assert.equal(line.includes('\r'), false);
+    const match = /^::(notice|error) title=[^\n]*?::(.*)$/.exec(line);
+    if (!match) continue;
+    const message = match[2].replaceAll('%0D', '\r').replaceAll('%0A', '\n').replaceAll('%25', '%');
+    assert.ok(message.length <= 4_096, 'runner message size limit');
+    if (annotations[match[1]].length < 10) annotations[match[1]].push(message);
+  }
+  assert.equal(annotations.notice.length, 1, 'one notice reserved for final result');
+  assert.equal(records.length, 101);
+  assert.equal(Object.keys(records.at(-1).stages).length, 100);
+  assert.ok(records.at(-1).completedAt);
+  assert.ok(lines.some((line) => line === 'iOS QA stage "stage-99": pass'));
+  return { result, lines, records, annotations, summary: JSON.parse(annotations.notice[0]) };
+}
+
+test('many stages preserve the final successful result and complete stage history', () => {
+  const { summary, annotations } = reportingRun();
+  assert.equal(summary.status, 'pass');
+  assert.equal(summary.cleanup, 'pass');
+  assert.equal(summary.passedStages, 100);
+  for (const key of ['sourceCommit', 'nativeSourceCommit', 'jsSourceCommit']) assert.equal(summary[key], commit);
+  assert.equal(summary.buildID, '12345-1');
+  assert.equal(annotations.error.length, 0);
+});
+
+test('tool failure retains identity, private URL redaction and eight bounded diagnostics', () => {
+  const error = new Error('Tool failed %0A\r\n::notice::injected HTTPS://user:secret@example.invalid/file?sig=private-token');
+  error.tool = { operation: 'xcodebuild', exitCode: 1, signal: null, code: null };
+  const { summary, annotations, records } = reportingRun({ failure: error, built: false });
+  assert.equal(summary.status, 'fail');
+  assert.equal(summary.nativeSourceCommit, null);
+  assert.equal(summary.jsSourceCommit, null);
+  assert.equal(summary.buildID, '12345-1');
+  assert.equal(annotations.error.length, 9);
+  assert.ok(annotations.error.every((line) => line.length <= 1_200));
+  assert.equal(JSON.stringify({ summary, annotations, records }).includes('private-token'), false);
+  assert.equal(JSON.stringify({ summary, annotations, records }).includes('secret'), false);
+  assert.deepEqual(records.at(-1).failedTool, error.tool);
+});
+
+test('cleanup failure overrides successful smoke in the final API result and JSON', () => {
+  const { summary, records } = reportingRun({ cleanup: 'failed' });
+  assert.equal(summary.status, 'fail');
+  assert.equal(summary.cleanup, 'failed');
+  assert.equal(summary.error, 'Created Simulator cleanup failed');
+  assert.equal(records.at(-1).status, 'fail');
+});
+
+test('uncreated Simulator cleanup stays null and cannot promote a preflight failure', () => {
+  const { summary } = reportingRun({ failure: new Error('preflight failed'), built: false, cleanup: null });
+  assert.equal(summary.status, 'fail');
+  assert.equal(summary.cleanup, null);
+  assert.equal(summary.nativeSourceCommit, null);
+  assert.equal(summary.jsSourceCommit, null);
+});
+
+test('future large metadata and escaped tool versions cannot truncate the final annotation', () => {
+  const large = '\u0000\r\n%"\\'.repeat(2_000);
+  const extras = Object.fromEntries(['xcode', 'swift', 'cocoaPods', 'configuration', 'sdk', 'signing', 'architecture', 'sdkVersion', 'workflowCommit', 'nativeConfigurationSHA256', 'jsBundleSHA256'].map((key) => [key, large]));
+  extras.futureMetadata = large.repeat(10);
+  extras.sharedSwiftTests = { core: 62, storage: 88, control: 80, future: large };
+  const { summary, records } = reportingRun({ extras, failure: new Error(large) });
+  assert.equal(summary.status, 'fail');
+  assert.equal(summary.sourceCommit, commit);
+  assert.equal(summary.buildID, '12345-1');
+  assert.deepEqual(summary.sharedSwiftTests, { core: 62, storage: 88, control: 80 });
+  assert.equal(summary.futureMetadata, undefined);
+  assert.equal(records.at(-1).futureMetadata, extras.futureMetadata);
 });

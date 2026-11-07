@@ -30,7 +30,9 @@ SwiftPMはiOS15.1とMacテストhostのmacOS13を最低版として明示する�
 
 Actions artifactはresult.json、ビルド/Swift/起動ログ、home.pngだけを7日保存する。app binary、derived data、Swift build cacheは配布しない。
 
-GitHub check-runの注釈にも各stage/結果metadataと少量のcompiler/test/Simulator診断を出す。tool失敗は固定subcommand名とexit/signal/codeで区別し、argv全体・実データ・system-wide Simulator logは出さない。失敗原因はAPIから読め、全文ログ・画像とは分ける。URLのpath/queryやcredentialsを注釈へ出さず、workflow commandの改行/percentをescapeする。画像・全文取得にはActionsのlogs/artifact配信hostへの通信許可が別途必要。
+stageの全履歴は通常ログとresult.jsonへ残し、GitHub check-runのnoticeは最終結果の1件だけに使う。runnerのstep・種別ごとの10件上限で後段の結果が欠落しないようにする。最終注釈はstatus/cleanup、source/native/JS SHA、build ID、構成・digest・tool実版・成功stage件数を固定フィールド/長さで要約し、4096文字のmessage上限内に収める。新しいmetadataや全stage、完全なtool情報はresult.jsonを正本とし、API要約の省略・短縮と区別する。
+
+失敗時はerror注釈1件と最大8件・各1200文字のcompiler/test/Simulator診断を出す。tool失敗は固定subcommand名とexit/signal/codeをresult.jsonへ保存し、argv全体・実データ・system-wide Simulator logは出さない。URLのpath/queryやcredentialsを注釈へ出さず、workflow commandの改行/percentをescapeする。画像・全文取得にはActionsのlogs/artifact配信hostへの通信許可が別途必要。cleanup失敗は先行するsmoke成功を全体失敗へ変更する。多数stage、tool失敗、cleanup失敗、巨大metadataの合成ライフサイクルは`npm run test:ios-tools`で検証する。これはSimulator実行の代用ではない。
 
 result.jsonにrequested/source/native/JS commit、workflow commit、build ID、Release/SDK/architecture/signing、Xcode/Swift/CocoaPods実版、生成config fingerprint、埋め込まれたJS bundle digestを残す。未ビルド段階のnative/JS SHAはnullとし、実行希望を成功済みと記録しない。古いcommitのmarkerは合格にせず、画像取得後にも対象SHAのfailをpassより優先して確認する。PRを更新したら前の結果は`stale native build`とする。
 
