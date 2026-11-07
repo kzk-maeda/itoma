@@ -33,6 +33,20 @@ extension ControlTransaction {
         try checked { try repository.loadReservedGrants() }
     }
 
+    /// Includes logically ended records until their current-store reconciliation is confirmed.
+    public func unreconciledGrants() throws -> [StoredGrant] {
+        try checked { try repository.loadAllGrants().filter { $0.grant.status != .reconciled } }
+    }
+
+    /// A failed cancellation remains eligible on the next successful reconciliation.
+    public func endedGrantRegistrations() throws -> [DeadlineRegistration] {
+        try checked {
+            let ended = Set(try repository.loadAllGrants().filter(\.hasEnded).map(\.grant.id))
+            return try ended.sorted { $0.rawValue.uuidString < $1.rawValue.uuidString }
+                .flatMap { try repository.loadRegistrations($0) }.filter { $0.status != .obsolete }
+        }
+    }
+
     public func registration(_ id: RegistrationID) throws -> DeadlineRegistration? {
         try checked { try repository.loadRegistration(id) }
     }
@@ -248,8 +262,11 @@ extension ControlRepository {
     }
     func loadReservedGrants() throws -> [StoredGrant] {
         // Validate the denormalized reservation flag even on rows claiming to be terminal.
+        try loadAllGrants().filter { $0.grant.reservesTarget }
+    }
+    func loadAllGrants() throws -> [StoredGrant] {
         try database.rows("SELECT grant_id,command_id,target_ref,reserved,retired,record FROM grants ORDER BY grant_id")
-            .map(decodeGrant).filter { $0.grant.reservesTarget }
+            .map(decodeGrant)
     }
     private func decodeGrant(_ row: [SQLValue]) throws -> StoredGrant {
         guard case let .text(id) = row[0], case let .text(command) = row[1], case let .text(target) = row[2],

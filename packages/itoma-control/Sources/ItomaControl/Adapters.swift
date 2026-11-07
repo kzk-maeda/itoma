@@ -64,3 +64,11 @@ public struct CommandRunResult: Sendable {
 public enum CommandServiceError: Error, Equatable, Sendable {
     case invalidCommand, invalidState, confirmationRequired, confirmationChanged, superseded
 }
+
+public enum ReconciliationDisposition: Sendable { case committed, requiresRecovery, uncertain }
+
+/// A bounded observation of ITOMA's own store, never a system-wide blocking guarantee.
+public struct ReconciliationResult: Sendable {
+    public let disposition: ReconciliationDisposition
+    public let failure: OperationFailure?
+}

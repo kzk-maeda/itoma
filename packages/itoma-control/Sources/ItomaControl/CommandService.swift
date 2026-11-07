@@ -53,8 +53,7 @@ import ItomaStorage
                 return settleRegistrationFailure(prepared, attempt: command.attempt, uncertain: true, failure: .registrationFailure)
             }
             do {
-                let registered = try registration(prepared, status: .registered, receipt: receipt)
-                _ = try repository.write { try $0.recordRegistration(registered, expected: prepared) }
+                guard try storeScheduleReceipt(receipt, prepared: prepared) else { return result(commandID, .requiresRecovery, .interrupted) }
             } catch { return result(commandID, .uncertain, .storageFailure) }
         case let .rejected(failure): return settleRegistrationFailure(prepared, attempt: command.attempt, uncertain: false, failure: failure)
         case let .unknown(failure): return settleRegistrationFailure(prepared, attempt: command.attempt, uncertain: true, failure: failure)
@@ -282,9 +281,12 @@ import ItomaStorage
             for registration in registrations where registration.status == .registered && registration.firedAt == nil
                 && registration.scheduledFor == grant.effectiveExpiresAt && registration.policyRevision <= policy.revision {
                 guard let receipt = registration.receipt, receipt.acceptedAt <= context.now,
-                      let command = try tx.command(registration.commandID), [.applying, .succeeded].contains(command.status) else { continue }
+                      try tx.command(grant.commandID)?.status == .succeeded else { continue }
                 if let candidate = registration.candidatePolicyRevision {
-                    guard try tx.activatedCandidateRevision(commandID: command.id) == candidate, candidate <= policy.revision else { continue }
+                    // An activated desired edit survives a failed own-store write. Its committed
+                    // deadline still protects the previously confirmed grant during reconciliation.
+                    guard try tx.activatedCandidateRevision(commandID: registration.commandID) == candidate,
+                          candidate <= policy.revision else { continue }
                 } else if registration.commandID != grant.commandID { continue }
                 protected = true
                 break
@@ -340,6 +342,24 @@ import ItomaStorage
         try DeadlineRegistration(id: old.id, grantID: old.grantID, commandID: old.commandID, generation: old.generation,
             policyRevision: old.policyRevision, candidatePolicyRevision: old.candidatePolicyRevision, scheduledFor: old.scheduledFor,
             status: status, receipt: receipt ?? old.receipt, firedAt: old.firedAt)
+    }
+
+    /// A register await can finish after a stop/reblock/cancel. Preserve that late acceptance as
+    /// cleanup evidence without allowing it to authorize an exemption or erase an observed fire.
+    func storeScheduleReceipt(_ receipt: DeadlineReceipt, prepared: DeadlineRegistration) throws -> Bool {
+        try repository.write { tx in
+            guard let current = try tx.registration(prepared.id), current.grantID == prepared.grantID,
+                  current.commandID == prepared.commandID, current.generation == prepared.generation,
+                  current.policyRevision == prepared.policyRevision, current.candidatePolicyRevision == prepared.candidatePolicyRevision,
+                  current.scheduledFor == prepared.scheduledFor else { throw CommandServiceError.invalidState }
+            if current == prepared {
+                _ = try tx.recordRegistration(registration(prepared, status: .registered, receipt: receipt), expected: prepared)
+                return true
+            }
+            let status: DeadlineStatus = current.status == .obsolete ? .obsolete : current.firedAt != nil ? .fired : .unknown
+            _ = try tx.recordRegistration(registration(current, status: status, receipt: receipt), expected: current)
+            return false
+        }
     }
 
     func changing(_ command: Command, status: CommandStatus, attempt: AttemptNumber? = nil) throws -> Command {

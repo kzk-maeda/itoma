@@ -61,15 +61,17 @@ extension CommandService {
                     return settleCandidateFailure(commandID, attempt: command.attempt, status: .uncertain, failure: .registrationFailure)
                 }
                 do {
-                    _ = try repository.write { try $0.recordRegistration(registration(preparing, status: .registered, receipt: receipt), expected: preparing) }
+                    guard try storeScheduleReceipt(receipt, prepared: preparing) else {
+                        return settleCandidateFailure(commandID, attempt: command.attempt, status: .uncertain, failure: .interrupted)
+                    }
                     _ = try refreshCurrentFacts()
                 } catch { return settleCandidateFailure(commandID, attempt: command.attempt, status: .uncertain, failure: .storageFailure) }
             case let .rejected(failure):
-                do { _ = try repository.write { try $0.recordRegistration(registration(preparing, status: .failed), expected: preparing) } }
+                do { try storeScheduleFailure(preparing, uncertain: false) }
                 catch { return settleCandidateFailure(commandID, attempt: command.attempt, status: .uncertain, failure: .storageFailure) }
                 return settleCandidateFailure(commandID, attempt: command.attempt, status: .failed, failure: failure)
             case let .unknown(failure):
-                do { _ = try repository.write { try $0.recordRegistration(registration(preparing, status: .unknown), expected: preparing) } }
+                do { try storeScheduleFailure(preparing, uncertain: true) }
                 catch { return settleCandidateFailure(commandID, attempt: command.attempt, status: .uncertain, failure: .storageFailure) }
                 return settleCandidateFailure(commandID, attempt: command.attempt, status: .uncertain, failure: failure)
             }
@@ -99,6 +101,17 @@ extension CommandService {
         if commit.requiresConfirmation { throw CommandServiceError.confirmationChanged }
         guard commit.result.failure == nil else { return commit.result }
         return await cleanupCandidateProtection(frame, commit: commit)
+    }
+
+    /// Preserve an external outcome even when reconciliation already changed Preparing during
+    /// the await. A definite rejection is final cleanup evidence, not a new grant permission.
+    func storeScheduleFailure(_ prepared: DeadlineRegistration, uncertain: Bool) throws {
+        try repository.write { tx in
+            guard let current = try tx.registration(prepared.id) else { throw CommandServiceError.invalidState }
+            if current.status == .obsolete { return }
+            let status: DeadlineStatus = current.firedAt != nil ? .fired : uncertain || current.receipt != nil ? .unknown : .failed
+            _ = try tx.recordRegistration(registration(current, status: status), expected: current)
+        }
     }
 
     public func retryCandidate(commandID: CommandID, confirmation: PolicyEditAssessment? = nil) async throws -> CommandRunResult {
