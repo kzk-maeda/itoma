@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
+  <title>いとま — 砂時計のある時間</title>
+  <link rel="stylesheet" href="hourglass.css">
+</head>
+<body class="reading-layout">
+  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><symbol id="brand-mark" viewBox="0 0 40 44"><path d="M13 3H27C35 3 35 9 29 14L24 19C22 21 22 23 24 25L29 30C35 35 35 41 27 41H13C5 41 5 35 11 30L16 25C18 23 18 21 16 19L11 14C5 9 5 3 13 3Z" fill="currentColor"/></symbol></defs></svg>
+  <div class="workspace">
+    <header class="page-header"><a class="wordmark" href="hourglass.html" aria-label="砂時計デモをはじめから開く"><svg aria-hidden="true"><use href="#brand-mark"/></svg><span>いとま</span></a><span class="eyebrow">DESIGN EXPLORATION / 10</span></header>
+    <main class="study">
+      <aside class="study-notes">
+        <span class="eyebrow">自分の時間に、かたちを。</span>
+        <h1>砂時計のある、<br>いとま。</h1>
+        <p class="lead">上には、これからの時間。<br>下には、過ぎてきた時間。<br>自分で決めたひとときを、静かに見守る。</p>
+        <span class="demo-badge">操作できるWebモック · 実際のアプリ制限なし</span>
+        <section class="preview-tools" aria-label="画面モックの切り替え"><h2>画面を見比べる</h2><div class="segmented"><button data-scene="home" aria-pressed="true">ホーム</button><button data-scene="select" aria-pressed="false">一時解除</button><button data-scene="active" aria-pressed="false">解除中</button></div></section>
+        <section class="layout-tools" aria-label="砂時計の配置を比較"><h2>砂時計の配置</h2><div class="segmented"><button data-layout="reading" aria-pressed="true">読み取り優先 · 新</button><button data-layout="large" aria-pressed="false">砂時計大きめ · 前</button></div><p class="caption">残り時間を先に読み、砂時計は横でそっと伝える配置です。</p></section>
+        <section class="study-detail"><span>01</span><div><h2>残り時間を、ひと目で。</h2><p>大きい数字と終了時刻を先に。砂時計は約半分の高さにし、時間の流れを補足します。</p></div></section>
+        <section class="study-detail"><span>02</span><div><h2>必要なアプリだけ、ひと呼吸。</h2><p>別画面で対象をひとつ選び、自分の言葉で理由を入力してから確認します。</p></div></section>
+        <section class="study-detail"><span>03</span><div><h2>解除の時間は、別の砂時計。</h2><p>夜のルールと、アプリ別の一時解除を区別。画面を戻っても期限は変わりません。</p></div></section>
+        <div class="appearance"><span class="eyebrow">表示モード</span><div class="segmented"><button data-appearance="system" aria-pressed="true">システム</button><button data-appearance="light" aria-pressed="false">ライト</button><button data-appearance="dark" aria-pressed="false">ダーク</button></div></div>
+        <p class="caption" id="motion-preference"></p>
+        <a class="compare-link" href="https://itoma-demo.kzk-maeda.com/demos/demo-color-variations-4d21695efd01/design-colors.html?palette=graphite" target="_blank" rel="noopener">円形UIの「墨と白」と見比べる ↗</a>
+      </aside>
+      <section class="preview" aria-label="砂時計を中心にした操作モック">
+        <div class="phone">
+          <div class="statusbar"><span id="device-clock">21:30</span><span aria-hidden="true">▂ ▄ ▰</span></div>
+          <div class="appbar"><div class="wordmark"><svg aria-hidden="true"><use href="#brand-mark"/></svg><span>いとま</span></div><span id="phase">ホーム</span></div>
+          <div id="screen" class="screen"></div><div class="home-indicator" aria-hidden="true"></div>
+        </div>
+        <div class="simulation" aria-label="デモ時計と状態の操作"><button data-action="advance">10分進める</button><button data-action="expire">解除の期限へ</button><button data-action="end-rule">23:00へ進める</button><button data-action="unknown">状態不明を試す</button><button data-action="reset">はじめから</button></div>
+        <p class="caption simulation-note">デモの時刻は21:30から進みます。初回のルールは21:00–23:00、一時解除は最大5分の仮値です。</p>
+      </section>
+    </main>
+    <footer>砂時計は比較中の案で、画面の目的・時刻はサンプルです。円形UIの正式ガイド・既存デモは変更していません。入力は保存・送信されず、再読み込みで初期状態に戻ります。</footer>
+  </div>
+  <dialog id="discard" aria-labelledby="discard-title" aria-describedby="discard-help"><h2 id="discard-title">入力内容を破棄しますか？</h2><p id="discard-help">選んだアプリと理由が破棄されます。制限の設定は変わりません。</p><button class="primary" data-action="keep">入力を続ける</button><button class="secondary" data-action="discard">破棄して戻る</button></dialog>
+  <script type="module" src="hourglass.mjs"></script>
+</body>
+</html>
