@@ -1,7 +1,7 @@
 // Synthetic data only. Dates are local calendar dates in Asia/Tokyo.
 export const STUDIES = [
   { id: 'calendar', number: '01', title: '余白のカレンダー', short: 'カレンダー', question: 'あの日、どう過ごした？', description: '日付を選んで、その日の予定と解除の記録へ。思い出を手がかりに探せます。', strength: '特定の日を探しやすい', tradeoff: '週全体の変化は、少し見えにくい' },
-  { id: 'time', number: '02', title: '時間の積み上げ', short: '積み上げ', question: '時間を決めた、その積み重ね。', description: '設定した時間を、日ごとの棒と週の合計で。大小を評価せず、生活のリズムを眺めます。', strength: '時間の量と日ごとの違いが分かる', tradeoff: '実際に使えた時間とは区別が必要' },
+  { id: 'time', number: '02', title: '時間の積み上げ', short: '積み上げ', question: '時間を決めた、その積み重ね。', description: '週次・月次・全期間で、設定した時間と過去からの累積を比較。生活のリズムと積み重ねを眺めます。', strength: '時間の量と日ごとの違いが分かる', tradeoff: '実際に使えた時間とは区別が必要' },
   { id: 'timeline', number: '03', title: '選択のタイムライン', short: 'タイムライン', question: 'あのとき、何を選んだ？', description: '一時解除や取消を、時間の流れに沿って。アプリや操作結果で絞り、理由までたどれます。', strength: '理由と操作の経緯を確かめやすい', tradeoff: '成果の実感は、数字やメモで補いたい' },
   { id: 'journal', number: '04', title: '余白のノート', short: 'ノート', question: 'その余白に、何が残った？', description: '読めた数ページ、ゆっくりした夜。本人のひと言で、数字だけでは残らない時間を記録します。', strength: '本人にとっての成果を残せる', tradeoff: '自分で書く、ひと手間がある' },
   { id: 'letter', number: '05', title: '週のおたより', short: 'おたより', question: '一週間を、ひと呼吸で。', description: '時間、選択、本人のひと言を、一枚のおたよりに。細かな記録は読みたいときに開きます。', strength: '短い時間で全体を振り返れる', tradeoff: '特定の記録へは、もう一歩必要' },
@@ -49,6 +49,13 @@ export function monthCells(year, month) {
 export function createSample() {
   const lengths = [90,120,60,0,120,90,60,120,90,0,120,120,90,60];
   const days = lengths.map((minutes,index) => ({ date:addDays('2026-10-19',index), plans:minutes ? [{ name:index>11?'休日の余白':'夜の時間', start:index>11?600:1260, end:(index>11?600:1260)+minutes }] : [] }));
+  const earlier=[];
+  for(let date='2026-09-01';date<'2026-10-19';date=addDays(date,1)){
+    const dayOfWeek=new Date(`${date}T00:00:00Z`).getUTCDay();
+    const minutes=[60,90,120,0,90,120,90][dayOfWeek];
+    earlier.push({date,plans:minutes?[{name:'自分の時間',start:1260,end:1260+minutes}]:[]});
+  }
+  days.unshift(...earlier);
   const events = [
     {id:'p1',date:'2026-10-20',start:1290,end:1295,app:'X',outcome:'ended',reason:'友人からの連絡を確認する'},
     {id:'p2',date:'2026-10-23',start:1280,end:1283,app:'YouTube',outcome:'early',reason:'料理の手順を確認する'},
@@ -69,3 +76,42 @@ export function createSample() {
   return { days, events, notes };
 }
 export const OUTCOMES = { ended:'期限終了', early:'早めに終了', failed:'解除できず', cancelled:'確定前に取消', unknown:'結果を確認できず' };
+
+export const HISTORY_COVERAGE = { start:'2026-09-01', end:'2026-11-01' };
+export function timeRange(anchor, unit, coverage = HISTORY_COVERAGE) {
+  if (unit === 'all') return { ...coverage };
+  const date = new Date(`${anchor}T00:00:00Z`);
+  if (unit === 'week') {
+    const start = addDays(anchor, -((date.getUTCDay()+6)%7));
+    return { start, end:addDays(start,6) };
+  }
+  if (unit !== 'month') throw new Error('Unknown time range unit.');
+  const year = date.getUTCFullYear(), month = date.getUTCMonth();
+  return { start:new Date(Date.UTC(year,month,1)).toISOString().slice(0,10), end:new Date(Date.UTC(year,month+1,0)).toISOString().slice(0,10) };
+}
+export function shiftTimeAnchor(anchor, unit, amount) {
+  if(unit==='week') return addDays(timeRange(anchor,unit).start,amount*7);
+  if(unit!=='month') return anchor;
+  const date=new Date(`${anchor}T00:00:00Z`);
+  return new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+amount,1)).toISOString().slice(0,10);
+}
+export function accumulationData(days, anchor, unit, coverage = HISTORY_COVERAGE) {
+  const range=timeRange(anchor,unit,coverage);
+  const end=range.end<coverage.end?range.end:coverage.end;
+  const beginning=range.start>coverage.start?range.start:coverage.start;
+  const totalUntil = date => summarize(days,[],coverage.start,date).planned;
+  const buckets=[];
+  for(let cursor=range.start;cursor<=range.end;) {
+    const bucketEnd=unit==='week'?cursor:timeRange(cursor,'week').end;
+    const last=bucketEnd<range.end?bucketEnd:range.end;
+    const coveredStart=cursor>coverage.start?cursor:coverage.start;
+    const coveredEnd=last<coverage.end?last:coverage.end;
+    const available=days.filter(day=>day.date>=coveredStart&&day.date<=coveredEnd);
+    const minutes=available.length?summarize(available,[],coveredStart,coveredEnd).planned:null;
+    buckets.push({start:cursor,end:last,minutes,cumulative:minutes===null?null:totalUntil(coveredEnd)});
+    cursor=addDays(last,1);
+  }
+  let incomplete=false;
+  for(let date=coverage.start;date<=end;date=addDays(date,1))if(!days.some(day=>day.date===date)){incomplete=true;break;}
+  return {range,buckets,beginning,end,opening:totalUntil(addDays(range.start,-1)),period:summarize(days,[],beginning,end).planned,total:totalUntil(end),incomplete};
+}

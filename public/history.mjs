@@ -1,8 +1,8 @@
-import { STUDIES, WEEK_STARTS, DEFAULT_DATE, addDays, weekday, shortDate, fullDate, duration, summarize, monthCells, createSample, OUTCOMES, unionMinutes } from './history-data.mjs';
+import { STUDIES, WEEK_STARTS, DEFAULT_DATE, addDays, weekday, shortDate, fullDate, duration, summarize, monthCells, createSample, OUTCOMES, unionMinutes, HISTORY_COVERAGE, timeRange, shiftTimeAnchor, accumulationData } from './history-data.mjs';
 const $ = selector => document.querySelector(selector);
 const e = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sample = createSample();
-const state = { idea:'calendar', week:1, date:DEFAULT_DATE, month:10, selectedDates:{10:DEFAULT_DATE}, scenario:'normal', app:'all', outcome:'all', drafts:{}, grants:{}, unlock:{app:'',reason:''} };
+const state = { timeUnit:'week', timeMode:'period', timeAnchor:'2026-10-30', idea:'calendar', week:1, date:DEFAULT_DATE, month:10, selectedDates:{10:DEFAULT_DATE}, scenario:'normal', app:'all', outcome:'all', drafts:{}, grants:{}, unlock:{app:'',reason:''} };
 let ruleFinished = false;
 const origin = Date.now();
 const ruleEnd = origin + 90*60000;
@@ -50,12 +50,30 @@ function dayCard(date) {
   const planned=day?unionMinutes(day.plans.map(p=>[p.start,p.end])):null;
   return `<section class="day-card" aria-label="選択した日の記録"><div class="day-head"><strong>${fullDate(date)}</strong><span class="small-label">${day?(planned?duration(planned):'設定なし'):'記録なし'}</span></div><p>${events.length?`${events.length}件の操作の記録`:'操作の記録はありません'}${state.scenario==='incomplete'&&date==='2026-10-29'?' · 一部不明':''}</p>${d.notes[date]?`<blockquote>「${e(d.notes[date])}」</blockquote><p class="caption">本人のメモ</p>`:''}<a class="link-row" href="#day/${date}"><span>この日の記録を見る</span>${icons.arrow}</a></section>`;
 }
+function timeNavigation(data) {
+  const unit=state.timeUnit;
+  if(unit==='all')return `<div class="time-all-label"><strong>${shortDate(data.range.start)} — ${shortDate(data.range.end)}</strong><span>記録のある全期間</span></div>`;
+  const previous=timeRange(shiftTimeAnchor(state.timeAnchor,unit,-1),unit), next=timeRange(shiftTimeAnchor(state.timeAnchor,unit,1),unit);
+  const name=unit==='week'?'週':'月';
+  const label=unit==='week'?`${shortDate(data.range.start)} — ${shortDate(data.range.end)}`:`${data.range.start.slice(0,4)}年 ${Number(data.range.start.slice(5,7))}月`;
+  return `<div class="week-switch"><button class="round" data-time-shift="-1" aria-label="前の${name}" ${previous.end<HISTORY_COVERAGE.start?'disabled':''}>‹</button><p>${label}</p><button class="round" data-time-shift="1" aria-label="次の${name}" ${next.start>HISTORY_COVERAGE.end?'disabled':''}>›</button></div>`;
+}
+function cumulativeChart(data) {
+  const values=data.buckets.map(row=>row.cumulative).filter(value=>value!==null);
+  const maximum=Math.max(60,Math.ceil(Math.max(...values,0)/60)*60);
+  const x=index=>35+index*270/Math.max(1,data.buckets.length-1), y=value=>139-value/maximum*113;
+  let connected=false;
+  const path=data.buckets.map((row,index)=>{if(row.cumulative===null){connected=false;return '';}const segment=`${connected?'L':'M'}${x(index)},${y(row.cumulative)}`;connected=true;return segment;}).join(' ');
+  return `<figure class="cumulative-chart"><svg viewBox="0 0 330 170" role="img" aria-label="${shortDate(HISTORY_COVERAGE.start)}からの累積設定時間。表示期間の末尾で${duration(data.total)}${data.incomplete?'、一部の記録が不明':''}。各期間の数値は下の一覧で確認できます。"><path class="chart-grid" d="M35 26H305M35 139H305"/><text x="30" y="19">${duration(maximum)}</text><text x="8" y="143">0</text><path class="cumulative-line" ${data.incomplete?'stroke-dasharray="5 5"':''} d="${path}"/>${data.buckets.map((row,index)=>row.cumulative===null?'':`<circle class="chart-point" cx="${x(index)}" cy="${y(row.cumulative)}" r="3"><title>${shortDate(row.end)}まで ${duration(row.cumulative)}</title></circle>`).join('')}<text x="35" y="161">${shortDate(data.buckets[0].end)}</text><text x="305" y="161" text-anchor="end">${shortDate(data.range.end)}</text></svg><figcaption class="caption">${shortDate(HISTORY_COVERAGE.start)}を起点に、記録のある時間を足しています。${data.incomplete?'不明な区間はつながず、分かる範囲の累積を表示します。':''}</figcaption></figure>`;
+}
 function accumulation() {
-  const s=stats(), d=activeData(), previous=summarize(d.days,d.events,WEEK_STARTS[0],addDays(WEEK_STARTS[0],6));
-  return heading('決めた時間を、積み重ねる','時間の積み上げ')+weekSwitch()+banner()+`<p class="small-label">この週に設定した時間${state.scenario==='incomplete'?'（分かる範囲）':''}</p><p class="headline-stat" data-metric="planned">${duration(s.planned)}</p><p class="comparison">${state.week===1&&state.scenario!=='incomplete'?`前の週は${duration(previous.planned)}。この週との差は${duration(Math.abs(s.planned-previous.planned))}。`:'量を評価せず、自分のリズムを眺めます。'}</p><div class="time-chart" role="group" aria-label="日ごとの設定時間。各日を押すと詳細">${Array.from({length:7},(_,i)=>{
-    const date=addDays(weekStart(),i), day=d.days.find(x=>x.date===date), minutes=day?unionMinutes(day.plans.map(p=>[p.start,p.end])):null;
-    return `<button class="day-bar" data-day="${date}" aria-label="${fullDate(date)}、${minutes===null?'記録なし':minutes?duration(minutes):'設定なし'}、詳細"><span>${Number(date.slice(-2))} ${weekday(date)}</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width:${minutes===null?0:Math.min(minutes/120*100,100)}%"></span></span><span class="bar-value">${minutes===null?'不明':minutes?`${minutes}分`:'設定なし'}</span></button>`;
-  }).join('')}<div class="time-axis" aria-hidden="true"><span>0</span><span>60</span><span>120分</span></div></div><p class="caption">棒を選ぶと、その日の記録を開きます。</p><div class="subtle-card"><h3>必要なときは、選び直す</h3><p>一時解除の記録 ${s.releases}回 · 合計${duration(s.releaseMinutes)}<br>対象アプリごとの解除期間を合算しています。</p><a class="link-row" href="#history/timeline"><span>解除の記録を見る</span>${icons.arrow}</a></div><p class="caption timeline-note">設定した時間は、実際の集中時間ではありません。一時解除しても、設定した時間の合計からは差し引きません。</p>${definitions()}`;
+  const d=activeData(), data=accumulationData(d.days,state.timeAnchor,state.timeUnit), cumulative=state.timeMode==='cumulative';
+  const s=summarize(d.days,d.events,data.range.start,data.range.end), maximum=Math.max(60,...data.buckets.map(row=>row.minutes??0));
+  const unitLabel={week:'この週',month:'この月',all:'全期間'}[state.timeUnit];
+  return heading('決めた時間を、積み重ねる','時間の積み上げ')+`<div class="time-segments" role="group" aria-label="集計期間">${[['week','週次'],['month','月次'],['all','全期間']].map(([id,label])=>`<button data-time-unit="${id}" aria-pressed="${state.timeUnit===id}">${label}</button>`).join('')}</div>${timeNavigation(data)}${banner()}<div class="time-mode" role="group" aria-label="時間の見せ方">${[['period','各期間の時間'],['cumulative','過去からの累積']].map(([id,label])=>`<button data-time-mode="${id}" aria-pressed="${state.timeMode===id}">${label}</button>`).join('')}</div><p class="small-label time-stat-label">${cumulative?'記録開始からの累積':`${unitLabel}に設定した時間`}${data.incomplete?'（一部）':''}</p><p class="headline-stat" data-metric="planned">${duration(cumulative?data.total:data.period)}</p><p class="comparison">${cumulative?`${shortDate(HISTORY_COVERAGE.start)} 〜 ${shortDate(data.end)}の記録`:`記録のある期間：${shortDate(data.beginning)} 〜 ${shortDate(data.end)}`}</p>${cumulative?`<div class="carry-summary"><span>${state.timeUnit==='all'?'記録開始日':`${unitLabel}より前の積み上げ`}</span><strong>${state.timeUnit==='all'?`2026/${shortDate(HISTORY_COVERAGE.start)}`:duration(data.opening)}</strong></div>${cumulativeChart(data)}`:''}<div class="time-chart" role="group" aria-label="${cumulative?'累積設定時間':'期間ごとの設定時間'}の一覧。各行から詳細">${data.buckets.map(row=>{
+    const day=state.timeUnit==='week', label=day?`${Number(row.start.slice(-2))} ${weekday(row.start)}`:`${shortDate(row.start)}–${shortDate(row.end)}`, value=cumulative?row.cumulative:row.minutes;
+    return `<button class="day-bar ${day?'':'period-bar'}" ${row.minutes===null?'disabled':''} ${day?`data-day="${row.start}"`:`data-time-bucket="${row.start}"`} aria-label="${day?fullDate(row.start):`${shortDate(row.start)}から${shortDate(row.end)}`}、${value===null?'記録なし':`${cumulative?'累積':''}${duration(value)}`}、${day?'一日の記録':'この週を表示'}"><span>${label}</span><span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width:${value===null?0:Math.min(value/(cumulative?Math.max(60,data.total):maximum)*100,100)}%"></span></span><span class="bar-value">${value===null?'記録なし':duration(value)}</span></button>`;
+  }).join('')}</div><p class="caption">${state.timeUnit==='week'?'行を選ぶと、その日の記録を開きます。':'行を選ぶと、その週の表示へ切り替わります。月の境界で区切って集計しています。'}記録のない期間を0で補いません。</p><div class="subtle-card"><h3>${unitLabel}の一時解除</h3><p>記録 ${s.releases}回 · 合計${duration(s.releaseMinutes)}<br>対象アプリごとの解除期間を合算しています。</p></div><p class="caption timeline-note">設定した時間は、実際の集中時間ではありません。一時解除しても、設定した時間の合計からは差し引きません。</p>${definitions()}`;
 }
 function eventButton(event) { return `<button class="event" data-event="${event.id}"><span class="event-time">${time(event.start)}</span><span><span class="event-name">${e(event.app)}${event.outcome==='cancelled'?'の解除を取り消し':event.outcome==='failed'?'の解除を試行':'の一時解除'}</span><span class="event-result">${e(OUTCOMES[event.outcome])}${event.end!==null?` · ${duration(event.end-event.start)}`:''}</span></span><span class="event-arrow" aria-hidden="true">›</span></button>`; }
 function timeline() {
@@ -153,6 +171,11 @@ document.addEventListener('click',event=>{
   if(anchor){event.preventDefault();go(anchor.getAttribute('href'),route.view==='review'&&anchor.getAttribute('href')==='#unlock');return;}
   const button=event.target.closest('button');if(!button||button.disabled)return;
   if(button.dataset.idea){go(`#history/${button.dataset.idea}`);return;}
+  if(button.dataset.timeUnit){state.timeUnit=button.dataset.timeUnit;render();$(`[data-time-unit="${state.timeUnit}"]`)?.focus({preventScroll:true});return;}
+  if(button.dataset.timeMode){state.timeMode=button.dataset.timeMode;render();$(`[data-time-mode="${state.timeMode}"]`)?.focus({preventScroll:true});return;}
+  if(button.dataset.timeShift){const next=shiftTimeAnchor(state.timeAnchor,state.timeUnit,Number(button.dataset.timeShift));state.timeAnchor=next<HISTORY_COVERAGE.start?HISTORY_COVERAGE.start:next>HISTORY_COVERAGE.end?HISTORY_COVERAGE.end:next;render({focus:true});return;}
+  if(button.dataset.timeBucket){state.timeAnchor=button.dataset.timeBucket<HISTORY_COVERAGE.start?HISTORY_COVERAGE.start:button.dataset.timeBucket;state.timeUnit='week';render({focus:true,resetScroll:true});return;}
+
   if(button.dataset.week){state.week+=Number(button.dataset.week);render({focus:true,resetScroll:true});return;}
   if(button.dataset.month){state.selectedDates[state.month]=state.date;state.month+=Number(button.dataset.month);state.date=state.selectedDates[state.month]||`2026-${String(state.month).padStart(2,'0')}-01`;render();$('#screen h2')?.focus({preventScroll:true});return;}
   if(button.dataset.date){state.date=button.dataset.date;const scroll=$('#app-scroll').scrollTop;render();$('#app-scroll').scrollTop=scroll;$(`[data-date="${state.date}"]`)?.focus({preventScroll:true});$('.day-card')?.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});return;}

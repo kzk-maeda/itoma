@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { unionMinutes, summarize, createSample, monthCells, duration, addDays } from '../public/history-data.mjs';
+import { unionMinutes, summarize, createSample, monthCells, duration, addDays, HISTORY_COVERAGE, timeRange, shiftTimeAnchor, accumulationData } from '../public/history-data.mjs';
 import { installDemoEntry } from '../scripts/lib/demo-entry.mjs';
 
 test('scheduled time counts interval unions once, independent of target count or releases', () => {
@@ -47,4 +47,52 @@ test('optional entry replaces the Expo demo root, keeps the named page, and reje
       assert.throws(()=>installDemoEntry(dir));
     }
   } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+
+test('weekly, monthly and all-time totals share an origin without resetting cumulative totals', () => {
+  const {days}=createSample();
+  const week=accumulationData(days,'2026-10-30','week');
+  assert.equal(week.period,600);
+  assert.equal(week.opening,4440);
+  assert.equal(week.total,5040);
+  assert.equal(week.buckets.at(-1).cumulative,5040);
+  const september=accumulationData(days,'2026-09-01','month');
+  const october=accumulationData(days,'2026-10-30','month');
+  const november=accumulationData(days,'2026-11-01','month');
+  assert.equal(september.total,2400);
+  assert.equal(october.opening,september.total);
+  assert.equal(october.period,2580);
+  assert.equal(october.total,4980);
+  assert.equal(november.opening,october.total);
+  assert.equal(november.period,60);
+  assert.equal(november.total,5040);
+  assert.equal(november.buckets[1].minutes,null);
+  assert.equal(november.buckets[1].cumulative,null);
+  const all=accumulationData(days,'2026-10-30','all');
+  assert.equal(all.total,november.total);
+  assert.equal(all.opening,0);
+  assert.equal(all.buckets.reduce((sum,row)=>sum+(row.minutes??0),0),all.total);
+});
+
+test('month buckets clip crossing weeks and keep unknown days distinct from known zero', () => {
+  assert.deepEqual(timeRange('2026-11-01','week'),{start:'2026-10-26',end:'2026-11-01'});
+  assert.deepEqual(timeRange('2027-01-01','week'),{start:'2026-12-28',end:'2027-01-03'});
+  assert.equal(shiftTimeAnchor('2026-12-31','month',1),'2027-01-01');
+  const {days}=createSample();
+  const october=accumulationData(days,'2026-10-30','month');
+  assert.equal(october.buckets[0].start,'2026-10-01');
+  assert.equal(october.buckets[0].end,'2026-10-04');
+  assert.equal(october.buckets.at(-1).end,'2026-10-31');
+  assert.equal(october.buckets.reduce((sum,row)=>sum+row.minutes,0),october.period);
+  const missing=accumulationData(days.filter(day=>day.date!=='2026-10-29'),'2026-10-30','week');
+  assert.equal(missing.buckets[2].minutes,0); // Known day with no scheduled interval.
+  assert.equal(missing.buckets[3].minutes,null); // Missing day is never a zero point.
+  assert.equal(missing.buckets[3].cumulative,null);
+  assert.equal(missing.incomplete,true);
+  assert.equal(missing.total,4920);
+  const empty=accumulationData([],'2026-10-30','week');
+  assert.ok(empty.buckets.every(row=>row.minutes===null&&row.cumulative===null));
+  assert.equal(empty.incomplete,true);
+  assert.deepEqual(timeRange('2026-10-30','all'),HISTORY_COVERAGE);
 });
