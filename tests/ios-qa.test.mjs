@@ -87,3 +87,14 @@ test('a compiler message cannot create another workflow annotation via newlines 
   assert.equal(result.includes('\r'), false);
   assert.equal(result, '::error title=Compiler::failure%250A%0D%0A::notice::injected');
 });
+
+test('mixed-case URL schemes and valid URL punctuation cannot leave credential/query fragments', () => {
+  for (const url of [
+    'HTTPS://user:secret@example.invalid/archive?sig=private-token',
+    "hTtPs://user:p'ass@example.invalid/archive?sig=private-token",
+    "https://example.invalid/archive?sig=first'second",
+    'https://example.invalid/archive?sig=first)second',
+  ]) {
+    assert.deepEqual(compilerDiagnostics(`error: download ${url}`), ['error: download https://example.invalid/[url omitted]']);
+  }
+});

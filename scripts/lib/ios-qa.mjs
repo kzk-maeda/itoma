@@ -54,7 +54,7 @@ export function compilerDiagnostics(log) {
     .map((line) => line.replace(/\u001b\[[0-9;]*m/g, ''))
     .filter((line) => /error:|^✘|^\*\* .*FAILED|^Error:|\[!\]/i.test(line))
     .slice(-8)
-    .map((line) => line.replace(/https?:\/\/[^\s)"']+/g, (url) => {
+    .map((line) => line.replace(/https?:\/\/\S+/gi, (url) => {
       try { return `${new URL(url).origin}/[url omitted]`; } catch { return '[url omitted]'; }
     }).slice(0, 1_200));
 }
