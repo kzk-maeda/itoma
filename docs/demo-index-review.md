@@ -30,3 +30,14 @@
 - PR #33のCleanup demo完了にも連動する。両PRでpackage.jsonのtest:demoを変更する場合、マージ時は `node --test tests/demo*.test.mjs` として既存・撤去・一覧を全て含める。
 - スナップショットのため更新は遅延し得る。API失敗時は前回のページが残り、画面の確認時刻で鮮度を判断する。
 - iOS Simulator・iPhone実機・VoiceOverは未検証。ネイティブビルドは変更なし。
+
+
+## 比較デモの入口修正（#76）
+
+一覧が各ブランチのトップを開いていたため、別HTMLとして追加された比較デモでは初期Expoホームが表示されていた。既存5環境の配信keyから実ページを選び、タイトルと主リンクを揃えた。配信情報リンクと未知環境のトップへのリンクは維持する。新規比較デモの追加時は入口対応も更新する。
+
+- PASS: 5環境の入口、タイトル/主リンクの一致、ブランチ不明時の既知key、類似名と未知環境のフォールバックを回帰テスト。
+- PASS: 実際の5ブランチにあるpublicファイルをローカルHTTPで配信し、Chromiumで計10リンクをクリックしてURLとデモページのタイトルを確認。390pxで横方向オーバーフローなし。
+- PASS: 型チェック・Lint・Jest 2件・demoテスト3ファイル・expo-doctor 20/20・git diff --check。
+
+[確認画像](screenshots/demo-index-entrypoints.png)はローカルのサンプル一覧。Cloudflare Access認証後の実配信を検証した画像ではない。見た目や製品内UIは変更しない。mainへの人間のマージ後にUpdate demo indexで反映する。Simulator・実機・OS操作は対象外。

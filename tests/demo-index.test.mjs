@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { collectEnvironments, renderIndex, summaryFor } from '../scripts/lib/demo-index.mjs';
+import { collectEnvironments, demoEntryPath, renderIndex, summaryFor } from '../scripts/lib/demo-index.mjs';
 import { demoTarget, DEMO_HOST } from '../scripts/lib/demo-target.mjs';
 
 const accountId = 'a'.repeat(32);
@@ -85,4 +85,31 @@ test('rendering escapes untrusted PR text, provides relative demo links and expl
   assert.ok(html.includes('PR #42'));
   assert.ok(renderIndex([], 'now').includes('現在、配信中のブランチデモはありません。'));
   assert.equal(summaryFor(null, null), 'ブランチごとに配信された検証用のデモです。');
+});
+
+test('design study cards open the study page, not the original Expo home', () => {
+  const entries = [
+    ['feat/design-three-demos', 'design-lab.html'],
+    ['demo/b-reason-unlock', 'design-b.html'],
+    ['demo/b-native-motion', 'design-motion.html'],
+    ['demo/color-variations', 'design-colors.html'],
+    ['demo/hourglass-experience', 'hourglass.html'],
+  ];
+  const environments = entries.map(([branch, page]) => ({ ...demoTarget(branch), title: page }));
+  const html = renderIndex(environments, '2026-11-07');
+  for (const [index, [, page]] of entries.entries()) {
+    const target = environments[index];
+    const destination = `${target.basePath}/${page}`;
+    assert.equal(demoEntryPath(target), destination);
+    // Both the title and the primary action must open the same study.
+    assert.equal(html.split(`href="${destination}"`).length - 1, 2);
+    assert.ok(!html.includes(`href="${target.basePath}/"`));
+    assert.ok(html.includes(`href="${target.basePath}/demo-build.json"`));
+    assert.equal(demoEntryPath({ ...target, branch: null }), destination);
+  }
+  const unknown = demoTarget('demo/future-study');
+  assert.equal(demoEntryPath(unknown), `${unknown.basePath}/`);
+  // A similarly named environment must not inherit another deployment's entry.
+  const similar = demoTarget('demo/color-variations-copy');
+  assert.equal(demoEntryPath(similar), `${similar.basePath}/`);
 });
