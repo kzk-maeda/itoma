@@ -38,10 +38,10 @@ function home() {
   if (now() >= ruleEnd) return `<span class="step">夜の時間 · 終了</span><h2 tabindex="-1">今夜の制限は、<br>終了しました。</h2><p class="body-copy">X・YouTubeの制限はありません。</p>${appRows()}`;
   const remaining = remainingTime(ruleEnd,now());
   return `<div class="period-header"><h2 tabindex="-1">夜の時間</h2><span class="pill">${Object.keys(state.grants).length===apps.length?'対象を一時解除中':Object.keys(state.grants).length?'一部を一時解除中':'アプリを制限中'}</span></div>
-    <div class="glass-panel">${glass(`夜の時間、残り${humanTime(remaining)}、23時に終了`,remaining/(ruleEnd-ruleStart))}<div class="glass-meta"><span>上：これからの時間</span><span>下：過ぎた時間</span></div><p class="time-label">この時間帯の終了まで</p><p class="time-value" data-time="rule">${humanTime(remaining)}</p><p class="time-end">23:00に終了</p></div>
-    <div class="intention"><svg viewBox="0 0 20 24" fill="none" aria-hidden="true"><path d="M4 2h12v20l-6-4-6 4V2Z" stroke="currentColor" stroke-width="1.2"/><path d="M7 6h6M7 10h6" stroke="currentColor" stroke-width="1.2"/></svg><p>夜は、本を読む<br>時間にしたい。</p></div><p class="intention-label">あなたがルールに添えたことば（サンプル）</p>
-    ${appRows()}${state.notice?`<p class="notice" role="status">${escapeHtml(state.notice)}</p>`:''}
-    <div class="actions">${button('一時解除する','select',true,Object.keys(state.grants).length===apps.length)}<p class="caption">${Object.keys(state.grants).length===apps.length?'すべての対象が一時解除中です。各アプリの状況から制限に戻せます。':'使うアプリを選び、今の理由を確かめます。'}</p></div>`;
+    <div class="glass-panel"><div class="time-summary"><p class="time-label">この時間帯の終了まで</p><p class="time-value" data-time="rule">${humanTime(remaining)}</p><p class="time-end">23:00に終了</p></div>${glass(`夜の時間、残り${humanTime(remaining)}、23時に終了`,remaining/(ruleEnd-ruleStart))}<div class="glass-meta"><span>上：これからの時間</span><span>下：過ぎた時間</span></div></div>
+    <div class="intention"><svg viewBox="0 0 20 24" fill="none" aria-hidden="true"><path d="M4 2h12v20l-6-4-6 4V2Z" stroke="currentColor" stroke-width="1.2"/><path d="M7 6h6M7 10h6" stroke="currentColor" stroke-width="1.2"/></svg><div><span class="intention-heading">大切にしたいこと</span><p>夜は、本を読む<br>時間にしたい。</p></div></div><p class="intention-label">あなたがルールに添えたことば（サンプル）</p>
+    <h3 class="targets-heading">対象アプリ</h3>${appRows()}${state.notice?`<p class="notice" role="status">${escapeHtml(state.notice)}</p>`:''}
+    <div class="actions">${button('一時解除する','select',true,Object.keys(state.grants).length===apps.length)}<p class="caption">${Object.keys(state.grants).length===apps.length?'すべての対象が一時解除中です。各アプリの状況から制限に戻せます。':'次の画面でアプリと理由を確認します。'}</p></div>`;
 }
 
 function select() {
@@ -63,7 +63,7 @@ function active() {
   if (!grant) return home();
   const remaining = remainingTime(grant.expiresAt,now());
   return `<div class="period-header"><h2 tabindex="-1">${appName(grant.target)}の一時解除</h2><span class="pill">一時解除中</span></div>
-    <div class="glass-panel">${glass(`${appName(grant.target)}の一時解除、残り${clockTime(remaining)}`,remaining/(grant.expiresAt-grant.acceptedAt),'grant')}<p class="time-label">一時解除の残り時間</p><p class="time-value" data-time="grant">${clockTime(remaining)}</p><p class="time-end">${at(grant.expiresAt)}に制限へ戻ります</p></div>
+    <div class="glass-panel"><div class="time-summary"><p class="time-label">一時解除の残り時間</p><p class="time-value" data-time="grant">${clockTime(remaining)}</p><p class="time-end">${at(grant.expiresAt)}に制限へ戻ります</p></div>${glass(`${appName(grant.target)}の一時解除、残り${clockTime(remaining)}`,remaining/(grant.expiresAt-grant.acceptedAt),'grant')}</div>
     <div class="summary"><dl><dt>今回の理由</dt><dd>${escapeHtml(grant.reason)}</dd></dl></div>
     <div class="mini-period">${symbol()}<div><p>夜の時間のルール</p><strong>終了まで <span data-time="period">${humanTime(ruleEnd-now())}</span> · 23:00まで</strong></div></div>
     <div class="actions">${button(`${appName(grant.target)}を今すぐ制限に戻す`,'restore',true)}${button('ホームに戻る','home')}</div>`;
@@ -131,6 +131,8 @@ function requestLeave(control) {
 }
 
 document.addEventListener('click',event=>{
+  const layout=event.target.closest('[data-layout]');
+  if(layout){document.body.classList.toggle('reading-layout',layout.dataset.layout==='reading');document.querySelectorAll('[data-layout]').forEach(button=>button.setAttribute('aria-pressed',String(button===layout)));return;}
   const theme=event.target.closest('[data-appearance]');
   if(theme){if(theme.dataset.appearance==='system')delete document.body.dataset.theme;else document.body.dataset.theme=theme.dataset.appearance;document.querySelectorAll('[data-appearance]').forEach(button=>button.setAttribute('aria-pressed',String(button===theme)));return;}
   const scene=event.target.closest('[data-scene]');

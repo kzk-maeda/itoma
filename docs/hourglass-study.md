@@ -9,6 +9,7 @@
 - ブランチURLに `hourglass.html` を付ける（`npm run demo:info` でURL確認）。
 - ローカル: `python3 -m http.server 8769 --directory public` → `http://localhost:8769/hourglass.html`。
 - ページ外側の「ホーム」「一時解除」「解除中」でモックを切り替える。「解除中」はサンプル理由によるXの仮解除を用意するデモ操作であり、製品の解除入口ではない。
+- 初期表示は「読み取り優先」の配置。外側のスイッチで「砂時計大きめ」の前案へも切り替えられる。切替はCSSの配置だけを変え、入力・選択・期限を初期化しない。
 - 「10分進める」「解除の期限へ」「23:00へ進める」「状態不明を試す」はデモの時計/状態だけを変更する。時計は21:30から進む。
 - 円形UIの「墨と白」の既存デモへの比較リンクは別タブで開く。既存デモ・共有インフラ・workflowは変更しない。
 
@@ -26,6 +27,15 @@
 残りが少ないときに赤くする、砂時計を振る/反転する、追加待機、回数制限、課金、音、反復粒子の演出は足さない。「失った時間」「取り戻した時間」「集中達成率」とは表示しない。
 
 ## 視覚・動きの契約
+
+### 読み取りと余白を優先した配置
+
+- 残り時間・終了時刻を左、柔らかい砂時計を右に並べる。数字を先に読むDOM順とし、砂時計は時間の流れを補助する役割とする。
+- 砂時計は通常100×132px、狭い画面では74×105px。前案の186×230pxより小さくし、上下の意味の説明は画面外のデモ解説へ移す。数値・終了時刻・図の読み上げラベルは維持する。
+- 目的の引用は強制改行をやめ、短い一文と「大切にしたいこと」のラベルにする。目的がサンプルであることはデモ外枠にも明記する。引用ラベルはpurposeMotif色を使い、warm面での文字コントラストを維持する。
+- 「対象アプリ」の見出しで操作に必要な情報を区切る。ボタンは50px以上、キャンセル等の操作領域も維持し、文字を全体的に縮小して押し込まない。
+- 390×844pxのWebプレビューで端末枠は約749px。「一時解除する」まで収まり、前案より端末枠が100px以上短くなることをブラウザで確認。実機やDynamic Typeでの合格ではない。
+- ホームと一時解除中の両方に適用。入力・確認・状態不明の契約や解除条件は変えない。通常の製品UIには配置の比較スイッチを追加しない。
 
 - 基本色は採用された05「墨と白」のLight/Dark。文字・操作・引用面は [UIガイドライン](ui-guidelines.md) §6.1/6.4と同じ値。
 - UI用の砂時計SVGは候補10に着想を得たモック用の再作図。柔らかさの調整では直線的な三角形と上下の硬い横棒を外し、器・砂・ブランドマークの肩とくびれを曲線にした。輪郭と砂の流れの線も淡くした。最終のアイコン/ロゴアセットへの採用や置き換えではない。
@@ -50,8 +60,9 @@
 - `tests/demo-hourglass.test.mjs`: 砂の量と面積保存、0〜1の境界/不正値、絶対期限からの残り計算、表示の丸めと期限終了を検証。
 - Chromium / Playwright: 砂/時刻の更新、空欄/単一対象/自由入力/内容確認/戻る、破棄確認、HTMLエスケープ、YouTube解除後にXを追加、Xだけ早期終了してYouTubeを維持、自然な期限到達（時計を進めて確認）、状態不明/再確認、23:00終了。
 - 320/390/768/1200pxでホームと入力画面の横方向のはみ出しなし。Dark/Reduce Motion、ブラウザ例外なし。
+- 新旧配置の高さの差、390×844での端末枠と主要ボタンの収まり、配置切替時の時刻/理由の維持も確認。
 - 型チェック、lint、Jest既存2件、demoテスト（砂時計の4条件を含む）、expo-doctor 20/20、Webデモビルドを確認。
 
-画像: [ホーム](screenshots/hourglass/home.png)、[選択・理由](screenshots/hourglass/reason.png)、[内容確認](screenshots/hourglass/review.png)、[解除中](screenshots/hourglass/active.png)、[状態不明](screenshots/hourglass/unknown.png)、[390px](screenshots/hourglass/mobile.png)、[Dark/Reduce Motion](screenshots/hourglass/dark-reduced.png)。
+画像: [ホーム](screenshots/hourglass/home.png)、[砂時計大きめの前案](screenshots/hourglass/large-layout.png)、[選択・理由](screenshots/hourglass/reason.png)、[内容確認](screenshots/hourglass/review.png)、[解除中](screenshots/hourglass/active.png)、[状態不明](screenshots/hourglass/unknown.png)、[390px](screenshots/hourglass/mobile.png)、[Dark/Reduce Motion](screenshots/hourglass/dark-reduced.png)。
 
 iOS Simulator・iPhone実機・VoiceOver・Dynamic Type・ネイティブのキーボード/触覚・Screen Timeは未検証。新しい砂時計UI・正式アイコンの採用、本体テーマの移行、Swift/Extension/保存の変更は行わない。実課金・バックエンドは追加しない。
