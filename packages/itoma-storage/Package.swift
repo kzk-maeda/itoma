@@ -12,7 +12,7 @@ let package = Package(
         .systemLibrary(name: "CSQLite", pkgConfig: "sqlite3", providers: [.apt(["libsqlite3-dev"]), .brew(["sqlite3"])]),
         .target(name: "ItomaSQLite", dependencies: ["CSQLite"]),
         .target(name: "ItomaStorage", dependencies: ["ItomaSQLite", .product(name: "ItomaCore", package: "itoma-core")]),
-        .target(name: "ItomaHistory", dependencies: ["ItomaSQLite", .product(name: "ItomaCore", package: "itoma-core")]),
+        .target(name: "ItomaHistory", dependencies: ["ItomaSQLite", "ItomaStorage", .product(name: "ItomaCore", package: "itoma-core")]),
         .testTarget(name: "ItomaSQLiteTests", dependencies: ["ItomaSQLite"]),
         .testTarget(name: "ItomaStorageTests", dependencies: ["ItomaStorage", "CSQLite", .product(name: "ItomaCore", package: "itoma-core")]),
         .testTarget(name: "ItomaHistoryTests", dependencies: ["ItomaHistory", "ItomaStorage", "CSQLite", .product(name: "ItomaCore", package: "itoma-core")]),

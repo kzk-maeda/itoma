@@ -1,12 +1,13 @@
 import Foundation
 import ItomaCore
 import ItomaSQLite
+import ItomaStorage
 
 /// Main-app private failures. They never include the reason, path, SQL, or OS error text.
 public enum HistoryError: Error, Equatable, Sendable {
     case missingDatabase, alreadyExists, unavailable, busy, corrupt, wrongDatabase
     case unsupportedSchema(Int64), closed, conflict, databaseFailure
-    case invalidReason, invalidCapacity, invalidPage, capacityExceeded, deleted
+    case invalidReason, invalidDummySelection, invalidCapacity, invalidPage, capacityExceeded, deleted
 
     static func translating<T>(_ body: () throws -> T) throws -> T {
         do { return try body() }
@@ -17,7 +18,7 @@ public enum HistoryError: Error, Equatable, Sendable {
             case .unavailable: throw Self.unavailable
             case .closed: throw Self.closed
             case .constraint: throw Self.conflict
-            case .invalidArgument, .failure, .nestedTransaction: throw Self.databaseFailure
+            case .invalidArgument, .failure, .nestedTransaction, .rollbackFailure: throw Self.databaseFailure
             }
         }
     }
@@ -59,4 +60,47 @@ public struct ReasonRecord: Equatable, Sendable {
     public let preparedAt: Instant
     public let body: String?
     public var isDeleted: Bool { body == nil }
+}
+
+/// Storage format only, with no default amount or live payment operation.
+public struct DummyChoice: Equatable, Codable, Sendable {
+    public let minorUnits: Int64
+    public let currencyCode: String
+    public init(minorUnits: Int64, currencyCode: String) throws {
+        guard minorUnits >= 0, currencyCode.utf8.count == 3,
+              currencyCode.utf8.allSatisfy({ (65...90).contains($0) }) else { throw HistoryError.invalidDummySelection }
+        self.minorUnits = minorUnits; self.currencyCode = currencyCode
+    }
+    enum CodingKeys: CodingKey { case minorUnits, currencyCode }
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(minorUnits: values.decode(Int64.self, forKey: .minorUnits),
+                      currencyCode: values.decode(String.self, forKey: .currencyCode))
+    }
+}
+
+public struct DummySelectionRecord: Equatable, Sendable {
+    public let commandID: CommandID
+    public let preparedAt: Instant
+    public let choice: DummyChoice?
+}
+
+/// A pre-confirmation cancellation cannot carry a body, reasonRef, command, or dummy choice.
+public enum PrivateHistoryRecord: Equatable, Codable, Sendable {
+    case control(ControlHistoryEvent)
+    case cancelled(id: EventID, at: Instant)
+
+    public var id: EventID {
+        switch self { case let .control(event): event.id; case let .cancelled(id, _): id }
+    }
+}
+
+public struct StoredHistoryRecord: Equatable, Sendable {
+    public let cursor: Int64
+    public let record: PrivateHistoryRecord
+}
+
+public enum ReasonReconciliation: Equatable, Sendable {
+    case missing, deleted, preparedOnly
+    case sharedAccepted(CommandStatus)
 }

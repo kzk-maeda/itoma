@@ -108,3 +108,7 @@ Preparing、外部受理/発火事実、最終適用のcommit境界を分け、�
 [#79](https://github.com/kzk-maeda/itoma/issues/79)の[`ItomaHistory`](../../packages/itoma-storage/HISTORY.md)は共有controlとは別product/別DBで、本体だけがimportする。SQLite技術層を共通targetへ分離し、Extension向け`ItomaStorage`に本文APIの依存を作らない。schema1は理由本文UTF8 BLOB・reasonRef・commandID・Prepared時刻・論理bytesを保持する。非空白判定にCoreを使い、判定後も原文を保持する。
 
 同identity/同UTF8の再送は元のPreparedを返し、別本文を拒否する。本人削除後も本文なしのidentity tombstoneを残し、再送で復活させない。容量閾値は注入し、原文payloadと実ファイルサイズを分ける。Preparedは共有受理や解除成功の証拠ではない。S03/S07のprivate単体部分を一時SQLiteで検証し、共有outboxとの順序・取込・削除cutoffは[#80](https://github.com/kzk-maeda/itoma/issues/80)、実機の保存先/保護は#49に残す。
+
+[#80](https://github.com/kzk-maeda/itoma/issues/80)でcontrol schema4/private schema2へ明示移行する。型付きcommand/grantのoutboxをprivate commit後にだけackし、payloadは削除、eventID/sequenceの冪等台帳は維持する。private commit後/ack前の再実行、sourceID別の削除cutoff、境界後の新eventの保持、容量/INSERT失敗による全rollbackとack抑止を一時SQLiteで検証する。取消recordはID/時刻だけで本文を持てず、確定ダミー選択の保存はUI金額の採用や決済ではない。
+
+`acceptReasonGrant`はprivate Preparedを閉じてから共有intentを受理し、private失敗で共有grantを作らない。outbox満杯/履歴障害はcontrolのhistoryIncompleteへ残し、履歴のためだけに停止/再制限のmetadataを失敗させない。実OS副作用は#47以降、iOSの保護・2プロセスのkill/lockは#49。S03/S04/S06/S07のDB単体部分と実機ゲートを分ける。

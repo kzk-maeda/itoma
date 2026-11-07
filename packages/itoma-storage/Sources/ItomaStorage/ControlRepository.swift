@@ -29,7 +29,7 @@ public struct ControlSnapshot: Equatable, Sendable {
 /// A connection is serialized locally; separate processes coordinate with SQLite transactions.
 /// This class is deliberately not Sendable. A controller owns it on one isolation domain.
 public final class ControlRepository {
-    static let schemaVersion: Int64 = 3
+    static let schemaVersion: Int64 = 4
     static let applicationID: Int64 = 0x49544F4D
     let database: SQLiteDatabase
     private let lock = NSRecursiveLock()
@@ -75,6 +75,7 @@ public final class ControlRepository {
                 try repository.database.execute("CREATE TABLE selections (ref TEXT PRIMARY KEY NOT NULL, targets BLOB NOT NULL, opaque_payload BLOB NOT NULL)")
                 try repository.createCommandTables()
                 try repository.createGrantTables()
+                try repository.createHistoryTables()
                 try repository.database.execute("PRAGMA application_id=0x49544F4D")
                 try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
                 let data = try JSONEncoder().encode(initialPolicy)
@@ -119,6 +120,14 @@ public final class ControlRepository {
     }
 
     public func close() throws { try serialized { try database.close() } }
+
+    /// Guard before starting private writes or external I/O on this connection's controller flow.
+    /// Other processes/connections may still hold their own transactions; this is not a file lease.
+    public func requireOutsideTransaction() throws {
+        try serialized {
+            guard !database.hasActiveTransaction else { throw StorageError.nestedTransaction }
+        }
+    }
 
     public func readSnapshot() throws -> ControlSnapshot {
         try serialized { try database.transaction(writer: false) { try loadSnapshot() } }
@@ -210,6 +219,14 @@ public final class ControlRepository {
                 try database.execute("SELECT activated_revision FROM policy_candidates LIMIT 0")
                 guard try database.rows("SELECT name FROM sqlite_master WHERE type='index' AND name='grants_one_reserved_target'") == [[.text("grants_one_reserved_target")]] else { throw StorageError.corrupt }
             } catch SQLiteFailure.failure { throw StorageError.corrupt }
+        }
+        if expected >= 4 {
+            do {
+                try database.execute("SELECT singleton,source_id,last_sequence,history_incomplete FROM history_state LIMIT 0")
+                try database.execute("SELECT event_id,sequence FROM history_event_ids LIMIT 0")
+                try database.execute("SELECT event_id,record FROM history_outbox LIMIT 0")
+            } catch SQLiteFailure.failure { throw StorageError.corrupt }
+            _ = try loadHistoryBoundary()
         }
     }
 
