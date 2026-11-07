@@ -132,16 +132,13 @@ try {
     outcome = smokeOutcome(readFileSync(path.join(output, 'app.log'), 'utf8'), commit);
     if (launchError || (launcher.exitCode !== null && outcome === 'pending')) throw new Error('App console exited before a native smoke result');
   }
-  // Capture even a failed smoke for diagnosis; images alone never assert UI acceptance.
+  // Let the destination's read-only state update paint before appearance-specific screenshots.
   await delay(5_000);
-  run('xcrun', ['simctl', 'io', simulatorID, 'screenshot', '--type=png', path.join(output, 'home.png')]);
-  checkpoint('imageCaptured');
   outcome = smokeOutcome(readFileSync(path.join(output, 'app.log'), 'utf8'), commit);
   if (outcome !== 'pass') throw new Error(`Native JS-to-Swift smoke ${outcome === 'fail' ? 'failed' : 'timed out'}`);
   checkpoint('nativeBridge');
-  // Diagnostic route only: no authorization request, selection write or store mutation.
-  run('xcrun', ['simctl', 'openurl', simulatorID, 'itoma:///native-poc']);
-  await delay(3_000);
+  // The QA-only JS route transition is part of the passing marker above. External URL
+  // dispatch can leave an OS confirmation dialog on screen and is not a view-ready proof.
   for (const appearance of ['light', 'dark']) {
     run('xcrun', ['simctl', 'ui', simulatorID, 'appearance', appearance]);
     await delay(1_000);

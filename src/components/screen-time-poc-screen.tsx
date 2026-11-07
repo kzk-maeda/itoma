@@ -4,6 +4,7 @@ import { Alert, AppState, Pressable, ScrollView, StyleSheet, Text, useColorSchem
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GraphiteColors, Spacing } from '@/constants/theme';
+import { completeNativePoCSmoke } from '@/qa/native-smoke';
 import { type PoCAction, type PoCCode, type PoCResult, screenTimePoC } from '../../modules/itoma-native';
 
 const errors: Record<PoCCode, string> = {
@@ -27,7 +28,10 @@ export function ScreenTimePoCScreen() {
     inFlight.current = true; setBusy(true);
     try {
       const next = await screenTimePoC.run(action, ref);
-      if (active.current) setResult(next);
+      if (active.current) {
+        setResult(next);
+        if (action === 'snapshot') completeNativePoCSmoke(next);
+      }
     } finally { inFlight.current = false; if (active.current) setBusy(false); }
   }, []);
   useFocusEffect(useCallback(() => {
