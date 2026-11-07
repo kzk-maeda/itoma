@@ -38,10 +38,10 @@ function run(command, args, { log = 'tools.log', timeout = 180_000, env = proces
   } finally { closeSync(fd); }
 }
 
-function build(command, args, log, timeout) {
+function build(command, args, log, timeout, { cwd = root } = {}) {
   const fd = openSync(path.join(output, log), 'a');
   try {
-    const call = spawnSync(command, args, { cwd: root, env: process.env, timeout, stdio: ['ignore', fd, fd] });
+    const call = spawnSync(command, args, { cwd, env: process.env, timeout, stdio: ['ignore', fd, fd] });
     if (call.error || call.status !== 0) throw toolFailure(command, log);
   } finally { closeSync(fd); }
 }
@@ -72,7 +72,8 @@ try {
   build('npx', ['expo', 'prebuild', '--platform', 'ios', '--no-install'], 'prebuild.log', 300_000);
   assertCleanSource(root, commit);
   checkpoint('cng');
-  build('pod', ['install', '--project-directory=ios'], 'pod-install.log', 900_000);
+  // SDK58 autolinking reads extraPods from its process cwd, not --project-directory.
+  build('pod', ['install'], 'pod-install.log', 900_000, { cwd: path.join(root, 'ios') });
   checkpoint('pods');
   const nativeConfig = createHash('sha256');
   for (const file of ['app.json', 'app.config.ts', 'package-lock.json', 'modules/itoma-native/expo-module.config.json', 'ios/Podfile', 'ios/Podfile.properties.json', 'ios/Podfile.lock']) {
