@@ -12,6 +12,8 @@ ItomaCoreの外側で、iOS標準のSQLite C APIを包む薄いSwift Package。U
 
 本Packageの公開productは、共有control用`ItomaStorage`と本体private用[`ItomaHistory`](HISTORY.md)に分かれる。Extensionは`ItomaStorage`だけに依存し、理由本文のAPIをリンクしない。共通の`ItomaSQLite` targetはSQLite接続/bind/transactionの技術層だけを提供する。本体のItomaHistoryは共有outbox DTO/transferへ依存するが、逆の依存は作らない。
 
+AppleではSDK標準の`SQLite3` module、Linuxでは`CSQLite` system-library shimで同じSQLite C APIへ接続する。CocoaPods版ItomaSQLiteはsystem sqlite3をリンクし、独自のheader-only CSQLite podを必要としない。SwiftPMとPodは同じSwift Sourcesを使い、SQL/transaction/保存の実装を複製しない。
+
 ## 保存の契約
 
 - `ControlRepository.create`は本人/初期化controllerが明示的に新規作成するときだけ使う。O_EXCLで新しいファイルを取得し、SQLiteはCREATEなしで開く。既存・空・破損・保護で読めないDBを初期化しない。途中で作成に失敗したファイルも自動消去しない。

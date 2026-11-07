@@ -40,11 +40,6 @@
           "ios": {
             "extraPods": [
               {
-                "name": "CSQLite",
-                "path": "../packages/itoma-storage",
-                "modular_headers": true
-              },
-              {
                 "name": "ItomaSQLite",
                 "path": "../packages/itoma-storage"
               },

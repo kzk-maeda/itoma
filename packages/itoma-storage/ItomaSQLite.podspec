@@ -10,6 +10,6 @@ Pod::Spec.new do |s|
   s.swift_version = '6.0'
   s.static_framework = true
   s.source_files = 'Sources/ItomaSQLite/**/*.swift'
-  s.dependency 'CSQLite'
+  s.libraries = 'sqlite3'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
 end

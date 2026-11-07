@@ -6,7 +6,7 @@
 
 Swiftの`validateDuration`は`UnlockDuration`を使う副作用のない呼出し。DB、予定、OS storeや認可を操作しない。main-app ModuleはCore/Storage/Control/Historyをimportするが、ItomaControl/ItomaStorageのpodspecはprivate Historyへ依存しない。将来のExtensionはshared productだけを参照する。
 
-各Swift packageと同じ`Sources/`をlocal podspecでコンパイルする。`expo-build-properties`の`ios.extraPods`にlocal pathを指定し、CSQLiteだけをmodular headersとしてAppleのsystem sqlite3へリンクする。SwiftPMソースのコピー・生成`ios/`の手編集は行わない。podspecの0.1.0はlocal metadataで、registry/tagへの公開ではない。既存dynamic app configとdemoの分岐は維持する。
+各Swift packageと同じ`Sources/`を5つのlocal podspecでコンパイルする。`expo-build-properties`の`ios.extraPods`にlocal pathを指定し、ItomaSQLiteはApple SDK標準の`SQLite3` moduleとsystem sqlite3を使う。LinuxのSwiftPM検証は既存の`CSQLite` system-library shimへfallbackする。SwiftPMソースのコピー・生成`ios/`の手編集は行わない。podspecの0.1.0はlocal metadataで、registry/tagへの公開ではない。既存dynamic app configとdemoの分岐は維持する。
 
 SDK58の根拠:
 

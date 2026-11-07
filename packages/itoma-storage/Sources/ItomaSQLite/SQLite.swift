@@ -1,4 +1,8 @@
+#if canImport(SQLite3)
+import SQLite3
+#else
 import CSQLite
+#endif
 import Foundation
 
 /// Technical failures only; repositories translate these into their own public categories.
