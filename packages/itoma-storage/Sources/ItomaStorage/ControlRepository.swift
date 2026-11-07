@@ -24,12 +24,13 @@ public struct ControlSnapshot: Equatable, Sendable {
     public let snapshotSequence: SnapshotSequence
     public let activation: Activation
     public let selections: [StoredSelection]
+    public let application: StoredApplication?
 }
 
 /// A connection is serialized locally; separate processes coordinate with SQLite transactions.
 /// This class is deliberately not Sendable. A controller owns it on one isolation domain.
 public final class ControlRepository {
-    static let schemaVersion: Int64 = 4
+    static let schemaVersion: Int64 = 5
     static let applicationID: Int64 = 0x49544F4D
     let database: SQLiteDatabase
     private let lock = NSRecursiveLock()
@@ -76,6 +77,7 @@ public final class ControlRepository {
                 try repository.createCommandTables()
                 try repository.createGrantTables()
                 try repository.createHistoryTables()
+                try repository.createApplicationTable()
                 try repository.database.execute("PRAGMA application_id=0x49544F4D")
                 try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
                 let data = try JSONEncoder().encode(initialPolicy)
@@ -190,8 +192,13 @@ public final class ControlRepository {
             }
             do { try Self.validateSelections(selections, policy: policy) }
             catch { throw StorageError.corrupt }
+            let application = expectedSchema >= 5 ? try loadApplication() : nil
+            if let application {
+                guard application.evaluation.policyRevision <= policy.revision,
+                      application.evaluation.snapshotSequence.rawValue <= sequence else { throw StorageError.corrupt }
+            }
             return ControlSnapshot(policy: policy, lastValidPolicy: last, snapshotSequence: try SnapshotSequence(sequence),
-                                   activation: activation, selections: selections)
+                                   activation: activation, selections: selections, application: application)
         } catch let error as StorageError { throw error }
         catch let error as SQLiteFailure { return try StorageError.translating { throw error } }
         catch { throw StorageError.corrupt }
@@ -227,6 +234,10 @@ public final class ControlRepository {
                 try database.execute("SELECT event_id,record FROM history_outbox LIMIT 0")
             } catch SQLiteFailure.failure { throw StorageError.corrupt }
             _ = try loadHistoryBoundary()
+        }
+        if expected >= 5 {
+            do { try database.execute("SELECT singleton,record FROM application_state LIMIT 0") }
+            catch SQLiteFailure.failure { throw StorageError.corrupt }
         }
     }
 

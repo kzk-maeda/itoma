@@ -137,3 +137,11 @@ Expo Routerを継続。ホームはsnapshot表示、編集はdraft専用ViewMode
 ## 調査・PoCゲート
 
 共有SQLiteのプロセスkill/ロック/保護状態、共通Swiftソースの本体/Extensionビルド、OS Adapterの設定とreadback範囲、イベント上限・遅延、認可取消、Expo Moduleの通知/画面復帰を確認する。OSの全体的な実効状態を読み取れるAPIが存在すると仮定しない。
+
+## CommandServiceの実装単位
+
+[#83](https://github.com/kzk-maeda/itoma/issues/83)の[ItomaControl](../../packages/itoma-control/README.md)は専用native actorで新規grantの処理順序を実装する。Core/共有Storageへ依存し、private理由productはリンクしない。本体でPrepared→共有intentを閉じてから呼ぶ。Preparing/receiptの別commit、登録awaitのlock外実行、同期Restriction前の再検証、有限Evaluation/Observationと結果commitをfake adapterで検証する。
+
+control schema5は最新の試行plan/観測を保持し、移行前の証拠を捏造しない。同期OS操作とcommitの隙間はUncertainとして残す。新規解除の単体ゲートを候補編集[#84](https://github.com/kzk-maeda/itoma/issues/84)、callback/停止/不整合復旧[#85](https://github.com/kzk-maeda/itoma/issues/85)、実API/実機#49/#50/#52の完了へ拡張解釈しない。
+
+OS前にApplying観測を独立commitし、最終writerで同じevaluationIDを照合する。結果rollbackで旧Appliedを復元せず、別processが更新したmarkerからOS操作を始めない。全grantのCore失効recordを引き継ぎ、timezone/認可が戻っても旧解除を復活させない。認可不明のCore空集合をstore削除へ使わず、確定Deniedでは本人のpaused意図を保ちつつenabledを確認待ちへ移す。

@@ -219,7 +219,8 @@ extension TemporaryGrant {
         }
     }
 
-    func recording(status: GrantStatus) throws -> Self {
+    /// Logical record copy only; callers still need durable registration and OS protocol checks.
+    public func recording(status: GrantStatus) throws -> Self {
         try Self(id: id, commandID: commandID, targetRef: targetRef, occurrence: occurrence,
                  acceptedAt: acceptedAt, initialExpiresAt: initialExpiresAt,
                  effectiveExpiresAt: effectiveExpiresAt, status: status)

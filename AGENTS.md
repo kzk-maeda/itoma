@@ -71,7 +71,9 @@ For Bun projects, use `bun run lint` and substitute `bunx` for `npx`.
 
 For changes to `packages/itoma-core`, also run `swift test --package-path packages/itoma-core --jobs 2`, or the pinned Docker command in `packages/itoma-core/README.md`. CI runs the same Swift tests inside the existing quality job. These verify the standalone shared core; they do not verify iOS linking, Expo bridging, or Screen Time behavior.
 
-For changes to `packages/itoma-storage`, run `swift test --package-path packages/itoma-storage --jobs 2` with SQLite development headers, or the Docker command in `packages/itoma-storage/README.md`. CI tests both Swift packages with SQLite headers installed. Temporary Linux database tests do not verify App Groups, File Protection, or iOS process coordination.
+For changes to `packages/itoma-storage`, run `swift test --package-path packages/itoma-storage --jobs 2` with SQLite development headers, or the Docker command in `packages/itoma-storage/README.md`. CI tests the Swift packages with SQLite headers installed. Temporary Linux database tests do not verify App Groups, File Protection, or iOS process coordination.
+
+For changes to `packages/itoma-control`, also run `swift test --package-path packages/itoma-control --jobs 2` with SQLite development headers, or the pinned Docker command in `packages/itoma-control/README.md`. CI tests all three Swift packages. Fake scheduler/restriction results verify ordering and recovery logic only; they do not verify any native Screen Time API or iOS linking.
 
 Report what was tested on Simulator and what was tested on a physical device separately. Do not claim physical-device behavior is verified without testing it on a device. Explicitly identify native behaviors that remain unverified.
 
