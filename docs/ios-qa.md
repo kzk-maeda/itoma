@@ -21,14 +21,15 @@ SwiftPMはiOS15.1とMacテストhostのmacOS13を最低版として明示する�
 4. 新しいcheckoutで`expo prebuild --platform ios --no-install`、ios/を作業dirにしてpod installを実行する。SDK58 autolinkingは作業dirのPodfile.properties.jsonからextraPodsを読むため、repoルートの`pod install --project-directory=ios`へ置換しない。`ios/`が既にある場合は保護のため拒否する。`prebuild --clean`や既存projectの上書きを行わない。
 5. Release/iphonesimulator・署名無効でビルドする。
 6. 同じ自分のSimulatorを再びbootし、install/launchする。既存deviceのUDIDは使わず、自分がcreateしたUUIDだけを最後にshutdown/deleteする。
-7. CI専用のJSフラグでSwift Coreの5分/0分入力を検証し、native側の追加起動フラグを通ったsmoke markerでJS→Swiftの往復を確認する。
-8. ホーム画像を取得する。画像取得の成功と、画面の目視/操作の合格は区別する。
+7. CI専用のJSフラグでSwift Coreの5分/0分入力とPoC snapshotを検証する。その後JS内の`router.replace`で`/native-poc`へ移動する。`simctl openurl`はOSの「Open in itoma?」確認で止まるため、画面到達の根拠に使わない。
+8. 遷移先のPoC画面が自身でread-only snapshotを取得し、`simulator-unavailable`・未認可/保存なし/対象なしを再確認した後にだけ、native起動フラグも通ったPASS markerを出す。Core往復だけでは画面待ちを成功にしない。認可・保存・制限の操作はしない。
+9. PoCのLight/Dark画像を取得する。画像生成を操作や目視の合格と扱わない。実機用capability opt-inは通常QAに不要。旧sourceではhome.pngを取得しており、画像の範囲は対象SHAのscript/JSONに従う。
 
 `EXPO_PUBLIC_NATIVE_SMOKE=1`と`EXPO_PUBLIC_BUILD_SHA`はcompiled JSへ含まれる公開情報。秘密や本人データを置かない。native起動には別の`SIMCTL_CHILD_ITOMA_NATIVE_QA=1`を使い、通常起動でsmokeを実行しない。フラグなしでUI/操作は変化せず、ホームのOS操作は引き続きモック。
 
 ## 証跡と判定
 
-Actions artifactはresult.json、ビルド/Swift/起動ログ、home.pngだけを7日保存する。app binary、derived data、Swift build cacheは配布しない。
+Actions artifactはresult.json、ビルド/Swift/起動ログ、native-pocのLight/Dark画像を7日保存する。互換のため旧sourceのhome.pngもupload対象に残す。app binary、derived data、Swift build cacheは配布しない。
 
 stageの全履歴は通常ログとresult.jsonへ残し、GitHub check-runのnoticeは最終結果の1件だけに使う。runnerのstep・種別ごとの10件上限で後段の結果が欠落しないようにする。最終注釈はstatus/cleanup、source/native/JS SHA、build ID、構成・digest・tool実版・成功stage件数を固定フィールド/長さで要約し、4096文字のmessage上限内に収める。新しいmetadataや全stage、完全なtool情報はresult.jsonを正本とし、API要約の省略・短縮と区別する。
 
