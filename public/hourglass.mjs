@@ -1,4 +1,4 @@
-import { HOUR, MINUTE, sandLevels, remainingTime, humanTime, clockTime } from './hourglass-math.mjs';
+import { HOUR, MINUTE, sandLevels, remainingTime, humanTime, clockTime, UPPER_BOWL_PATH, LOWER_BOWL_PATH } from './hourglass-math.mjs';
 
 const ruleStart = 21 * HOUR, ruleEnd = 23 * HOUR;
 const apps = [{ id:'x', name:'X', glyph:'X' }, { id:'youtube', name:'YouTube', glyph:'▶' }];
@@ -19,12 +19,11 @@ function glass(label, fraction, kind='rule') {
   const levels = sandLevels(fraction);
   return `<div class="glass-figure" role="img" aria-label="${label}" data-glass="${kind}">
     <svg viewBox="0 0 200 240" aria-hidden="true">
-      <defs><clipPath id="upper-bowl"><path d="M40 28H160L107 116H93Z"/></clipPath><clipPath id="lower-bowl"><path d="M93 124H107L160 212H40Z"/></clipPath></defs>
-      <path class="glass-body" d="M39 20H161Q172 20 165 32L113 114Q109 120 113 126L165 208Q172 220 161 220H39Q28 220 35 208L87 126Q91 120 87 114L35 32Q28 20 39 20Z"/>
+      <defs><clipPath id="upper-bowl"><path d="${UPPER_BOWL_PATH}"/></clipPath><clipPath id="lower-bowl"><path d="${LOWER_BOWL_PATH}"/></clipPath></defs>
+      <path class="glass-body" d="M62 18H138C158 18 165 28 158 48C151 71 132 88 116 104C106 114 106 126 116 136C132 152 151 169 158 192C165 212 158 222 138 222H62C42 222 35 212 42 192C49 169 68 152 84 136C94 126 94 114 84 104C68 88 49 71 42 48C35 28 42 18 62 18Z"/>
       <g clip-path="url(#upper-bowl)"><rect class="glass-sand sand-level" data-sand="upper" x="0" y="0" width="200" height="116" style="transform:translateY(${levels.upperY}px)"/></g>
       <g clip-path="url(#lower-bowl)"><rect class="glass-sand sand-level" data-sand="lower" x="0" y="0" width="200" height="240" style="transform:translateY(${levels.lowerY}px)"/></g>
       <line class="glass-stream" x1="100" y1="117" x2="100" y2="${levels.lowerY}" ${fraction<=0||fraction>=1?'visibility="hidden"':''}/>
-      <path class="glass-rim" d="M43 14H157M43 226H157"/>
     </svg></div>`;
 }
 

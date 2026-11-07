@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { sandLevels, remainingTime, humanTime, clockTime, MINUTE } from '../public/hourglass-math.mjs';
+import { sandLevels, remainingTime, humanTime, clockTime, MINUTE, BOWL_AREA, bowlAreaBelow } from '../public/hourglass-math.mjs';
 
 test('sand volume corresponds to remaining fraction, conserving the total area',()=>{
   for(const fraction of [0,.01,.25,.5,.75,.99,1]){
-    const {upperY,lowerY}=sandLevels(fraction),h=116-upperY,b=212-lowerY,k=106/176,total=5896;
-    const upperArea=14*h+k*h*h,lowerArea=120*b-k*b*b;
-    assert.ok(Math.abs(upperArea/total-fraction)<1e-10);
-    assert.ok(Math.abs((upperArea+lowerArea)/total-1)<1e-10);
+    const {upperY,lowerY}=sandLevels(fraction);
+    const upperArea=bowlAreaBelow(upperY),lowerArea=BOWL_AREA-bowlAreaBelow(240-lowerY);
+    assert.ok(Math.abs(upperArea/BOWL_AREA-fraction)<1e-6);
+    assert.ok(Math.abs((upperArea+lowerArea)/BOWL_AREA-1)<1e-10);
   }
 });
 test('sand is bounded for ended or invalid input, with no negative or excessive volume',()=>{

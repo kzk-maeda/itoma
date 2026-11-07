@@ -49,10 +49,9 @@ h1 { font-size:35px; line-height:1.6; font-weight:500; letter-spacing:.04em; mar
 .glass-panel { margin:14px 0 18px; text-align:center; }
 .glass-figure { width:186px; height:230px; margin:auto; }
 .glass-figure svg { width:100%; height:100%; }
-.glass-body { fill:var(--surface); stroke:var(--muted); stroke-width:1.2; }
+.glass-body { fill:var(--surface); stroke:var(--muted); stroke-width:1.2; stroke-opacity:.45; }
 .glass-sand { fill:var(--accent); }
-.glass-stream { stroke:var(--accent); stroke-width:1; opacity:.35; }
-.glass-rim { stroke:var(--accent); stroke-width:3; stroke-linecap:round; }
+.glass-stream { stroke:var(--accent); stroke-width:.8; opacity:.22; }
 .glass-meta { display:flex; justify-content:space-between; margin:0 auto; max-width:200px; color:var(--muted); font-size:10px; }
 .time-label { color:var(--muted); font-size:12px; margin-top:10px; }
 .time-value { font-size:34px; line-height:1.5; font-weight:400; font-variant-numeric:tabular-nums; letter-spacing:-.025em; }
