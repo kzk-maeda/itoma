@@ -11,6 +11,8 @@
 
 workflowと[runner-images](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-arm64-Readme.md)のXcode/CocoaPods版は更新され得るため、実行時の実版をresult.jsonへ記録する。
 
+SwiftPMはiOS15.1とMacテストhostのmacOS13を最低版として明示する。Mac UIを製品へ追加する意味ではない。CocoaPods側の最低iOSも15.1で揃え、Coreの固定UTC計算は新しいTimeZone.gmtへ依存させない。
+
 ## 検証すること
 
 1. source commit一致と、tracked/非ignored untracked sourceのcleanを確認する。出力dirは新規作成を必須とし、古いログ/画像を再利用しない。

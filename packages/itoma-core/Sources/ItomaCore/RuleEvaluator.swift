@@ -162,7 +162,8 @@ private struct CivilCalendar {
     let zone: TimeZoneID
     let calendar: Calendar = {
         var value = Calendar(identifier: .iso8601)
-        value.timeZone = .gmt
+        // Fixed zero offset without the newer TimeZone.gmt deployment requirement.
+        value.timeZone = TimeZone(secondsFromGMT: 0)!
         return value
     }()
 
