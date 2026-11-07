@@ -1,5 +1,19 @@
 import { demoTarget, DEMO_HOST, DEMO_ZONE } from './demo-target.mjs';
 
+// These deployed design studies live alongside the original Expo index.html.
+// Key by deployment identity so the link survives a deleted Git branch, too.
+const entryPages = new Map([
+  ['feat/design-three-demos', 'design-lab.html'],
+  ['demo/b-reason-unlock', 'design-b.html'],
+  ['demo/b-native-motion', 'design-motion.html'],
+  ['demo/color-variations', 'design-colors.html'],
+  ['demo/hourglass-experience', 'hourglass.html'],
+].map(([branch, page]) => [demoTarget(branch).key, page]));
+
+export function demoEntryPath(environment) {
+  return `${environment.basePath}/${entryPages.get(environment.key) ?? ''}`;
+}
+
 export function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -74,7 +88,7 @@ function displayTime(value) {
 
 export function renderIndex(environments, checkedAt) {
   const e = escapeHtml;
-  const cards = environments.map(item => `<article><div class="meta">配信先あり${item.branch ? '' : ' · Gitブランチ情報なし'}</div><h2><a href="${e(item.basePath)}/">${e(item.title)}</a></h2><p class="summary">${e(item.summary)}</p><dl><dt>ブランチ</dt><dd>${e(item.branch || '不明・削除済み・ローカル配信')}</dd><dt>Worker更新</dt><dd>${e(displayTime(item.updatedAt))}</dd></dl><div class="links"><a class="open" href="${e(item.basePath)}/">デモを開く <span aria-hidden="true">↗</span></a>${item.prNumber ? `<a href="https://github.com/kzk-maeda/itoma/pull/${Number(item.prNumber)}">PR #${Number(item.prNumber)}</a>` : ''}<a href="${e(item.basePath)}/demo-build.json">配信情報</a></div></article>`).join('');
+  const cards = environments.map(item => `<article><div class="meta">配信先あり${item.branch ? '' : ' · Gitブランチ情報なし'}</div><h2><a href="${e(demoEntryPath(item))}">${e(item.title)}</a></h2><p class="summary">${e(item.summary)}</p><dl><dt>ブランチ</dt><dd>${e(item.branch || '不明・削除済み・ローカル配信')}</dd><dt>Worker更新</dt><dd>${e(displayTime(item.updatedAt))}</dd></dl><div class="links"><a class="open" href="${e(demoEntryPath(item))}">デモを開く <span aria-hidden="true">↗</span></a>${item.prNumber ? `<a href="https://github.com/kzk-maeda/itoma/pull/${Number(item.prNumber)}">PR #${Number(item.prNumber)}</a>` : ''}<a href="${e(item.basePath)}/demo-build.json">配信情報</a></div></article>`).join('');
   return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="color-scheme" content="light dark"><title>デモ環境一覧 | ITOMA</title><style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#263d33;background:#f6f5f0;--surface:#fff;--muted:#626b63;--line:#dbe1d8;--accent:#355c49}*{box-sizing:border-box}body{margin:0}main{max-width:920px;margin:auto;padding:40px 24px 64px}.brand{font-weight:650;letter-spacing:.16em}h1{font-size:clamp(1.7rem,5vw,2.3rem);margin:36px 0 12px}p{line-height:1.8}.intro,.meta,dt,.checked{color:var(--muted)}.checked{font-size:.85rem}.grid{display:grid;gap:16px;margin-top:28px}article{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;min-width:0}h2{font-size:1.15rem;margin:10px 0}a{color:var(--accent);overflow-wrap:anywhere;text-underline-offset:.2em}h2 a{text-decoration:none}.summary{white-space:pre-wrap;overflow-wrap:anywhere}dl{display:grid;grid-template-columns:7rem 1fr;gap:8px;font-size:.85rem;line-height:1.7}dd{margin:0;overflow-wrap:anywhere}.links{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-top:20px}.links a{display:inline-flex;align-items:center;min-height:44px}.open{font-weight:650}a:focus-visible{outline:3px solid var(--accent);outline-offset:5px}.empty{padding:24px;border:1px solid var(--line);border-radius:16px}.notice{margin-top:32px;font-size:.9rem;color:var(--muted)}@media(prefers-color-scheme:dark){:root{color:#edf1e7;background:#171e1a;--surface:#242e27;--muted:#b5c0b4;--line:#465347;--accent:#bed1b8}}@media(max-width:400px){main{padding:24px 16px 40px}article{padding:20px}dl{grid-template-columns:1fr;gap:4px}dd{margin-bottom:8px}}
 </style></head><body><main><div class="brand">いとま ITOMA</div><h1>デモ環境一覧</h1><p class="intro">試したい変更を選んで、デモを開けます。各環境の選択内容は、それぞれの画面で操作してください。</p><p class="checked">確認時点の配信環境：${environments.length}件 · 更新確認 ${e(displayTime(checkedAt))}</p><section class="grid" aria-label="配信中のデモ環境">${cards || '<p class="empty">現在、配信中のブランチデモはありません。</p>'}</section><p class="notice">一覧は配信・撤去後と定期実行で更新します。概要は現在のPRまたはブランチ情報です。実際に配信されたコミットは各環境の「配信情報」で確認できます。OS制限・実課金はデモでは行いません。</p></main></body></html>`;

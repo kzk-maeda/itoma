@@ -29,6 +29,22 @@ npm run demo:info
 
 `<URL>demo-build.json` でブランチ名・SHA・ビルド日時を確認できます。URLと対象SHAを検証Issue・PRに記録してください。ページを再読込すると、現在のメモリ内設定は初期化されます。
 
+## 一覧から開くページ
+
+一覧のリンクは、既存の比較デモでは次の実ページを指します。各ブランチのトップ `/demos/<branch-key>/` はExpoの初期ホームであり、比較ページとは別です。
+
+| 環境ブランチ | 一覧から開くページ |
+| --- | --- |
+| `feat/design-three-demos`（既存環境） | `design-lab.html` |
+| `demo/b-reason-unlock` | `design-b.html` |
+| `demo/b-native-motion` | `design-motion.html` |
+| `demo/color-variations` | `design-colors.html` |
+| `demo/hourglass-experience` | `hourglass.html` |
+
+入口は `scripts/lib/demo-index.mjs` に配信keyとの対応を持ちます。Gitブランチが削除されても環境が残っていれば同じ入口を使い、未知の環境は従来どおりトップを開きます。新しいHTML比較デモを追加するときは、この対応と `tests/demo-index.test.mjs` も更新してください。ページの存在は対象デモの配信で確認し、削除や改名をするときも対応を更新します。「配信情報」は従来どおり各環境の `demo-build.json` です。
+
+一覧側の修正はmainへのマージ後、既存のUpdate demo indexで反映します。各デモの再配信は不要です。ブランチのトップ自体を別ページへリダイレクトする変更ではありません。
+
 ## GitHub Actionsからの自動配信
 
 `.github/workflows/deploy-demo.yml` は、このリポジトリの **`demo/**` ブランチへのpushだけ**で起動します。`demo/rule-settings`、`demo/unlock/reason` のような名前が対象で、PRの有無には依存しません。main・`feat/**`・`docs/**`・`ci/**`・タグ・forkからのPRでは配信しません。既存の `CI / quality` は引き続きPRとmainの品質チェックを担当します。
