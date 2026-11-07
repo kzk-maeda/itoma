@@ -5,6 +5,7 @@ import Foundation
 public enum StorageError: Error, Equatable, Sendable {
     case missingDatabase, alreadyExists, unavailable, busy, corrupt, wrongDatabase
     case unsupportedSchema(Int64), closed, conflict, invalidSelection, databaseFailure
+    case invalidCommand, transactionExpired, nestedTransaction, rollbackRequired
 }
 
 enum SQLValue: Equatable {
@@ -13,6 +14,7 @@ enum SQLValue: Equatable {
 
 final class SQLiteDatabase {
     private var connection: OpaquePointer?
+    private var inTransaction = false
 
     init(path: String, busyTimeoutMilliseconds: Int32) throws {
         guard busyTimeoutMilliseconds >= 0 else { throw StorageError.databaseFailure }
@@ -33,6 +35,7 @@ final class SQLiteDatabase {
     deinit { if let connection { sqlite3_close_v2(connection) } }
 
     func close() throws {
+        guard !inTransaction else { throw StorageError.busy }
         guard let handle = connection else { return }
         let code = sqlite3_close(handle)
         guard code == SQLITE_OK else { throw Self.failure(code) }
@@ -95,7 +98,10 @@ final class SQLiteDatabase {
 
     /// Synchronous closure only; OS requests and other awaits cannot run inside this API.
     func transaction<T>(writer: Bool, _ body: () throws -> T) throws -> T {
+        guard !inTransaction else { throw StorageError.nestedTransaction }
         try execute(writer ? "BEGIN IMMEDIATE" : "BEGIN DEFERRED")
+        inTransaction = true
+        defer { inTransaction = false }
         do {
             let result = try body()
             try execute("COMMIT")

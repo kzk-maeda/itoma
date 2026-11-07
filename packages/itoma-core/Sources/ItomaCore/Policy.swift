@@ -153,4 +153,15 @@ public struct PolicyCandidate: Equatable, Sendable {
         self.expectedRevision = expectedRevision
         self.proposedPolicy = proposedPolicy
     }
+
+    /// Shared by edit preview and persistence; a changed rule cannot reuse or decrease its version.
+    public func validate(against active: PolicySnapshot) throws {
+        guard expectedRevision == active.revision else { throw ModelError.stalePolicyRevision }
+        let previous = Dictionary(uniqueKeysWithValues: active.rules.map { ($0.id, $0) })
+        for rule in proposedPolicy.rules {
+            if let old = previous[rule.id], rule != old, rule.version <= old.version {
+                throw ModelError.invalidRuleVersion
+            }
+        }
+    }
 }

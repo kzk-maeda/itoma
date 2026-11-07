@@ -15,6 +15,8 @@ public enum ModelError: Error, Equatable, Sendable {
     case duplicateRuleID
     case invalidPriorityOrder
     case invalidCandidateRevision
+    case stalePolicyRevision
+    case invalidRuleVersion
     case invalidGrantWindow
     case invalidCommandRevision
     case missingDeadlineReceipt

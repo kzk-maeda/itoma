@@ -96,3 +96,5 @@ DB/付随ファイルをOSバックアップ対象から除外する案。これ
 [#69](https://github.com/kzk-maeda/itoma/issues/69)の[ItomaStorage](../../packages/itoma-storage/README.md)で、SQLite公式GitHubのC API仕様を確認し、明示的な新規作成/既存DBのopen、schema/application ID、WAL、snapshot/Selection/Activation、snapshotSequenceのCASを実装する。CoreからSQLite依存を分離し、JSON policyの検証とSQLの版列を照合する。Selection refは不変とし、対象編集は新refを候補ruleへ束縛する。
 
 一時SQLiteのS01のwriter/CAS部分とS05の破損/未対応版をテストする。command/候補は#70、grant/receiptは#71、履歴/outboxは#46、実行順序は#47。iOSリンク・App Groups・端末ロック・File Protection・バックアップ除外・実プロセスkillは#49へ残し、Linuxの単体成功を実機の証拠にしない。DB異常時に空設定で復旧したことにも、制限を停止できたことにも扱わない。
+
+[#70](https://github.com/kzk-maeda/itoma/issues/70)でschema2へcommand/attempt/Pending候補を追加する。schema1からの移行は本体が明示してwriter TXで行い、Extensionは勝手に移行しない。受理時は有効policyを保持し、最終CASでlast-valid/new policyを一緒に更新する。同IDはdecoded intentの構造で照合し、Cancelled等の終端や同attemptでの失敗再実行を拒否する。同期writer scopeは終了後に使えず、個別操作の失敗を捕捉してもrollback-onlyを解除できない。D02/D03とS02の保存/rollback部分は一時SQLiteで検証し、実OS副作用とプロセスkillは後続の証跡に分ける。

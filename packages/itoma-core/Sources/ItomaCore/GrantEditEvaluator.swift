@@ -30,13 +30,9 @@ public enum GrantEditEvaluator {
         candidate: PolicyCandidate, activePolicy: PolicySnapshot, selections: [Selection],
         context: EvaluationContext, snapshotSequence: SnapshotSequence, grants: [TemporaryGrant]
     ) throws -> PolicyEditAssessment {
-        guard candidate.expectedRevision == activePolicy.revision else { throw GrantEvaluationError.stalePolicy }
-        let previous = Dictionary(uniqueKeysWithValues: activePolicy.rules.map { ($0.id, $0) })
-        for rule in candidate.proposedPolicy.rules {
-            if let old = previous[rule.id], rule != old, rule.version <= old.version {
-                throw GrantEvaluationError.invalidRuleVersion
-            }
-        }
+        do { try candidate.validate(against: activePolicy) }
+        catch ModelError.stalePolicyRevision { throw GrantEvaluationError.stalePolicy }
+        catch ModelError.invalidRuleVersion { throw GrantEvaluationError.invalidRuleVersion }
         let evaluation = try GrantEvaluator.evaluate(policy: candidate.proposedPolicy, selections: selections,
                                                      context: context, grants: grants)
         let original = Dictionary(uniqueKeysWithValues: grants.map { ($0.id, $0) })

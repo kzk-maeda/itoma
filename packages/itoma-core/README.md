@@ -49,6 +49,7 @@ managed cloudでは、runtimeのDocker手順に従って使用するdaemonを明
 - 空の曜日、不正な分値、0分/24時間超の区間、不正な解除時間を拒否する。開始=終了は、翌日終了を明示した24時間だけ許す。
 - policyの重複rule ID、優先順の欠損/重複/未知ID、未対応schemaVersionを拒否し、順序や空設定へ自動修復しない。
 - 候補版はbase+1。grant要求はpolicy版を進めない。`acceptedAt < effectiveExpiresAt <= initialExpiresAt`を要求する。
+- `PolicyCandidate.validate(against:)`は有効policyのbase一致と、変更したruleのversionが増えていることを確認する。編集影響の評価と保存側はこの共通検証を使う。
 - Registeredには一致するreceiptと未発火、Firedには発火時刻が必要。古いcallbackを示すObsolete＋firedAtや、receipt保存前に発火した記録は保持できる。
 - Appliedの観測には対象evaluation IDと証拠が必要。記録のない成功を表現しない。
 - 不正timezoneを端末のtimezoneへ置換しない。観測済みの古い日時やclock変更の事実を消さないため、観測の鮮度は別途評価する。
