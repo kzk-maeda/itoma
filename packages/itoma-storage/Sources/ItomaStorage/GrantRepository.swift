@@ -1,4 +1,5 @@
 import Foundation
+import ItomaSQLite
 import ItomaCore
 
 extension ControlTransaction {
