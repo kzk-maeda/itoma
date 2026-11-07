@@ -53,9 +53,10 @@ GitHub Actions の `quality` ジョブは main への push と PR で依存関�
 ## 現在の実装と未設定事項
 
 - ホームはアプリとモードを選択できるモックです。設定は画面内のメモリに保持され、永続保存・OS 制限は行いません。
-- FamilyControls / ManagedSettings / DeviceActivity、Swift モジュール、App Extensions、App Groups は未実装です。
-- iOS ネイティブビルド・UI 自動操作・証跡収集の CI は未整備です。
-- Expo 接続、EAS ビルド設定、クラウド Simulator の利用資格、Apple の署名・Family Controls 権限は別途確認が必要です。
+- 共通SwiftのCore/Storage/Control、型付きローカルExpo ModuleとLinux/Macの単体検証があります。製品ホームから保存・OS制限へは未接続です。
+- [署名不要Simulator QA](docs/ios-qa.md)でReleaseビルド・install/launch・JS→Swift smoke・画像取得を行えます。全UI操作・アクセシビリティや実機Screen Timeは別の検証です。[PR #95の取得済み証跡](docs/qa/pr95-324c905/README.md)は当該headの結果で、後続ビルドへ転用しません。
+- 製品のFamilyControls / ManagedSettings / DeviceActivity、App Extensions、App Groupsの接続と実機検証は残っています。認可・選択保存・専用store手動操作の限定PoCは[PR #106](https://github.com/kzk-maeda/itoma/pull/106)で製品フローから分離しています。
+- 上記の標準GitHub runnerによるSimulator QAにEAS/Apple Developer登録は不要です。Family Controlsを使えるProgram Team/profile、検証用iPhone/iOS、開発署名は[#8](https://github.com/kzk-maeda/itoma/issues/8)で別途確認します。署名変更・登録・購入・申請・配布は自動実行しません。
 - Simulator の UI 確認と iPhone 実機での Screen Time 検証は分けて扱います。
 
 ## PR の運用
