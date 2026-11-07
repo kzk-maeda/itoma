@@ -40,10 +40,13 @@ npm run demo:info
 | `demo/b-native-motion` | `design-motion.html` |
 | `demo/color-variations` | `design-colors.html` |
 | `demo/hourglass-experience` | `hourglass.html` |
+| `demo/history-studies` | `history.html` |
 
 入口は `scripts/lib/demo-index.mjs` に配信keyとの対応を持ちます。Gitブランチが削除されても環境が残っていれば同じ入口を使い、未知の環境は従来どおりトップを開きます。新しいHTML比較デモを追加するときは、この対応と `tests/demo-index.test.mjs` も更新してください。ページの存在は対象デモの配信で確認し、削除や改名をするときも対応を更新します。「配信情報」は従来どおり各環境の `demo-build.json` です。
 
 一覧側の修正はmainへのマージ後、既存のUpdate demo indexで反映します。各デモの再配信は不要です。ブランチのトップ自体を別ページへリダイレクトする変更ではありません。
+
+新しい静的HTMLのデモでは、`public/demo-entry.json` に `{ "page": "history.html" }` のように入口を指定できます。`demo:build` がexport後にそのHTMLを配信先の `index.html` へコピーし、トップURLでも意図したデモを開きます。相対アセットが同じ場所にある単一HTMLページのみ指定でき、存在しないファイル・外部URL・パス移動・`index.html` 自身は拒否します。未指定なら従来のExpoトップを維持します。`demo-build.json` の `entryPage` で入口を確認できます。アプリ本体のルーティングは変えません。新規デモを派生させるときは、この指定も意図したページに更新するか削除してください。
 
 ## GitHub Actionsからの自動配信
 
