@@ -1,0 +1,52 @@
+{
+  "requestedCommit": "3071f97d1055af4253efec4a2be8823d8f7b6b4e",
+  "sourceCommit": "3071f97d1055af4253efec4a2be8823d8f7b6b4e",
+  "nativeSourceCommit": "3071f97d1055af4253efec4a2be8823d8f7b6b4e",
+  "jsSourceCommit": "3071f97d1055af4253efec4a2be8823d8f7b6b4e",
+  "buildID": "42387752357-1",
+  "workflowCommit": "3071f97d1055af4253efec4a2be8823d8f7b6b4e",
+  "configuration": "Release",
+  "sdk": "iphonesimulator",
+  "signing": "disabled",
+  "coverage": "JS-to-Swift Core/PoC transport; Simulator disables Screen Time operations; product OS adapters unconnected",
+  "stages": {
+    "source": "pass",
+    "simulatorCreated": "pass",
+    "simulatorBootRequested": "pass",
+    "simulatorPreflightReady": "pass",
+    "simulatorPreflight": "pass",
+    "sharedSwift-core": "pass",
+    "sharedSwift-storage": "pass",
+    "sharedSwift-control": "pass",
+    "sharedSwiftOnMac": "pass",
+    "cng": "pass",
+    "pods": "pass",
+    "build": "pass",
+    "simulatorRebootRequested": "pass",
+    "simulatorReadyForInstall": "pass",
+    "install": "pass",
+    "nativeBridge": "pass",
+    "nativePoCImagesCaptured": "pass"
+  },
+  "startedAt": "2026-11-07T15:44:09.344Z",
+  "xcode": "Xcode 26.6\nBuild version 17F113",
+  "swift": "Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)\nTarget: arm64-apple-macosx26.0",
+  "sdkVersion": "26.5",
+  "cocoaPods": "1.17.0",
+  "architecture": "arm64",
+  "simulator": {
+    "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+    "deviceType": "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro"
+  },
+  "sharedSwiftTests": {
+    "core": 62,
+    "storage": 88,
+    "control": 80
+  },
+  "nativeConfigurationSHA256": "8b6967e396bbac6c6e054c3202b6f8536e968c8e7176cbf558ffe11572353bc6",
+  "bundleIdentifier": "com.example.itoma",
+  "jsBundleSHA256": "7bb62c4b84294f505d7c40c5de648fcd857f194fe74ae8a4f058b1af2dae98fe",
+  "status": "pass",
+  "cleanup": "pass",
+  "completedAt": "2026-11-07T16:09:27.559Z"
+}
