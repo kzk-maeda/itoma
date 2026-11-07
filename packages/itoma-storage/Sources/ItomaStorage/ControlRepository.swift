@@ -118,9 +118,11 @@ public final class ControlRepository {
     }
 
     static func validFileURL(_ url: URL) -> Bool {
-        // URL.path can preserve "%00" instead of decoding it; validate the decoded component.
+        // Apple Foundation can preserve an encoded NUL in both decoded path accessors.
+        // Inspect the encoded path too, without recursively decoding literal "%00" names (%2500).
         guard url.isFileURL, let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
-        return !components.path.utf8.contains(0)
+        return !url.path.utf8.contains(0) && !components.path.utf8.contains(0)
+            && !components.percentEncodedPath.contains("%00")
     }
 
     public func close() throws { try serialized { try database.close() } }

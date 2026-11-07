@@ -16,7 +16,7 @@ SwiftPMはiOS15.1とMacテストhostのmacOS13を最低版として明示する�
 ## 検証すること
 
 1. source commit一致と、tracked/非ignored untracked sourceのcleanを確認する。出力dirは新規作成を必須とし、古いログ/画像を再利用しない。
-2. Mac上で共通Core/Storage/Controlの既存Swiftテストを実行する。Apple-hostedテストでありiOSの実OS検証とは分ける。
+2. Mac上で共通Core/Storage/Controlの既存Swiftテストを実行し、Swift Testingの非ゼロ成功件数を記録する。XCTest側の0件表示だけでは合格にしない。Apple-hostedテストでありiOSの実OS検証とは分ける。
 3. 新しいcheckoutで`expo prebuild --platform ios --no-install`、pod installを実行する。`ios/`が既にある場合は保護のため拒否する。`prebuild --clean`や既存projectの上書きを行わない。
 4. Release/iphonesimulator・署名無効でビルドする。
 5. 利用可能なiPhone type/runtimeから専用の新しいSimulatorを作成し、install/launchする。既存deviceのUDIDは使わず、自分がcreateしたUUIDだけをshutdown/deleteする。

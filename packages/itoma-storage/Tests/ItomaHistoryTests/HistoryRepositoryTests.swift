@@ -181,10 +181,15 @@ func invalidBudgetsAreRejected(values: (Int64, Int64)) throws {
 
 @Test func nulPathClosedConnectionAndFileSizesHaveExplicitOutcomes() throws {
     let f = try Fixture(); defer { f.remove() }
-    let nul = URL(fileURLWithPath: f.url.path + "\0suffix")
-    #expect(throws: HistoryError.unavailable) { try HistoryRepository.create(at: nul, capacity: capacity()) }
-    #expect(throws: HistoryError.unavailable) { try HistoryRepository.open(at: nul, capacity: capacity()) }
+    let encoded = try #require(URL(string: f.url.absoluteString + "%00suffix"))
+    for nul in [URL(fileURLWithPath: f.url.path + "\0suffix"), encoded] {
+        let parts = try #require(URLComponents(url: nul, resolvingAgainstBaseURL: false))
+        #expect(parts.percentEncodedPath.contains("%00"))
+        #expect(throws: HistoryError.unavailable) { try HistoryRepository.create(at: nul, capacity: capacity()) }
+        #expect(throws: HistoryError.unavailable) { try HistoryRepository.open(at: nul, capacity: capacity()) }
+    }
     #expect(!FileManager.default.fileExists(atPath: f.url.path))
+    #expect(try FileManager.default.contentsOfDirectory(atPath: f.directory.path).isEmpty)
     let r = try create(f)
     let usage = r.fileUsage()
     #expect((usage.databaseBytes ?? 0) > 0)
@@ -195,6 +200,20 @@ func invalidBudgetsAreRejected(values: (Int64, Int64)) throws {
     try r.close()
     #expect(throws: HistoryError.closed) { try r.reasons() }
     #expect(throws: HistoryError.closed) { try r.deleteReasons() }
+}
+
+@Test func literalPercent00HistoryFileRoundTripsWithoutBeingTreatedAsEncodedNul() throws {
+    let f = try Fixture(); defer { f.remove() }
+    let url = f.directory.appendingPathComponent("history-%00.sqlite")
+    let parts = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false))
+    #expect(parts.percentEncodedPath.contains("%2500"))
+    let repository = try HistoryRepository.create(at: url, capacity: capacity())
+    let expected = try repository.prepareReason(reasonRef: id(1), commandID: id(2), body: "fixture", at: instant())
+    try repository.close()
+    let reopened = try HistoryRepository.open(at: url, capacity: capacity())
+    #expect(try reopened.reason(for: id(2)) == expected)
+    #expect(try FileManager.default.contentsOfDirectory(atPath: f.directory.path).contains("history-%00.sqlite"))
+    try reopened.close()
 }
 
 @Test func reasonPagesAreBoundedAndStableIncludingDeletionTombstones() throws {

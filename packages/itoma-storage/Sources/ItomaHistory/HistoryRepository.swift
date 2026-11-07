@@ -82,7 +82,9 @@ public final class HistoryRepository {
 
     static func validFileURL(_ url: URL) -> Bool {
         guard url.isFileURL, let parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
-        return !parts.path.utf8.contains(0)
+        // Decoded accessors can retain %00 on Apple Foundation; do not recursively decode %2500.
+        return !url.path.utf8.contains(0) && !parts.path.utf8.contains(0)
+            && !parts.percentEncodedPath.contains("%00")
     }
 
     public func close() throws {
