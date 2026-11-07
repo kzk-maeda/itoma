@@ -98,3 +98,7 @@ DB/付随ファイルをOSバックアップ対象から除外する案。これ
 一時SQLiteのS01のwriter/CAS部分とS05の破損/未対応版をテストする。command/候補は#70、grant/receiptは#71、履歴/outboxは#46、実行順序は#47。iOSリンク・App Groups・端末ロック・File Protection・バックアップ除外・実プロセスkillは#49へ残し、Linuxの単体成功を実機の証拠にしない。DB異常時に空設定で復旧したことにも、制限を停止できたことにも扱わない。
 
 [#70](https://github.com/kzk-maeda/itoma/issues/70)でschema2へcommand/attempt/Pending候補を追加する。schema1からの移行は本体が明示してwriter TXで行い、Extensionは勝手に移行しない。受理時は有効policyを保持し、最終CASでlast-valid/new policyを一緒に更新する。同IDはdecoded intentの構造で照合し、Cancelled等の終端や同attemptでの失敗再実行を拒否する。同期writer scopeは終了後に使えず、個別操作の失敗を捕捉してもrollback-onlyを解除できない。D02/D03とS02の保存/rollback部分は一時SQLiteで検証し、実OS副作用とプロセスkillは後続の証跡に分ける。
+
+[#71](https://github.com/kzk-maeda/itoma/issues/71)のschema3でgrant・登録世代/receipt・commandの解決先grant参照と候補有効化記録を追加する。同対象に合流した別commandも結果を固定し、終端後の再送で新しい期限を作らない。初期上限とidentityを維持し、非終端の短縮は候補確認と登録照合を伴う原子的更新へ限定する。過去の終端`hasEnded`も保存し、再制限のUncertain/Failedから解除へ復帰させない。
+
+Preparing、外部受理/発火事実、最終適用のcommit境界を分け、同TXでの迂回を拒否する。複数grantの短縮は全登録が揃った時だけpolicyと一括commit。D03/D11/D12、S09/S10/S12のRepository部分は合成receiptと一時SQLiteで検証し、実API/OS成功・kill・iOS保護とは区別する。

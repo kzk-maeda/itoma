@@ -93,7 +93,7 @@ public enum GrantEvaluator {
         var desired = rules.desiredTargets
         for result in assessments where result.disposition == .effective { desired.remove(result.grant.targetRef) }
         // Pending/uncertain requests must also be reevaluated when their original deadline arrives.
-        let deadlines = assessments.filter { $0.grant.occupiesTarget }.map(\.grant.effectiveExpiresAt)
+        let deadlines = assessments.filter { $0.grant.reservesTarget }.map(\.grant.effectiveExpiresAt)
             .filter { context.now < $0 && $0 <= rules.evaluatedThrough }
         let next = (deadlines + [rules.nextBoundary].compactMap { $0 }).min()
         return GrantEvaluation(rules: rules, assessments: assessments, desiredTargets: desired, nextBoundary: next)
@@ -113,7 +113,7 @@ public enum GrantEvaluator {
         guard !existingGrants.contains(where: { $0.id == request.grantID }) else {
             throw GrantEvaluationError.reusedIdentifier
         }
-        if let occupied = existingGrants.first(where: { $0.targetRef == request.targetRef && $0.occupiesTarget }) {
+        if let occupied = existingGrants.first(where: { $0.targetRef == request.targetRef && $0.reservesTarget }) {
             return .existing(occupied)
         }
         guard request.expectedPolicyRevision == policy.revision else { throw GrantEvaluationError.stalePolicy }
@@ -141,7 +141,7 @@ public enum GrantEvaluator {
     private static func validate(_ grants: [TemporaryGrant]) throws {
         guard Set(grants.map(\.id)).count == grants.count else { throw GrantEvaluationError.duplicateGrantID }
         guard Set(grants.map(\.commandID)).count == grants.count else { throw GrantEvaluationError.duplicateCommandID }
-        let occupied = grants.filter(\.occupiesTarget).map(\.targetRef)
+        let occupied = grants.filter(\.reservesTarget).map(\.targetRef)
         guard Set(occupied).count == occupied.count else { throw GrantEvaluationError.conflictingGrants }
         guard grants.allSatisfy({ $0.initialExpiresAt.secondsSince1970 - $0.acceptedAt.secondsSince1970 <= 1800 }) else {
             throw GrantEvaluationError.invalidStoredDuration
@@ -212,7 +212,7 @@ public enum GrantEvaluator {
 
 extension TemporaryGrant {
     /// Failed/uncertain/in-flight work reserves the target until explicitly settled by the controller.
-    var occupiesTarget: Bool {
+    public var reservesTarget: Bool {
         switch status {
         case .expired, .invalidated, .reconciled: false
         default: true

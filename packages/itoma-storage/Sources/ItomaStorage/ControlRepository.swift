@@ -28,7 +28,7 @@ public struct ControlSnapshot: Equatable, Sendable {
 /// A connection is serialized locally; separate processes coordinate with SQLite transactions.
 /// This class is deliberately not Sendable. A controller owns it on one isolation domain.
 public final class ControlRepository {
-    static let schemaVersion: Int64 = 2
+    static let schemaVersion: Int64 = 3
     static let applicationID: Int64 = 0x49544F4D
     let database: SQLiteDatabase
     private let lock = NSRecursiveLock()
@@ -72,6 +72,7 @@ public final class ControlRepository {
                 """)
             try repository.database.execute("CREATE TABLE selections (ref TEXT PRIMARY KEY NOT NULL, targets BLOB NOT NULL, opaque_payload BLOB NOT NULL)")
             try repository.createCommandTables()
+            try repository.createGrantTables()
             try repository.database.execute("PRAGMA application_id=0x49544F4D")
             try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
             let data = try JSONEncoder().encode(initialPolicy)
@@ -122,14 +123,7 @@ public final class ControlRepository {
     public func setActivation(_ activation: Activation, expectedSequence: SnapshotSequence) throws -> ControlSnapshot {
         try serialized {
             try database.transaction(writer: true) {
-                let current = try loadSnapshot()
-                guard current.snapshotSequence == expectedSequence else { throw StorageError.conflict }
-                if current.activation != activation {
-                    try database.execute("UPDATE control_state SET activation=?,snapshot_sequence=? WHERE singleton=1", [
-                        .text(activation.rawValue), .integer(try current.snapshotSequence.next().rawValue)
-                    ])
-                }
-                return try loadSnapshot()
+                try updateActivation(activation, expectedSequence: expectedSequence)
             }
         }
     }
@@ -200,6 +194,15 @@ public final class ControlRepository {
                 try database.execute("SELECT command_id,kind,expected_revision,record,intent FROM commands LIMIT 0")
                 try database.execute("SELECT command_id,attempt,record FROM command_attempts LIMIT 0")
                 try database.execute("SELECT command_id,base_revision,proposed_policy FROM policy_candidates LIMIT 0")
+            } catch StorageError.databaseFailure { throw StorageError.corrupt }
+        }
+        if expected >= 3 {
+            do {
+                try database.execute("SELECT grant_id,command_id,target_ref,reserved,retired,record FROM grants LIMIT 0")
+                try database.execute("SELECT registration_id,grant_id,command_id,generation,record FROM registrations LIMIT 0")
+                try database.execute("SELECT command_id,grant_id FROM command_grant_results LIMIT 0")
+                try database.execute("SELECT activated_revision FROM policy_candidates LIMIT 0")
+                guard try database.rows("SELECT name FROM sqlite_master WHERE type='index' AND name='grants_one_reserved_target'") == [[.text("grants_one_reserved_target")]] else { throw StorageError.corrupt }
             } catch StorageError.databaseFailure { throw StorageError.corrupt }
         }
     }

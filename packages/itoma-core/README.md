@@ -97,6 +97,8 @@ managed cloudでは、runtimeのDocker手順に従って使用するdaemonを明
 
 Pending/Scheduling/Applying/Uncertain/Failedは解除の根拠にしない。ReblockPendingも解除せず、未終端の対象を予約する。新IDで迂回せず、controllerが同grantの明示的な再試行か終端への整理を行う。重複grant ID/command ID、同対象の複数未終端grantはエラー。`existing`は過去の記録の応答であり、再適用の許可ではない。同commandの**厳密なpayload一致**、並列受理の排他、登録receiptと世代の照合は#45/#47のcommand側でも必須。
 
+`TemporaryGrant.reservesTarget`は保存側の単一対象予約にも使う。失効後の再制限が不明になったことと、解除自体が有効なことは別で、保存側は`StoredGrant.hasEnded`も維持する。CoreのUncertain値だけから過去の失効を取り消さない。
+
 `GrantAssessment.grant`に返るExpired/Invalidated/Uncertainは、controllerが永続化して次の評価へ渡す論理記録。古い入力を破棄せず再利用すれば過去の失効を検出できない。terminalな記録は勝者/timezone/時計が戻っても解除へ復帰しない。nowがacceptedAtより前ならUncertainとし、時刻が進んでも自動でActiveに戻さない。プロセス停止中の全時計・認可変化の検出や時計改ざん耐性は保証しない。
 
 未来の切替が早まった場合、`shorteningRequired`は旧grantを保持して新期限を**提案**するだけ。新しい確定済み残時間を返さず、未準備の短縮を持つgrantを解除根拠にしない。編集時はcurrent policyの評価を維持したまま`preview`を表示し、取消/予定準備失敗なら候補を有効化しない。別ルールへの切替、対象除外、ruleVersion/occurrence変更は失効の確認対象。候補がルール内容を変えてversionを進めていなければ拒否する。
