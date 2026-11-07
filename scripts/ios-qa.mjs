@@ -4,7 +4,7 @@ import { appendFileSync, closeSync, existsSync, openSync, readFileSync, readdirS
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { annotationCommand, assertCleanSource, claimOutputDirectory, compilerDiagnostics, passedSwiftTestCount, simulatorSpec, smokeOutcome, validatedCommit, validatedSimulatorID } from './lib/ios-qa.mjs';
+import { assertCleanSource, claimOutputDirectory, createQAReporter, passedSwiftTestCount, simulatorSpec, smokeOutcome, validatedCommit, validatedSimulatorID } from './lib/ios-qa.mjs';
 
 if (process.platform !== 'darwin') throw new Error('iOS QA requires macOS/Xcode');
 const root = process.cwd();
@@ -50,10 +50,8 @@ function build(command, args, log, timeout, { cwd = root } = {}) {
   } finally { closeSync(fd); }
 }
 
-function checkpoint(stage) {
-  result.stages[stage] = 'pass'; record();
-  console.log(annotationCommand('notice', 'iOS QA stage', `${stage}: pass`));
-}
+const reporter = createQAReporter(result, { record });
+const checkpoint = reporter.checkpoint;
 
 try {
   result.sourceCommit = assertCleanSource(root, commit);
@@ -143,29 +141,23 @@ try {
   checkpoint('nativeBridge');
   result.status = 'pass';
 } catch (error) {
-  result.status = 'fail'; result.error = error.message;
-  if (error.tool) result.failedTool = error.tool;
-  console.log(annotationCommand('error', 'iOS QA', result.error));
-  if (error.logFile && existsSync(path.join(output, error.logFile))) {
-    for (const line of compilerDiagnostics(readFileSync(path.join(output, error.logFile), 'utf8'))) {
-      console.log(annotationCommand('error', 'Compiler/test diagnostic', line));
-    }
-  }
+  reporter.fail(error, error.logFile && existsSync(path.join(output, error.logFile))
+    ? readFileSync(path.join(output, error.logFile), 'utf8') : '');
   process.exitCode = 1;
 } finally {
   launcher?.kill('SIGTERM');
   if (launchLog !== undefined) closeSync(launchLog);
+  let cleanup;
   if (simulatorID) {
     // Only the UUID returned by OUR create call is ever targeted. Existing devices are untouched.
     try { run('xcrun', ['simctl', 'shutdown', simulatorID]); } catch { /* still attempt own deletion */ }
     try {
-      run('xcrun', ['simctl', 'delete', simulatorID]); result.cleanup = 'pass';
+      run('xcrun', ['simctl', 'delete', simulatorID]); cleanup = 'pass';
     } catch {
-      result.cleanup = 'failed'; result.status = 'fail'; result.error ??= 'Created Simulator cleanup failed'; process.exitCode = 1;
+      cleanup = 'failed';
     }
   }
-  result.completedAt = new Date().toISOString(); record();
-  // API-readable status/provenance remains useful even when artifact-host access is unavailable.
-  console.log(annotationCommand('notice', 'iOS QA result', JSON.stringify(result)));
+  reporter.finish(cleanup);
+  if (result.status === 'fail') process.exitCode = 1;
   console.log(`iOS QA ${result.status}: ${output}`);
 }
