@@ -3,6 +3,7 @@ const $ = selector => document.querySelector(selector);
 const e = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sample = createSample();
 const state = { idea:'calendar', week:1, date:DEFAULT_DATE, month:10, selectedDates:{10:DEFAULT_DATE}, scenario:'normal', app:'all', outcome:'all', drafts:{}, grants:{}, unlock:{app:'',reason:''} };
+let ruleFinished = false;
 const origin = Date.now();
 const ruleEnd = origin + 90*60000;
 let route = { view:'home' }, sheetTrigger, pendingNavigation;
@@ -87,9 +88,11 @@ function noteEditor() {
 }
 function home() {
   const remaining=Math.max(0,Math.ceil((ruleEnd-Date.now())/60000));
-  return `<div class="home-header"><div><p class="small-label">11月7日 土曜日</p><h2 class="home-heading" tabindex="-1">夜の時間</h2></div>${icons.circle}</div><div class="ring" role="img" aria-label="夜の時間、残り${duration(remaining)}、23時終了"><svg viewBox="0 0 240 240" aria-hidden="true"><circle class="track" cx="120" cy="120" r="112"/><circle class="progress" id="rule-progress" cx="120" cy="120" r="112" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100-remaining/120*100}"/></svg><div class="ring-copy"><p>制限終了まで</p><strong id="rule-remaining">${duration(remaining)}</strong><p class="end">23:00に終了</p></div></div><div class="purpose">${icons.book}<div><span class="small-label">大切にしたいこと</span><p>寝る前に、本を読む余白を。</p></div></div><div class="app-list">${['X','YouTube'].map(app=>`<div class="app-row"><span class="app-icon" aria-hidden="true">${app==='X'?'X':'▶'}</span><span>${app}</span>${state.grants[app]?`<button class="restore" data-restore="${app}">制限に戻す</button><span class="app-state" data-grant="${app}"></span>`:'<span class="app-state">制限中（デモ）</span>'}</div>`).join('')}</div><div class="actions"><a class="primary" href="#unlock">一時解除する</a></div><a class="link-row home-history" href="#history/${state.idea}"><span>これまでの時間を振り返る</span>${icons.arrow}</a><p class="caption">時間の記録と、自分で残したひと言を。</p>`;
+  const running=Date.now()<ruleEnd;
+  return `<div class="home-header"><div><p class="small-label">11月7日 土曜日</p><h2 class="home-heading" tabindex="-1">夜の時間</h2></div>${icons.circle}</div>${running?`<div class="ring" role="img" aria-label="夜の時間、残り${duration(remaining)}、23時終了"><svg viewBox="0 0 240 240" aria-hidden="true"><circle class="track" cx="120" cy="120" r="112"/><circle class="progress" id="rule-progress" cx="120" cy="120" r="112" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100-remaining/120*100}"/></svg><div class="ring-copy"><p>制限終了まで</p><strong id="rule-remaining">${duration(remaining)}</strong><p class="end">23:00に終了</p></div></div>`:`<div class="empty">${icons.circle}<h3>夜の時間が終わりました</h3><p>23:00までの時間設定が終了しました。</p></div>`}<div class="purpose">${icons.book}<div><span class="small-label">大切にしたいこと</span><p>寝る前に、本を読む余白を。</p></div></div><div class="app-list">${['X','YouTube'].map(app=>`<div class="app-row"><span class="app-icon" aria-hidden="true">${app==='X'?'X':'▶'}</span><span>${app}</span>${state.grants[app]?`<button class="restore" data-restore="${app}">制限に戻す</button><span class="app-state" data-grant="${app}"></span>`:`<span class="app-state">${running?'制限中（デモ）':'このルールは終了'}</span>`}</div>`).join('')}</div>${running?'<div class="actions"><a class="primary" href="#unlock">一時解除する</a></div>':''}<a class="link-row home-history" href="#history/${state.idea}"><span>これまでの時間を振り返る</span>${icons.arrow}</a><p class="caption">時間の記録と、自分で残したひと言を。</p>`;
 }
 function unlock() {
+  if(Date.now()>=ruleEnd)return `<a class="back" href="#home">‹ ホームに戻る</a>`+heading('夜の時間','時間設定が終了しました','一時解除の操作は行いません。入力した理由は再読込まで保持します。');
   return `<a class="back" href="#home">‹ ホームに戻る</a>`+heading('一時解除','いま、何のために開きますか？','必要なアプリをひとつ選び、自分の言葉で。')+`<fieldset><legend>一時解除するアプリ</legend>${['X','YouTube'].map(app=>`<label class="choice"><span class="app-icon" aria-hidden="true">${app==='X'?'X':'▶'}</span><span>${app}</span><input type="radio" name="unlock-app" value="${app}" ${state.unlock.app===app?'checked':''} ${state.grants[app]?'disabled':''} aria-label="${app}${state.grants[app]?'、一時解除中':''}"></label>`).join('')}</fieldset><div class="note-form"><label for="unlock-reason">いま使う理由</label><textarea id="unlock-reason" maxlength="200" aria-describedby="unlock-help">${e(state.unlock.reason)}</textarea><p class="caption" id="unlock-help">自分の言葉で、ひと言から。</p></div><div class="actions"><button class="primary" data-action="cancel-unlock">制限を続ける</button><button class="secondary" data-action="review-unlock" ${validUnlock()?'':'disabled'}>解除に進む</button></div>`;
 }
 const validUnlock = () => Boolean(state.unlock.app&&state.unlock.reason.trim()&&!state.grants[state.unlock.app]&&Date.now()<ruleEnd);
@@ -183,6 +186,8 @@ document.addEventListener('submit',event=>{
 function announce(message){$('#announcement').textContent=message;}
 function tick(){
   const now=Date.now();let expired=false;
+  $('.statusbar span').textContent=time((1290+Math.floor((now-origin)/60000))%1440);
+  if(now>=ruleEnd&&!ruleFinished){ruleFinished=true;state.grants={};if(['home','unlock','review'].includes(route.view)){render();return;}}
   for(const [app,grant] of Object.entries(state.grants)){if(now>=grant.until){delete state.grants[app];expired=true;}else{const label=$(`[data-grant="${app}"]`);if(label)label.textContent=`残り${Math.ceil((grant.until-now)/60000)}分`;}}
   if(expired&&route.view==='home'){render();return;}
   const remaining=$('#rule-remaining');if(remaining){const minutes=Math.max(0,Math.ceil((ruleEnd-now)/60000));remaining.textContent=duration(minutes);$('#rule-progress').setAttribute('stroke-dashoffset',String(100-Math.max(0,Math.min(1,(ruleEnd-now)/(120*60000)))*100));$('.ring').setAttribute('aria-label',`夜の時間、制限終了まで${duration(minutes)}、23時に終了`);}
