@@ -8,27 +8,33 @@ import Testing
 private func id<Kind>(_ n: Int) -> EntityID<Kind> { EntityID(UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", n))!) }
 private func instant(_ n: Double = 43_200) throws -> Instant { try Instant(secondsSince1970: n) }
 
-@ItomaControlActor private final class Contexts: EvaluationContextProvider {
+@ItomaControlActor final class Contexts: EvaluationContextProvider {
     var now: Instant
     var authorization: AuthorizationStatus = .approved
     var zone: TimeZoneID
+    var readCount = 0
+    var onRead: (@ItomaControlActor (Int) -> AuthorizationStatus)?
     init() throws { now = try instant(); zone = try TimeZoneID("UTC") }
     func context(activation: Activation) -> EvaluationContext {
-        EvaluationContext(now: now, timeZone: zone, authorization: AuthorizationObservation(status: authorization, observedAt: now), activation: activation)
+        readCount += 1
+        if let onRead { authorization = onRead(readCount) }
+        return EvaluationContext(now: now, timeZone: zone, authorization: AuthorizationObservation(status: authorization, observedAt: now), activation: activation)
     }
 }
 
-@ItomaControlActor private final class IDs: ControlIdentifiers {
+@ItomaControlActor final class IDs: ControlIdentifiers {
     var counter = 1_000
     func registrationID() -> RegistrationID { counter += 1; return id(counter) }
     func evaluationID() -> EvaluationID { counter += 1; return id(counter) }
     func eventID() -> EventID { counter += 1; return id(counter) }
 }
 
-@ItomaControlActor private final class Scheduler: DeadlineScheduler {
+@ItomaControlActor final class Scheduler: DeadlineScheduler {
     let contexts: Contexts
     var requests: [DeadlineRegistration] = []
     var cancellations: [RegistrationID] = []
+    var cancellationResponse: DeadlineCancellationResult = .accepted
+    var cancelHook: (@ItomaControlActor (DeadlineRegistration) async throws -> Void)?
     var response: DeadlineScheduleResult?
     var hook: (@ItomaControlActor (DeadlineRegistration) async throws -> Void)?
     init(contexts: Contexts) { self.contexts = contexts }
@@ -40,11 +46,14 @@ private func instant(_ n: Double = 43_200) throws -> Instant { try Instant(secon
             scheduledFor: registration.scheduledFor, acceptedAt: contexts.now))
     }
     func cancel(_ registration: DeadlineRegistration) async -> DeadlineCancellationResult {
-        cancellations.append(registration.id); return .accepted
+        cancellations.append(registration.id)
+        do { try await cancelHook?(registration) }
+        catch { Issue.record("Cancel fixture hook failed"); return .unknown(.unknown) }
+        return cancellationResponse
     }
 }
 
-@ItomaControlActor private final class Restriction: RestrictionAdapter {
+@ItomaControlActor final class Restriction: RestrictionAdapter {
     var plans: [Evaluation] = []
     var response: RestrictionApplicationResult = .accepted(.writeAttempt)
     var hook: (@ItomaControlActor (Evaluation) throws -> Void)?
@@ -56,7 +65,7 @@ private func instant(_ n: Double = 43_200) throws -> Instant { try Instant(secon
     }
 }
 
-@ItomaControlActor private final class Fixture {
+@ItomaControlActor final class Fixture {
     let directory: URL
     let url: URL
     let repository: ControlRepository
@@ -86,7 +95,7 @@ private func instant(_ n: Double = 43_200) throws -> Instant { try Instant(secon
             expectedOccurrence: #require(evaluation.rules.targets[id(target)]?.winner?.key), condition: UnlockCondition.reason("fixture"))
         return try repository.write { try $0.acceptGrant(command: command, request: request, context: context, expectedSequence: snapshot.snapshotSequence) }.grant
     }
-    func remove() { scheduler.hook = nil; restriction.hook = nil; try? repository.close(); try? FileManager.default.removeItem(at: directory) }
+    func remove() { scheduler.hook = nil; scheduler.cancelHook = nil; restriction.hook = nil; contexts.onRead = nil; try? repository.close(); try? FileManager.default.removeItem(at: directory) }
 }
 
 private func sql(_ url: URL, _ text: String) throws -> Int32 {
@@ -243,7 +252,8 @@ func restrictionFailureOrUncertaintyIsPersistedWithoutAnActiveExemption(unknown:
     #expect(f.restriction.plans.count == 1)
     #expect(try f.repository.command(id(1))?.status == .applying)
     #expect(try f.repository.grant(id(1))?.grant.status == .applying)
-    #expect(try f.repository.readSnapshot().application?.observation.status == .applying)
+    #expect(try f.repository.readSnapshot().application?.observation.status != .applied)
+    #expect(try f.repository.readSnapshot().application?.observation.validUntil == nil)
     #expect(try f.repository.registration(f.scheduler.requests[0].id)?.status == .registered)
     #expect(f.scheduler.cancellations.isEmpty)
     _ = try await f.service.executeAcceptedGrant(commandID: id(1))
@@ -314,7 +324,7 @@ func authorizationLossAfterApplyDoesNotTranslateTheCoreGateIntoAStoreClear(statu
     let result = try await f.service.executeAcceptedGrant(commandID: id(2))
     #expect(result.disposition == .uncertain)
     let snapshot = try f.repository.readSnapshot()
-    #expect(snapshot.application?.observation.status == .applying)
+    #expect(snapshot.application?.observation.status != .applied)
     #expect(snapshot.application?.observation.validUntil == nil)
     #expect(try f.repository.command(id(2))?.status == .applying)
 }
@@ -364,7 +374,7 @@ func authorizationLossAfterApplyDoesNotTranslateTheCoreGateIntoAStoreClear(statu
     let registered = try DeadlineRegistration(id: preparing.id, grantID: preparing.grantID, commandID: preparing.commandID,
         generation: preparing.generation, policyRevision: preparing.policyRevision, scheduledFor: preparing.scheduledFor, status: .registered, receipt: receipt)
     _ = try f.repository.write { try $0.recordRegistration(registered, expected: preparing) }
-    let started = try f.service.beginApplication(commandID: id(1), registrationID: preparing.id)
+    let started = try f.service.beginApplication(commandID: id(1), registrationID: preparing.id, attempt: owner.attempt)
     guard case let .ready(markerID) = started else { Issue.record("Expected durable Applying fixture"); return }
     _ = try f.accept(2, target: 2)
     _ = try await f.service.executeAcceptedGrant(commandID: id(2))
@@ -372,7 +382,7 @@ func authorizationLossAfterApplyDoesNotTranslateTheCoreGateIntoAStoreClear(statu
     #expect(otherCommit?.observation.status == .applied)
     #expect(otherCommit?.evaluation.id != markerID)
     let count = f.restriction.plans.count
-    let resumed = try f.service.finalizeGrant(commandID: id(1), registrationID: preparing.id, applicationID: markerID)
+    let resumed = try f.service.finalizeGrant(commandID: id(1), registrationID: preparing.id, applicationID: markerID, attempt: owner.attempt)
     #expect(resumed.disposition == .requiresRecovery)
     #expect(f.restriction.plans.count == count)
     #expect(try f.repository.readSnapshot().application == otherCommit)
@@ -393,4 +403,50 @@ func authorizationLossAfterApplyDoesNotTranslateTheCoreGateIntoAStoreClear(statu
     f.contexts.authorization = .approved
     #expect(throws: GrantEvaluationError.activationRequired) { try f.accept(3, target: 2) }
     #expect(try f.repository.readSnapshot().activation == .awaitingReauthorizationConfirmation)
+}
+
+@Test @ItomaControlActor func aLateOldRegistrationFailureCannotFailANewerAttempt() async throws {
+    let f = try Fixture(); defer { f.remove() }
+    _ = try f.accept()
+    f.scheduler.hook = { old in
+        try f.repository.write { tx in
+            let storedCommand = try tx.command(id(1)), storedGrant = try tx.grant(id(1))
+            let command = try #require(storedCommand), grant = try #require(storedGrant).grant
+            let uncertain = try Command(id: command.id, kind: command.kind, status: .uncertain, expectedPolicyRevision: command.expectedPolicyRevision,
+                attempt: command.attempt, reasonRef: command.reasonRef)
+            _ = try tx.recordCommand(uncertain, expected: command)
+            let pending = try Command(id: command.id, kind: command.kind, status: .pending, expectedPolicyRevision: command.expectedPolicyRevision,
+                attempt: command.attempt.next(), reasonRef: command.reasonRef)
+            _ = try tx.recordCommand(pending, expected: uncertain)
+            let scheduling = try Command(id: pending.id, kind: pending.kind, status: .scheduling, expectedPolicyRevision: pending.expectedPolicyRevision,
+                attempt: pending.attempt, reasonRef: pending.reasonRef)
+            _ = try tx.recordCommand(scheduling, expected: pending)
+            let next = try DeadlineRegistration(id: id(99_999), grantID: grant.id, commandID: command.id, generation: old.generation.next(),
+                policyRevision: old.policyRevision, scheduledFor: old.scheduledFor, status: .preparing)
+            _ = try tx.recordRegistration(next)
+        }
+        f.scheduler.response = .rejected(.registrationFailure)
+    }
+    let result = try await f.service.executeAcceptedGrant(commandID: id(1))
+    #expect(result.disposition == .requiresRecovery)
+    #expect(try f.repository.command(id(1))?.attempt.rawValue == 1)
+    #expect(try f.repository.command(id(1))?.status == .scheduling)
+    #expect(try f.repository.grant(id(1))?.grant.status == .scheduling)
+    #expect(f.restriction.plans.isEmpty)
+}
+
+@Test @ItomaControlActor func grantPostOSContextFactsAlsoSurviveTheResultTransactionRollback() async throws {
+    let f = try Fixture(); defer { f.remove() }
+    _ = try f.accept(1, target: 1)
+    _ = try await f.service.executeAcceptedGrant(commandID: id(1))
+    _ = try f.accept(2, target: 2)
+    let changed = try TimeZoneID("Etc/GMT-1"), original = try TimeZoneID("UTC"), initial = f.restriction.plans.count
+    f.restriction.hook = { _ in
+        f.contexts.zone = f.restriction.plans.count == initial + 1 ? changed : original
+    }
+    #expect(try sql(f.url, "CREATE TRIGGER grant_post_os_failure BEFORE UPDATE ON application_state WHEN instr(CAST(NEW.record AS TEXT),'\"status\":\"applying\"')=0 BEGIN SELECT RAISE(ABORT,'fixture'); END") == SQLITE_OK)
+    let result = try await f.service.executeAcceptedGrant(commandID: id(2))
+    #expect(result.disposition == .uncertain)
+    for n in 1...2 { #expect(try f.repository.grant(id(n))?.hasEnded == true) }
+    #expect(try f.repository.readSnapshot().application?.observation.status != .applied)
 }

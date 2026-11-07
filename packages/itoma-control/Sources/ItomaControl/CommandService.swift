@@ -50,19 +50,19 @@ import ItomaStorage
         case let .accepted(receipt):
             guard receipt.registrationID == prepared.id, receipt.generation == prepared.generation,
                   receipt.scheduledFor == prepared.scheduledFor else {
-                return settleRegistrationFailure(prepared, uncertain: true, failure: .registrationFailure)
+                return settleRegistrationFailure(prepared, attempt: command.attempt, uncertain: true, failure: .registrationFailure)
             }
             do {
                 let registered = try registration(prepared, status: .registered, receipt: receipt)
                 _ = try repository.write { try $0.recordRegistration(registered, expected: prepared) }
             } catch { return result(commandID, .uncertain, .storageFailure) }
-        case let .rejected(failure): return settleRegistrationFailure(prepared, uncertain: false, failure: failure)
-        case let .unknown(failure): return settleRegistrationFailure(prepared, uncertain: true, failure: failure)
+        case let .rejected(failure): return settleRegistrationFailure(prepared, attempt: command.attempt, uncertain: false, failure: failure)
+        case let .unknown(failure): return settleRegistrationFailure(prepared, attempt: command.attempt, uncertain: true, failure: failure)
         }
         do {
-            switch try beginApplication(commandID: commandID, registrationID: prepared.id) {
+            switch try beginApplication(commandID: commandID, registrationID: prepared.id, attempt: command.attempt) {
             case let .resolved(stopped): return stopped
-            case let .ready(marker): return try finalizeGrant(commandID: commandID, registrationID: prepared.id, applicationID: marker)
+            case let .ready(marker): return try finalizeGrant(commandID: commandID, registrationID: prepared.id, applicationID: marker, attempt: command.attempt)
             }
         }
         catch {
@@ -78,10 +78,10 @@ import ItomaStorage
         guard !inFlight.contains(commandID) else { return result(commandID, .inProgress) }
         guard let command = try repository.command(commandID), command.kind == .requestTemporaryGrant,
               [.failed, .uncertain].contains(command.status) else { throw CommandServiceError.invalidState }
-        let ready = try repository.write { tx in
+        let ready = try observedTransaction { tx, capture in
             guard let live = try tx.command(commandID), live == command,
                   let stored = try tx.grantForCommand(commandID), !stored.hasEnded else { throw CommandServiceError.invalidState }
-            let snapshot = try tx.snapshot(), context = contexts.context(activation: snapshot.activation)
+            let snapshot = try tx.snapshot(), context = capture(snapshot.activation)
             if try settleStale(command, stored: stored, snapshot: snapshot, context: context, transaction: tx) { return false }
             _ = try tx.recordCommand(changing(command, status: .pending, attempt: command.attempt.next()), expected: command)
             _ = try tx.recordGrant(stored.grant.recording(status: .pending), expected: stored.grant)
@@ -93,10 +93,10 @@ import ItomaStorage
 
     func prepareGrant(_ command: Command) throws -> DeadlineRegistration? {
         try repository.requireOutsideTransaction()
-        return try repository.write { tx in
+        return try observedTransaction { tx, capture in
             guard try tx.command(command.id) == command, let stored = try tx.grantForCommand(command.id),
                   stored.grant.commandID == command.id else { throw CommandServiceError.invalidState }
-            let snapshot = try tx.snapshot(), context = contexts.context(activation: snapshot.activation)
+            let snapshot = try tx.snapshot(), context = capture(snapshot.activation)
             if try settleStale(command, stored: stored, snapshot: snapshot, context: context, transaction: tx) { return nil }
             let grant = stored.grant
             let preparing = try DeadlineRegistration(id: identifiers.registrationID(), grantID: grant.id, commandID: command.id,
@@ -143,32 +143,34 @@ import ItomaStorage
         return true
     }
 
-    func settleRegistrationFailure(_ prepared: DeadlineRegistration, uncertain: Bool, failure: OperationFailure) -> CommandRunResult {
+    func settleRegistrationFailure(_ prepared: DeadlineRegistration, attempt: AttemptNumber, uncertain: Bool, failure: OperationFailure) -> CommandRunResult {
         do {
-            try repository.write { tx in
+            let owned = try observedTransaction { tx, capture -> Bool in
                 guard let current = try tx.registration(prepared.id) else { throw CommandServiceError.invalidState }
                 _ = try tx.recordRegistration(registration(current, status: uncertain ? .unknown : .failed), expected: current)
                 guard let command = try tx.command(prepared.commandID), let stored = try tx.grant(prepared.grantID) else { throw CommandServiceError.invalidState }
+                guard command.attempt == attempt else { return false }
                 if command.status == .scheduling {
                     _ = try tx.recordCommand(changing(command, status: uncertain ? .uncertain : .failed), expected: command)
                     if !stored.hasEnded {
                         _ = try tx.recordGrant(stored.grant.recording(status: uncertain ? .uncertain : .failed), expected: stored.grant)
                     }
                 }
-                let context = try contexts.context(activation: tx.snapshot().activation)
+                let context = try capture(tx.snapshot().activation)
                 try history(command.id, at: context.now, transaction: tx)
+                return true
             }
-            return result(prepared.commandID, .committed, failure)
+            return result(prepared.commandID, owned ? .committed : .requiresRecovery, owned ? failure : .interrupted)
         } catch { return result(prepared.commandID, .uncertain, .storageFailure) }
     }
 
     /// Persist uncertainty before the external side effect, so a later rollback cannot restore an
     /// older Applied observation as if it confirmed the current store. No OS call happens here.
-    func beginApplication(commandID: CommandID, registrationID: RegistrationID) throws -> ApplicationStart {
-        try repository.write { tx in
-            guard let command = try tx.command(commandID), command.status == .scheduling,
+    func beginApplication(commandID: CommandID, registrationID: RegistrationID, attempt: AttemptNumber) throws -> ApplicationStart {
+        try observedTransaction { tx, capture in
+            guard let command = try tx.command(commandID), command.status == .scheduling, command.attempt == attempt,
                   let stored = try tx.grantForCommand(commandID) else { return .resolved(result(commandID, .requiresRecovery)) }
-            let snapshot = try tx.snapshot(), context = contexts.context(activation: snapshot.activation)
+            let snapshot = try tx.snapshot(), context = capture(snapshot.activation)
             if try settleStale(command, stored: stored, snapshot: snapshot, context: context, transaction: tx) { return .resolved(result(commandID, .committed)) }
             _ = try tx.recordCommand(changing(command, status: .applying), expected: command)
             let applying = try stored.grant.recording(status: .applying)
@@ -182,15 +184,16 @@ import ItomaStorage
         }
     }
 
-    func finalizeGrant(commandID: CommandID, registrationID: RegistrationID, applicationID: EvaluationID) throws -> CommandRunResult {
-        try repository.write { tx in
+    func finalizeGrant(commandID: CommandID, registrationID: RegistrationID, applicationID: EvaluationID, attempt: AttemptNumber) throws -> CommandRunResult {
+        try observedTransaction { tx, capture in
             guard let command = try tx.command(commandID), let stored = try tx.grantForCommand(commandID) else { throw CommandServiceError.invalidState }
             // A callback or another controller may have settled it during registration.
-            guard command.status == .applying else { return result(commandID, .requiresRecovery) }
-            let snapshot = try tx.snapshot(), context = contexts.context(activation: snapshot.activation)
+            guard command.status == .applying, command.attempt == attempt else { return result(commandID, .requiresRecovery) }
+            let snapshot = try tx.snapshot()
             guard snapshot.application?.evaluation.id == applicationID, snapshot.application?.observation.status == .applying else {
                 return result(commandID, .requiresRecovery, .interrupted)
             }
+            let context = capture(snapshot.activation)
             if try settleStale(command, stored: stored, snapshot: snapshot, context: context, transaction: tx) {
                 try markObservationUncertain(at: context.now, failure: .interrupted, transaction: tx)
                 return result(commandID, .committed)
@@ -209,7 +212,7 @@ import ItomaStorage
             let active = try applyingGrant.recording(status: .active)
             let plan = try evaluation(snapshot: tx.snapshot(), context: context, grants: all + [active])
             let applied = restriction.apply(plan)
-            let after = contexts.context(activation: snapshot.activation)
+            let after = capture(snapshot.activation)
             if after.authorization.status != .approved || after.activation != snapshot.activation {
                 // Missing authorization is not a request to clear the own store. Keep the outcome
                 // uncertain and leave protection installed; do not apply the Core gate's empty set.
@@ -232,7 +235,7 @@ import ItomaStorage
                 let remaining = try protectedGrants(context: after, transaction: tx)
                 let baseline = try evaluation(snapshot: tx.snapshot(), context: after, grants: remaining)
                 let recovery = restriction.apply(baseline)
-                let recoveredAt = contexts.context(activation: snapshot.activation)
+                let recoveredAt = capture(snapshot.activation)
                 try recordDenied(context: recoveredAt, transaction: tx)
                 if recoveredAt.authorization.status != .approved { _ = try protectedGrants(context: recoveredAt, transaction: tx) }
                 let validRecovery = recoveredAt.authorization.status == .approved && recoveredAt.activation == after.activation
@@ -268,9 +271,9 @@ import ItomaStorage
 
     /// A stored Active flag alone cannot authorize an exemption. Keep the old effective receipt
     /// during preparation of an unactivated candidate, but reject missing/fired/obsolete protection.
-    func protectedGrants(context: EvaluationContext, excluding: GrantID? = nil, transaction tx: ControlTransaction) throws -> [TemporaryGrant] {
+    func protectedGrants(context: EvaluationContext, excluding: GrantID? = nil, including: Set<GrantID>? = nil, transaction tx: ControlTransaction) throws -> [TemporaryGrant] {
         let policy = try tx.snapshot().policy
-        let originals = try tx.unfinishedGrants().filter { $0.grant.id != excluding }
+        let originals = try tx.unfinishedGrants().filter { $0.grant.id != excluding && (including?.contains($0.grant.id) ?? true) }
         let checked = try originals.map { stored -> TemporaryGrant in
             let grant = stored.grant
             guard grant.status == .active else { return grant }
