@@ -76,6 +76,14 @@ Swift共通ドメイン層で、PolicySnapshot・grant集合・now・timezone・
 
 Swift単体テストはR01/R02、R03の重複情報、R04の勝者選択、R06、R09のNY/Lord Howe/São Paulo/Apia固定instant、R10のtimezone再評価を扱う。R03の保存確認、R04のgrant適用、R10の時計変更時のgrant/復旧と、R05/R07/R08/R11〜R14はこの週次評価だけの検証に含めない。OS予定やiPhoneでの制限成功は未検証。
 
+### 一時解除の評価契約
+
+[#44](https://github.com/kzk-maeda/itoma/issues/44)の`GrantEvaluator`は週次評価を使い、単一対象のPending候補と、Activeなgrantに限った設定上の解除を算出する。未来の勝者切替まで検索し、初期期限を固定して実効期限は短縮だけを許す。失効した記録を引き継ぐことで、下位ルールへ戻った後やtimezone復帰時も再発行しない。
+
+`GrantEditEvaluator`は現在の勝者が同じでも未来の切替を比較し、旧/新期限・理由・本人確認の要否を返す。候補を捨てれば旧有効policy/期限は不変。短縮案と予定登録済みの有効期限は別で、計算だけでは新期限を有効化しない。確認後はsnapshotSequence・候補/入力・現在時刻で影響を再照合する。API・状態別の扱い・残るcontrollerの必須条件は[Package契約](../../packages/itoma-core/README.md#一時解除と編集影響を評価する)を参照。
+
+単体テストはR04/R05/R07/R08/R10/R11/R13/R14の純粋部分と、R12で候補破棄時に旧値を保持することを扱う。本人確認UI、R12の予定登録失敗、R14の登録中の割込みなどのI/O・排他は#47以降で検証する。テストで作ったActiveはOS反映の証拠ではない。
+
 | ID | 例 | 期待結果 |
 | --- | --- | --- |
 | R01 | 平日21→翌2、金曜23時/土曜1時/2時 | 前2つは金曜occurrence、2時は区間外 |

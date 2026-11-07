@@ -1,6 +1,6 @@
 # ItomaCore
 
-本体SwiftとExtensionで共有するための、UI・Expo・SQLite・Screen Timeに依存しないSwift Package。外部パッケージ依存はなく、Foundationと標準ライブラリだけを使う。[#42](https://github.com/kzk-maeda/itoma/issues/42)の値型・入力検証と、[#43](https://github.com/kzk-maeda/itoma/issues/43)の週次ルール評価を扱う。
+本体SwiftとExtensionで共有するための、UI・Expo・SQLite・Screen Timeに依存しないSwift Package。外部パッケージ依存はなく、Foundationと標準ライブラリだけを使う。[#42](https://github.com/kzk-maeda/itoma/issues/42)の値型、[#43](https://github.com/kzk-maeda/itoma/issues/43)の週次ルール、[#44](https://github.com/kzk-maeda/itoma/issues/44)の一時解除・編集影響の純粋評価を扱う。
 
 設計の根拠は[状態モデル](../../docs/system/domain-model.md)、[ルール](../../docs/system/rules.md)、[責務](../../docs/system/architecture.md)、[保存](../../docs/system/data.md)、ADR 0003〜0006（採用PR #36 / `6c17ac9`）。
 
@@ -79,8 +79,33 @@ managed cloudでは、runtimeのDocker手順に従って使用するdaemonを明
 
 `RuleEvaluation`はgrant適用前の中間結果で、最終`Evaluation`/OS適用記録とは別。認可不明時の空`desiredTargets`は、既存OS設定を削除してよい指示ではない。認可の鮮度、停止/再開の状態遷移、OS操作の可否はcontroller/adapter側で扱う。認可観測がapprovedでも再開承認待ちを自動解除しない。
 
+## 一時解除と編集影響を評価する
+
+| API | 出力と責務 |
+| --- | --- |
+| `UnlockCondition.reason` / `.dummyPayment` | 空白/改行だけの理由、選択取消を拒否。理由本文・金額・本文hashを値に保持しない。UIの本人確認の証拠ではない |
+| `GrantEvaluator.propose` | 現在のpolicy版・勝者occurrence・認可・Activation・モードを照合し、`proposed`には**Pending**のgrantだけを返す。同commandまたは同対象に未終端grantがあれば元の記録を`existing`で返し、新期限を作らない |
+| `GrantEvaluator.evaluate` | 現在の週次評価とgrantを照合。Activeかつ有効な単一対象だけをdesiredTargetsから除外。残時間、次境界、失効/時計不整合の記録、短縮が必要な提案を返す |
+| `GrantEditEvaluator.preview` | 未有効化の候補policyについて、旧/新期限・理由・影響対象・残る制限の勝者/モード・確認要否・新予定が必要な短縮を返す。有効policyやgrantを更新しない |
+| `GrantEditEvaluator.checkConfirmation` | 最終処理時に候補、base policy、snapshotSequence、選択、grant集合、認可/Activation/timezone、未来の影響を再照合。時計/sequence巻戻しや影響変更を拒否し、最新の評価を返す。sequenceだけが進み入力/影響が同じなら再確認を強制しない |
+| `TemporaryGrant.shortened(to:)` | ID・occurrence・acceptedAt・initialExpiresAt・statusを保った値の変換。現在のeffectiveExpiresAtを超える延長は拒否。変換だけでは保存/予定登録/有効化されない |
+
+新規の期限は`min(now + duration, 現occurrence終了, 次の勝者切替)`。duration省略時はpolicyの共通設定を使う。受理済みのinitialExpiresAtを固定し、既存grantには変更後のデフォルトを再適用しない。復元データも受理時から最大30分であることを検証する。週次検索はnowから30分を覆い、有効な全grant/要求の期限内の切替を確認する。
+
+時計巻戻しでacceptedAtがnowより未来になった場合も、次の再評価をこの30分の検索終端より後へ送らない。遠いgrant期限だけを次境界とすると、検索期間外にある週次ルールの開始を飛ばしてしまうため、終端までの再評価を必須にする。
+
+Pending/Scheduling/Applying/Uncertain/Failedは解除の根拠にしない。ReblockPendingも解除せず、未終端の対象を予約する。新IDで迂回せず、controllerが同grantの明示的な再試行か終端への整理を行う。重複grant ID/command ID、同対象の複数未終端grantはエラー。`existing`は過去の記録の応答であり、再適用の許可ではない。同commandの**厳密なpayload一致**、並列受理の排他、登録receiptと世代の照合は#45/#47のcommand側でも必須。
+
+`GrantAssessment.grant`に返るExpired/Invalidated/Uncertainは、controllerが永続化して次の評価へ渡す論理記録。古い入力を破棄せず再利用すれば過去の失効を検出できない。terminalな記録は勝者/timezone/時計が戻っても解除へ復帰しない。nowがacceptedAtより前ならUncertainとし、時刻が進んでも自動でActiveに戻さない。プロセス停止中の全時計・認可変化の検出や時計改ざん耐性は保証しない。
+
+未来の切替が早まった場合、`shorteningRequired`は旧grantを保持して新期限を**提案**するだけ。新しい確定済み残時間を返さず、未準備の短縮を持つgrantを解除根拠にしない。編集時はcurrent policyの評価を維持したまま`preview`を表示し、取消/予定準備失敗なら候補を有効化しない。別ルールへの切替、対象除外、ruleVersion/occurrence変更は失効の確認対象。候補がルール内容を変えてversionを進めていなければ拒否する。
+
+短縮を採用するcontrollerは、本人確認→予定登録/receipt保存→最終TX内で確認内容・期限・世代の再検証→値の短縮/候補有効化を行う。`checkConfirmation`はこのうち純粋な照合だけで、本人の承認や登録成功を自動的に証明しない。予定登録・取消・失敗時のrollbackをこのPackageで実行しない。取消で旧値を保つことは検証しても、実際の予定APIの障害注入は#47以降。
+
+テストのActive/観測等は合成した入力であり、OSに適用した記録ではない。R05/R07/R08/R11/R13/R14とD03〜D05/D07/D11/D12の純粋部分を検証し、DBでの同時受理やUI/OSを含む全体完了とは扱わない。
+
 ## 検証していないこと
 
-型を作れることと、その操作を今実行してよいことは別。grantの発行・単調短縮・再試行・失効は#44、保存/重複排他は#45、予定登録→解除の実行順序と障害注入は#47で実装する。structを再構築しただけで、同じgrantの延長防止や登録成功を保証しない。重複情報を返すことは、保存時の本人確認UIを実装したことではない。
+型や提案を作れることと、その操作を今実行してよいことは別。保存/重複排他は#45、予定登録→解除の実行順序と障害注入は#47で実装する。structを再構築しただけで、保存された全履歴での延長防止や登録成功を保証しない。重複/編集影響を返すことは、保存時の本人確認UIを実装したことではない。
 
 iOS向けのリンク、Expo Module・本体/Extensionへの組込みは#9/#14。対応iOS範囲、実機のOS API/期限精度は#8/#26で確認する。このLinuxでのコンパイル・単体テストを、SimulatorビルドやiPhoneのScreen Time動作の代わりにしない。

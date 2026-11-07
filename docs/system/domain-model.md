@@ -1,6 +1,6 @@
 # ドメインモデルと状態遷移
 
-状態: **採用済み・実装/実機未検証**（[PR #36](https://github.com/kzk-maeda/itoma/pull/36)、2026-11-06 JSTにmainへマージ）。[了承コメント](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。Issue [#22](https://github.com/kzk-maeda/itoma/issues/22)。判断理由は [ADR 0003](../adr/0003-domain-state.md)。実装・OS動作の検証済み宣言ではない。
+状態: **設計採用済み・実装の検証範囲は下記、実機未検証**（[PR #36](https://github.com/kzk-maeda/itoma/pull/36)、2026-11-06 JSTにmainへマージ）。[了承コメント](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)。Issue [#22](https://github.com/kzk-maeda/itoma/issues/22)。判断理由は [ADR 0003](../adr/0003-domain-state.md)。ドメイン全体・OS動作の検証済み宣言ではない。
 
 要望の根拠: [利用者回答](https://github.com/kzk-maeda/itoma/issues/22#issuecomment-6654445560)。ホームに現在の制限・次の開始・解除残時間を表示、編集中の破棄は確認、適用失敗でも設定を保持、解除期限は絶対日時、再認可後の再適用は本人に確認する。
 
@@ -96,6 +96,14 @@ OS操作に副作用がなかったと判断できる入力検証エラー等は
 値型の実装は[ItomaCore](../../packages/itoma-core/README.md)を参照。#42では識別子・版・時刻、policyと候補、command/grant/予定登録/観測の型と、構造的な入力検証を扱う。現在時刻・timezoneは`EvaluationContext`へ明示的に渡す。native token・理由本文・生のOSエラーは共通モデルへ持ち込まない。
 
 代表的な不正入力・policyの版付き復元はSwift単体テストで確認する。型の構築成功は操作許可やOS適用成功ではない。以下のDケース全体の状態遷移・同時操作・期限処理・OS復旧が実装/検証済みになったとは扱わない。
+
+### 一時解除の純粋評価
+
+[#44](https://github.com/kzk-maeda/itoma/issues/44)の[ItomaCore](../../packages/itoma-core/README.md#一時解除と編集影響を評価する)は、新規Pending候補、既存grantの有効性/残時間/失効、候補編集による短縮と確認内容の再照合を扱う。本人確認・予定登録・有効化・OS操作はcontrollerの責務に残す。現在のpolicyとは別に編集候補を評価し、計算だけでは旧policy/実効期限を変えない。
+
+失効や時計不整合は新しい論理記録として返し、次の評価へ永続化して引き継ぐ。terminalなgrantを再評価でActiveへ戻さない。Pending/Uncertain/Failed等の未終端記録で新しい要求を受けても同じ記録を返し、新期限を作らない。ID/同対象の破損した重複を任意の1件へ修復しない。厳密なpayload照合とプロセス間の同時受理は#45/#47で別途実装する。
+
+R/D表の該当部分は合成したSwift入力で検証する。新しい期限のOS予定登録、取消/登録失敗の実I/O、DB競合、iOS/実機の成功を証明するものではない。
 
 ## 実装へ渡す状態遷移テストケース
 
