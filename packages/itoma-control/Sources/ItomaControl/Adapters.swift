@@ -61,4 +61,6 @@ public struct CommandRunResult: Sendable {
     public let failure: OperationFailure?
 }
 
-public enum CommandServiceError: Error, Equatable, Sendable { case invalidCommand, invalidState }
+public enum CommandServiceError: Error, Equatable, Sendable {
+    case invalidCommand, invalidState, confirmationRequired, confirmationChanged, superseded
+}

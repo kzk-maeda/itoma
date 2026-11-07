@@ -145,3 +145,5 @@ Expo Routerを継続。ホームはsnapshot表示、編集はdraft専用ViewMode
 control schema5は最新の試行plan/観測を保持し、移行前の証拠を捏造しない。同期OS操作とcommitの隙間はUncertainとして残す。新規解除の単体ゲートを候補編集[#84](https://github.com/kzk-maeda/itoma/issues/84)、callback/停止/不整合復旧[#85](https://github.com/kzk-maeda/itoma/issues/85)、実API/実機#49/#50/#52の完了へ拡張解釈しない。
 
 OS前にApplying観測を独立commitし、最終writerで同じevaluationIDを照合する。結果rollbackで旧Appliedを復元せず、別processが更新したmarkerからOS操作を始めない。全grantのCore失効recordを引き継ぎ、timezone/認可が戻っても旧解除を復活させない。認可不明のCore空集合をstore削除へ使わず、確定Deniedでは本人のpaused意図を保ちつつenabledを確認待ちへ移す。
+
+[#84](https://github.com/kzk-maeda/itoma/issues/84)は候補編集の全件準備・receipt永続化・確認/世代の再検証・原子的有効化・成功後の旧予定取消を接続する。現在policyの観測済み失効は候補とは独立して保存し、確認失敗で巻戻さない。OS操作中の観測も保持して結果TX失敗後に現在policyで再保存を試み、候補仕様だけの変更を先に適用しない。古いattemptのAPI応答は新attemptを変更しない。保存済み希望policyとOS反映結果を分け、未認可の設定保存から空の解除planを作らない。

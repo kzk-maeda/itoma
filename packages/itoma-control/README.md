@@ -51,4 +51,17 @@ docker run --rm --network none \
 
 managed cloudのDocker/proxy/CAはruntime手順に従う。テストは通信なし・ソースread-only、生成物/DBは一時領域。fake I/Oと実SQLiteでawait/commit境界、重複、期限、登録/保存/同期適用の失敗を注入する。iOSビルド・Simulator・実機・App Group・Screen Timeの証拠ではない。
 
-候補編集/全grant短縮と旧予定取消は#84、callback/停止/不整合復旧は#85。親#47は全子の検証まで閉じない。実OSの予定成立は#50、実解除/再制限は#52で確認する。
+## 候補編集・複数grantの短縮
+
+[#84](https://github.com/kzk-maeda/itoma/issues/84)の`previewCandidate`/`executeAcceptedCandidate`は、Coreの確認内容を入口・登録後・最終writerで照合する。現在policy/contextに由来する失効は候補とは別に先に保存し、そのcaptured contextを確認に再利用する。候補のモード/ルール変更による失効は、候補有効化まで適用しない。
+
+- 全shorten grantのPreparingを一括commitし、lock外で登録、receiptを別commitする。1件の失敗/不明/保存失敗でも旧policy/期限/保護を維持する。
+- baseの古い候補はSuperseded。確認対象・context・影響が変われば未反映のまま再確認を要求する。`retryCandidate`は未有効化のFailed/Uncertainに新attemptを付け、古いAPI応答が新attemptを失敗させないよう照合する。
+- OS前のApplying markerは有効なbase contextを表し、候補を現在のpolicyとして見せない。最終marker照合後、全grant変更とpolicyを原子的に有効化し、同期plan・結果/観測を保存する。
+- 登録済みの希望policyは、store操作が失敗/不明でも保存できる。その場合は適用済みとせず旧保護を取り消さない。既に有効化した候補をbase+1として再実行せず、最新状態のReconcilerへ進む。
+- 必要な新保護と新状態の成功commit後だけ、lock外で不要な旧予定を取消す。取消不明は記録し、新期限を延長したりpolicyを戻したりしない。
+- 未認可で新解除を伴わない設定保存は可能。OSの空planは適用せず、観測を不明として保存する。
+
+OS操作中のtimezone/認可等の観測も保持し、結果TX失敗後は現在policyに由来するnegative factsを独立TXへ再保存する。観測表の更新をさらに分け、そこだけの故障でgrant失効を戻さない。古いcontextは観測時に存在したgrantへ限定し、後発grantへ適用しない。候補だけの変更はreplayせず、rollback後の有効policyを正本にする。control DB自体が書けない場合はUncertainのまま復旧が必要であり、全保存成功を保証しない。
+
+callback/停止/不整合復旧は#85。親#47は全子の検証まで閉じない。実OSの予定成立は#50、実解除/再制限は#52で確認する。
