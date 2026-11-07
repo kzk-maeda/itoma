@@ -1,17 +1,17 @@
 # ItomaStorage
 
-ItomaCoreの外側で、iOS標準のSQLite C APIを包む薄いSwift Package。UI・Expo・Screen Timeには依存せず、理由本文の保存先でもない。#45を[#69](https://github.com/kzk-maeda/itoma/issues/69) snapshot、[#70](https://github.com/kzk-maeda/itoma/issues/70) command/候補、[#71](https://github.com/kzk-maeda/itoma/issues/71) grant/receiptへ分割し、この段階はsnapshotとcommand/候補までを扱う。
+ItomaCoreの外側で、iOS標準のSQLite C APIを包む薄いSwift Package。UI・Expo・Screen Timeには依存せず、理由本文の保存先でもない。#45を[#69](https://github.com/kzk-maeda/itoma/issues/69) snapshot、[#70](https://github.com/kzk-maeda/itoma/issues/70) command/候補、[#71](https://github.com/kzk-maeda/itoma/issues/71) grant/receiptへ分割して実装する。
 
 ## 保存の契約
 
 - `ControlRepository.create`は本人/初期化controllerが明示的に新規作成するときだけ使う。O_EXCLで新しいファイルを取得し、SQLiteはCREATEなしで開く。既存・空・破損・保護で読めないDBを初期化しない。途中で作成に失敗したファイルも自動消去しない。
-- `open`は既存DB専用。schemaVersion 2、application_id `0x49544F4D`、quick_check、WALと論理snapshotを検証。各TX内でもschema/app IDを再確認し、別接続で移行された後の古い接続は読み書きしない。未対応版をdown-migrateしない。schema1からは本体が明示的に`migrate`を呼び、writer TXでcommand表を追加してから版を進める。Extensionのopenは自動移行しない。移行失敗時はDDL/版ともrollbackし、設定を消さない。
+- `open`は既存DB専用。schemaVersion 3、application_id `0x49544F4D`、quick_check、WALと論理snapshotを検証。各TX内でもschema/app IDを再確認し、別接続で移行された後の古い接続は読み書きしない。未対応版をdown-migrateしない。schema1/2からは本体が明示的に`migrate`を呼び、writer TXでcommand/grant/registration表を追加してから版を進める。Extensionのopenは自動移行しない。移行失敗時はDDL/版ともrollbackし、設定を消さない。
 - 有効policyとlast-valid policyは独立BLOB、policyRevision/snapshotSequence/Activationは明示列。不透明Selectionはref・正規化済みtargetRef集合・token用opaque bytesとして別表に保存する。policy復元はCoreの検証済みdecoderを通し、列のrevisionとも一致させる。他のCore値をDB形式へ自動採用しない。
 - `readSnapshot`は短いread TX。`setActivation`/`putSelection`はBEGIN IMMEDIATEの短いwriter TXでsnapshotSequenceをCASし、変更時に進める。policyRevision/ruleVersionは進めない。各接続内も同期排他し、クラスはSendableにしない。公開writer scopeは同期closureのみ。予定登録・認可要求・UI待機等のawaitは外で行い、#47での短い最終同期OS操作だけをTX内へ接続する。
 - Selectionのrefは不変。新しい対象選択は新refを準備し、後続の候補policyとruleVersion更新で有効化する。参照先を先に書き換えて現在のruleを変えない。targetRefはadapterがnative tokenの同一性で正規化し、名前/encoded bytes/hashで生成しない。
 - SQLiteエラーはbusy/corrupt/unavailable等の固定分類だけ。SQL・ファイルパス・token・理由本文をエラーへ含めない。失敗はrollbackし、空設定の成功へ置換しない。WALはwriterの同時成功を意味しない。
 
-この段階のActivationは保存した本人の意図であり、OS反映や再制限成功ではない。grantを伴う有効化は#71/#47で接続する。last-valid policyもDB全体の破損復旧を保証せず、自動復旧や古いgrantの復活に使わない。
+この段階のActivationは保存した本人の意図であり、OS反映や再制限成功ではない。変更時には未終端grantも同じTXで失効させ、再開で昔の解除を戻さない。OS実行は#47以降で接続する。last-valid policyもDB全体の破損復旧を保証せず、自動復旧や古いgrantの復活に使わない。
 
 ## commandと候補のtransaction
 
@@ -23,7 +23,18 @@ ItomaCoreの外側で、iOS標準のSQLite C APIを包む薄いSwift Package。U
 - Succeeded/Cancelled/Superseded/Expiredは再実行へ戻せない。候補データは取消/失敗後も保持し、Applyingのcommandだけが最終CASへ進める。
 - `activateCandidate`は有効policyのbaseを再確認して、last-valid policy・新policy・版・sequenceを同じwriter TXで切り替える。失敗/割込みのrollback後も、先に受理した候補とcommandは残る。
 
-`activateCandidate`は保存の最終CAS primitiveであり、本人確認・OS予定受理・期限再確認を証明しない。grant/receiptの保存チェックは#71、全ての実行前提とモックI/Oの順序は#47で組み合わせる。commandの保存/成功状態だけをOS成功の証拠にしない。
+`activateCandidate`はCoreで影響を再計算し、必要な確認と全grantの変更を照合する。短縮には候補command・policy版・新期限へ束縛した最新のRegistered/未発火receiptが必要で、一部だけの成功ではpolicy/grantともcommitしない。候補の有効化記録も保持し、未有効化候補のreceiptを通常の解除へ使わない。全体のOS実行前提とモックI/Oの順序は#47で組み合わせ、保存/成功状態だけをOS成功の証拠にしない。
+
+## grant・登録事実・耐障害境界
+
+- `acceptGrant`はCoreへ現在policy/時刻/選択を渡し、Pending grantとcommandを同じTXで受理。Coreの`reservesTarget`からSQLの予約フラグを作り、UNIQUE partial indexでも1対象1未終端grantを保証する。読取時は予約フラグ・payload・owner intentの不一致を拒否する。
+- 同対象の既存grantに合流した別commandも、Superseded結果と解決先grant参照を永続化する。同IDの遅延再送は元のgrant/期限を返し、終端後に新しい5分を作らない。新しい本人操作には新commandIDが必要。理由本文は持たず、reason modeにはprivate Prepared理由への参照を要求する（実際のPrepared保存は#46）。
+- initialExpiresAt・acceptedAt・対象/occurrence・owner IDは不変。非終端grantの短縮は汎用`recordGrant`で行わず、候補確認＋登録照合を伴う原子的な変更へ限定する。Pending/Uncertainへstatusを落としても迂回できない。終端失効・即時再制限は新予定の失敗だけで妨げない。
+- `StoredGrant.hasEnded`は一度立つと戻さない。失効後の再制限がUncertain/Failedになっても、同grantをApplying/Activeへ戻さない。Coreの論理grantと、過去の終端を維持する保存上の事実を分け、再制限確認中は対象の予約を維持する。Reconciledは変更せず、古いcallbackで処理を復活させない。
+- registrationはPreparingを先にcommitし、API呼出しの外部事実を後のTXで保存する。receipt/firedAtの最初の追加はstatusに依存せず同じ未commitのPreparing scopeでは拒否。receiptを記録した同じTX内で最終適用/候補有効化することも拒否する。
+- 登録ID・grant/command ID・policy/candidate版・世代・予定時刻は不変。世代は0から増やし、receipt/発火済みの事実を消さない。最新世代・Registered・未発火・一致する期限・現在時刻/Activation/勝者を確認してからApplying/Activeへ進める。古い世代への発火記録は保持できても、新しいgrant/期限を変更しない。
+
+登録receiptはadapterが記録したAPI受理の事実であり、OSが発行する署名や配信保証ではない。writer scopeに実OSを呼ぶコードはなく、勝手な副作用をDBが取り消せるわけでもない。#47のcontrollerが、intent/Preparing commit→登録API（lock外）→receipt commit→最終再検証/短い同期OS操作/結果commitの順序を守る。テストのActive/receiptは合成データで、Screen Timeを動かした証拠にしない。
 
 ## 検証する
 

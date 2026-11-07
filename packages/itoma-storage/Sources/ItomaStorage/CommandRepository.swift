@@ -10,9 +10,11 @@ public struct CommandAcceptance: Equatable, Sendable {
 /// Scope-limited synchronous writer. A controller may perform only short synchronous final OS
 /// operations here; registration, prompts and every await belong outside the transaction.
 public final class ControlTransaction {
-    private let repository: ControlRepository
+    let repository: ControlRepository
     private var active = true
     private var rollbackOnly = false
+    var registrationsCreatedHere: Set<RegistrationID> = []
+    var receiptsWrittenHere: Set<RegistrationID> = []
     init(repository: ControlRepository) { self.repository = repository }
     func finish() { active = false }
     private func checkScope() throws {
@@ -59,13 +61,8 @@ public final class ControlTransaction {
             guard candidate.proposedPolicy.rules.filter(\.enabled).allSatisfy({ refs.contains($0.selectionRef) }) else {
                 throw StorageError.invalidSelection
             }
-            try repository.database.execute("INSERT INTO commands VALUES (?,?,?,?,?)", [
-                .text(command.id.rawValue.uuidString), .text(command.kind.rawValue),
-                .integer(command.expectedPolicyRevision.rawValue), .blob(try JSONEncoder().encode(CommandDTO(command))),
-                .blob(try JSONEncoder().encode(intent))
-            ])
-            try repository.storeAttempt(command)
-            try repository.database.execute("INSERT INTO policy_candidates VALUES (?,?,?)", [
+            try repository.insertCommand(command, intent: intent)
+            try repository.database.execute("INSERT INTO policy_candidates(command_id,base_revision,proposed_policy) VALUES (?,?,?)", [
                 .text(command.id.rawValue.uuidString), .integer(candidate.expectedRevision.rawValue),
                 .blob(try JSONEncoder().encode(candidate.proposedPolicy))
             ])
@@ -97,19 +94,27 @@ public final class ControlTransaction {
         }
     }
 
-    /// Final CAS primitive. Confirmation/registration prerequisites are controller responsibilities;
-    /// later grant/receipt support adds their storage checks before this primitive is connected.
-    public func activateCandidate(commandID: CommandID, expectedSequence: SnapshotSequence) throws -> ControlSnapshot {
+    /// Final CAS plus grant/registration checks. UI approval and actual OS effects remain external.
+    public func activateCandidate(
+        commandID: CommandID, expectedSequence: SnapshotSequence, context: EvaluationContext? = nil,
+        confirmation: PolicyEditAssessment? = nil, grantChanges: [RegisteredGrantChange] = []
+    ) throws -> ControlSnapshot {
         return try checked {
             let current = try repository.loadSnapshot()
             guard current.snapshotSequence == expectedSequence,
                   let command = try repository.loadCommand(commandID)?.command, command.status == .applying,
                   let candidate = try repository.loadCandidate(commandID) else { throw StorageError.conflict }
             try repository.validateCandidate(candidate, against: current.policy)
+            try repository.applyCandidateGrantChanges(candidate: candidate, current: current, context: context,
+                                                       confirmation: confirmation, changes: grantChanges,
+                                                       uncommittedReceipts: receiptsWrittenHere)
             try repository.database.execute("""
                 UPDATE control_state SET last_valid_policy=policy,policy=?,policy_revision=?,snapshot_sequence=? WHERE singleton=1
                 """, [.blob(try JSONEncoder().encode(candidate.proposedPolicy)), .integer(candidate.proposedPolicy.revision.rawValue),
                       .integer(try current.snapshotSequence.next().rawValue)])
+            try repository.database.execute("UPDATE policy_candidates SET activated_revision=? WHERE command_id=?", [
+                .integer(candidate.proposedPolicy.revision.rawValue), .text(commandID.rawValue.uuidString)
+            ])
             return try repository.loadSnapshot()
         }
     }
@@ -165,14 +170,15 @@ extension ControlRepository {
         try repository.database.transaction(writer: true) {
             let rows = try repository.database.rows("PRAGMA user_version")
             guard case let .integer(version) = rows.first?.first else { throw StorageError.corrupt }
-            guard version == 1 || version == Self.schemaVersion else { throw StorageError.unsupportedSchema(version) }
+            guard [Int64(1), 2, Self.schemaVersion].contains(version) else { throw StorageError.unsupportedSchema(version) }
             _ = try repository.loadSnapshot(expectedSchema: version)
             guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
                   try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw StorageError.corrupt }
             if version == 1 {
                 try repository.createCommandTables()
-                try repository.database.execute("PRAGMA user_version=2")
             }
+            if version < 3 { try repository.createGrantTables() }
+            try repository.database.execute("PRAGMA user_version=3")
         }
         return repository
     }
@@ -211,6 +217,15 @@ extension ControlRepository {
                   .blob(try JSONEncoder().encode(CommandDTO(command)))])
     }
 
+    func insertCommand(_ command: Command, intent: CommandIntent) throws {
+        try database.execute("INSERT INTO commands VALUES (?,?,?,?,?)", [
+            .text(command.id.rawValue.uuidString), .text(command.kind.rawValue),
+            .integer(command.expectedPolicyRevision.rawValue), .blob(try JSONEncoder().encode(CommandDTO(command))),
+            .blob(try JSONEncoder().encode(intent))
+        ])
+        try storeAttempt(command)
+    }
+
     func loadCommand(_ id: CommandID) throws -> StoredCommandRow? {
         let rows = try database.rows("SELECT kind,expected_revision,record,intent FROM commands WHERE command_id=?", [.text(id.rawValue.uuidString)])
         guard let row = rows.first else { return nil }
@@ -220,9 +235,19 @@ extension ControlRepository {
         do {
             let intent = try JSONDecoder().decode(CommandIntent.self, from: intentData)
             guard command.id == id, command.kind.rawValue == kind, command.expectedPolicyRevision.rawValue == base,
-                  intent.schemaVersion == 1, intent.matches(command), command.kind == .commitPolicy,
-                  let policy = intent.policy, policy.revision == command.candidatePolicyRevision else { throw StorageError.corrupt }
-            _ = try PolicyCandidate(commandID: id, expectedRevision: command.expectedPolicyRevision, proposedPolicy: policy)
+                  intent.schemaVersion == 1, intent.matches(command) else { throw StorageError.corrupt }
+            switch command.kind {
+            case .commitPolicy:
+                guard let policy = intent.policy, intent.grant == nil,
+                      policy.revision == command.candidatePolicyRevision else { throw StorageError.corrupt }
+                _ = try PolicyCandidate(commandID: id, expectedRevision: command.expectedPolicyRevision, proposedPolicy: policy)
+            case .requestTemporaryGrant:
+                guard let grant = intent.grant, intent.policy == nil, command.candidatePolicyRevision == nil,
+                      grant.mode != .unavailable, grant.mode != .reason || command.reasonRef != nil,
+                      try loadGrantResultID(id) != nil else { throw StorageError.corrupt }
+                _ = try grant.occurrence.model()
+            default: throw StorageError.corrupt
+            }
             return StoredCommandRow(command: command, intent: intent)
         } catch { throw StorageError.corrupt }
     }
@@ -230,7 +255,7 @@ extension ControlRepository {
     func loadCandidate(_ id: CommandID) throws -> PolicyCandidate? {
         let rows = try database.rows("SELECT base_revision,proposed_policy FROM policy_candidates WHERE command_id=?", [.text(id.rawValue.uuidString)])
         guard let row = rows.first else {
-            if try loadCommand(id) != nil { throw StorageError.corrupt }
+            if try loadCommand(id)?.command.kind == .commitPolicy { throw StorageError.corrupt }
             return nil
         }
         guard rows.count == 1, case let .integer(base) = row[0], case let .blob(data) = row[1],
@@ -259,10 +284,15 @@ struct CommandIntent: Equatable, Codable {
     let candidateRevision: PolicyRevision?
     let reasonRef: ReasonRef?
     let policy: PolicySnapshot?
+    let grant: GrantRequestIntent?
 
     init(command: Command, policy: PolicySnapshot?) {
         id = command.id; kind = command.kind; expectedRevision = command.expectedPolicyRevision
-        candidateRevision = command.candidatePolicyRevision; reasonRef = command.reasonRef; self.policy = policy
+        candidateRevision = command.candidatePolicyRevision; reasonRef = command.reasonRef; self.policy = policy; grant = nil
+    }
+    init(command: Command, request: GrantRequest) {
+        id = command.id; kind = command.kind; expectedRevision = command.expectedPolicyRevision
+        candidateRevision = command.candidatePolicyRevision; reasonRef = command.reasonRef; policy = nil; grant = GrantRequestIntent(request)
     }
     func matches(_ command: Command) -> Bool {
         id == command.id && kind == command.kind && expectedRevision == command.expectedPolicyRevision

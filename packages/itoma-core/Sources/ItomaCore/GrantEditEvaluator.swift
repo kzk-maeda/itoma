@@ -38,7 +38,7 @@ public enum GrantEditEvaluator {
         let original = Dictionary(uniqueKeysWithValues: grants.map { ($0.id, $0) })
         let impacts: [GrantEditImpact] = evaluation.assessments.compactMap { assessment in
             let grant = original[assessment.grant.id]!
-            guard grant.occupiesTarget, grant.status != .reblockPending else { return nil }
+            guard grant.reservesTarget, grant.status != .reblockPending else { return nil }
             let kind: GrantEditKind
             switch assessment.disposition {
             case .effective, .waiting: kind = .unchanged
