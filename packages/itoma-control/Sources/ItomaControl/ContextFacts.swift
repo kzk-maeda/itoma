@@ -29,7 +29,9 @@ extension CommandService {
         try recordDenied(context: context, transaction: tx)
         let snapshot = try tx.snapshot(), captured = rebinding(context, activation: snapshot.activation)
         let normalized = try protectedGrants(context: captured, including: including, transaction: tx)
-        if updateObservation && (before != normalized || captured.authorization.status != .approved
+        let pausedEmptyStore = captured.activation == .paused && snapshot.application?.evaluation.desiredTargets.isEmpty == true
+        if updateObservation && (before != normalized || (captured.authorization.status != .approved && !pausedEmptyStore)
+            || (snapshot.application.map { captured.now < $0.evaluation.evaluatedAt } ?? false)
             || (snapshot.application?.evaluation.timeZone != nil && snapshot.application?.evaluation.timeZone != captured.timeZone)) {
             try markObservationUncertain(at: captured.now,
                 failure: captured.authorization.status == .approved ? .interrupted : .authorizationRequired, transaction: tx)

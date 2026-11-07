@@ -37,6 +37,17 @@ public final class ControlTransaction {
         try checked { try repository.loadCommand(id)?.command }
     }
 
+    /// Lifecycle recovery only. The controller decides whether a live request owns an operation.
+    public func commandsRequiringRecovery() throws -> [Command] {
+        try checked {
+            try repository.database.rows("SELECT command_id FROM commands ORDER BY command_id").compactMap { row in
+                guard case let .text(raw) = row[0], let uuid = UUID(uuidString: raw), uuid.uuidString == raw,
+                      let command = try repository.loadCommand(CommandID(uuid))?.command else { throw StorageError.corrupt }
+                return [.scheduling, .applying].contains(command.status) ? command : nil
+            }
+        }
+    }
+
     public func candidate(commandID: CommandID) throws -> PolicyCandidate? {
         try checked { try repository.loadCandidate(commandID) }
     }

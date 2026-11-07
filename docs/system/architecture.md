@@ -147,3 +147,5 @@ control schema5は最新の試行plan/観測を保持し、移行前の証拠を
 OS前にApplying観測を独立commitし、最終writerで同じevaluationIDを照合する。結果rollbackで旧Appliedを復元せず、別processが更新したmarkerからOS操作を始めない。全grantのCore失効recordを引き継ぎ、timezone/認可が戻っても旧解除を復活させない。認可不明のCore空集合をstore削除へ使わず、確定Deniedでは本人のpaused意図を保ちつつenabledを確認待ちへ移す。
 
 [#84](https://github.com/kzk-maeda/itoma/issues/84)は候補編集の全件準備・receipt永続化・確認/世代の再検証・原子的有効化・成功後の旧予定取消を接続する。現在policyの観測済み失効は候補とは独立して保存し、確認失敗で巻戻さない。OS操作中の観測も保持して結果TX失敗後に現在policyで再保存を試み、候補仕様だけの変更を先に適用しない。古いattemptのAPI応答は新attemptを変更しない。保存済み希望policyとOS反映結果を分け、未認可の設定保存から空の解除planを作らない。
+
+[#90](https://github.com/kzk-maeda/itoma/issues/90)のReconcilerは登録ID/世代と発火事実を保存し、通知の旧planではなく最新有効状態を反映する。解除commandを自動再試行せず、中断したScheduling/Applyingの回収はnative lifecycleの明示入口だけで行う。元の解除成功と有効化済み候補の保護receiptを根拠にし、保護未確認のgrantは解除から除く。再制限失敗はUncertain、不要予定の取消は最新store反映の成功commit後。処理はSwift/SQLite/fake I/Oで検証し、実OSゲートを代替しない。本人の停止・明示再開commandは[#91](https://github.com/kzk-maeda/itoma/issues/91)へ続く。
