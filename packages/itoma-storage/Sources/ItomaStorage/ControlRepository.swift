@@ -28,10 +28,10 @@ public struct ControlSnapshot: Equatable, Sendable {
 /// A connection is serialized locally; separate processes coordinate with SQLite transactions.
 /// This class is deliberately not Sendable. A controller owns it on one isolation domain.
 public final class ControlRepository {
-    static let schemaVersion: Int64 = 1
+    static let schemaVersion: Int64 = 2
     static let applicationID: Int64 = 0x49544F4D
     let database: SQLiteDatabase
-    private let lock = NSLock()
+    private let lock = NSRecursiveLock()
 
     public static func create(
         at url: URL, initialPolicy: PolicySnapshot, selections: [StoredSelection] = [],
@@ -71,8 +71,9 @@ public final class ControlRepository {
                 )
                 """)
             try repository.database.execute("CREATE TABLE selections (ref TEXT PRIMARY KEY NOT NULL, targets BLOB NOT NULL, opaque_payload BLOB NOT NULL)")
+            try repository.createCommandTables()
             try repository.database.execute("PRAGMA application_id=0x49544F4D")
-            try repository.database.execute("PRAGMA user_version=1")
+            try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
             let data = try JSONEncoder().encode(initialPolicy)
             try repository.database.execute("INSERT INTO control_state VALUES (1,?,?,?,?,?)", [
                 .blob(data), .blob(data), .integer(initialPolicy.revision.rawValue), .integer(0), .text(activation.rawValue)
@@ -101,11 +102,11 @@ public final class ControlRepository {
         return repository
     }
 
-    private init(url: URL, busyTimeoutMilliseconds: Int32) throws {
+    init(url: URL, busyTimeoutMilliseconds: Int32) throws {
         database = try SQLiteDatabase(path: url.path, busyTimeoutMilliseconds: busyTimeoutMilliseconds)
     }
 
-    private static func validFileURL(_ url: URL) -> Bool {
+    static func validFileURL(_ url: URL) -> Bool {
         // URL.path can preserve "%00" instead of decoding it; validate the decoded component.
         guard url.isFileURL, let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
         return !components.path.utf8.contains(0)
@@ -158,9 +159,9 @@ public final class ControlRepository {
         return try body()
     }
 
-    func loadSnapshot() throws -> ControlSnapshot {
+    func loadSnapshot(expectedSchema: Int64 = ControlRepository.schemaVersion) throws -> ControlSnapshot {
         // Recheck inside every transaction: another process may migrate the DB after open().
-        try validateSchema()
+        try validateSchema(expectedSchema)
         let state = try database.rows("SELECT policy,last_valid_policy,policy_revision,snapshot_sequence,activation FROM control_state WHERE singleton=1")
         guard state.count == 1, state[0].count == 5,
               case let .blob(policyData) = state[0][0], case let .blob(lastData) = state[0][1],
@@ -187,12 +188,19 @@ public final class ControlRepository {
         catch { throw StorageError.corrupt }
     }
 
-    private func validateSchema() throws {
+    private func validateSchema(_ expected: Int64) throws {
         let rows = try database.rows("PRAGMA user_version")
         guard case let .integer(version) = rows.first?.first else { throw StorageError.corrupt }
-        guard version == Self.schemaVersion else { throw StorageError.unsupportedSchema(version) }
+        guard version == expected else { throw StorageError.unsupportedSchema(version) }
         guard try database.rows("PRAGMA application_id") == [[.integer(Self.applicationID)]] else {
             throw StorageError.wrongDatabase
+        }
+        if expected >= 2 {
+            do {
+                try database.execute("SELECT command_id,kind,expected_revision,record,intent FROM commands LIMIT 0")
+                try database.execute("SELECT command_id,attempt,record FROM command_attempts LIMIT 0")
+                try database.execute("SELECT command_id,base_revision,proposed_policy FROM policy_candidates LIMIT 0")
+            } catch StorageError.databaseFailure { throw StorageError.corrupt }
         }
     }
 
