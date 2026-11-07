@@ -92,6 +92,8 @@ managed cloudでは、runtimeのDocker手順に従って使用するdaemonを明
 
 新規の期限は`min(now + duration, 現occurrence終了, 次の勝者切替)`。duration省略時はpolicyの共通設定を使う。受理済みのinitialExpiresAtを固定し、既存grantには変更後のデフォルトを再適用しない。復元データも受理時から最大30分であることを検証する。週次検索はnowから30分を覆い、有効な全grant/要求の期限内の切替を確認する。
 
+時計巻戻しでacceptedAtがnowより未来になった場合も、次の再評価をこの30分の検索終端より後へ送らない。遠いgrant期限だけを次境界とすると、検索期間外にある週次ルールの開始を飛ばしてしまうため、終端までの再評価を必須にする。
+
 Pending/Scheduling/Applying/Uncertain/Failedは解除の根拠にしない。ReblockPendingも解除せず、未終端の対象を予約する。新IDで迂回せず、controllerが同grantの明示的な再試行か終端への整理を行う。重複grant ID/command ID、同対象の複数未終端grantはエラー。`existing`は過去の記録の応答であり、再適用の許可ではない。同commandの**厳密なpayload一致**、並列受理の排他、登録receiptと世代の照合は#45/#47のcommand側でも必須。
 
 `GrantAssessment.grant`に返るExpired/Invalidated/Uncertainは、controllerが永続化して次の評価へ渡す論理記録。古い入力を破棄せず再利用すれば過去の失効を検出できない。terminalな記録は勝者/timezone/時計が戻っても解除へ復帰しない。nowがacceptedAtより前ならUncertainとし、時刻が進んでも自動でActiveに戻さない。プロセス停止中の全時計・認可変化の検出や時計改ざん耐性は保証しない。

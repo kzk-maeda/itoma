@@ -94,7 +94,7 @@ public enum GrantEvaluator {
         for result in assessments where result.disposition == .effective { desired.remove(result.grant.targetRef) }
         // Pending/uncertain requests must also be reevaluated when their original deadline arrives.
         let deadlines = assessments.filter { $0.grant.occupiesTarget }.map(\.grant.effectiveExpiresAt)
-            .filter { context.now < $0 }
+            .filter { context.now < $0 && $0 <= rules.evaluatedThrough }
         let next = (deadlines + [rules.nextBoundary].compactMap { $0 }).min()
         return GrantEvaluation(rules: rules, assessments: assessments, desiredTargets: desired, nextBoundary: next)
     }

@@ -231,6 +231,18 @@ func noNewGrantOrAutomaticGrantResumeWithoutActivation(value: Activation) throws
     #expect(unprepared.desiredTargets == [gid(1), gid(2)])
 }
 
+@Test func clockRollbackCannotScheduleARefreshBeyondTheWeeklySearchCoverage() throws {
+    let p = try policy(), grant = try recording(pending(p), status: .active)
+    let result = try evaluate(p, grants: [grant], ctx: context("08:00"))
+    #expect(result.assessments.first?.disposition == .uncertain)
+    #expect(result.rules.evaluatedThrough == (try at("08:30")))
+    #expect(result.nextBoundary == nil)
+    #expect(result.nextEvaluationAt == (try at("08:30")))
+    let refreshed = try evaluate(p, grants: [result.assessments[0].grant], ctx: context("08:30"))
+    #expect(refreshed.nextBoundary == (try at("09:00")))
+    #expect(refreshed.nextEvaluationAt <= refreshed.rules.evaluatedThrough)
+}
+
 @Test func R13ShorteningPreservesInitialCapAndCannotBeUndoneByDeletingTheSwitch() throws {
     let p = try policy(), grant = try recording(pending(p), status: .active)
     let shortened = try grant.shortened(to: at("12:03")) // value for the controller's prepared final commit
