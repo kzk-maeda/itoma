@@ -48,11 +48,11 @@ export function smokeOutcome(log, commit) {
   return 'pending';
 }
 
-/** Small compiler/test diagnostics, with URL capabilities omitted from API-visible annotations. */
+/** Small compiler/test/Simulator diagnostics, with URL capabilities omitted from API-visible annotations. */
 export function compilerDiagnostics(log) {
   return log.split(/\r?\n/)
     .map((line) => line.replace(/\u001b\[[0-9;]*m/g, ''))
-    .filter((line) => /error:|^✘|^\*\* .*FAILED|^Error:|\[!\]/i.test(line))
+    .filter((line) => /error:|^✘|^\*\* .*FAILED|^Error:|\[!\]|^An error was encountered|^Underlying error|^Timed out|^Failed to|^Error Domain=/i.test(line))
     .slice(-8)
     .map((line) => line.replace(/https?:\/\/\S+/gi, (url) => {
       try { return `${new URL(url).origin}/[url omitted]`; } catch { return '[url omitted]'; }

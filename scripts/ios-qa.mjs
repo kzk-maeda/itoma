@@ -22,9 +22,13 @@ const result = {
 };
 let simulatorID, launcher, launchLog;
 const record = () => writeFileSync(path.join(output, 'result.json'), `${JSON.stringify(result, null, 2)}\n`);
-function toolFailure(command, log) {
-  const error = new Error(`${command} failed; see ${log}`);
+function toolFailure(command, args, log, call) {
+  // The operation name is fixed by this script; never include paths, UDIDs or complete argv.
+  const operation = command === 'xcrun' && args[0] === 'simctl' ? `xcrun simctl ${args[1]}` : command;
+  const status = call.error?.code ?? call.signal ?? call.status ?? 'unknown';
+  const error = new Error(`${operation} failed (${status}); see ${log}`);
   error.logFile = log;
+  error.tool = { operation, exitCode: call.status, signal: call.signal, code: call.error?.code ?? null };
   return error;
 }
 
@@ -33,7 +37,7 @@ function run(command, args, { log = 'tools.log', timeout = 180_000, env = proces
   try {
     const call = spawnSync(command, args, { cwd: root, env, timeout, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', fd] });
     if (call.stdout && logStdout) writeFileSync(fd, call.stdout);
-    if (call.error || call.status !== 0) throw toolFailure(command, log);
+    if (call.error || call.status !== 0) throw toolFailure(command, args, log, call);
     return call.stdout.trim();
   } finally { closeSync(fd); }
 }
@@ -42,7 +46,7 @@ function build(command, args, log, timeout, { cwd = root } = {}) {
   const fd = openSync(path.join(output, log), 'a');
   try {
     const call = spawnSync(command, args, { cwd, env: process.env, timeout, stdio: ['ignore', fd, fd] });
-    if (call.error || call.status !== 0) throw toolFailure(command, log);
+    if (call.error || call.status !== 0) throw toolFailure(command, args, log, call);
   } finally { closeSync(fd); }
 }
 
@@ -61,6 +65,17 @@ try {
   result.cocoaPods = run('pod', ['--version']);
   result.architecture = process.arch === 'arm64' ? 'arm64' : 'x86_64';
   checkpoint('source');
+  // Check host readiness before an expensive build; release Simulator memory during compilation.
+  const spec = simulatorSpec(JSON.parse(run('xcrun', ['simctl', 'list', 'devices', 'available', '--json'], { logStdout: false })));
+  result.simulator = spec;
+  simulatorID = validatedSimulatorID(run('xcrun', ['simctl', 'create', `ITOMA-QA-${result.buildID}`, spec.deviceType, spec.runtime]));
+  checkpoint('simulatorCreated');
+  run('xcrun', ['simctl', 'boot', simulatorID]);
+  checkpoint('simulatorBootRequested');
+  run('xcrun', ['simctl', 'bootstatus', simulatorID, '-b'], { timeout: 240_000 });
+  checkpoint('simulatorPreflightReady');
+  run('xcrun', ['simctl', 'shutdown', simulatorID]);
+  checkpoint('simulatorPreflight');
   result.sharedSwiftTests = {};
   for (const name of ['core', 'storage', 'control']) {
     build('xcrun', ['swift', 'test', '--package-path', `packages/itoma-${name}`, '--scratch-path', path.join(output, `swift-${name}-build`), '--jobs', '2'],
@@ -100,11 +115,10 @@ try {
   result.bundleIdentifier = bundleID;
   result.jsBundleSHA256 = createHash('sha256').update(readFileSync(path.join(app, 'main.jsbundle'))).digest('hex');
   result.jsSourceCommit = commit;
-  const spec = simulatorSpec(JSON.parse(run('xcrun', ['simctl', 'list', 'devices', 'available', '--json'], { logStdout: false })));
-  result.simulator = spec;
-  simulatorID = validatedSimulatorID(run('xcrun', ['simctl', 'create', `ITOMA-QA-${result.buildID}`, spec.deviceType, spec.runtime]));
   run('xcrun', ['simctl', 'boot', simulatorID]);
+  checkpoint('simulatorRebootRequested');
   run('xcrun', ['simctl', 'bootstatus', simulatorID, '-b'], { timeout: 240_000 });
+  checkpoint('simulatorReadyForInstall');
   run('xcrun', ['simctl', 'install', simulatorID, app]);
   checkpoint('install');
   launchLog = openSync(path.join(output, 'app.log'), 'a');
@@ -130,6 +144,7 @@ try {
   result.status = 'pass';
 } catch (error) {
   result.status = 'fail'; result.error = error.message;
+  if (error.tool) result.failedTool = error.tool;
   console.log(annotationCommand('error', 'iOS QA', result.error));
   if (error.logFile && existsSync(path.join(output, error.logFile))) {
     for (const line of compilerDiagnostics(readFileSync(path.join(output, error.logFile), 'utf8'))) {

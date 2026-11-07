@@ -105,3 +105,12 @@ test('XCTest zero-test success cannot substitute for a real Swift Testing result
   assert.throws(() => passedSwiftTestCount('Test run with 62 tests in 0 suites passed\nTest run with 85 tests in 0 suites failed'));
   assert.equal(passedSwiftTestCount('Executed 0 tests\n✔ Test run with 62 tests in 0 suites passed after 0.2 seconds.'), 62);
 });
+
+test('Simulator tool failures retain bounded context while signed URLs stay private', () => {
+  const result = compilerDiagnostics('An error was encountered processing the command (domain=NSPOSIXErrorDomain, code=149)\nUnderlying error (domain=NSPOSIXErrorDomain, code=60)\nTimed out: https://user:credential@example.invalid/path?signature=private\nordinary tool output');
+  assert.equal(result.length, 3);
+  assert.match(result[0], /code=149/);
+  assert.match(result[1], /code=60/);
+  assert.equal(result[2], 'Timed out: https://example.invalid/[url omitted]');
+  assert.ok(result.every((line) => !line.includes('credential') && !line.includes('private')));
+});
