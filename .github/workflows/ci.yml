@@ -16,13 +16,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Test pure Swift core
+      - name: Test Swift packages
         run: |
+          docker build -f .github/docker/swift-tests.Dockerfile -t itoma-swift-tests .github/docker
           docker run --rm --network none \
-            --mount "type=bind,src=$GITHUB_WORKSPACE/packages/itoma-core,dst=/package,readonly" \
-            swift:6.2.3-jammy@sha256:33c73fc133767cdaafde26f0f9967c96ab25ff77618b7df1eabf46140bf2b6e6 \
-            swift test --package-path /package \
-              --scratch-path /tmp/itoma-core-build --cache-path /tmp/itoma-swift-cache --jobs 2
+            --mount "type=bind,src=$GITHUB_WORKSPACE/packages,dst=/packages,readonly" \
+            itoma-swift-tests sh -c '\
+              swift test --package-path /packages/itoma-core --scratch-path /tmp/core-build --cache-path /tmp/swift-cache --jobs 2 && \
+              swift test --package-path /packages/itoma-storage --scratch-path /tmp/storage-build --cache-path /tmp/swift-cache --jobs 2'
 
       - uses: actions/setup-node@v7
         with:
