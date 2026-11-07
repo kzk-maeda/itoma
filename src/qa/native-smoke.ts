@@ -1,9 +1,9 @@
-import { itomaNative, reportNativeSmokeResult } from '../../modules/itoma-native';
+import { itomaNative, reportNativeSmokeResult, screenTimePoC } from '../../modules/itoma-native';
 
 let ran = false;
 
 /** Opt-in synthetic JS -> Swift proof. It never reads or changes a user's settings/reasons. */
-export function runNativeSmoke() {
+export async function runNativeSmoke() {
   if (process.env.EXPO_PUBLIC_NATIVE_SMOKE !== '1' || ran) return;
   ran = true;
   const commit = process.env.EXPO_PUBLIC_BUILD_SHA;
@@ -11,7 +11,10 @@ export function runNativeSmoke() {
   const availability = itomaNative.getAvailability();
   const valid = itomaNative.validateDuration(5);
   const invalid = itomaNative.validateDuration(0);
+  const poc = await screenTimePoC.run('snapshot');
   reportNativeSmokeResult(commit,
     availability.status === 'available' && availability.osRestrictions === 'unconnected'
-    && valid.status === 'valid' && valid.minutes === 5 && invalid.status === 'invalid');
+    && valid.status === 'valid' && valid.minutes === 5 && invalid.status === 'invalid'
+    && poc.status === 'snapshot' && poc.snapshot.availability === 'simulator-unavailable'
+    && poc.snapshot.authorization === 'unknown' && poc.snapshot.selections.length === 0);
 }

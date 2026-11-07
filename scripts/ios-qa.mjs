@@ -17,7 +17,7 @@ const result = {
   buildID: process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}` : randomUUID(),
   workflowCommit: process.env.GITHUB_WORKFLOW_SHA ?? null,
   configuration: 'Release', sdk: 'iphonesimulator', signing: 'disabled',
-  coverage: 'JS-to-Swift Core bridge; Screen Time and product OS adapters unconnected',
+  coverage: 'JS-to-Swift Core/PoC transport; Simulator disables Screen Time operations; product OS adapters unconnected',
   stages: {}, startedAt: new Date().toISOString(),
 };
 let simulatorID, launcher, launchLog;
@@ -139,6 +139,16 @@ try {
   outcome = smokeOutcome(readFileSync(path.join(output, 'app.log'), 'utf8'), commit);
   if (outcome !== 'pass') throw new Error(`Native JS-to-Swift smoke ${outcome === 'fail' ? 'failed' : 'timed out'}`);
   checkpoint('nativeBridge');
+  // Diagnostic route only: no authorization request, selection write or store mutation.
+  run('xcrun', ['simctl', 'openurl', simulatorID, 'itoma:///native-poc']);
+  await delay(3_000);
+  for (const appearance of ['light', 'dark']) {
+    run('xcrun', ['simctl', 'ui', simulatorID, 'appearance', appearance]);
+    await delay(1_000);
+    run('xcrun', ['simctl', 'io', simulatorID, 'screenshot', '--type=png', path.join(output, `native-poc-${appearance}.png`)]);
+  }
+  checkpoint('nativePoCImagesCaptured');
+  if (smokeOutcome(readFileSync(path.join(output, 'app.log'), 'utf8'), commit) !== 'pass') throw new Error('Native smoke failed after PoC image capture');
   result.status = 'pass';
 } catch (error) {
   reporter.fail(error, error.logFile && existsSync(path.join(output, error.logFile))

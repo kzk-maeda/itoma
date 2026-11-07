@@ -2,6 +2,8 @@
 
 [#94](https://github.com/kzk-maeda/itoma/issues/94)のiOS限定PoC。JS/Swiftの型付き境界と共通SwiftのiOSビルドを検証する。Screen Time・永続設定・認可・OS制限は接続せず、ホームの制限操作は引き続きモック。
 
+[#105](https://github.com/kzk-maeda/itoma/issues/105)で、製品APIから分離した`screenTimePoC`を追加。`/native-poc`から本人の明示操作で認可/Picker、app-privateの検証用ControlRepository、専用ManagedSettings storeへ接続する。通常ホーム・製品policy/command/grantは未接続のまま。`getAvailability().osRestrictions: unconnected`は製品フローの状態を引き続き表す。Simulatorでは実操作を無効化する。設定/署名条件、保存・再認可時の制約、実機手順は[限定実機PoC](../../docs/ios-device-poc.md)を参照。API v1へ追加した任意methodで、旧ビルドのclientはincompatible-moduleを返す。native/JSの両方を含む新ビルドが必要。
+
 `itomaNative.getAvailability()`は未対応platform、モジュール欠落（Expo Go等）、API不一致、nativeエラーを区別する。availableはAPI v1のブリッジが存在する意味だけで、`osRestrictions: 'unconnected'`を返す。`validateDuration`はSwift Coreへ入力を渡し、TSは返却shapeと同一入力への対応だけを確認する。TSに許可範囲や制限ルールを複製しない。
 
 Swiftの`validateDuration`は`UnlockDuration`を使う副作用のない呼出し。DB、予定、OS storeや認可を操作しない。main-app ModuleはCore/Storage/Control/Historyをimportするが、ItomaControl/ItomaStorageのpodspecはprivate Historyへ依存しない。将来のExtensionはshared productだけを参照する。

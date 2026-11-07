@@ -26,6 +26,14 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
+/** Adopted U07 palette. New screens use these semantic values; legacy home migration is separate. */
+export const GraphiteColors = {
+  light: { background: '#F4F3F0', surface: '#FFFFFF', text: '#30312F', muted: '#666762',
+    line: '#DDDDD6', accent: '#444842', soft: '#E7E8E1', onAccent: '#FFFFFF' },
+  dark: { background: '#1B1C1A', surface: '#292B27', text: '#F0F0E9', muted: '#BDBFB6',
+    line: '#4D5048', accent: '#CDD2C4', soft: '#3A3E35', onAccent: '#23271F' },
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

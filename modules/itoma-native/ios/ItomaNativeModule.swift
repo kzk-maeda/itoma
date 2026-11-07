@@ -12,11 +12,22 @@ struct DurationValidationRecord: Record {
     @Field var code: String? = nil
 }
 
-/// Initial bridge proof only. No authorization, OS restriction, or repository is opened here.
+/// The product bridge remains separate from the explicitly invoked manual Screen Time PoC.
 public final class ItomaNativeModule: Module {
     public func definition() -> ModuleDefinition {
         Name("ItomaNative")
         Constant("apiVersion") { 1 }
+        AsyncFunction("screenTimePoC") { (action: String, selectionRef: String?, promise: Promise) in
+            MainActor.assumeIsolated {
+                guard #available(iOS 16.0, *) else {
+                    promise.resolve(["availability": "unsupported-os", "authorization": "unknown", "storage": "not-created",
+                        "selections": [], "operation": "failed", "code": "unavailable", "observation": "unknown"] as [String: Any])
+                    return
+                }
+                ScreenTimePoC.shared.perform(action, ref: selectionRef,
+                    presenter: self.appContext?.utilities?.currentViewController()) { result in promise.resolve(result) }
+            }
+        }.runOnQueue(.main)
         Function("validateDuration") { (minutes: Int) -> DurationValidationRecord in
             var record = DurationValidationRecord()
             do {

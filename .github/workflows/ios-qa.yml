@@ -61,3 +61,4 @@ jobs:
             ${{ steps.qa.outputs.artifact_dir }}/result.json
             ${{ steps.qa.outputs.artifact_dir }}/*.log
             ${{ steps.qa.outputs.artifact_dir }}/home.png
+            ${{ steps.qa.outputs.artifact_dir }}/native-poc-*.png

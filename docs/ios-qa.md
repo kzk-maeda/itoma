@@ -23,12 +23,13 @@ SwiftPMはiOS15.1とMacテストhostのmacOS13を最低版として明示する�
 6. 同じ自分のSimulatorを再びbootし、install/launchする。既存deviceのUDIDは使わず、自分がcreateしたUUIDだけを最後にshutdown/deleteする。
 7. CI専用のJSフラグでSwift Coreの5分/0分入力を検証し、native側の追加起動フラグを通ったsmoke markerでJS→Swiftの往復を確認する。
 8. ホーム画像を取得する。画像取得の成功と、画面の目視/操作の合格は区別する。
+9. `/native-poc`へ移動し、Light/Dark画像を取得する。JS→SwiftのPoC snapshotが`simulator-unavailable`で、認可/token/DB操作が行われないことをsynthetic smokeに含める。画像生成を操作や目視の合格と扱わない。実機用capability opt-inは通常QAに不要。
 
 `EXPO_PUBLIC_NATIVE_SMOKE=1`と`EXPO_PUBLIC_BUILD_SHA`はcompiled JSへ含まれる公開情報。秘密や本人データを置かない。native起動には別の`SIMCTL_CHILD_ITOMA_NATIVE_QA=1`を使い、通常起動でsmokeを実行しない。フラグなしでUI/操作は変化せず、ホームのOS操作は引き続きモック。
 
 ## 証跡と判定
 
-Actions artifactはresult.json、ビルド/Swift/起動ログ、home.pngだけを7日保存する。app binary、derived data、Swift build cacheは配布しない。
+Actions artifactはresult.json、ビルド/Swift/起動ログ、home.png、native-pocのLight/Dark画像だけを7日保存する。app binary、derived data、Swift build cacheは配布しない。
 
 stageの全履歴は通常ログとresult.jsonへ残し、GitHub check-runのnoticeは最終結果の1件だけに使う。runnerのstep・種別ごとの10件上限で後段の結果が欠落しないようにする。最終注釈はstatus/cleanup、source/native/JS SHA、build ID、構成・digest・tool実版・成功stage件数を固定フィールド/長さで要約し、4096文字のmessage上限内に収める。新しいmetadataや全stage、完全なtool情報はresult.jsonを正本とし、API要約の省略・短縮と区別する。
 
