@@ -64,6 +64,13 @@ export function annotationCommand(level, title, message) {
   const escape = (value) => String(value).replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
   return `::${level} title=${escape(title)}::${escape(message)}`;
 }
+
+export function passedSwiftTestCount(log) {
+  const summaries = [...log.replace(/\u001b\[[0-9;]*m/g, '').matchAll(/Test run with (\d+) tests[^\n]*?\b(passed|failed)\b/g)];
+  const last = summaries.at(-1);
+  if (!last || Number(last[1]) < 1 || last[2] !== 'passed') throw new Error('A nonzero passing Swift Testing run is required');
+  return Number(last[1]);
+}
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';

@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { annotationCommand, assertCleanSource, claimOutputDirectory, compilerDiagnostics, simulatorSpec, smokeOutcome, validatedCommit, validatedSimulatorID } from '../scripts/lib/ios-qa.mjs';
+import { annotationCommand, assertCleanSource, claimOutputDirectory, compilerDiagnostics, passedSwiftTestCount, simulatorSpec, smokeOutcome, validatedCommit, validatedSimulatorID } from '../scripts/lib/ios-qa.mjs';
 
 const commit = 'a'.repeat(40);
 test('mutable refs and injected or incomplete identities are refused', () => {
@@ -97,4 +97,11 @@ test('mixed-case URL schemes and valid URL punctuation cannot leave credential/q
   ]) {
     assert.deepEqual(compilerDiagnostics(`error: download ${url}`), ['error: download https://example.invalid/[url omitted]']);
   }
+});
+
+test('XCTest zero-test success cannot substitute for a real Swift Testing result', () => {
+  assert.throws(() => passedSwiftTestCount('Executed 0 tests, with 0 failures'));
+  assert.throws(() => passedSwiftTestCount('Test run with 0 tests in 0 suites passed'));
+  assert.throws(() => passedSwiftTestCount('Test run with 62 tests in 0 suites passed\nTest run with 85 tests in 0 suites failed'));
+  assert.equal(passedSwiftTestCount('Executed 0 tests\n✔ Test run with 62 tests in 0 suites passed after 0.2 seconds.'), 62);
 });

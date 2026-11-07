@@ -4,7 +4,7 @@ import { appendFileSync, closeSync, existsSync, openSync, readFileSync, readdirS
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { annotationCommand, assertCleanSource, claimOutputDirectory, compilerDiagnostics, simulatorSpec, smokeOutcome, validatedCommit, validatedSimulatorID } from './lib/ios-qa.mjs';
+import { annotationCommand, assertCleanSource, claimOutputDirectory, compilerDiagnostics, passedSwiftTestCount, simulatorSpec, smokeOutcome, validatedCommit, validatedSimulatorID } from './lib/ios-qa.mjs';
 
 if (process.platform !== 'darwin') throw new Error('iOS QA requires macOS/Xcode');
 const root = process.cwd();
@@ -61,9 +61,31 @@ try {
   result.cocoaPods = run('pod', ['--version']);
   result.architecture = process.arch === 'arm64' ? 'arm64' : 'x86_64';
   checkpoint('source');
+  // Synthetic strings only: observe Foundation normalization before diagnosing malformed paths.
+  // This never opens a file or reads a real container path.
+  const urlProbe = `import Foundation
+func describe(_ value: URL?) -> [String: String] {
+  guard let value else { return ["value": "nil"] }
+  let components = URLComponents(url: value, resolvingAgainstBaseURL: false)
+  return ["absolute": value.absoluteString.debugDescription, "relative": value.relativeString.debugDescription,
+          "path": value.path.debugDescription, "pathBytes": String(describing: Array(value.path.utf8)),
+          "pathIsPrefix": String(value.path == "/tmp/itoma-url-probe"),
+          "encodedPath": components?.percentEncodedPath.debugDescription ?? "nil",
+          "encodedBytes": String(describing: Array(components?.percentEncodedPath.utf8 ?? "".utf8)),
+          "decodedPath": components?.path.debugDescription ?? "nil",
+          "decodedBytes": String(describing: Array(components?.path.utf8 ?? "".utf8))]
+}
+let values = ["filesystem": describe(URL(fileURLWithPath: "/tmp/itoma-url-probe\\0suffix")),
+              "encoded": describe(URL(string: "file:///tmp/itoma-url-probe%00suffix"))]
+print(String(data: try JSONSerialization.data(withJSONObject: values), encoding: .utf8)!)`;
+  result.foundationURL = JSON.parse(run('xcrun', ['swift', '-e', urlProbe], { log: 'foundation-url.log' }));
+  console.log(annotationCommand('notice', 'Synthetic Foundation URL diagnostic', JSON.stringify(result.foundationURL)));
+  result.sharedSwiftTests = {};
   for (const name of ['core', 'storage', 'control']) {
     build('xcrun', ['swift', 'test', '--package-path', `packages/itoma-${name}`, '--scratch-path', path.join(output, `swift-${name}-build`), '--jobs', '2'],
       `swift-${name}.log`, 600_000);
+    result.sharedSwiftTests[name] = passedSwiftTestCount(readFileSync(path.join(output, `swift-${name}.log`), 'utf8'));
+    checkpoint(`sharedSwift-${name}`);
   }
   checkpoint('sharedSwiftOnMac');
   build('npx', ['expo', 'prebuild', '--platform', 'ios', '--no-install'], 'prebuild.log', 300_000);
