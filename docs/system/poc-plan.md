@@ -2,6 +2,8 @@
 
 状態: **提案・未確定**。検討Issue: https://github.com/kzk-maeda/itoma/issues/26。この文書は実装・OS動作の保証ではありません。
 
+認可・Picker・opaque選択保存・専用storeの限定PoCと現行公式資料の確認は[実機PoC手順](../ios-device-poc.md)へ分離する。#105のコード/Simulator成功は親#8/#12/#13の実機ゲートや本計画の採用ではない。Developer未登録/端末未確認の外部条件と、独立に実装・コンパイルできる範囲を区別する。
+
 
 ## 実行前の条件
 
@@ -49,4 +51,4 @@
 - 容量80/100MiB・outbox1万件は設計提案値。実ファイル/WAL増加・処理時間・復旧を測定し、しきい値をレビューする。
 - 画面往復100回でstack/購読/timerが増え続けないか測定する。
 
-必要な公式資料の確認先: [SQLite transactions](https://www.sqlite.org/lang_transaction.html)、[SQLite WAL](https://www.sqlite.org/wal.html)、[App Groups](https://developer.apple.com/documentation/xcode/configuring-app-groups)、[File Protection](https://developer.apple.com/documentation/foundation/fileprotectiontype)、[FamilyControls](https://developer.apple.com/documentation/familycontrols)、[ManagedSettings](https://developer.apple.com/documentation/managedsettings)、[DeviceActivity](https://developer.apple.com/documentation/deviceactivity)。本環境ではSQLite/Apple公式ページの取得がプロキシ403だったため、現行API仕様・制約は実装前に到達可能な環境で確認する。
+必要な公式資料の確認先: [SQLite transactions](https://www.sqlite.org/lang_transaction.html)、[SQLite WAL](https://www.sqlite.org/wal.html)、[App Groups](https://developer.apple.com/documentation/xcode/configuring-app-groups)、[File Protection](https://developer.apple.com/documentation/foundation/fileprotectiontype)、[FamilyControls](https://developer.apple.com/documentation/familycontrols)、[ManagedSettings](https://developer.apple.com/documentation/managedsettings)、[DeviceActivity](https://developer.apple.com/documentation/deviceactivity)。旧セッションでは取得がプロキシ403だったが、2026-11-07 JSTに新環境からApple公式資料へ接続し、認可・token失効・名前付きstore・監視区間最小15分等を確認した。確認範囲と未確認の短期限表現/配信精度は[実機PoC手順](../ios-device-poc.md)へ記録する。資料確認を実機成功へ読み替えない。
