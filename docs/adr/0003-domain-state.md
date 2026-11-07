@@ -6,7 +6,7 @@
 - 方針了承: 2026-11-06 JST、[利用者判断](https://github.com/kzk-maeda/itoma/pull/36#issuecomment-6685704584)
 - 採用日: 2026-11-06 JST
 - 採用版: `6c17ac9a334a020a6833268a2f1a5762dc9aabc6`（PR #36のmerge commit）
-- 検証状況: #42で[Swift値型と構造的な入力検証](../../packages/itoma-core/README.md)を実装。状態遷移/Evaluator/CommandService/OS動作・iOSビルド・実機は未検証
+- 検証状況: #42〜#44で[Swift値型・週次評価・一時解除/編集影響の純粋評価](../../packages/itoma-core/README.md)を実装。合成入力の単体検証と、CommandService/保存/OS動作・iOSビルド・実機の未検証を区別する
 - 関連ADR: [0002 MVP](0002-mvp-scheduled-restrictions.md)。0003〜0006は同じ設計PRで採用した相互依存する判断
 
 ## 背景
