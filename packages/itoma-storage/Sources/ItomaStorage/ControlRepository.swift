@@ -120,7 +120,7 @@ public final class ControlRepository {
     static func validFileURL(_ url: URL) -> Bool {
         // Apple Foundation can preserve an encoded NUL in both decoded path accessors.
         // Inspect the encoded path too, without recursively decoding literal "%00" names (%2500).
-        guard url.isFileURL, let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
+        guard url.isFileURL, let components = URLComponents(url: url, resolvingAgainstBaseURL: true) else { return false }
         return !url.path.utf8.contains(0) && !components.path.utf8.contains(0)
             && !components.percentEncodedPath.contains("%00")
     }

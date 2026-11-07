@@ -182,8 +182,10 @@ func invalidBudgetsAreRejected(values: (Int64, Int64)) throws {
 @Test func nulPathClosedConnectionAndFileSizesHaveExplicitOutcomes() throws {
     let f = try Fixture(); defer { f.remove() }
     let encoded = try #require(URL(string: f.url.absoluteString + "%00suffix"))
-    for nul in [URL(fileURLWithPath: f.url.path + "\0suffix"), encoded] {
-        let parts = try #require(URLComponents(url: nul, resolvingAgainstBaseURL: false))
+    let relative = try #require(URL(string: "#relative-probe", relativeTo: encoded))
+    #expect(relative.baseURL != nil)
+    for nul in [URL(fileURLWithPath: f.url.path + "\0suffix"), encoded, relative] {
+        let parts = try #require(URLComponents(url: nul, resolvingAgainstBaseURL: true))
         #expect(parts.percentEncodedPath.contains("%00"))
         #expect(throws: HistoryError.unavailable) { try HistoryRepository.create(at: nul, capacity: capacity()) }
         #expect(throws: HistoryError.unavailable) { try HistoryRepository.open(at: nul, capacity: capacity()) }
@@ -207,7 +209,9 @@ func invalidBudgetsAreRejected(values: (Int64, Int64)) throws {
     let url = f.directory.appendingPathComponent("history-%00.sqlite")
     let parts = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false))
     #expect(parts.percentEncodedPath.contains("%2500"))
-    let repository = try HistoryRepository.create(at: url, capacity: capacity())
+    let relative = try #require(URL(string: "#relative-probe", relativeTo: url))
+    #expect(relative.baseURL != nil)
+    let repository = try HistoryRepository.create(at: relative, capacity: capacity())
     let expected = try repository.prepareReason(reasonRef: id(1), commandID: id(2), body: "fixture", at: instant())
     try repository.close()
     let reopened = try HistoryRepository.open(at: url, capacity: capacity())

@@ -176,8 +176,10 @@ func unsupportedSchemaIsNotInitializedOrDowngraded(version: Int64) throws {
 @Test func embeddedNulInAFilePathCannotOpenOrCreateItsTruncatedPrefix() throws {
     let f = try Fixture(); defer { f.remove() }
     let encoded = try #require(URL(string: f.url.absoluteString + "%00suffix"))
-    for invalid in [URL(fileURLWithPath: f.url.path + "\0suffix"), encoded] {
-        let parts = try #require(URLComponents(url: invalid, resolvingAgainstBaseURL: false))
+    let relative = try #require(URL(string: "#relative-probe", relativeTo: encoded))
+    #expect(relative.baseURL != nil)
+    for invalid in [URL(fileURLWithPath: f.url.path + "\0suffix"), encoded, relative] {
+        let parts = try #require(URLComponents(url: invalid, resolvingAgainstBaseURL: true))
         #expect(parts.percentEncodedPath.contains("%00")) // the malformed input must survive URL construction
         #expect(throws: StorageError.unavailable) {
             try ControlRepository.create(at: invalid, initialPolicy: policy(), selections: [selection()], activation: .paused)
@@ -193,7 +195,9 @@ func unsupportedSchemaIsNotInitializedOrDowngraded(version: Int64) throws {
     let url = f.directory.appendingPathComponent("control-%00.sqlite")
     let parts = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false))
     #expect(parts.percentEncodedPath.contains("%2500"))
-    let repository = try ControlRepository.create(at: url, initialPolicy: policy(), selections: [selection()], activation: .paused)
+    let relative = try #require(URL(string: "#relative-probe", relativeTo: url))
+    #expect(relative.baseURL != nil)
+    let repository = try ControlRepository.create(at: relative, initialPolicy: policy(), selections: [selection()], activation: .paused)
     let expected = try repository.readSnapshot()
     try repository.close()
     let reopened = try ControlRepository.open(at: url)

@@ -20,7 +20,7 @@ ItomaCoreの外側で、iOS標準のSQLite C APIを包む薄いSwift Package。U
 - `readSnapshot`は短いread TX。`setActivation`/`putSelection`はBEGIN IMMEDIATEの短いwriter TXでsnapshotSequenceをCASし、変更時に進める。policyRevision/ruleVersionは進めない。各接続内も同期排他し、クラスはSendableにしない。公開writer scopeは同期closureのみ。予定登録・認可要求・UI待機等のawaitは外で行い、#47での短い最終同期OS操作だけをTX内へ接続する。
 - Selectionのrefは不変。新しい対象選択は新refを準備し、後続の候補policyとruleVersion更新で有効化する。参照先を先に書き換えて現在のruleを変えない。targetRefはadapterがnative tokenの同一性で正規化し、名前/encoded bytes/hashで生成しない。
 - SQLiteエラーはbusy/corrupt/unavailable等の固定分類だけ。SQL・ファイルパス・token・理由本文をエラーへ含めない。失敗はrollbackし、空設定の成功へ置換しない。WALはwriterの同時成功を意味しない。
-- control/private historyはfile URLを要求し、pathのNULに加えてpercentEncodedPathの`%00`も拒否する。Apple Foundationではdecoded pathも`%00`を残すことを[Mac診断run](https://github.com/kzk-maeda/itoma/actions/runs/42359476487)で確認した。通常の文字列`%00`を含むファイル名はURL上で`%2500`となり、再帰decodeで誤拒否しない。SQLiteのraw String境界でもNULを独立して拒否する。
+- control/private historyはfile URLを要求し、pathのNULに加えてpercentEncodedPathの`%00`も拒否する。相対URLのbaseも解決して、実際に使うpathと同じ範囲を検査する。Apple Foundationではdecoded pathも`%00`を残すことを[Mac診断run](https://github.com/kzk-maeda/itoma/actions/runs/42359476487)で確認した。通常の文字列`%00`を含むファイル名はURL上で`%2500`となり、再帰decodeで誤拒否しない。SQLiteのraw String境界でもNULを独立して拒否する。
 
 この段階のActivationは保存した本人の意図であり、OS反映や再制限成功ではない。変更時には未終端grantも同じTXで失効させ、再開で昔の解除を戻さない。OS実行は#47以降で接続する。last-valid policyもDB全体の破損復旧を保証せず、自動復旧や古いgrantの復活に使わない。
 
