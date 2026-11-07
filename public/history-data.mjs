@@ -1,7 +1,7 @@
 // Synthetic data only. Dates are local calendar dates in Asia/Tokyo.
 export const STUDIES = [
   { id: 'calendar', number: '01', title: '余白のカレンダー', short: 'カレンダー', question: 'あの日、どう過ごした？', description: '日付を選んで、その日の予定と解除の記録へ。思い出を手がかりに探せます。', strength: '特定の日を探しやすい', tradeoff: '週全体の変化は、少し見えにくい' },
-  { id: 'time', number: '02', title: '時間の積み上げ', short: '積み上げ', question: '時間を決めた、その積み重ね。', description: '週次・月次・全期間で、設定した時間と過去からの累積を比較。生活のリズムと積み重ねを眺めます。', strength: '時間の量と日ごとの違いが分かる', tradeoff: '実際に使えた時間とは区別が必要' },
+  { id: 'time', number: '02', title: '時間の積み上げ', short: '積み上げ', question: '時間を決めた、その積み重ね。', description: '上部でこれまでの累計を受け取り、下部の週次・月次で最近のペースを見る。気になる日だけ詳しく振り返れます。', strength: '時間の量と日ごとの違いが分かる', tradeoff: '実際に使えた時間とは区別が必要' },
   { id: 'timeline', number: '03', title: '選択のタイムライン', short: 'タイムライン', question: 'あのとき、何を選んだ？', description: '一時解除や取消を、時間の流れに沿って。アプリや操作結果で絞り、理由までたどれます。', strength: '理由と操作の経緯を確かめやすい', tradeoff: '成果の実感は、数字やメモで補いたい' },
   { id: 'journal', number: '04', title: '余白のノート', short: 'ノート', question: 'その余白に、何が残った？', description: '読めた数ページ、ゆっくりした夜。本人のひと言で、数字だけでは残らない時間を記録します。', strength: '本人にとっての成果を残せる', tradeoff: '自分で書く、ひと手間がある' },
   { id: 'letter', number: '05', title: '週のおたより', short: 'おたより', question: '一週間を、ひと呼吸で。', description: '時間、選択、本人のひと言を、一枚のおたよりに。細かな記録は読みたいときに開きます。', strength: '短い時間で全体を振り返れる', tradeoff: '特定の記録へは、もう一歩必要' },
