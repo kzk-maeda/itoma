@@ -11,7 +11,7 @@ import Glibc
 /// iOS protection/backup attributes to the DB and sidecars; this portable layer cannot verify them.
 /// Non-Sendable, synchronous, and locally serialized. No public callback can hold its writer open.
 public final class HistoryRepository {
-    static let schemaVersion: Int64 = 1
+    static let schemaVersion: Int64 = 2
     static let applicationID: Int64 = 0x49544849
     let database: SQLiteDatabase
     let capacityPolicy: HistoryCapacityPolicy
@@ -49,8 +49,9 @@ public final class HistoryRepository {
                         CHECK((body IS NULL AND payload_bytes=0) OR (body IS NOT NULL AND length(body)=payload_bytes))
                     )
                     """)
+                try repository.createPrivateHistoryTables()
                 try repository.database.execute("PRAGMA application_id=0x49544849")
-                try repository.database.execute("PRAGMA user_version=1")
+                try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
             }
             return repository
         }
@@ -67,6 +68,7 @@ public final class HistoryRepository {
                 guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
                       try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw HistoryError.corrupt }
                 _ = try repository.loadReasons()
+                try repository.validatePrivateHistory()
             }
             return repository
         }
@@ -98,6 +100,7 @@ public final class HistoryRepository {
         catch { throw HistoryError.invalidReason }
         let bytes = Data(body.utf8)
         return try transaction(writer: true) {
+            guard try loadDummy(commandID) == nil else { throw HistoryError.conflict }
             let records = try loadReasons(filter: "WHERE command_id=? OR reason_ref=?", bindings: [
                 .text(commandID.rawValue.uuidString), .text(reasonRef.rawValue.uuidString)
             ])
@@ -131,7 +134,7 @@ public final class HistoryRepository {
     }
 
     /// Logical deletion, not forensic erasure from SQLite pages/WAL/backups. Never changes control.
-    /// The later outbox importer adds a durable sequence cutoff to this private deletion transaction.
+    /// This deletes reasons only. Use deleteHistory(from:) for history payloads and source cutoffs.
     public func deleteReasons() throws {
         try transaction(writer: true) {
             _ = try loadReasons()
@@ -170,22 +173,34 @@ public final class HistoryRepository {
         }
     }
 
-    func validateSchema() throws {
+    func validateSchema(expected: Int64 = HistoryRepository.schemaVersion) throws {
         guard case let .integer(version) = try database.rows("PRAGMA user_version").first?.first else { throw HistoryError.corrupt }
-        guard version == Self.schemaVersion else { throw HistoryError.unsupportedSchema(version) }
+        guard version == expected else { throw HistoryError.unsupportedSchema(version) }
         guard try database.rows("PRAGMA application_id") == [[.integer(Self.applicationID)]] else { throw HistoryError.wrongDatabase }
         do { try database.execute("SELECT reason_ref,command_id,prepared_at,body,payload_bytes FROM reasons LIMIT 0") }
         catch SQLiteFailure.failure { throw HistoryError.corrupt }
+        if expected >= 2 {
+            do {
+                try database.execute("SELECT command_id,prepared_at,payload,payload_bytes FROM dummy_selections LIMIT 0")
+                try database.execute("SELECT source_id,observed_through,deleted_through,history_incomplete FROM history_sources LIMIT 0")
+                try database.execute("SELECT cursor,event_id,source_id,sequence,record,payload_bytes FROM history_events LIMIT 0")
+            } catch SQLiteFailure.failure { throw HistoryError.corrupt }
+        }
     }
 
     func logicalBytes() throws -> Int64 {
         // Do not load every body for each new reason or capacity refresh. Validate lengths in SQL;
         // individual reads and open() validate UTF-8 and the Core input contract as well.
-        let invalid = try database.rows("SELECT 1 FROM reasons WHERE payload_bytes<0 OR (body IS NULL AND payload_bytes!=0) OR (body IS NOT NULL AND (typeof(body)!='blob' OR length(body)!=payload_bytes)) LIMIT 1")
-        guard invalid.isEmpty,
-              case let .integer(bytes) = try database.rows("SELECT coalesce(sum(payload_bytes),0) FROM reasons").first?.first,
-              bytes >= 0 else { throw HistoryError.corrupt }
-        return bytes
+        var total: Int64 = 0
+        for (table, column) in [("reasons", "body"), ("dummy_selections", "payload"), ("history_events", "record")] {
+            let invalid = try database.rows("SELECT 1 FROM \(table) WHERE payload_bytes<0 OR (\(column) IS NULL AND payload_bytes!=0) OR (\(column) IS NOT NULL AND (typeof(\(column))!='blob' OR length(\(column))!=payload_bytes)) LIMIT 1")
+            guard invalid.isEmpty, case let .integer(bytes) = try database.rows("SELECT coalesce(sum(payload_bytes),0) FROM \(table)").first?.first,
+                  bytes >= 0 else { throw HistoryError.corrupt }
+            let (next, overflow) = total.addingReportingOverflow(bytes)
+            guard !overflow else { throw HistoryError.corrupt }
+            total = next
+        }
+        return total
     }
 
     func loadReasons(filter: String = "", bindings: [SQLValue] = [], limit: Int? = nil) throws -> [ReasonRecord] {

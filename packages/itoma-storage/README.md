@@ -2,12 +2,12 @@
 
 ItomaCoreの外側で、iOS標準のSQLite C APIを包む薄いSwift Package。UI・Expo・Screen Timeには依存せず、理由本文の保存先でもない。#45を[#69](https://github.com/kzk-maeda/itoma/issues/69) snapshot、[#70](https://github.com/kzk-maeda/itoma/issues/70) command/候補、[#71](https://github.com/kzk-maeda/itoma/issues/71) grant/receiptへ分割して実装する。
 
-本Packageの公開productは、共有control用`ItomaStorage`と本体private用[`ItomaHistory`](HISTORY.md)に分かれる。Extensionは`ItomaStorage`だけに依存し、理由本文のAPIをリンクしない。共通の`ItomaSQLite` targetはSQLite接続/bind/transactionの技術層だけを提供する。controlのschema3・公開StorageErrorは変更しない。
+本Packageの公開productは、共有control用`ItomaStorage`と本体private用[`ItomaHistory`](HISTORY.md)に分かれる。Extensionは`ItomaStorage`だけに依存し、理由本文のAPIをリンクしない。共通の`ItomaSQLite` targetはSQLite接続/bind/transactionの技術層だけを提供する。本体のItomaHistoryは共有outbox DTO/transferへ依存するが、逆の依存は作らない。
 
 ## 保存の契約
 
 - `ControlRepository.create`は本人/初期化controllerが明示的に新規作成するときだけ使う。O_EXCLで新しいファイルを取得し、SQLiteはCREATEなしで開く。既存・空・破損・保護で読めないDBを初期化しない。途中で作成に失敗したファイルも自動消去しない。
-- `open`は既存DB専用。schemaVersion 3、application_id `0x49544F4D`、quick_check、WALと論理snapshotを検証。各TX内でもschema/app IDを再確認し、別接続で移行された後の古い接続は読み書きしない。未対応版をdown-migrateしない。schema1/2からは本体が明示的に`migrate`を呼び、writer TXでcommand/grant/registration表を追加してから版を進める。Extensionのopenは自動移行しない。移行失敗時はDDL/版ともrollbackし、設定を消さない。
+- `open`は既存DB専用。schemaVersion 4、application_id `0x49544F4D`、quick_check、WALと論理snapshotを検証。各TX内でもschema/app IDを再確認し、別接続で移行された後の古い接続は読み書きしない。未対応版をdown-migrateしない。schema1/2/3からは本体が明示的に`migrate`を呼び、writer TXでcommand/grant/registration/outbox表を追加してから版を進める。Extensionのopenは自動移行しない。移行失敗時はDDL/版ともrollbackし、設定を消さない。
 - 有効policyとlast-valid policyは独立BLOB、policyRevision/snapshotSequence/Activationは明示列。不透明Selectionはref・正規化済みtargetRef集合・token用opaque bytesとして別表に保存する。policy復元はCoreの検証済みdecoderを通し、列のrevisionとも一致させる。他のCore値をDB形式へ自動採用しない。
 - `readSnapshot`は短いread TX。`setActivation`/`putSelection`はBEGIN IMMEDIATEの短いwriter TXでsnapshotSequenceをCASし、変更時に進める。policyRevision/ruleVersionは進めない。各接続内も同期排他し、クラスはSendableにしない。公開writer scopeは同期closureのみ。予定登録・認可要求・UI待機等のawaitは外で行い、#47での短い最終同期OS操作だけをTX内へ接続する。
 - Selectionのrefは不変。新しい対象選択は新refを準備し、後続の候補policyとruleVersion更新で有効化する。参照先を先に書き換えて現在のruleを変えない。targetRefはadapterがnative tokenの同一性で正規化し、名前/encoded bytes/hashで生成しない。
@@ -37,6 +37,16 @@ ItomaCoreの外側で、iOS標準のSQLite C APIを包む薄いSwift Package。U
 - 登録ID・grant/command ID・policy/candidate版・世代・予定時刻は不変。世代は0から増やし、receipt/発火済みの事実を消さない。最新世代・Registered・未発火・一致する期限・現在時刻/Activation/勝者を確認してからApplying/Activeへ進める。古い世代への発火記録は保持できても、新しいgrant/期限を変更しない。
 
 登録receiptはadapterが記録したAPI受理の事実であり、OSが発行する署名や配信保証ではない。writer scopeに実OSを呼ぶコードはなく、勝手な副作用をDBが取り消せるわけでもない。#47のcontrollerが、intent/Preparing commit→登録API（lock外）→receipt commit→最終再検証/短い同期OS操作/結果commitの順序を守る。テストのActive/receiptは合成データで、Screen Timeを動かした証拠にしない。
+
+## 本文なしの履歴outbox
+
+schema4のoutboxはcommand/grantの型付きsnapshot・eventID・時刻だけ。理由本文/hash・ダミー金額・token/name・raw errorを持たない。`enqueueCommandHistory`/`enqueueGrantHistory`を操作結果と同じwriter scopeで呼ぶ。上限は`HistoryOutboxCapacity`で注入し、満杯は`gap`と永続`historyIncomplete`を返して、停止/再制限のmetadata commitを妨げない。SQL自体が失敗した場合の副作用/不明は#47で扱う。
+
+outbox INSERT等だけの障害もsavepointで履歴部分を巻戻し、外側writerの継続を確認してからgapを保存する。先行する停止/再制限metadataを履歴障害だけで取り消さない。SQLiteが外側TXまで自動rollbackした場合やsavepoint rollback/gap保存の失敗は成功へ変換せず、全体をエラー/不明として扱う。既存eventIDの別payload再利用等の整合性違反はoptional障害にせず、rollback-onlyを維持する。
+
+DB固有のランダムsourceIDと単調sequenceを持ち、ackでoutbox payloadを削除してもID/sequence台帳を残す。同じeventIDはack後に新eventとして復活しない。ack済みIDのpayloadは残さないため再照合できず、`alreadyAcknowledged`を返す。異なる操作事実には必ず新eventIDを使う。payload上限は台帳/SQLite全体の実ファイル上限ではない。
+
+`transferHistory`は共有read→lockなしのprivate sink commit→共有ackの順序。private失敗はpendingを維持しgapを残す。欠損を記録するcontrol保存も失敗したらエラーとなる。履歴のsequenceとpolicy/snapshot版は別で、履歴取込/ackだけでは有効設定の版を変えない。[private側のcutoff/容量契約](HISTORY.md)も参照。
 
 ## 検証する
 

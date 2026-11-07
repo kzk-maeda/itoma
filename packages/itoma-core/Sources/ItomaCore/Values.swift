@@ -52,6 +52,8 @@ public enum IDKind {
     public enum Registration {}
     public enum Evaluation {}
     public enum Reason {}
+    public enum Event {}
+    public enum HistorySource {}
 }
 
 public typealias RuleID = EntityID<IDKind.Rule>
@@ -62,6 +64,8 @@ public typealias GrantID = EntityID<IDKind.Grant>
 public typealias RegistrationID = EntityID<IDKind.Registration>
 public typealias EvaluationID = EntityID<IDKind.Evaluation>
 public typealias ReasonRef = EntityID<IDKind.Reason>
+public typealias EventID = EntityID<IDKind.Event>
+public typealias HistorySourceID = EntityID<IDKind.HistorySource>
 
 /// Signed 64-bit nonnegative values fit SQLite integers. Zero is a valid baseline.
 public struct Counter<Kind>: Hashable, Comparable, Codable, Sendable {
@@ -96,6 +100,7 @@ public enum CounterKind {
     public enum Snapshot {}
     public enum Attempt {}
     public enum Generation {}
+    public enum History {}
 }
 
 public typealias PolicyRevision = Counter<CounterKind.Policy>
@@ -103,6 +108,7 @@ public typealias RuleVersion = Counter<CounterKind.Rule>
 public typealias SnapshotSequence = Counter<CounterKind.Snapshot>
 public typealias AttemptNumber = Counter<CounterKind.Attempt>
 public typealias RegistrationGeneration = Counter<CounterKind.Generation>
+public typealias HistorySequence = Counter<CounterKind.History>
 
 /// Absolute UTC time, encoded as finite seconds since 1970. Never a relative countdown.
 public struct Instant: Hashable, Comparable, Codable, Sendable {

@@ -172,7 +172,7 @@ extension ControlRepository {
             try repository.database.transaction(writer: true) {
                 let rows = try repository.database.rows("PRAGMA user_version")
                 guard case let .integer(version) = rows.first?.first else { throw StorageError.corrupt }
-                guard [Int64(1), 2, Self.schemaVersion].contains(version) else { throw StorageError.unsupportedSchema(version) }
+                guard [Int64(1), 2, 3, Self.schemaVersion].contains(version) else { throw StorageError.unsupportedSchema(version) }
                 _ = try repository.loadSnapshot(expectedSchema: version)
                 guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
                       try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw StorageError.corrupt }
@@ -180,7 +180,8 @@ extension ControlRepository {
                     try repository.createCommandTables()
                 }
                 if version < 3 { try repository.createGrantTables() }
-                try repository.database.execute("PRAGMA user_version=3")
+                if version < 4 { try repository.createHistoryTables() }
+                try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
             }
             return repository
         }
@@ -303,7 +304,7 @@ struct CommandIntent: Equatable, Codable {
     }
 }
 
-private struct CommandDTO: Codable {
+struct CommandDTO: Codable {
     var schemaVersion = 1
     let id: CommandID
     let kind: CommandKind

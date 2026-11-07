@@ -79,7 +79,7 @@ private func execute(_ db: OpaquePointer, _ text: String) throws {
     #expect(try Data(contentsOf: f.url) == sentinel)
 }
 
-@Test(arguments: [Int64(0), 4, 77])
+@Test(arguments: [Int64(0), 5, 77])
 func unsupportedSchemaIsNotInitializedOrDowngraded(version: Int64) throws {
     let f = try Fixture(); defer { f.remove() }
     let repository = try create(f)
@@ -99,7 +99,7 @@ func unsupportedSchemaIsNotInitializedOrDowngraded(version: Int64) throws {
 
 @Test func wrongApplicationIDIsRejectedWithoutErasingOtherData() throws {
     let f = try Fixture(); defer { f.remove() }
-    try sql(f.url) { try execute($0, "PRAGMA user_version=3; PRAGMA application_id=123; CREATE TABLE other_data(value TEXT)") }
+    try sql(f.url) { try execute($0, "PRAGMA user_version=4; PRAGMA application_id=123; CREATE TABLE other_data(value TEXT)") }
     let original = try Data(contentsOf: f.url)
     #expect(throws: StorageError.wrongDatabase) { try ControlRepository.open(at: f.url) }
     #expect(try Data(contentsOf: f.url) == original)
@@ -196,15 +196,15 @@ func unsupportedSchemaIsNotInitializedOrDowngraded(version: Int64) throws {
 @Test func anAlreadyOpenConnectionCannotReadOrWriteAfterAnotherConnectionChangesTheSchema() throws {
     let f = try Fixture(); defer { f.remove() }
     let repository = try create(f)
-    try sql(f.url) { try execute($0, "PRAGMA user_version=4") }
-    #expect(throws: StorageError.unsupportedSchema(4)) { try repository.readSnapshot() }
-    #expect(throws: StorageError.unsupportedSchema(4)) {
+    try sql(f.url) { try execute($0, "PRAGMA user_version=5") }
+    #expect(throws: StorageError.unsupportedSchema(5)) { try repository.readSnapshot() }
+    #expect(throws: StorageError.unsupportedSchema(5)) {
         try repository.setActivation(.enabled, expectedSequence: SnapshotSequence(0))
     }
-    #expect(throws: StorageError.unsupportedSchema(4)) {
+    #expect(throws: StorageError.unsupportedSchema(5)) {
         try repository.putSelection(selection(2), expectedSequence: SnapshotSequence(0))
     }
-    try sql(f.url) { try execute($0, "PRAGMA user_version=3; PRAGMA application_id=123") }
+    try sql(f.url) { try execute($0, "PRAGMA user_version=4; PRAGMA application_id=123") }
     #expect(throws: StorageError.wrongDatabase) {
         try repository.setActivation(.enabled, expectedSequence: SnapshotSequence(0))
     }

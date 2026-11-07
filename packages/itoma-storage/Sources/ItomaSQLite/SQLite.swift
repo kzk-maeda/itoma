@@ -3,7 +3,7 @@ import Foundation
 
 /// Technical failures only; repositories translate these into their own public categories.
 public enum SQLiteFailure: Error, Equatable, Sendable {
-    case busy, corrupt, unavailable, closed, constraint, invalidArgument, failure, nestedTransaction
+    case busy, corrupt, unavailable, closed, constraint, invalidArgument, failure, nestedTransaction, rollbackFailure
 }
 
 public enum SQLValue: Equatable {
@@ -13,6 +13,8 @@ public enum SQLValue: Equatable {
 public final class SQLiteDatabase {
     private var connection: OpaquePointer?
     private var inTransaction = false
+    private var inSavepoint = false
+    public var hasActiveTransaction: Bool { inTransaction }
 
     public init(path: String, busyTimeoutMilliseconds: Int32) throws {
         guard busyTimeoutMilliseconds >= 0, !path.utf8.contains(0) else { throw SQLiteFailure.invalidArgument }
@@ -110,6 +112,35 @@ public final class SQLiteDatabase {
         } catch {
             try? execute("ROLLBACK")
             throw error
+        }
+    }
+
+    /// Isolate optional writes inside an existing transaction. A rollbackFailure means the caller
+    /// must abort the outer transaction; it must never convert that failure into best-effort success.
+    public func savepoint<T>(_ body: () throws -> T) throws -> T {
+        guard let connection else { throw SQLiteFailure.closed }
+        guard inTransaction, !inSavepoint else { throw SQLiteFailure.nestedTransaction }
+        guard sqlite3_get_autocommit(connection) == 0 else { throw SQLiteFailure.rollbackFailure }
+        do { try execute("SAVEPOINT itoma_optional_write") }
+        catch {
+            guard sqlite3_get_autocommit(connection) == 0 else { throw SQLiteFailure.rollbackFailure }
+            throw error
+        }
+        inSavepoint = true
+        defer { inSavepoint = false }
+        do {
+            let result = try body()
+            try execute("RELEASE itoma_optional_write")
+            guard sqlite3_get_autocommit(connection) == 0 else { throw SQLiteFailure.rollbackFailure }
+            return result
+        } catch {
+            let original = error
+            do {
+                try execute("ROLLBACK TO itoma_optional_write")
+                try execute("RELEASE itoma_optional_write")
+                guard sqlite3_get_autocommit(connection) == 0 else { throw SQLiteFailure.rollbackFailure }
+            } catch { throw SQLiteFailure.rollbackFailure }
+            throw original
         }
     }
 

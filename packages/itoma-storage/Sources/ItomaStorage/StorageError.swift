@@ -5,6 +5,7 @@ public enum StorageError: Error, Equatable, Sendable {
     case missingDatabase, alreadyExists, unavailable, busy, corrupt, wrongDatabase
     case unsupportedSchema(Int64), closed, conflict, invalidSelection, databaseFailure
     case invalidCommand, transactionExpired, nestedTransaction, rollbackRequired
+    case invalidHistoryCapacity, invalidPage
 
     static func translating<T>(_ body: () throws -> T) throws -> T {
         do { return try body() }
@@ -16,7 +17,7 @@ public enum StorageError: Error, Equatable, Sendable {
             case .closed: throw Self.closed
             case .constraint: throw Self.conflict
             case .nestedTransaction: throw Self.nestedTransaction
-            case .invalidArgument, .failure: throw Self.databaseFailure
+            case .invalidArgument, .failure, .rollbackFailure: throw Self.databaseFailure
             }
         }
     }
