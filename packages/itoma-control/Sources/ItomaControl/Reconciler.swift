@@ -6,6 +6,11 @@ extension CommandService {
         let marker: EvaluationID
         let revision: PolicyRevision
         let activation: Activation
+        let action: Command?
+        let startedAt: Instant
+        init(marker: EvaluationID, revision: PolicyRevision, activation: Activation, startedAt: Instant, action: Command? = nil) {
+            self.marker = marker; self.revision = revision; self.activation = activation; self.startedAt = startedAt; self.action = action
+        }
     }
     enum ReconciliationStart { case ready(ReconciliationFrame), blocked(ReconciliationResult) }
     struct ReconciliationCommit {
@@ -63,7 +68,7 @@ extension CommandService {
         }
     }
 
-    func beginReconciliation(recoverInterruptedCommands: Bool) throws -> ReconciliationStart {
+    func beginReconciliation(recoverInterruptedCommands: Bool, action: Command? = nil) throws -> ReconciliationStart {
         try repository.requireOutsideTransaction()
         return try observedTransaction { tx, capture in
             let snapshot = try tx.snapshot()
@@ -82,55 +87,82 @@ extension CommandService {
                     try history(command.id, at: context.now, transaction: tx)
                 }
             }
+            var applyingAction: Command?
+            if let action {
+                guard let owned = try prepareActivationForApplication(action, context: context, transaction: tx) else {
+                    return .blocked(ReconciliationResult(disposition: .requiresRecovery, failure: .interrupted))
+                }
+                applyingAction = owned
+            }
             let current = try tx.snapshot(), plan = try reconciliationPlan(context: context, transaction: tx)
             guard canApply(context) else {
                 try observe(plan, result: .uncertain(.authorizationRequired), context: context, transaction: tx)
+                if let applyingAction {
+                    _ = try tx.recordCommand(changing(applyingAction, status: .uncertain), expected: applyingAction)
+                    try history(applyingAction.id, at: context.now, transaction: tx)
+                }
                 return .blocked(ReconciliationResult(disposition: .uncertain, failure: .authorizationRequired))
             }
             let applying = try ApplicationObservation(evaluationID: plan.id, status: .applying, evidence: nil,
                 observedAt: context.now, validUntil: nil, error: nil)
             _ = try tx.recordApplication(StoredApplication(evaluation: plan, observation: applying), expectedSequence: tx.snapshot().snapshotSequence)
-            return .ready(ReconciliationFrame(marker: plan.id, revision: current.policy.revision, activation: current.activation))
+            return .ready(ReconciliationFrame(marker: plan.id, revision: current.policy.revision, activation: current.activation, startedAt: context.now, action: applyingAction))
         }
     }
 
     func finalizeReconciliation(_ frame: ReconciliationFrame) throws -> ReconciliationCommit {
         try observedTransaction { tx, capture in
-            let before = try tx.snapshot()
-            guard before.application?.evaluation.id == frame.marker, before.application?.observation.status == .applying else {
-                return reconciliationCommit(.requiresRecovery, failure: .interrupted)
+            let commit = try applyReconciliation(frame, transaction: tx, capture: capture)
+            if let action = frame.action, try tx.command(action.id) == action {
+                let current = try tx.snapshot()
+                let status: CommandStatus = current.activationCommandID != action.id || current.activation != frame.activation ? .superseded
+                    : commit.result.disposition == .committed && commit.result.failure == nil ? .succeeded : .uncertain
+                _ = try tx.recordCommand(changing(action, status: status), expected: action)
+                try history(action.id, at: current.application?.observation.observedAt ?? frame.startedAt, transaction: tx)
             }
-            let context = try recordCurrentFacts(context: capture(before.activation), updateObservation: false, transaction: tx)
-            let current = try tx.snapshot()
-            guard current.policy.revision == frame.revision, current.activation == frame.activation else {
-                try markObservationUncertain(at: context.now, failure: .interrupted, transaction: tx)
-                return reconciliationCommit(.requiresRecovery, failure: .interrupted)
-            }
-            let plan = try reconciliationPlan(context: context, transaction: tx)
-            guard canApply(context) else {
-                try observe(plan, result: .uncertain(.authorizationRequired), context: context, transaction: tx)
-                return reconciliationCommit(.uncertain, failure: .authorizationRequired)
-            }
-            let applied = restriction.apply(plan)
-            let after = try recordCurrentFacts(context: capture(current.activation), updateObservation: false, transaction: tx)
-            if validResult(plan, started: context, after: after) {
-                return try commitReconciliation(plan, result: applied, context: after, transaction: tx)
-            }
-            guard canApply(after), after.activation == context.activation else {
-                try observe(plan, result: .uncertain(.authorizationRequired), context: after, transaction: tx)
-                return reconciliationCommit(.uncertain, failure: .authorizationRequired)
-            }
-            // One immediate baseline attempt if a deadline/zone/clock boundary crossed during the
-            // short write. No recursive retry; a second context change stays Uncertain.
-            let baseline = try reconciliationPlan(context: after, transaction: tx)
-            let recovery = restriction.apply(baseline)
-            let recoveredAt = try recordCurrentFacts(context: capture(after.activation), updateObservation: false, transaction: tx)
-            guard validResult(baseline, started: after, after: recoveredAt) else {
-                try observe(baseline, result: .uncertain(.interrupted), context: recoveredAt, transaction: tx)
-                return reconciliationCommit(.uncertain, failure: .interrupted)
-            }
-            return try commitReconciliation(baseline, result: recovery, context: recoveredAt, transaction: tx)
+            return commit
         }
+    }
+
+    func applyReconciliation(_ frame: ReconciliationFrame, transaction tx: ControlTransaction,
+                             capture: @ItomaControlActor (Activation) -> EvaluationContext) throws -> ReconciliationCommit {
+        let before = try tx.snapshot()
+        if let action = frame.action, try tx.command(action.id) != action || before.activationCommandID != action.id {
+            return reconciliationCommit(.requiresRecovery, failure: .interrupted)
+        }
+        guard before.application?.evaluation.id == frame.marker, before.application?.observation.status == .applying else {
+            return reconciliationCommit(.requiresRecovery, failure: .interrupted)
+        }
+        let context = try recordCurrentFacts(context: capture(before.activation), updateObservation: false, transaction: tx)
+        let current = try tx.snapshot()
+        guard current.policy.revision == frame.revision, current.activation == frame.activation else {
+            try markObservationUncertain(at: context.now, failure: .interrupted, transaction: tx)
+            return reconciliationCommit(.requiresRecovery, failure: .interrupted)
+        }
+        let plan = try reconciliationPlan(context: context, transaction: tx)
+        guard canApply(context) else {
+            try observe(plan, result: .uncertain(.authorizationRequired), context: context, transaction: tx)
+            return reconciliationCommit(.uncertain, failure: .authorizationRequired)
+        }
+        let applied = restriction.apply(plan)
+        let after = try recordCurrentFacts(context: capture(current.activation), updateObservation: false, transaction: tx)
+        if validResult(plan, started: context, after: after) {
+            return try commitReconciliation(plan, result: applied, context: after, transaction: tx)
+        }
+        guard canApply(after), after.activation == context.activation else {
+            try observe(plan, result: .uncertain(.authorizationRequired), context: after, transaction: tx)
+            return reconciliationCommit(.uncertain, failure: .authorizationRequired)
+        }
+        // One immediate baseline attempt if a deadline/zone/clock boundary crossed during the
+        // short write. No recursive retry; a second context change stays Uncertain.
+        let baseline = try reconciliationPlan(context: after, transaction: tx)
+        let recovery = restriction.apply(baseline)
+        let recoveredAt = try recordCurrentFacts(context: capture(after.activation), updateObservation: false, transaction: tx)
+        guard validResult(baseline, started: after, after: recoveredAt) else {
+            try observe(baseline, result: .uncertain(.interrupted), context: recoveredAt, transaction: tx)
+            return reconciliationCommit(.uncertain, failure: .interrupted)
+        }
+        return try commitReconciliation(baseline, result: recovery, context: recoveredAt, transaction: tx)
     }
 
     func canApply(_ context: EvaluationContext) -> Bool {

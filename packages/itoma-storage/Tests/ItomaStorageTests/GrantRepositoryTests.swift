@@ -357,7 +357,7 @@ func missingReceiptKeepsOldPolicyAndExpiryAndCandidateUnreflected(status: Deadli
     try reopened.close()
     let empty = try Fixture(); defer { empty.remove() }
     try empty.repository.close()
-    try sql(empty.url) { try execute($0, "DROP TABLE application_state; DROP TABLE history_outbox; DROP TABLE history_event_ids; DROP TABLE history_state; DROP TABLE registrations; DROP TABLE command_grant_results; DROP TABLE grants; ALTER TABLE policy_candidates DROP COLUMN activated_revision; PRAGMA user_version=2") }
+    try sql(empty.url) { try execute($0, "DROP TABLE activation_state; DROP TABLE application_state; DROP TABLE history_outbox; DROP TABLE history_event_ids; DROP TABLE history_state; DROP TABLE registrations; DROP TABLE command_grant_results; DROP TABLE grants; ALTER TABLE policy_candidates DROP COLUMN activated_revision; PRAGMA user_version=2") }
     #expect(throws: StorageError.unsupportedSchema(2)) { try ControlRepository.open(at: empty.url) }
     let migrated = try ControlRepository.migrate(at: empty.url)
     #expect(try migrated.unfinishedGrants().isEmpty)
