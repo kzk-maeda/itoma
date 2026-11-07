@@ -16,6 +16,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Test pure Swift core
+        run: |
+          docker run --rm --network none \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/packages/itoma-core,dst=/package,readonly" \
+            swift:6.2.3-jammy@sha256:33c73fc133767cdaafde26f0f9967c96ab25ff77618b7df1eabf46140bf2b6e6 \
+            swift test --package-path /package \
+              --scratch-path /tmp/itoma-core-build --cache-path /tmp/itoma-swift-cache --jobs 2
+
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
