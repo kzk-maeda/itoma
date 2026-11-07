@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { assertCleanSource, claimOutputDirectory, simulatorSpec, smokeOutcome, validatedCommit, validatedSimulatorID } from '../scripts/lib/ios-qa.mjs';
+import { annotationCommand, assertCleanSource, claimOutputDirectory, compilerDiagnostics, simulatorSpec, smokeOutcome, validatedCommit, validatedSimulatorID } from '../scripts/lib/ios-qa.mjs';
 
 const commit = 'a'.repeat(40);
 test('mutable refs and injected or incomplete identities are refused', () => {
@@ -70,4 +70,20 @@ test('an output directory cannot be reused to pass from a previous run, and old 
     assert.throws(() => claimOutputDirectory(output));
     assert.equal(readFileSync(path.join(output, 'app.log'), 'utf8'), marker);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('API compiler diagnostics are bounded and never publish signed URL queries', () => {
+  const lines = compilerDiagnostics(`normal build output\nfile.swift:3: error: missing type\nerror: download https://user:secret@example.invalid/archive?sig=private-token\n${'error: another issue\n'.repeat(12)}`);
+  assert.equal(lines.length, 8);
+  const sensitive = compilerDiagnostics('error: download https://user:secret@example.invalid/archive?sig=private-token');
+  assert.deepEqual(sensitive, ['error: download https://example.invalid/[url omitted]']);
+  assert.equal(sensitive.join('').includes('secret'), false);
+  assert.equal(sensitive.join('').includes('private-token'), false);
+});
+
+test('a compiler message cannot create another workflow annotation via newlines or percent escapes', () => {
+  const result = annotationCommand('error', 'Compiler', 'failure%0A\r\n::notice::injected');
+  assert.equal(result.includes('\n'), false);
+  assert.equal(result.includes('\r'), false);
+  assert.equal(result, '::error title=Compiler::failure%250A%0D%0A::notice::injected');
 });

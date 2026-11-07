@@ -47,6 +47,23 @@ export function smokeOutcome(log, commit) {
   if (new RegExp(`(?:^|\\s)ITOMA_NATIVE_SMOKE_PASS:${commit}(?=\\s|$)`).test(log)) return 'pass';
   return 'pending';
 }
+
+/** Small compiler/test diagnostics, with URL capabilities omitted from API-visible annotations. */
+export function compilerDiagnostics(log) {
+  return log.split(/\r?\n/)
+    .map((line) => line.replace(/\u001b\[[0-9;]*m/g, ''))
+    .filter((line) => /error:|^✘|^\*\* .*FAILED|^Error:|\[!\]/i.test(line))
+    .slice(-8)
+    .map((line) => line.replace(/https?:\/\/[^\s)"']+/g, (url) => {
+      try { return `${new URL(url).origin}/[url omitted]`; } catch { return '[url omitted]'; }
+    }).slice(0, 1_200));
+}
+
+export function annotationCommand(level, title, message) {
+  if (!['notice', 'error'].includes(level)) throw new Error('Invalid annotation level');
+  const escape = (value) => String(value).replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+  return `::${level} title=${escape(title)}::${escape(message)}`;
+}
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';

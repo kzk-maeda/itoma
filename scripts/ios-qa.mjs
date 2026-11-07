@@ -4,7 +4,7 @@ import { appendFileSync, closeSync, existsSync, openSync, readFileSync, readdirS
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { assertCleanSource, claimOutputDirectory, simulatorSpec, smokeOutcome, validatedCommit, validatedSimulatorID } from './lib/ios-qa.mjs';
+import { annotationCommand, assertCleanSource, claimOutputDirectory, compilerDiagnostics, simulatorSpec, smokeOutcome, validatedCommit, validatedSimulatorID } from './lib/ios-qa.mjs';
 
 if (process.platform !== 'darwin') throw new Error('iOS QA requires macOS/Xcode');
 const root = process.cwd();
@@ -22,13 +22,18 @@ const result = {
 };
 let simulatorID, launcher, launchLog;
 const record = () => writeFileSync(path.join(output, 'result.json'), `${JSON.stringify(result, null, 2)}\n`);
+function toolFailure(command, log) {
+  const error = new Error(`${command} failed; see ${log}`);
+  error.logFile = log;
+  return error;
+}
 
 function run(command, args, { log = 'tools.log', timeout = 180_000, env = process.env, logStdout = true } = {}) {
   const fd = openSync(path.join(output, log), 'a');
   try {
     const call = spawnSync(command, args, { cwd: root, env, timeout, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', fd] });
     if (call.stdout && logStdout) writeFileSync(fd, call.stdout);
-    if (call.error || call.status !== 0) throw new Error(`${command} failed; see ${log}`);
+    if (call.error || call.status !== 0) throw toolFailure(command, log);
     return call.stdout.trim();
   } finally { closeSync(fd); }
 }
@@ -37,11 +42,14 @@ function build(command, args, log, timeout) {
   const fd = openSync(path.join(output, log), 'a');
   try {
     const call = spawnSync(command, args, { cwd: root, env: process.env, timeout, stdio: ['ignore', fd, fd] });
-    if (call.error || call.status !== 0) throw new Error(`${command} failed; see ${log}`);
+    if (call.error || call.status !== 0) throw toolFailure(command, log);
   } finally { closeSync(fd); }
 }
 
-function checkpoint(stage) { result.stages[stage] = 'pass'; record(); }
+function checkpoint(stage) {
+  result.stages[stage] = 'pass'; record();
+  console.log(annotationCommand('notice', 'iOS QA stage', `${stage}: pass`));
+}
 
 try {
   result.sourceCommit = assertCleanSource(root, commit);
@@ -118,6 +126,12 @@ try {
   result.status = 'pass';
 } catch (error) {
   result.status = 'fail'; result.error = error.message;
+  console.log(annotationCommand('error', 'iOS QA', result.error));
+  if (error.logFile && existsSync(path.join(output, error.logFile))) {
+    for (const line of compilerDiagnostics(readFileSync(path.join(output, error.logFile), 'utf8'))) {
+      console.log(annotationCommand('error', 'Compiler/test diagnostic', line));
+    }
+  }
   process.exitCode = 1;
 } finally {
   launcher?.kill('SIGTERM');
@@ -132,5 +146,7 @@ try {
     }
   }
   result.completedAt = new Date().toISOString(); record();
+  // API-readable status/provenance remains useful even when artifact-host access is unavailable.
+  console.log(annotationCommand('notice', 'iOS QA result', JSON.stringify(result)));
   console.log(`iOS QA ${result.status}: ${output}`);
 }

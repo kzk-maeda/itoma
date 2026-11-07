@@ -27,6 +27,8 @@ workflowと[runner-images](https://github.com/actions/runner-images/blob/main/im
 
 Actions artifactはresult.json、ビルド/Swift/起動ログ、home.pngだけを7日保存する。app binary、derived data、Swift build cacheは配布しない。
 
+GitHub check-runの注釈にも各stage/結果metadataと少量のcompiler/test診断を出す。失敗原因はAPIから読め、全文ログ・画像とは分ける。URLのpath/queryやcredentialsを注釈へ出さず、workflow commandの改行/percentをescapeする。画像・全文取得にはActionsのlogs/artifact配信hostへの通信許可が別途必要。
+
 result.jsonにrequested/source/native/JS commit、workflow commit、build ID、Release/SDK/architecture/signing、Xcode/Swift/CocoaPods実版、生成config fingerprint、埋め込まれたJS bundle digestを残す。未ビルド段階のnative/JS SHAはnullとし、実行希望を成功済みと記録しない。古いcommitのmarkerは合格にせず、画像取得後にも対象SHAのfailをpassより優先して確認する。PRを更新したら前の結果は`stale native build`とする。
 
 対象runのログと画像を確認してPRへ結果を追記する。CNG、compile、install、bridge、画像取得の各段階を別々に記録し、失敗・未実施をPASSにしない。UIの変更があるときはDESIGNとUI受入ID、Light/Dark・文字拡大・VoiceOver等の証跡を追加する。
