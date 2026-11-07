@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "ItomaStorage",
+    platforms: [.iOS("15.1"), .macOS(.v13)],
     products: [
         .library(name: "ItomaStorage", targets: ["ItomaStorage"]),
         .library(name: "ItomaHistory", targets: ["ItomaHistory"]),

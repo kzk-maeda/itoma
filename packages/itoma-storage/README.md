@@ -12,6 +12,8 @@ ItomaCoreの外側で、iOS標準のSQLite C APIを包む薄いSwift Package。U
 
 本Packageの公開productは、共有control用`ItomaStorage`と本体private用[`ItomaHistory`](HISTORY.md)に分かれる。Extensionは`ItomaStorage`だけに依存し、理由本文のAPIをリンクしない。共通の`ItomaSQLite` targetはSQLite接続/bind/transactionの技術層だけを提供する。本体のItomaHistoryは共有outbox DTO/transferへ依存するが、逆の依存は作らない。
 
+AppleではSDK標準の`SQLite3` module、Linuxでは`CSQLite` system-library shimで同じSQLite C APIへ接続する。CocoaPods版ItomaSQLiteはsystem sqlite3をリンクし、独自のheader-only CSQLite podを必要としない。SwiftPMとPodは同じSwift Sourcesを使い、SQL/transaction/保存の実装を複製しない。
+
 ## 保存の契約
 
 - `ControlRepository.create`は本人/初期化controllerが明示的に新規作成するときだけ使う。O_EXCLで新しいファイルを取得し、SQLiteはCREATEなしで開く。既存・空・破損・保護で読めないDBを初期化しない。途中で作成に失敗したファイルも自動消去しない。
@@ -20,6 +22,7 @@ ItomaCoreの外側で、iOS標準のSQLite C APIを包む薄いSwift Package。U
 - `readSnapshot`は短いread TX。`setActivation`/`putSelection`はBEGIN IMMEDIATEの短いwriter TXでsnapshotSequenceをCASし、変更時に進める。policyRevision/ruleVersionは進めない。各接続内も同期排他し、クラスはSendableにしない。公開writer scopeは同期closureのみ。予定登録・認可要求・UI待機等のawaitは外で行い、#47での短い最終同期OS操作だけをTX内へ接続する。
 - Selectionのrefは不変。新しい対象選択は新refを準備し、後続の候補policyとruleVersion更新で有効化する。参照先を先に書き換えて現在のruleを変えない。targetRefはadapterがnative tokenの同一性で正規化し、名前/encoded bytes/hashで生成しない。
 - SQLiteエラーはbusy/corrupt/unavailable等の固定分類だけ。SQL・ファイルパス・token・理由本文をエラーへ含めない。失敗はrollbackし、空設定の成功へ置換しない。WALはwriterの同時成功を意味しない。
+- control/private historyはfile URLを要求し、pathのNULに加えてpercentEncodedPathの`%00`も拒否する。相対URLのbaseも解決して、実際に使うpathと同じ範囲を検査する。Apple Foundationではdecoded pathも`%00`を残すことを[Mac診断run](https://github.com/kzk-maeda/itoma/actions/runs/42359476487)で確認した。通常の文字列`%00`を含むファイル名はURL上で`%2500`となり、再帰decodeで誤拒否しない。SQLiteのraw String境界でもNULを独立して拒否する。
 
 この段階のActivationは保存した本人の意図であり、OS反映や再制限成功ではない。変更時には未終端grantも同じTXで失効させ、再開で昔の解除を戻さない。OS実行は#47以降で接続する。last-valid policyもDB全体の破損復旧を保証せず、自動復旧や古いgrantの復活に使わない。
 

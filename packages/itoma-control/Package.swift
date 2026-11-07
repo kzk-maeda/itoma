@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "ItomaControl",
+    platforms: [.iOS("15.1"), .macOS(.v13)],
     products: [.library(name: "ItomaControl", targets: ["ItomaControl"])],
     dependencies: [.package(path: "../itoma-core"), .package(path: "../itoma-storage")],
     targets: [

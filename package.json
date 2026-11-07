@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/ui": "~58.0.27",
     "expo": "~58.0.23",
+    "expo-build-properties": "~58.0.12",
     "expo-constants": "~58.0.15",
     "expo-dev-client": "~58.0.18",
     "expo-device": "~58.0.5",
@@ -53,7 +54,8 @@
     "test:demo": "node --test tests/demo-*.test.mjs",
     "lint": "expo lint",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:ios-tools": "node --test tests/ios-qa.test.mjs"
   },
   "private": true
 }

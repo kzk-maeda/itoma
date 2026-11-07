@@ -33,6 +33,35 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "extraPods": [
+              {
+                "name": "ItomaSQLite",
+                "path": "../packages/itoma-storage"
+              },
+              {
+                "name": "ItomaCore",
+                "path": "../packages/itoma-core"
+              },
+              {
+                "name": "ItomaStorage",
+                "path": "../packages/itoma-storage"
+              },
+              {
+                "name": "ItomaHistory",
+                "path": "../packages/itoma-storage"
+              },
+              {
+                "name": "ItomaControl",
+                "path": "../packages/itoma-control"
+              }
+            ]
+          }
+        }
       ]
     ],
     "experiments": {

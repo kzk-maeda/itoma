@@ -175,12 +175,35 @@ func unsupportedSchemaIsNotInitializedOrDowngraded(version: Int64) throws {
 
 @Test func embeddedNulInAFilePathCannotOpenOrCreateItsTruncatedPrefix() throws {
     let f = try Fixture(); defer { f.remove() }
-    let invalid = URL(fileURLWithPath: f.url.path + "\0suffix")
-    #expect(throws: StorageError.unavailable) {
-        try ControlRepository.create(at: invalid, initialPolicy: policy(), selections: [selection()], activation: .paused)
+    let encoded = try #require(URL(string: f.url.absoluteString + "%00suffix"))
+    let relative = try #require(URL(string: "#relative-probe", relativeTo: encoded))
+    #expect(relative.baseURL != nil)
+    for invalid in [URL(fileURLWithPath: f.url.path + "\0suffix"), encoded, relative] {
+        let parts = try #require(URLComponents(url: invalid, resolvingAgainstBaseURL: true))
+        #expect(parts.percentEncodedPath.contains("%00")) // the malformed input must survive URL construction
+        #expect(throws: StorageError.unavailable) {
+            try ControlRepository.create(at: invalid, initialPolicy: policy(), selections: [selection()], activation: .paused)
+        }
+        #expect(throws: StorageError.unavailable) { try ControlRepository.open(at: invalid) }
     }
-    #expect(throws: StorageError.unavailable) { try ControlRepository.open(at: invalid) }
     #expect(!FileManager.default.fileExists(atPath: f.url.path))
+    #expect(try FileManager.default.contentsOfDirectory(atPath: f.directory.path).isEmpty)
+}
+
+@Test func aLiteralPercent00FilenameRemainsUsableWithoutRecursiveDecoding() throws {
+    let f = try Fixture(); defer { f.remove() }
+    let url = f.directory.appendingPathComponent("control-%00.sqlite")
+    let parts = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false))
+    #expect(parts.percentEncodedPath.contains("%2500"))
+    let relative = try #require(URL(string: "#relative-probe", relativeTo: url))
+    #expect(relative.baseURL != nil)
+    let repository = try ControlRepository.create(at: relative, initialPolicy: policy(), selections: [selection()], activation: .paused)
+    let expected = try repository.readSnapshot()
+    try repository.close()
+    let reopened = try ControlRepository.open(at: url)
+    #expect(try reopened.readSnapshot() == expected)
+    #expect(try FileManager.default.contentsOfDirectory(atPath: f.directory.path).contains("control-%00.sqlite"))
+    try reopened.close()
 }
 
 @Test func closedRepositoryReturnsAnErrorAndKeepsThePersistedSnapshot() throws {
