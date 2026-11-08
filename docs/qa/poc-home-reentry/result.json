@@ -1,0 +1,53 @@
+{
+  "testedSourceCommit": "7cc39d7b24656771e2b31100b3a817096c5784ea",
+  "localConfigOverride": {
+    "bundleIdentifier": "com.kzk-maeda.itoma.poc",
+    "userProvidedTeamConfigured": true
+  },
+  "appConfigSHA256": "22d1dd1aa3823df5e30c53215aa9d7df8f9a44608df5547ac1be485964c9886f",
+  "qualityChecksExitCodes": {
+    "typecheck": 0,
+    "lint": 0,
+    "jest": 0,
+    "demo": 0,
+    "ios-tools": 0,
+    "expo-doctor": 0
+  },
+  "deviceBuild": {
+    "buildID": "bea1b043-d3fd-45cd-9d7f-afa7e494de22",
+    "configuration": "Release",
+    "sdk": "iphoneos",
+    "signing": "development-automatic",
+    "status": "pass",
+    "signatureVerificationExitCode": 0,
+    "profileChecks": {
+      "teamMatches": true,
+      "applicationIdentifierMatches": true,
+      "familyControls": true,
+      "developmentProfile": true,
+      "deviceIncluded": true
+    },
+    "signedEntitlementsChecks": {
+      "familyControls": true,
+      "teamMatches": true,
+      "bundleMatches": true,
+      "development": true
+    },
+    "jsBundleSHA256": "aa846b6b12f46037c3b1a1470f919dba2007f7d69ceb8c1baa9f72f3b1524dc6",
+    "installedOnDevice": false,
+    "deviceValidation": "NOT RUN; device disconnected before new build"
+  },
+  "simulator": {
+    "device": "iPhone SE (3rd generation)",
+    "runtime": "iOS 27.2",
+    "sourceCommit": "7cc39d7b24656771e2b31100b3a817096c5784ea",
+    "buildID": "1235a77e-0a48-46d1-9f89-c598af9d8a5a",
+    "buildStatus": "pass",
+    "configuration": "Release",
+    "signing": "disabled",
+    "bundleIdentifier": "com.kzk-maeda.itoma.poc",
+    "pocFlag": true,
+    "jsBundleSHA256": "9208164c72a789fca891543813064c47ae4fd8b7a060ef7804f03dc9c772ceb0"
+  },
+  "screenshotSHA256": "78540a244a1848ac1feb2a422ad8bb005b8f6ec99a1fcc439ab35339ed5a8085"
+}
