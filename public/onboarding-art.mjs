@@ -1,0 +1,3 @@
+export function character(pose='calm'){
+ return `<svg class="character" viewBox="0 0 180 160" aria-hidden="true"><path class="ground" d="M38 145q52 8 104 0"/><path class="feet" d="M63 131q-5 11 4 11h12l2-12m25 0 1 12h12q8-1 3-12"/><path class="body" d="M40 97c-2-29 10-53 35-56 4-16 24-17 25-5 29-3 42 19 43 44 12 7 15 21 7 33-5 20-24 25-58 24-39 1-55-10-52-40Z"/><path class="tuft" d="M75 41q9-12 22-6"/><path class="face" d="M52 94q-6 5-2 11m80-13q6 6 3 12"/>${pose==='warm'?'<path class="face" d="M68 79q4-6 8 0m29 0q4-6 8 0"/>':'<ellipse class="eye" cx="72" cy="78" rx="2.4" ry="3"/><ellipse class="eye" cx="108" cy="78" rx="2.4" ry="3"/>'}<path class="face" d="M84 91q6 5 12 0"/><path class="cheek" d="M60 88h7m46 0h7"/></svg>`;
+}
