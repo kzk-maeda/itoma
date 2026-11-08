@@ -35,7 +35,7 @@ afterEach(() => {
 test('normal launches and malformed QA identities neither navigate nor signal', async () => {
   const { native, router, qa } = setup();
   delete process.env.EXPO_PUBLIC_NATIVE_SMOKE;
-  await qa.runNativeSmoke(); qa.completeNativePoCSmoke(response);
+  await qa.runNativeSmoke(); qa.completeNativePoCSmoke(response); qa.completeNativeHomeSmoke();
   process.env.EXPO_PUBLIC_NATIVE_SMOKE = '1'; process.env.EXPO_PUBLIC_BUILD_SHA = 'main';
   await qa.runNativeSmoke();
   process.env.EXPO_PUBLIC_BUILD_SHA = `${commit}\n`; await qa.runNativeSmoke();
@@ -44,16 +44,20 @@ test('normal launches and malformed QA identities neither navigate nor signal', 
   expect(native.reportNativeSmokeResult).not.toHaveBeenCalled();
 });
 
-test('bridge proof alone waits for the destination screen before emitting one pass', async () => {
+test('bridge and PoC proof wait for the final home mount before emitting one pass', async () => {
   const { native, router, qa } = setup();
+  qa.completeNativeHomeSmoke();
   await qa.runNativeSmoke();
   expect(router.replace).toHaveBeenCalledWith('/native-poc');
   expect(native.reportNativeSmokeResult).not.toHaveBeenCalled();
   qa.completeNativePoCSmoke(response); qa.completeNativePoCSmoke(response);
+  expect(native.reportNativeSmokeResult).not.toHaveBeenCalled();
+  expect(router.replace).toHaveBeenLastCalledWith('/');
+  qa.completeNativeHomeSmoke(); qa.completeNativeHomeSmoke();
   await qa.runNativeSmoke();
   expect(native.reportNativeSmokeResult).toHaveBeenCalledTimes(1);
   expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, true);
-  expect(router.replace).toHaveBeenCalledTimes(1);
+  expect(router.replace).toHaveBeenCalledTimes(2);
 });
 
 test.each([
@@ -81,4 +85,13 @@ test('failed or device-enabled bridge proof cannot navigate into a synthetic Sim
   expect(native.reportNativeSmokeResult).toHaveBeenCalledTimes(1);
   expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, false);
   expect(router.replace).not.toHaveBeenCalled();
+});
+
+test('failure to return to home cannot be promoted by a later home callback', async () => {
+  const { native, router, qa } = setup();
+  router.replace.mockImplementationOnce(() => {}).mockImplementationOnce(() => { throw new Error('home unavailable'); });
+  await qa.runNativeSmoke();
+  qa.completeNativePoCSmoke(response); qa.completeNativeHomeSmoke();
+  expect(native.reportNativeSmokeResult).toHaveBeenCalledTimes(1);
+  expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, false);
 });

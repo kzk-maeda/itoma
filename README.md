@@ -45,14 +45,15 @@ npx expo-doctor
 ```
 
 `npm test` は Jest / jest-expo による一度の実行です。開発時の監視は `npm run test:watch` を使用します。
-ホーム画面のテストは React Native Testing Library を使い、モックのアプリ・モード選択、保存、キャンセルを検証します。OS の制限機能を検証するものではありません。
+ホームのテストは未接続時の正直な表示、検証画面への復帰、残り時間の計算、期限到達・不明表示を確認します。時間帯・対象・目的は表示用fixtureであり、OSの制限機能を検証するものではありません。
 
 GitHub Actions の `quality` ジョブは main への push と PR で依存関係のインストール、型チェック、lint、テストを実行します。
 `expo-doctor` はローカルで実行し、結果を PR に記載します。オンライン照会の失敗と依存関係の不一致は区別してください。
 
 ## 現在の実装と未設定事項
 
-- ホームはアプリとモードを選択できるモックです。設定は画面内のメモリに保持され、永続保存・OS 制限は行いません。
+- ホームは採用済みの「墨と白」・OPEN CIRCLEへ移行しました。旧サンプル選択は撤去し、時間帯ルールの未接続を明示します。PoC有効のiOSビルドでは検証画面へ戻り、手動制限を停止できます。[画面と検証範囲](docs/qa/adopted-home/README.md)。
+- 円形の残り時間・目的・対象・共通解除入口の表示部品があります。通常ホームは製品ルールを取得しないため、架空の円や解除操作は表示しません。曜日設定/理由による解除とnative snapshotの接続は#51/#52/#54/#56へ残ります。
 - 共通SwiftのCore/Storage/Control、型付きローカルExpo ModuleとLinux/Macの単体検証があります。製品ホームから保存・OS制限へは未接続です。
 - [署名不要Simulator QA](docs/ios-qa.md)でReleaseビルド・install/launch・JS→Swift smoke・画像取得を行えます。全UI操作・アクセシビリティや実機Screen Timeは別の検証です。[PR #95の取得済み証跡](docs/qa/pr95-324c905/README.md)は当該headの結果で、後続ビルドへ転用しません。
 - 製品のFamilyControls / ManagedSettings / DeviceActivity、App Extensions、App Groupsの接続と実機検証は残っています。認可・選択保存・専用store手動操作の限定PoCは[PR #106](https://github.com/kzk-maeda/itoma/pull/106)で製品フローから分離しています。
