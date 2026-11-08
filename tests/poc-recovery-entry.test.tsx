@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 import { HomeScreen } from '../src/components/home/home-screen';
 
 jest.mock('expo-constants', () => ({ __esModule: true, default: { expoConfig: null } }));
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+jest.mock('expo-router', () => ({ router: { replace: jest.fn() } }));
 jest.mock('../src/global.css', () => ({}));
 
 const originalOS = Platform.OS;
@@ -17,10 +17,10 @@ test('a freshly opened PoC home provides a recovery route without starting an op
   Constants.expoConfig = { name: 'itoma', slug: 'itoma', ios: { infoPlist: { ITOMAScreenTimePoC: true } } };
   await render(<HomeScreen />);
   expect(screen.getByText(/アプリを閉じても自動では停止しません/)).toBeTruthy();
-  expect(router.push).not.toHaveBeenCalled();
+  expect(router.replace).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '検証画面を開く' }));
-  expect(router.push).toHaveBeenCalledTimes(1);
-  expect(router.push).toHaveBeenCalledWith('/native-poc');
+  expect(router.replace).toHaveBeenCalledTimes(1);
+  expect(router.replace).toHaveBeenCalledWith('/native-poc');
 });
 
 test.each([undefined, false, 'true'])('a normal iOS build has no PoC entry (flag: %s)', async (flag) => {

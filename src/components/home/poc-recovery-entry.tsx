@@ -21,7 +21,7 @@ export function PoCRecoveryEntry() {
       <Pressable
         accessibilityRole="button"
         accessibilityHint="実機検証の状態確認と停止操作がある画面を開きます"
-        onPress={() => router.push('/native-poc')}
+        onPress={() => router.replace('/native-poc')}
         style={({ pressed }) => [
           styles.button,
           { backgroundColor: theme.surface, borderColor: theme.accent },
