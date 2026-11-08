@@ -8,6 +8,7 @@ const entryPages = new Map([
   ['demo/b-native-motion', 'design-motion.html'],
   ['demo/color-variations', 'design-colors.html'],
   ['demo/hourglass-experience', 'hourglass.html'],
+  ['demo/companion-experience', 'companion.html'],
 ].map(([branch, page]) => [demoTarget(branch).key, page]));
 
 export function demoEntryPath(environment) {

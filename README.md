@@ -7,6 +7,7 @@ MVP は Local-first とし、バックエンド・独自認証・実課金は導
 背景・確定方針は [引き継ぎ資料](docs/ITOMA_CODEX_HANDOVER.md)、開発ルールは [AGENTS.md](AGENTS.md) を参照してください。
 UI・操作・文言の設計判断とレビュー基準は [DESIGN.md](DESIGN.md) にまとめています。
 UIはサークル、ロゴは01「OPEN CIRCLE」を採用する方向です。選択した図案と実装時の区別は [ブランド方針](docs/brand/README.md) を参照してください。
+[相棒と対話する体験デモ](docs/companion-study.md)では、時間を決める・一時解除・振り返りの3場面を試せます。生成AI未接続のシナリオ対話です。
 基本配色は05「墨と白」です。ライト／ダークの基準値は [UIガイドライン §6](docs/ui-guidelines.md#6-見た目をコードへ移すためのトークン) を使います。
 実装時は [UIガイドライン](docs/ui-guidelines.md) の画面・状態・操作・部品契約と、[UI受入条件](docs/ui-acceptance.md) の検証IDを併せて使います。合意した要望と採用待ちの仕様案は区別しています。
 MVP仕様・状態モデル・責務・保存・PoC計画と検討Issueの入口は [システム設計](docs/system/README.md) です。未決定事項はIssue、仕様は設計資料、重要な判断理由は [ADR](docs/adr/README.md) で管理します。

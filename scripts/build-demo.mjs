@@ -3,6 +3,7 @@ import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { demoTarget } from './lib/demo-target.mjs';
 import { demoRepo } from './lib/demo-repo.mjs';
+import { installDemoEntry } from './lib/demo-entry.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const { sha, branch, dirty: changes } = demoRepo();
@@ -22,8 +23,10 @@ mkdirSync(new URL('../dist/demo/', import.meta.url), { recursive: true });
 const mounted = new URL(`../dist/demo${target.basePath}/`, import.meta.url);
 mkdirSync(mounted, { recursive: true });
 cpSync(new URL('../dist/demo-export/', import.meta.url), mounted, { recursive: true });
+const entryPage = installDemoEntry(fileURLToPath(mounted));
 const manifest = JSON.stringify({
   kind: 'web-demo',
+  entryPage,
   ...target,
   commit: sha,
   dirty,
