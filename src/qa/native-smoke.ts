@@ -6,6 +6,7 @@ import { itomaNative, reportNativeSmokeResult, screenTimePoC } from '../../modul
 let ran = false;
 let bridgePassed = false;
 let completed = false;
+let pocPassed = false;
 
 function qaCommit() {
   if (process.env.EXPO_PUBLIC_NATIVE_SMOKE !== '1') return null;
@@ -44,6 +45,19 @@ export async function runNativeSmoke() {
 export function completeNativePoCSmoke(result: PoCResult) {
   const commit = qaCommit();
   if (!commit || !ran || !bridgePassed || completed) return;
+  if (!simulatorSnapshot(result)) {
+    completed = true; reportNativeSmokeResult(commit, false); return;
+  }
+  if (pocPassed) return;
+  pocPassed = true;
+  try { router.replace('/'); }
+  catch { completed = true; reportNativeSmokeResult(commit, false); }
+}
+
+/** Normal launches are a no-op. Pass only after bridge -> PoC screen -> home mount. */
+export function completeNativeHomeSmoke() {
+  const commit = qaCommit();
+  if (!commit || !bridgePassed || !pocPassed || completed) return;
   completed = true;
-  reportNativeSmokeResult(commit, simulatorSnapshot(result));
+  reportNativeSmokeResult(commit, true);
 }

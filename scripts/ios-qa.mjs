@@ -132,20 +132,40 @@ try {
     outcome = smokeOutcome(readFileSync(path.join(output, 'app.log'), 'utf8'), commit);
     if (launchError || (launcher.exitCode !== null && outcome === 'pending')) throw new Error('App console exited before a native smoke result');
   }
-  // Let the destination's read-only state update paint before appearance-specific screenshots.
+  // The destination is the adopted home, reached after the PoC screen's read-only proof.
   await delay(5_000);
   outcome = smokeOutcome(readFileSync(path.join(output, 'app.log'), 'utf8'), commit);
   if (outcome !== 'pass') throw new Error(`Native JS-to-Swift smoke ${outcome === 'fail' ? 'failed' : 'timed out'}`);
   checkpoint('nativeBridge');
-  // The QA-only JS route transition is part of the passing marker above. External URL
-  // dispatch can leave an OS confirmation dialog on screen and is not a view-ready proof.
+  // Relaunch under each OS appearance. This checks the startup appearance independently
+  // of the existing #10 live appearance-change issue. Every launch needs a fresh proof.
+  result.homeImages = {};
   for (const appearance of ['light', 'dark']) {
+    run('xcrun', ['simctl', 'terminate', simulatorID, bundleID]);
+    launcher.kill('SIGTERM');
+    closeSync(launchLog); launchLog = undefined;
     run('xcrun', ['simctl', 'ui', simulatorID, 'appearance', appearance]);
-    await delay(1_000);
-    run('xcrun', ['simctl', 'io', simulatorID, 'screenshot', '--type=png', path.join(output, `native-poc-${appearance}.png`)]);
+    const logName = `app-home-${appearance}.log`;
+    launchLog = openSync(path.join(output, logName), 'a');
+    launcher = spawn('xcrun', ['simctl', 'launch', '--console-pty', '--terminate-running-process', simulatorID, bundleID], {
+      cwd: root, env: { ...process.env, SIMCTL_CHILD_ITOMA_NATIVE_QA: '1' }, stdio: ['ignore', launchLog, launchLog],
+    });
+    let appearanceLaunchError = false;
+    launcher.on('error', () => { appearanceLaunchError = true; });
+    const appearanceDeadline = Date.now() + 120_000;
+    let appearanceOutcome = 'pending';
+    while (appearanceOutcome === 'pending' && Date.now() < appearanceDeadline) {
+      await delay(1_000);
+      appearanceOutcome = smokeOutcome(readFileSync(path.join(output, logName), 'utf8'), commit);
+      if (appearanceLaunchError || (launcher.exitCode !== null && appearanceOutcome === 'pending')) throw new Error('Home appearance launch exited before proof');
+    }
+    if (appearanceOutcome !== 'pass') throw new Error(`Home ${appearance} proof failed or timed out`);
+    await delay(3_000);
+    run('xcrun', ['simctl', 'io', simulatorID, 'screenshot', '--type=png', path.join(output, `home-${appearance}.png`)]);
+    if (smokeOutcome(readFileSync(path.join(output, logName), 'utf8'), commit) !== 'pass') throw new Error('Native smoke failed after home capture');
+    result.homeImages[appearance] = { file: `home-${appearance}.png`, proof: 'bridge -> read-only PoC screen -> home mount', launch: 'fresh' };
   }
-  checkpoint('nativePoCImagesCaptured');
-  if (smokeOutcome(readFileSync(path.join(output, 'app.log'), 'utf8'), commit) !== 'pass') throw new Error('Native smoke failed after PoC image capture');
+  checkpoint('nativeHomeImagesCaptured');
   result.status = 'pass';
 } catch (error) {
   reporter.fail(error, error.logFile && existsSync(path.join(output, error.logFile))

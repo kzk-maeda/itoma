@@ -25,7 +25,7 @@ ExpoはSDK58の[versioned docs](https://docs.expo.dev/versions/v58.0.0/)、[Modu
 
 ## 実装の境界
 
-- 通常ホームは既存モックのまま。検証入口は`/native-poc`（`itoma:///native-poc`）。製品policy/command/grant、理由履歴、曜日予定、Extensionは操作しない。
+- 通常ホームは「墨と白」の未接続状態へ移行。PoC有効のiOSビルドでは最上部の「検証画面を開く」から`/native-poc`へ戻り、制限を停止できる。入口は認可・DBの読取を待たず、画面遷移のみ。製品policy/command/grant、理由履歴、曜日予定、Extensionは操作しない。
 - 選択はapp-private `Application Support/ITOMA-ScreenTime-PoC/control.sqlite`へ、既存Swift `ControlRepository` schema6で保存する。製品のApp Group DBと混ぜない。最初の「検証用の保存先を作成」だけが明示create。既存の空/破損/未対応DBをcreate/open失敗から再初期化しない。
 - ディレクトリはbackup除外、DB/WAL/SHMは`completeUntilFirstUserAuthentication`を設定する。実ファイルのロック前後/再起動時の保護成立は実機未検証で、#49の代わりにしない。
 - 保存するopaque payloadは版・token・ランダムTargetRef。token equalityで以前のTargetRefを再利用する。JSへはランダムSelectionRef/件数/今回の起動で再選択したか、固定分類の状態だけを返す。理由、token/name、raw errorをログ/URL/スクショへ出さない。

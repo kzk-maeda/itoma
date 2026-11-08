@@ -25,4 +25,4 @@
 - Light/DarkとiOSホーム画面で確認する。元画像の角丸タイルをそのまま最終アイコンとして切り出さない。
 - 文字ロゴの書体・利用条件・間隔を確定する。元ボードは生成した比較画像で、正式なフォント指定ではない。
 
-今回の変更は方向の記録。本体のアイコン・スプラッシュ・faviconはまだ置換していない。砂時計デモは比較資料として残し、製品の標準にはしない。サークルの既存デモは[配色比較の05](https://itoma-demo.kzk-maeda.com/demos/demo-color-variations-4d21695efd01/design-colors.html?palette=graphite)で確認できる。
+ホーム内のマークは`src/components/home/open-circle.tsx`で固定の開いた円として描画する。これは画面内のベクター化であり、本体のアイコン・スプラッシュ・faviconはまだ置換していない。砂時計デモは比較資料として残し、製品の標準にはしない。サークルの既存デモは[配色比較の05](https://itoma-demo.kzk-maeda.com/demos/demo-color-variations-4d21695efd01/design-colors.html?palette=graphite)で確認できる。
