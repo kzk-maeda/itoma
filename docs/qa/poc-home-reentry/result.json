@@ -34,8 +34,9 @@
       "development": true
     },
     "jsBundleSHA256": "aa846b6b12f46037c3b1a1470f919dba2007f7d69ceb8c1baa9f72f3b1524dc6",
-    "installedOnDevice": false,
-    "deviceValidation": "NOT RUN; device disconnected before new build"
+    "installedOnDevice": true,
+    "deviceValidation": "PASS reported by user for home recovery and stopping after app termination",
+    "launch": "OS launch success and process running verified by agent"
   },
   "simulator": {
     "device": "iPhone SE (3rd generation)",
@@ -49,5 +50,17 @@
     "pocFlag": true,
     "jsBundleSHA256": "9208164c72a789fca891543813064c47ae4fd8b7a060ef7804f03dc9c772ceb0"
   },
-  "screenshotSHA256": "78540a244a1848ac1feb2a422ad8bb005b8f6ec99a1fcc439ab35339ed5a8085"
+  "screenshotSHA256": "78540a244a1848ac1feb2a422ad8bb005b8f6ec99a1fcc439ab35339ed5a8085",
+  "physicalDeviceObservations": {
+    "device": "iPhone SE (3rd generation)",
+    "os": "iOS 27.0.1",
+    "recordedAt": "2026-11-08T10:41:50.898101+00:00",
+    "evidenceType": "User report in chat; agent did not visually observe the device screen",
+    "procedure": "Home entry -> PoC -> reselect/save/manual restriction -> terminate ITOMA -> reopen from icon -> home entry -> PoC -> stop without reselecting -> target app usable",
+    "homeEntryAfterRelaunch": "PASS reported",
+    "stopWithoutReselection": "PASS reported",
+    "targetAppUsableAfterStop": "PASS reported",
+    "repetitions": "One guided walkthrough confirmed; repeated trials not established",
+    "scope": "App termination/relaunch recovery only; iPhone reboot, offline, authorization revocation and full MP07 remain unverified"
+  }
 }

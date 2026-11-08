@@ -50,7 +50,7 @@ ITOMA_SCREEN_TIME_POC=1 npx expo config --type introspect
 
 `ITOMA_SCREEN_TIME_POC=1`は生成configのFamily Controls entitlementと`ITOMAScreenTimePoC`フラグだけを有効にする。Team選択、App ID登録、profile取得、Developer登録、費用、distribution permission申請は行わない。既存ios/を上書きせず、専用の新しいcheckoutでCNGを行う。このconfig確認コマンド自体は署名・実機installを実行しない。現在確認済みの開発署名・限定インストールの範囲は冒頭と検証記録を参照する。
 
-同じフラグで作った実機用ビルドから`itoma:///native-poc`を開く。開発中は同フラグのMetro起動を使える。本人の端末への限定PoCインストールは実施済みだが、製品配布は行っていない。#109の復帰導線を追加した新ビルドのインストール・本人の操作確認は、端末の再接続後に別途実施する。停止できない場合の本人向け外部手段は、iOS設定で本アプリのScreen Time認可を取り消すこと。実際の設定名称/手順は対象iOSで確認し、他アプリの設定を一括消去しない。
+同じフラグで作った実機用ビルドから`itoma:///native-poc`を開く。開発中は同フラグのMetro起動を使える。本人の端末への限定PoCインストールは実施済みだが、製品配布は行っていない。#109の復帰導線を追加した新ビルドは再接続後に更新インストールし、ホーム→検証画面→アプリ終了/再起動後の復帰→選び直さず停止・対象アプリ解除まで本人が単回の成功を報告した。[対象コード・build ID・構成・確認範囲](qa/poc-home-reentry/README.md)を参照する。停止できない場合の本人向け外部手段は、iOS設定で本アプリのScreen Time認可を取り消すこと。実際の設定名称/手順は対象iOSで確認し、他アプリの設定を一括消去しない。
 
 ## 終了後も停止画面へ戻る
 
