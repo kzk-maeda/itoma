@@ -25,7 +25,7 @@ ExpoはSDK58の[versioned docs](https://docs.expo.dev/versions/v58.0.0/)、[Modu
 
 ## 実装の境界
 
-- 通常ホームは既存モックのまま。検証入口は`/native-poc`（`itoma:///native-poc`）。製品policy/command/grant、理由履歴、曜日予定、Extensionは操作しない。
+- 通常ホームは「墨と白」の未接続状態へ移行。PoC有効のiOSビルドでは最上部の「検証画面を開く」から`/native-poc`へ戻り、制限を停止できる。入口は認可・DBの読取を待たず、画面遷移のみ。製品policy/command/grant、理由履歴、曜日予定、Extensionは操作しない。
 - 選択はapp-private `Application Support/ITOMA-ScreenTime-PoC/control.sqlite`へ、既存Swift `ControlRepository` schema6で保存する。製品のApp Group DBと混ぜない。最初の「検証用の保存先を作成」だけが明示create。既存の空/破損/未対応DBをcreate/open失敗から再初期化しない。
 - ディレクトリはbackup除外、DB/WAL/SHMは`completeUntilFirstUserAuthentication`を設定する。実ファイルのロック前後/再起動時の保護成立は実機未検証で、#49の代わりにしない。
 - 保存するopaque payloadは版・token・ランダムTargetRef。token equalityで以前のTargetRefを再利用する。JSへはランダムSelectionRef/件数/今回の起動で再選択したか、固定分類の状態だけを返す。理由、token/name、raw errorをログ/URL/スクショへ出さない。
@@ -56,9 +56,9 @@ ITOMA_SCREEN_TIME_POC=1 npx expo config --type introspect
 
 `ITOMA_SCREEN_TIME_POC=1`を指定してJS bundleとnative構成をそろえたiOSビルドでは、ホーム上部の「実機検証・制限の停止」から「検証画面を開く」で戻る。起動時や入口の押下だけで、認可・保存・制限・停止を実行しない。認可やDBの状態に関係なく入口を表示し、停止は既存の検証画面で本人が要求する。通常ビルドとWebには入口を表示しない。
 
-実機PoCの制限は、アプリを終了しても自動では停止しない。アプリ終了後の試験では、ホーム→検証画面→「検証用の制限を停止」へ到達できることと、対象アプリの実際の解除を別々に観測する。`/native-poc` deep linkは補助の復旧手段とし、Macへの接続を通常の停止手順にしない。ホームのお試し設定は、この実機PoCの保存・制限状態を表していない。
+実機PoCの制限は、アプリを終了しても自動では停止しない。アプリ終了後の試験では、ホーム→検証画面→「検証用の制限を停止」へ到達できることと、対象アプリの実際の解除を別々に観測する。`/native-poc` deep linkは補助の復旧手段とし、Macへの接続を通常の停止手順にしない。ホームの未接続表示は、この実機PoCの保存・制限状態を表していない。
 
-関連: [#109](https://github.com/kzk-maeda/itoma/issues/109)。入口追加前の本人の単回観測では、認可の許可・保存後に制限しないこと・手動制限・非対象への影響なし・停止後の解除、およびアプリ終了後も制限が残ることを確認。再起動でホームへ戻り停止画面に到達できず、外部deep linkで復帰して本人が解除した。これは入口追加後の再試験やMP07全体の合格を意味しない。
+関連: [#109](https://github.com/kzk-maeda/itoma/issues/109)。入口追加前の本人の単回観測では、認可の許可・保存後に制限しないこと・手動制限・非対象への影響なし・停止後の解除、およびアプリ終了後も制限が残ることを確認。再起動でホームへ戻り停止画面に到達できず、外部deep linkで復帰して本人が解除した。入口追加後の本人確認はリンク先に記録するが、PR #112のホーム移行後の新ビルドやMP07全体の合格を意味しない。
 
 ## 最初の実機試験
 

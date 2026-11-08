@@ -1,8 +1,9 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { Platform, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { GraphiteColors, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 /** Build-time navigation only; opening the PoC does not change Screen Time settings. */
 export function PoCRecoveryEntry() {

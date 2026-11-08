@@ -62,5 +62,25 @@
     "targetAppUsableAfterStop": "PASS reported",
     "repetitions": "One guided walkthrough confirmed; repeated trials not established",
     "scope": "App termination/relaunch recovery only; iPhone reboot, offline, authorization revocation and full MP07 remain unverified"
+  },
+  "recordScope": "Historical evidence before PR112 home migration; not validation of the merged current UI",
+  "integration": {
+    "mainBase": "7c028c7",
+    "runtimeSource": "Use main home, Dark hook, recovery entry and consolidated tests unchanged",
+    "oldBuildClassification": "stale native build for integrated current source",
+    "currentSourceNativeBuild": "NOT RUN",
+    "currentSourcePhysicalValidation": "NOT RUN",
+    "checksExitCodes": {
+      "typecheck": 0,
+      "lint": 0,
+      "jest": 0,
+      "demo": 0,
+      "ios-tools": 0,
+      "expo-doctor": 0
+    },
+    "jest": {
+      "suites": 6,
+      "tests": 44
+    }
   }
 }

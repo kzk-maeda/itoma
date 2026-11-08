@@ -2,6 +2,8 @@
 
 対象: [#109](https://github.com/kzk-maeda/itoma/issues/109)。確認日: 2026-11-08 JST。
 
+**この資料はPR #112のホーム移行前の検証履歴です。** PR #110の競合解消ではmain `7c028c7`の新ホーム・Dark対応・復帰入口・統合テストを採用しました。復帰導線の実装はすでにmainへ含まれるため、現在のPR差分は本履歴と前提文書の更新だけです。以下の画像・JS bundle・実機結果を移行後ホームの証拠へ転用しません。以前のbinaryは現コードに対して **`stale native build`** であり、再生成・新ビルド・実機での再確認が必要です。
+
 ## 変更と根拠
 
 アプリ終了後に制限が残り、ホームから停止画面へ戻れない問題に対し、PoCフラグ付きiOSビルドのホーム上部に復帰入口を追加。状態取得や認可/DBの成功を表示条件にせず、入口自体は画面遷移だけを行う。停止は既存PoC画面で本人が要求する。往復は両方向replaceで履歴を積み上げない構成。通常ビルド/Webの入口は非表示。
@@ -10,7 +12,7 @@ DESIGN.md原則1/3/4/5、U07、UI22/UI23/UI24/UI25の限定範囲を適用。本
 
 ## 対象コードと構成
 
-- テスト・JS/nativeビルド対象: `7cc39d7b24656771e2b31100b3a817096c5784ea`。後続の証跡追加コミットはdocsのみ。
+- テスト・JS/nativeビルド対象: `7cc39d7b24656771e2b31100b3a817096c5784ea`。これは当時の検証対象であり、PR #112を取り込んだ現在のコードと同一ではない。
 - SDK58 / Node24.22.2 / Xcode27.2 / CocoaPods1.17.0。
 - 専用checkoutのapp.jsonだけを、本人指定Teamと承認済みbundle ID `com.kzk-maeda.itoma.poc` に変更。Teamや署名キーをcommitせず、ソースの既定com.example.itomaは維持。
 - app.json SHA-256: `22d1dd1aa3823df5e30c53215aa9d7df8f9a44608df5547ac1be485964c9886f`。`ITOMA_SCREEN_TIME_POC=1`、native smoke=0、JS/nativeのPoC構成を一致させた。
@@ -56,3 +58,9 @@ DESIGN.md原則1/3/4/5、U07、UI22/UI23/UI24/UI25の限定範囲を適用。本
 詳細の公開用metadataは[result.json](result.json)。raw log・profile・端末識別子や秘密鍵は含めていない。
 
 本人確認の記録日時（UTC）: `2026-11-08T10:41:50.898101+00:00`。今回の復帰導線・停止試験後は制限を解除済みとして記録する。iPhone本体の再起動/オフライン/認可取消や3回反復を含むMP07全体の合格、製品フロー完成は意味しない。
+
+## PR #112との競合解消後の確認
+
+main `7c028c7` を取り込み、新ホーム・Dark用hook・復帰入口・統合テストを採用した。main側のhome-screen.testへ同じ復帰条件が統合済みのため、旧poc-recovery-entry.testの重複は残さない。実行コード・依存・QAスクリプト・workflowがmainと一致することをgit diffで確認した。PRとして残るのは本資料・過去の画像/metadata・前提文書の更新だけ。
+
+競合解消後: TypeScript・lint・Jest（6suite/44件）・demo・iOS tools・expo-doctorはすべてPASS。これらは新しい統合結果の確認であり、上記の旧buildでの実機確認とは別。新ホームを含む実機ビルド・再インストール・実機操作は今回未実施。ローカルのTeam/Bundle ID設定は保持してcommitへ混入させていない。
