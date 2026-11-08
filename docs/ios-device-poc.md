@@ -4,7 +4,7 @@
 
 ## 現在の前提
 
-2026-11-08 JSTの利用者回答: **iPhone SE第3世代 / iOS27.0.1 / Xcode27.2**。実機操作と結果報告は利用者が担当する。Apple Developer未登録、利用できる既存Program Teamもない。この回答を再質問しない。最新の外部条件は[#8](https://github.com/kzk-maeda/itoma/issues/8)を正本とする。
+2026-11-08 JSTの利用者回答とローカル確認: **iPhone SE第3世代 / iOS27.0.1 / Xcode27.2**。実機操作と結果報告は利用者が担当する。本人がApple Developer Programの登録・支払い・有効化と開発用証明書の作成を完了。本人指定TeamでFamily Controls対応の開発用profile・署名が成立し、別bundle ID `com.kzk-maeda.itoma.poc` の限定PoCを本人の端末へインストール・起動した。Team/端末識別子や秘密鍵は証跡へ記載しない。下記の未登録を前提とする説明は過去の阻害要因であり、現在の登録状態と混同しない。外部条件の追跡は[#8](https://github.com/kzk-maeda/itoma/issues/8)、復帰導線の修正は[#109](https://github.com/kzk-maeda/itoma/issues/109)。以前の未登録回答を再質問しない。
 
 現在のcloud環境はunrestricted/enforcedでApple/Expo公式資料へ接続可能。CLIのartifact実配信先CONNECT403は残るが、接続済みGitHubの正式取得APIでPR #95のZIPを取得し、実digest・JSON・画像を確認できた（[#102](https://github.com/kzk-maeda/itoma/issues/102)/PR #107）。[原本と確認範囲](https://github.com/kzk-maeda/itoma/blob/96152ad0d9ac6041301432fff45230478aab06b1/docs/qa/pr95-324c905/README.md)を参照する。proxy/TLSや環境公開は変更していない。
 
@@ -12,8 +12,8 @@
 
 確認日: 2026-11-07 JST。リンク先の現行本文を取得し、以下を区別した。
 
-- [Configuring Family Controls](https://developer.apple.com/documentation/xcode/configuring-family-controls): 開発中のentitlementはApple Developer Programを通して利用し、本体とScreen Time ExtensionそれぞれのApp ID/capability/profileを構成する。**無料Personal Teamの通常アプリ実機実行を、Family Controls利用可能の根拠にしない。** 未登録の現状では、利用できるProgram Team/profileが確認できるまでScreen Time実機テストはBlocked。登録/購入やTeamへの参加は利用者判断であり、このPoCは実行しない。
-- [Family Controls entitlement](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.family-controls): 認可API呼出し前に必要。開発用capabilityと[TestFlight/App Store用のdistribution permission](https://developer.apple.com/contact/request/family-controls-distribution)は別。Extensionも個別申請が必要。この作業では申請・署名・配布をしない。
+- [Configuring Family Controls](https://developer.apple.com/documentation/xcode/configuring-family-controls): 開発中のentitlementはApple Developer Programを通して利用し、本体とScreen Time ExtensionそれぞれのApp ID/capability/profileを構成する。**無料Personal Teamの通常アプリ実機実行を、Family Controls利用可能の根拠にしない。** Program未登録時は、利用できるProgram Team/profileが確認できるまでScreen Time実機テストはBlockedとなる。登録/購入やTeamへの参加は利用者判断であり、このPoCは実行しない。
+- [Family Controls entitlement](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.family-controls): 認可API呼出し前に必要。開発用capabilityと[TestFlight/App Store用のdistribution permission](https://developer.apple.com/contact/request/family-controls-distribution)は別。Extensionも個別申請が必要。この開発PoCではdistribution permission申請や製品配布を行わない。開発用署名は本人の承認に基づく専用構成で別途確認する。
 - [Membership comparison](https://developer.apple.com/support/compare-memberships/): Personal Teamでも通常の実機テストは可能だが、App ID/端末/profileの期限や利用機能に制限がある。Xcode導入だけでScreen Timeの署名条件を満たすとは扱わない。
 - [requestAuthorization(for:)](https://developer.apple.com/documentation/familycontrols/authorizationcenter/requestauthorization(for:)): 本人利用には`.individual`の非同期要求を使い、起動だけでは要求しない。native helperのAPI guardはiOS16以降。これはExpoアプリ全体の最低OSではなく、実ビルドのdeployment target/MinimumOSVersionを別途確認する。
 - [FamilyActivitySelection](https://developer.apple.com/documentation/familycontrols/familyactivityselection): opaque tokenを保持し、**認可を取り消すと以前のtokenが無効になる**。名前やencoded bytes/hashを識別子にしない。PoCは再起動/再認可後の適用に新しいPicker選択を要求する。古い保存を黙って削除しない。
@@ -37,7 +37,7 @@ ExpoはSDK58の[versioned docs](https://docs.expo.dev/versions/v58.0.0/)、[Modu
 
 通常の署名不要QAは[iOS QA](ios-qa.md)を使う。Simulatorは認可/Picker/DB作成/制限を無効化し、状態の表示・transport・コンパイルだけを確認する。実機用capabilityを有効にする必要はない。
 
-実機では、先に利用可能なProgram TeamとFamily Controls対応profileを利用者が確認する。本人の登録・費用・署名構成を勝手に変更しない。本体bundle IDは現在`com.example.itoma`であり、使用可能なID/Teamを別途決める。デモの公開やEAS loginは前提にしない。
+実機では、先に利用可能なProgram TeamとFamily Controls対応profileを利用者が確認する。本人の登録・費用・署名構成を勝手に変更しない。ソースの既定bundle IDは`com.example.itoma`。今回のローカル実機PoCでは、本人が承認した別ID `com.kzk-maeda.itoma.poc` と本人指定Teamを専用checkoutのapp.jsonだけに設定する。Team設定や署名情報をソースへコミットしない。デモの公開やEAS loginは前提にしない。
 
 既存Teamがない場合は、本人が[有料のApple Developer Programへ加入](https://developer.apple.com/programs/enroll/)して開発用Teamを用意する必要がある。登録・費用・本人確認・契約は本人の操作と判断で行い、この作業は代行しない。無料Personal TeamをFamily Controls対応Teamとして案内しない。TestFlight/App Store向けFamily Controls配布申請は別工程で、今回の開発PoCの準備と混同しない。
 
@@ -48,9 +48,17 @@ npm ci
 ITOMA_SCREEN_TIME_POC=1 npx expo config --type introspect
 ```
 
-`ITOMA_SCREEN_TIME_POC=1`は生成configのFamily Controls entitlementと`ITOMAScreenTimePoC`フラグだけを有効にする。Team選択、App ID登録、profile取得、Developer登録、費用、distribution permission申請は行わない。既存ios/を上書きせず、専用の新しいcheckoutでCNGを行う。署名・実機installは条件と利用者判断が揃ってから行い、ここでは実行していない。
+`ITOMA_SCREEN_TIME_POC=1`は生成configのFamily Controls entitlementと`ITOMAScreenTimePoC`フラグだけを有効にする。Team選択、App ID登録、profile取得、Developer登録、費用、distribution permission申請は行わない。既存ios/を上書きせず、専用の新しいcheckoutでCNGを行う。このconfig確認コマンド自体は署名・実機installを実行しない。現在確認済みの開発署名・限定インストールの範囲は冒頭と検証記録を参照する。
 
-同じフラグで作った実機用ビルドから`itoma:///native-poc`を開く。開発中は同フラグのMetro起動を使える。現時点で実機用binaryは作成/配布していない。停止できない場合の本人向け外部手段は、iOS設定で本アプリのScreen Time認可を取り消すこと。実際の設定名称/手順は対象iOSで確認し、他アプリの設定を一括消去しない。
+同じフラグで作った実機用ビルドから`itoma:///native-poc`を開く。開発中は同フラグのMetro起動を使える。本人の端末への限定PoCインストールは実施済みだが、製品配布は行っていない。#109の復帰導線を追加した新ビルドは再接続後に更新インストールし、ホーム→検証画面→アプリ終了/再起動後の復帰→選び直さず停止・対象アプリ解除まで本人が単回の成功を報告した。[対象コード・build ID・構成・確認範囲](qa/poc-home-reentry/README.md)を参照する。停止できない場合の本人向け外部手段は、iOS設定で本アプリのScreen Time認可を取り消すこと。実際の設定名称/手順は対象iOSで確認し、他アプリの設定を一括消去しない。
+
+## 終了後も停止画面へ戻る
+
+`ITOMA_SCREEN_TIME_POC=1`を指定してJS bundleとnative構成をそろえたiOSビルドでは、ホーム上部の「実機検証・制限の停止」から「検証画面を開く」で戻る。起動時や入口の押下だけで、認可・保存・制限・停止を実行しない。認可やDBの状態に関係なく入口を表示し、停止は既存の検証画面で本人が要求する。通常ビルドとWebには入口を表示しない。
+
+実機PoCの制限は、アプリを終了しても自動では停止しない。アプリ終了後の試験では、ホーム→検証画面→「検証用の制限を停止」へ到達できることと、対象アプリの実際の解除を別々に観測する。`/native-poc` deep linkは補助の復旧手段とし、Macへの接続を通常の停止手順にしない。ホームの未接続表示は、この実機PoCの保存・制限状態を表していない。
+
+関連: [#109](https://github.com/kzk-maeda/itoma/issues/109)。入口追加前の本人の単回観測では、認可の許可・保存後に制限しないこと・手動制限・非対象への影響なし・停止後の解除、およびアプリ終了後も制限が残ることを確認。再起動でホームへ戻り停止画面に到達できず、外部deep linkで復帰して本人が解除した。入口追加後の本人確認はリンク先に記録するが、PR #112のホーム移行後の新ビルドやMP07全体の合格を意味しない。
 
 ## 最初の実機試験
 
