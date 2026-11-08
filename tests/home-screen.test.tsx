@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { HomeScreen } from '../src/components/home/home-screen';
 
+jest.mock('../src/global.css', () => ({}));
+
 test('saves selected apps and discards canceled edits', async () => {
   await render(<HomeScreen />);
   await fireEvent.press(screen.getByRole('button', { name: '制限するアプリを選択' }));

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PoCRecoveryEntry } from './poc-recovery-entry';
+
 const mockApps = ['Instagram', 'YouTube', 'TikTok', 'X'] as const;
 type MockApp = (typeof mockApps)[number];
 const modes = [
@@ -65,6 +67,7 @@ export function HomeScreen() {
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.content}>
+        <PoCRecoveryEntry />
         <View style={styles.brand}>
           <View style={[styles.brandMark, { backgroundColor: colors.soft }]} accessible={false}>
             <Text style={[styles.markText, { color: colors.accent }]}>い</Text>
@@ -147,7 +150,7 @@ export function HomeScreen() {
         <View style={[styles.note, { backgroundColor: colors.soft }]}>
           <Text style={[styles.noteTitle, { color: colors.text }]}>いまは、お試しの設定です</Text>
           <Text style={[styles.caption, { color: colors.muted }]}>
-            実際のアプリは制限されません。設定はこの画面を開いている間だけ保持されます。
+            この画面のお試し設定では、実際のアプリは制限されません。設定はこの画面を開いている間だけ保持されます。
           </Text>
         </View>
         <Text style={[styles.footer, { color: colors.muted }]}>空いた時間に、何をしよう。</Text>
