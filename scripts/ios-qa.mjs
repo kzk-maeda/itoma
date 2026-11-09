@@ -98,6 +98,14 @@ try {
     }
   }
   result.nativeConfigurationSHA256 = nativeConfig.digest('hex');
+  // Fail on local Swift API/type errors before compiling the full Expo application. Building
+  // just this Pod follows its Core/Storage/Control/ScreenTime/ExpoModulesCore dependencies.
+  // This is diagnostic feedback, not a substitute for the embedded Extension/app build below.
+  build('xcodebuild', ['-project', 'ios/Pods/Pods.xcodeproj', '-target', 'ItomaNative', '-configuration', 'Release',
+    '-sdk', 'iphonesimulator', '-jobs', '2', `SYMROOT=${path.join(output, 'native-check-products')}`,
+    `OBJROOT=${path.join(output, 'native-check-objects')}`, `ARCHS=${result.architecture}`, 'ONLY_ACTIVE_ARCH=YES',
+    'CODE_SIGNING_ALLOWED=NO', 'CODE_SIGNING_REQUIRED=NO', 'CODE_SIGN_IDENTITY=', 'build'], 'native-compile.log', 600_000);
+  checkpoint('nativeModulesCompile');
   const workspaces = readdirSync(path.join(root, 'ios')).filter((name) => name.endsWith('.xcworkspace'));
   if (workspaces.length !== 1) throw new Error('Expected one generated app workspace');
   const workspace = path.join('ios', workspaces[0]);

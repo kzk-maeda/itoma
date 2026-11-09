@@ -44,7 +44,7 @@ public struct ProductSelectionPayload: Codable {
     public init() {}
     public func context(activation: Activation) -> EvaluationContext {
         lastActivation = activation
-        let status: AuthorizationStatus
+        let status: ItomaCore.AuthorizationStatus
         switch AuthorizationCenter.shared.authorizationStatus {
         case .approved: status = .approved
         case .denied: status = .denied
@@ -74,7 +74,7 @@ public struct ProductSelectionPayload: Codable {
         names.isSubset(of: Set(center.activities.map(\.rawValue)))
     }
     public func containsAnyActivity(_ names: Set<String>) -> Bool { !names.isDisjoint(with: Set(center.activities.map(\.rawValue))) }
-    public func stopActivities(_ names: Set<String>) { center.stopMonitoring(names.map(DeviceActivityName.init)) }
+    public func stopActivities(_ names: Set<String>) { center.stopMonitoring(names.map { DeviceActivityName($0) }) }
 }
 
 @ItomaControlActor public final class AppleDeadlineScheduler: DeadlineScheduler {
