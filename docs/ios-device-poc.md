@@ -4,6 +4,8 @@
 
 ## 現在の前提
 
+2026-11-09 JSTからの実機QA対象は **SRE05 / iPad第9世代 / iPadOS27.2**。保存対象のnative表示・確認後の再制限・停止は[変更を含むbuildでの本人確認](qa/poc-saved-targets/README.md)を記録する。以前のiPhone確認と、新しいiPadでの確認を分ける。
+
 2026-11-08 JSTの利用者回答とローカル確認: **iPhone SE第3世代 / iOS27.0.1 / Xcode27.2**。実機操作と結果報告は利用者が担当する。本人がApple Developer Programの登録・支払い・有効化と開発用証明書の作成を完了。本人指定TeamでFamily Controls対応の開発用profile・署名が成立し、別bundle ID `com.kzk-maeda.itoma.poc` の限定PoCを本人の端末へインストール・起動した。Team/端末識別子や秘密鍵は証跡へ記載しない。下記の未登録を前提とする説明は過去の阻害要因であり、現在の登録状態と混同しない。外部条件の追跡は[#8](https://github.com/kzk-maeda/itoma/issues/8)、復帰導線の修正は[#109](https://github.com/kzk-maeda/itoma/issues/109)。以前の未登録回答を再質問しない。
 
 現在のcloud環境はunrestricted/enforcedでApple/Expo公式資料へ接続可能。CLIのartifact実配信先CONNECT403は残るが、接続済みGitHubの正式取得APIでPR #95のZIPを取得し、実digest・JSON・画像を確認できた（[#102](https://github.com/kzk-maeda/itoma/issues/102)/PR #107）。[原本と確認範囲](https://github.com/kzk-maeda/itoma/blob/96152ad0d9ac6041301432fff45230478aab06b1/docs/qa/pr95-324c905/README.md)を参照する。proxy/TLSや環境公開は変更していない。
