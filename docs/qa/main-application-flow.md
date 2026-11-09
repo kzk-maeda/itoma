@@ -1,6 +1,6 @@
 # 通常アプリフローの確認と実機への引き継ぎ
 
-対象: #103 / #127 / #129、PR #128 / #130。通常ホームから、認可、アプリ選択、曜日・時間帯ルール、理由付きの一時解除、解除状況、早期終了、ルール編集・削除、全体停止・明示再開、理由削除までを接続する。
+対象: #103 / #127 / #129、PR #128 / #130。通常ホームから、認可、アプリ選択、曜日・時間帯ルール、理由付きの一時解除、解除状況、早期終了、ルール編集・削除、全体停止・明示再開、理由削除までを接続する。新しい実機結果は [#131](https://github.com/kzk-maeda/itoma/issues/131) へ記録する。
 
 ## 画面と確認済みの範囲
 
@@ -8,7 +8,7 @@ DESIGN原則1〜5、U01〜U07に従い、状態と問題、時間帯ごとの円
 
 | 確認層 | 記録と限界 |
 | --- | --- |
-| React component | `tests/main-flow.test.tsx`。空白/範囲外入力、対象初期未選択、確認と取消、入力保持、固定期限、failed/uncertain、別対象の早期終了、認可と明示再開、編集中の入力を別操作で上書きしないこと。fixtureのPagesは実際のnative Stack/gestureではない |
+| React component | `tests/main-flow.test.tsx`の9ケース。導入から保存、対象初期未選択と空白理由拒否、理由全文・適用ルールの確認と入力への戻り、破棄で新grantを作らないこと、failedの同command/固定期限の再試行、古い観測と理由削除確認、dirtyな設定入力の保持3操作、再認可で自動再開/重複ルールを作らないこと。fixtureのPagesは実際のnative Stack/gestureではない |
 | 表示と既存テスト | TypeScript/Lint/Jest、demo検査、CNG/QAツール、expo-doctor。OS制限を実行するテストではない |
 | Web画面記録 | 下記9条件。合成native入力で表示を検査。Nativeアプリ名は合成表示へ置換。実機QAと別 |
 | 署名なしNative QA | 対象headのActions結果をPRへ記録。共通Swiftテスト、CNG、host/Extension compile/link/embed、Simulator install/launch/bridge、ホームLight/Dark画像。Simulatorのproduct bridgeは利用不可を返す |

@@ -17,7 +17,7 @@ const result = {
   buildID: process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}` : randomUUID(),
   workflowCommit: process.env.GITHUB_WORKFLOW_SHA ?? null,
   configuration: 'Release', sdk: 'iphonesimulator', signing: 'disabled',
-  coverage: 'JS-to-Swift Core/PoC transport; Simulator disables Screen Time operations; product OS adapters unconnected',
+  coverage: 'JS-to-Swift Core/PoC transport and product adapter compilation; Simulator disables product Screen Time operations',
   stages: {}, startedAt: new Date().toISOString(),
 };
 let simulatorID, launcher, launchLog;
