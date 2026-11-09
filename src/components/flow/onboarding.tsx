@@ -10,6 +10,7 @@ export function OnboardingScreen() {
     if (permission.snapshot?.authorization !== 'approved') return;
     const initialized = await state.run('initialize');
     if (initialized.snapshot?.storage === 'ready') {
+      if (initialized.snapshot.rules.length && !state.ruleDraft) { router.dismissTo('/settings'); return; }
       if (!state.ruleDraft) state.beginRule();
       router.dismissTo('/rule');
     }

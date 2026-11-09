@@ -67,7 +67,7 @@ function backend(configured = true, failGrant = false) {
     authorization: configured ? 'approved' : 'unknown', schedulesReady: true, observation: 'applied', validUntil: now / 1000 + 1800,
     rules: configured ? [{ id: ruleID, selectionRef: selection, weekdays: [1, 2, 3, 4, 5], startMinute: 1260, endMinute: 1380, nextDay: false, enabled: true }] : [],
     selections: configured ? [{ ref: selection, count: 2 }] : [],
-    targets: configured ? [{ ref: appA, selectionRef: selection, restricted: true, unlockable: true }, { ref: appB, selectionRef: selection, restricted: true, unlockable: true }] : [],
+    targets: configured ? [{ ref: appA, selectionRef: selection, ruleID, restricted: true, unlockable: true }, { ref: appB, selectionRef: selection, ruleID, restricted: true, unlockable: true }] : [],
     periods: configured ? [{ ruleID, startsAt: now / 1000 - 1800, endsAt: now / 1000 + 5400 }] : [],
   };
   let proposed: RuleInput | undefined, target = appA;
@@ -81,7 +81,7 @@ function backend(configured = true, failGrant = false) {
       case 'previewRule': proposed = request.rule; return response({ status: 'confirmation-required', ref: previewID });
       case 'commitRule':
         snapshot = { ...snapshot, revision: '1', sequence: '1', rules: [{ ...proposed!, id: ruleID }],
-          targets: [{ ref: appA, selectionRef: selection, restricted: true, unlockable: true }, { ref: appB, selectionRef: selection, restricted: true, unlockable: true }],
+          targets: [{ ref: appA, selectionRef: selection, ruleID, restricted: true, unlockable: true }, { ref: appB, selectionRef: selection, ruleID, restricted: true, unlockable: true }],
           periods: [{ ruleID, startsAt: now / 1000 - 1800, endsAt: now / 1000 + 5400 }] }; break;
       case 'previewUnlock': target = request.targetRef!; return response({ status: 'confirmation-required', ref: previewID, minutes: request.minutes, previewEndsAt: expiry, shortened: false });
       case 'unlock': case 'retryGrant':
@@ -132,6 +132,8 @@ test('one entry → initially unselected app → free text → editable full rev
   await fireEvent.changeText(screen.getByLabelText('いま使う理由'), 'synthetic purpose\nsecond line');
   await press('解除内容を確認する');
   expect(screen.getByText('synthetic purpose\nsecond line')).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'この解除に適用するルール' })).toBeTruthy();
+  expect(screen.getByText(/月・火・水・木・金 21:00〜23:00/)).toBeTruthy();
   await press('入力に戻る');
   expect(screen.getByLabelText('いま使う理由')).toHaveDisplayValue('synthetic purpose\nsecond line');
   await press('解除内容を確認する'); await press('理由を保存して一時解除する');
@@ -183,4 +185,30 @@ test('stale observations remain unverified and reason deletion requires the sepa
   expect(b.client.run).toHaveBeenCalledWith('deleteReasons', {});
   expect(screen.getByText('保存した理由を削除しました。')).toBeTruthy();
   expect(b.current().rules).toHaveLength(1);
+});
+
+test.each(['ルールを追加する', '時間帯 1を編集', '時間帯 1を削除する内容を確認'])('settings cannot overwrite a retained dirty rule draft via %s', async (action) => {
+  const b = backend(), alert = jest.spyOn(Alert, 'alert');
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await press('ルールと設定'); await press('時間帯 1を編集');
+  await fireEvent.changeText(screen.getByLabelText('開始時刻（24時間 HH:MM）'), '20:00');
+  await press('内容を確認する'); await press('保存したルールを確認する');
+  const before = b.client.run.mock.calls.length;
+  await press(action);
+  expect(alert.mock.calls.at(-1)?.[0]).toBe('編集中の入力があります');
+  expect(b.client.run.mock.calls.slice(before).some(([name]) => name === 'previewRule' || name === 'commitRule')).toBe(false);
+  await act(async () => { alert.mock.calls.at(-1)?.[2]?.[0].onPress?.(); });
+  expect(screen.getByLabelText('開始時刻（24時間 HH:MM）')).toHaveDisplayValue('20:00');
+  expect(b.current().rules[0].startMinute).toBe(1260);
+});
+
+test('reauthorization keeps existing rules awaiting explicit review/resume and does not create a duplicate rule', async () => {
+  const b = backend(); b.replace({ authorization: 'denied', activation: 'awaitingReauthorizationConfirmation', needsSelectionReview: true });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  expect(screen.queryByRole('button', { name: '一時解除する' })).toBeNull();
+  expect(screen.queryByText('制限設定を反映しました')).toBeNull();
+  await press('許可を確認する'); await press('スクリーンタイムを許可する');
+  expect(screen.getByRole('header', { name: 'ルールと設定' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '保存したルールの再開を確認' })).toBeDisabled();
+  expect(b.client.run.mock.calls.some(([name]) => name === 'resume' || name === 'previewRule' || name === 'commitRule')).toBe(false);
 });

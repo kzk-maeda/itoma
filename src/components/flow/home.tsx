@@ -26,7 +26,8 @@ export function ProductHome() {
   }, [now, s, refresh]);
   const device = s?.availability === 'device';
   const current = s?.periods.filter((p) => p.startsAt * 1000 <= now && p.endsAt * 1000 > now) ?? [];
-  const observed = s?.observation === 'applied' && !!s.validUntil && s.validUntil * 1000 > now && !state.error;
+  const observed = s?.authorization === 'approved' && s.activation === 'enabled'
+    && s.observation === 'applied' && !!s.validUntil && s.validUntil * 1000 > now && !state.error;
   const create = () => { if (!state.ruleDraft?.dirty) state.beginRule(); router.navigate(s?.authorization === 'approved' ? '/rule' : '/onboarding'); };
   const unlock = () => { if (!state.unlockDraft.reason && !state.unlockDraft.targetRef) state.resetUnlock(); router.push('/unlock'); };
   const stopLegacy = () => Alert.alert('手動検証の制限を停止しますか', '以前の手動検証で指定した制限だけを停止します。通常のルールと保存した対象は削除しません。', [
@@ -44,7 +45,7 @@ export function ProductHome() {
     {state.legacyActive && <Button label="手動検証の制限を確認して停止" secondary disabled={!!state.busy} onPress={stopLegacy} />}
     {device && s.authorization !== 'approved' && <Notice title="スクリーンタイムの許可が必要です">設定を残したまま、許可を確認できます。許可だけで制限を再開することはありません。</Notice>}
     {device && s.authorization !== 'approved' && <Button label="許可を確認する" onPress={() => router.push('/onboarding')} />}
-    {s?.activation === 'paused' && <Notice title="ルールを停止しています">設定は保存されています。ご自身で再開するまで、このルールを適用しません。</Notice>}
+    {s?.activation === 'paused' && <Notice title="ルールの停止を保存しています">ルールは保存されています。再開にはご自身の操作が必要です。停止の反映は、現在の状態の確認から取得できます。</Notice>}
     {s?.activation === 'awaitingReauthorizationConfirmation' && <Notice title="再開前に対象を確認してください">ルールの対象アプリを選び直してから、設定画面で明示的に再開できます。</Notice>}
     {device && !!s.rules.length && s.activation === 'enabled' && (!s.schedulesReady || !observed) && <Notice title="制限の状態を確認してください">
       {s.schedulesReady ? '反映を確認できていません。以下の時間帯は保存した設定です。' : '自動切替の予定を確認できていません。現在の制限と今後の予定を確認できます。'}
@@ -75,7 +76,8 @@ export function ProductHome() {
       </Panel>) : <Body muted>許可を確認すると、保存した対象を確認できます。</Body>}
       {s.targets.length === 0 && <Body muted>対象のアプリはありません。</Body>}
     </View>}
-    {s?.targets.some((t) => t.unlockable) && <Button label="一時解除する" testID="home-unlock-entry" disabled={!!state.busy} onPress={unlock} />}
+    {device && s.authorization === 'approved' && s.activation === 'enabled' && s.schedulesReady && s.targets.some((t) => t.unlockable)
+      && <Button label="一時解除する" testID="home-unlock-entry" disabled={!!state.busy} onPress={unlock} />}
     <Button label="ルールと設定" secondary onPress={() => router.push('/settings')} />
     {device && <Button label="現在の状態を確認する" secondary disabled={!!state.busy} onPress={() => { void state.run('reconcile'); }} />}
     {!device && <PoCRecoveryEntry />}

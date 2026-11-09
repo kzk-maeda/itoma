@@ -12,8 +12,15 @@ export function SettingsScreen() {
   const state = useScreenTime(), s = state.snapshot;
   const [deleted, setDeleted] = useState(false);
   const device = s?.availability === 'device';
-  const edit = (rule?: ScreenTimeRule) => { state.beginRule(rule); router.navigate(s?.authorization === 'approved' ? '/rule' : '/onboarding'); };
-  const remove = async (rule: ScreenTimeRule) => {
+  const withDraftChoice = (proceed: () => void) => {
+    if (!state.ruleDraft?.dirty) { proceed(); return; }
+    Alert.alert('編集中の入力があります', '入力を続けるか、破棄して別の操作へ進むかを選べます。', [
+      { text: '入力を続ける', style: 'cancel', onPress: () => router.navigate('/rule') },
+      { text: '破棄して進む', style: 'destructive', onPress: () => { void state.run('cancelCandidate').then((r) => { if (r.status === 'ok') { state.setRuleDraft(undefined); proceed(); } }); } },
+    ]);
+  };
+  const edit = (rule?: ScreenTimeRule) => withDraftChoice(() => { state.beginRule(rule); router.navigate(s?.authorization === 'approved' ? '/rule' : '/onboarding'); });
+  const prepareRemoval = async (rule: ScreenTimeRule) => {
     state.beginRule(rule);
     const draft: RuleDraft = { ...rule, start: clockText(rule.startMinute), end: clockText(rule.endMinute), dirty: true, remove: true };
     state.setRuleDraft(draft);
@@ -39,7 +46,7 @@ export function SettingsScreen() {
     {s?.rules.map((rule, index) => <Panel key={rule.id}><Heading>時間帯 {index + 1}</Heading><Body>{ruleText(rule)}</Body><Body muted>{rule.enabled ? '有効なルール' : '無効なルール'}</Body>
       {s.authorization === 'approved' && <Applications selectionRef={rule.selectionRef} count={s.selections.find((selection) => selection.ref === rule.selectionRef)?.count ?? 1} refreshKey={state.refreshKey} />}
       <Button label={`時間帯 ${index + 1}を編集`} secondary disabled={!!state.busy} onPress={() => edit(rule)} />
-      <Button label={`時間帯 ${index + 1}を削除する内容を確認`} secondary disabled={!!state.busy} onPress={() => { void remove(rule); }} />
+      <Button label={`時間帯 ${index + 1}を削除する内容を確認`} secondary disabled={!!state.busy} onPress={() => withDraftChoice(() => { void prepareRemoval(rule); })} />
     </Panel>)}
     {!s?.rules.length && <Body muted>保存したルールはありません。</Body>}
     <Button label="ルールを追加する" disabled={!device || !!state.busy} onPress={() => edit()} />

@@ -56,7 +56,7 @@ export function FlowScreen({ title, children, onBack, footer }: { title: string;
   const theme = useFlowTheme(), state = useScreenTime();
   return <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+      <ScrollView testID="flow-scroll" keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <View style={styles.top}>
           {onBack ? <Button label="‹ 戻る" secondary onPress={onBack} /> : <View style={styles.brand}><OpenCircle color={theme.accent} /><Text style={[styles.brandName, { color: theme.text }]}>いとま</Text></View>}
         </View>
