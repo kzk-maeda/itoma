@@ -1,8 +1,7 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { View } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { runNativeSmoke } from '@/qa/native-smoke';
 import { ScreenTimeProvider } from '@/state/screen-time';
@@ -14,8 +13,9 @@ export default function RootLayout() {
   useEffect(() => { runNativeSmoke(); }, []);
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <ScreenTimeProvider><Stack screenOptions={{ headerShown: false }} /></ScreenTimeProvider>
+      <View style={{ flex: 1 }} onLayout={() => { void SplashScreen.hideAsync(); }}>
+        <ScreenTimeProvider><Stack screenOptions={{ headerShown: false }} /></ScreenTimeProvider>
+      </View>
     </ThemeProvider>
   );
 }
