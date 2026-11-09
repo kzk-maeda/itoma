@@ -37,7 +37,7 @@
 
 ## 本実装の設計比較
 
-- [設定時間の累計・週月集計契約案](time-reflection-contract.md) / [ADR0007](../adr/0007-recorded-setting-time-reflection.md) — #96。Proposed。人間による採用前であり、#97〜#100の実装済み/Readyを意味しない。
+- [一時解除を除いた制限時間の累計・週月集計契約案](time-reflection-contract.md) / [ADR0007](../adr/0007-recorded-setting-time-reflection.md) — #96。解除時間を累計へ含めない本人指示を反映したProposed。詳細の採用/実装/実機成立は区別する。
 
 [#22〜#25の設計レビュー](core-design-review.md) に、利用者回答・了承済みの7方針・比較・採用版に含むP1/P2修正をまとめています。個別仕様とADRはそこから参照してください。状態/ルールの表は実装するテストケースであり、実行済みの検証ではありません。
 
