@@ -6,6 +6,7 @@ import { createScreenTimePoCClient } from './src/screen-time-poc';
 
 interface ItomaNativePort extends NativeModule {
   readonly apiVersion: number;
+  readonly screenTimePoCUIVersion?: number;
   validateDuration(minutes: number): unknown;
   reportSmokeResult(commit: string, passed: boolean): boolean;
   screenTimePoC(action: string, ref: string | null): Promise<string>;
@@ -26,4 +27,14 @@ export function reportNativeSmokeResult(commit: string, passed: boolean): boolea
   } catch {
     return false;
   }
+}
+
+/** New native views/actions require a build that contains the matching implementation. */
+export function supportsSavedSelectionUI(): boolean {
+  if (Platform.OS !== 'ios') return false;
+  try {
+    const native = load();
+    return native?.apiVersion === 1 && typeof native.screenTimePoCUIVersion === 'number' && native.screenTimePoCUIVersion >= 2;
+  }
+  catch { return false; }
 }

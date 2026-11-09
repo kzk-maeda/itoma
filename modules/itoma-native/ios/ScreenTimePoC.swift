@@ -26,6 +26,8 @@ final class ScreenTimePoC {
     private var presenting = false
     private var confirmedThisSession: Set<SelectionRef> = []
     private var selectionEpoch: UInt64 = 0
+    private var savedTokensInvalidated = false
+    private var reviewedAfterAuthorization: Set<SelectionRef> = []
     private let storeName = ManagedSettingsStore.Name("itoma.poc.manual")
     private var observers: Set<AnyCancellable> = []
 
@@ -33,19 +35,41 @@ final class ScreenTimePoC {
         guard availability == "device-poc" else { return }
         AuthorizationCenter.shared.$authorizationStatus.receive(on: DispatchQueue.main).sink { [weak self] status in
             MainActor.assumeIsolated {
-                if status != .approved { self?.invalidateConfirmation() }
+                if status != .approved { self?.invalidateConfirmation(invalidateSavedTokens: true) }
             }
         }.store(in: &observers)
-        // Conservatively reject tokens if Settings could have revoked/regranted authorization
-        // while this process was suspended, even when the next getter already reads approved.
+        // Backgrounding invalidates direct-apply confirmation. Saved targets must be
+        // reviewed again in the native Picker before another explicit apply request.
         NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
             .receive(on: DispatchQueue.main).sink { [weak self] _ in
                 MainActor.assumeIsolated { self?.invalidateConfirmation() }
             }.store(in: &observers)
     }
 
-    private func invalidateConfirmation() {
+    private func invalidateConfirmation(invalidateSavedTokens: Bool = false) {
         confirmedThisSession.removeAll(); selectionEpoch &+= 1
+        if invalidateSavedTokens {
+            savedTokensInvalidated = true
+            reviewedAfterAuthorization.removeAll()
+        }
+    }
+
+    private func canReviewSavedTokens(_ ref: SelectionRef) -> Bool {
+        !savedTokensInvalidated || reviewedAfterAuthorization.contains(ref)
+    }
+
+    /// Apple renders these tokens inside native Label views. No app identity crosses JavaScript.
+    func applicationsForDisplay(ref: String) -> [ApplicationToken]? {
+        guard availability == "device-poc", authorization == "approved",
+              let id = UUID(uuidString: ref), canReviewSavedTokens(SelectionRef(id)) else { return nil }
+        return try? withRepository { repository in
+            guard let stored = try repository.readSnapshot().selections.first(where: { $0.selection.ref.rawValue == id }) else {
+                throw StorageError.invalidSelection
+            }
+            return try decode(stored).applications.sorted {
+                $0.ref.rawValue.uuidString < $1.ref.rawValue.uuidString
+            }.map(\.token)
+        }
     }
 
     private var availability: String {
@@ -61,9 +85,9 @@ final class ScreenTimePoC {
         guard availability == "device-poc" else { return "unknown" }
         switch AuthorizationCenter.shared.authorizationStatus {
         case .approved: return "approved"
-        case .denied: invalidateConfirmation(); return "denied"
-        case .notDetermined: invalidateConfirmation(); return "unknown"
-        @unknown default: invalidateConfirmation(); return "unknown"
+        case .denied: invalidateConfirmation(invalidateSavedTokens: true); return "denied"
+        case .notDetermined: invalidateConfirmation(invalidateSavedTokens: true); return "unknown"
+        @unknown default: invalidateConfirmation(invalidateSavedTokens: true); return "unknown"
         }
     }
 
@@ -97,7 +121,7 @@ final class ScreenTimePoC {
 
     private func decode(_ stored: StoredSelection) throws -> SelectionPayload {
         let payload = try JSONDecoder().decode(SelectionPayload.self, from: stored.opaquePayload)
-        guard payload.version == 1,
+        guard payload.version == 1, !payload.applications.isEmpty, payload.applications.count <= 50,
               Set(payload.applications.map(\.ref)) == stored.selection.targets,
               Set(payload.applications.map(\.ref)).count == payload.applications.count,
               Set(payload.applications.map(\.token)).count == payload.applications.count else {
@@ -137,6 +161,7 @@ final class ScreenTimePoC {
     func perform(_ action: String, ref: String?, presenter: UIViewController?, complete: @escaping ([String: Any]) -> Void) {
         // Stop never needs the selection DB or authorization, and clears only this PoC's own store.
         if action == "stop" {
+            invalidateConfirmation() // A pending review must not reapply after an explicit stop.
             #if targetEnvironment(simulator)
             complete(snapshot(operation: "failed", code: "unavailable"))
             #else
@@ -166,7 +191,8 @@ final class ScreenTimePoC {
                 complete(snapshot(operation: "saved"))
             } catch { complete(snapshot(operation: "failed", code: "storage-failure")) }
         case "authorize":
-            invalidateConfirmation()
+            let needsNewAuthorization = authorization != "approved"
+            invalidateConfirmation(invalidateSavedTokens: needsNewAuthorization)
             presenting = true
             Task { @MainActor in
                 var code: String?
@@ -175,7 +201,7 @@ final class ScreenTimePoC {
                 presenting = false
                 complete(snapshot(operation: code == nil ? "requested" : "failed", code: code))
             }
-        case "pick":
+        case "pick", "review-and-apply":
             guard authorization == "approved" else { complete(snapshot(operation: "failed", code: "authorization-required")); return }
             guard let presenter, presenter.viewIfLoaded?.window != nil, !presenter.isBeingDismissed,
                   !presenter.isBeingPresented, presenter.presentedViewController == nil else {
@@ -184,43 +210,75 @@ final class ScreenTimePoC {
             guard snapshot()["storage"] as? String == "ready" else {
                 complete(snapshot(operation: "failed", code: "storage-failure")); return
             }
+            let applying = action == "review-and-apply"
+            var initialSelection = FamilyActivitySelection()
+            var preferredRef: SelectionRef?
+            if applying {
+                guard let id = ref.flatMap(UUID.init(uuidString:)) else {
+                    complete(snapshot(operation: "failed", code: "invalid-action")); return
+                }
+                do {
+                    let stored = try withRepository { repository in
+                        guard let stored = try repository.readSnapshot().selections.first(where: { $0.selection.ref.rawValue == id }) else {
+                            throw StorageError.invalidSelection
+                        }
+                        _ = try decode(stored)
+                        return stored
+                    }
+                    preferredRef = stored.selection.ref
+                    if canReviewSavedTokens(stored.selection.ref) {
+                        initialSelection.applicationTokens = Set(try decode(stored).applications.map(\.token))
+                    }
+                } catch { complete(snapshot(operation: "failed", code: "storage-failure")); return }
+            }
+            // Never retain a SQLite transaction while presenting an OS picker.
             presenting = true
             var completed = false
             let pickerEpoch = selectionEpoch
-            let host = UIHostingController(rootView: PoCPicker { [weak self] selection in
+            let requiresNewSelection = applying && initialSelection.applicationTokens.isEmpty
+            let host = UIHostingController(rootView: PoCPicker(initialSelection: initialSelection,
+                applying: applying, requiresNewSelection: requiresNewSelection) { [weak self] selection in
                 guard let self, !completed else { return }
                 completed = true
                 let result: [String: Any]
-                if let selection { result = save(selection, expectedEpoch: pickerEpoch) }
-                else { result = snapshot(operation: "cancelled") }
+                if let selection {
+                    let saved = save(selection, expectedEpoch: pickerEpoch, preferredRef: preferredRef)
+                    if applying, saved["operation"] as? String == "saved",
+                       selectionEpoch == pickerEpoch, let confirmed = confirmedThisSession.first {
+                        result = apply(ref: confirmed.rawValue.uuidString)
+                    } else { result = saved }
+                } else { result = snapshot(operation: "cancelled") }
                 presenter.dismiss(animated: true) { self.presenting = false; complete(result) }
             })
             host.isModalInPresentation = true // Cancellation is explicit and leaves persisted state unchanged.
             presenter.present(host, animated: true)
-        case "apply":
-            guard authorization == "approved" else { complete(snapshot(operation: "failed", code: "authorization-required")); return }
-            guard let rawRef = ref.flatMap(UUID.init(uuidString:)), confirmedThisSession.contains(SelectionRef(rawRef)) else {
-                complete(snapshot(operation: "failed", code: "reselection-required")); return
-            }
-            do {
-                let tokens = try withRepository { repository in
-                    guard let stored = try repository.readSnapshot().selections.first(where: { $0.selection.ref.rawValue == rawRef }) else {
-                        throw StorageError.invalidSelection
-                    }
-                    return Set(try decode(stored).applications.map(\.token))
-                }
-                guard !tokens.isEmpty else { complete(snapshot(operation: "failed", code: "empty-selection")); return }
-                guard tokens.count <= 50 else { complete(snapshot(operation: "failed", code: "too-many-applications")); return }
-                guard authorization == "approved" else { complete(snapshot(operation: "failed", code: "authorization-required")); return }
-                let store = ManagedSettingsStore(named: storeName)
-                store.shield.applications = tokens
-                complete(snapshot(operation: "requested", observation: store.shield.applications == tokens ? "own-store-matches" : "uncertain"))
-            } catch { complete(snapshot(operation: "failed", code: "storage-failure")) }
+        case "apply": complete(apply(ref: ref))
         default: complete(snapshot(operation: "failed", code: "invalid-action"))
         }
     }
 
-    private func save(_ selection: FamilyActivitySelection, expectedEpoch: UInt64) -> [String: Any] {
+    private func apply(ref: String?) -> [String: Any] {
+        guard authorization == "approved" else { return snapshot(operation: "failed", code: "authorization-required") }
+        guard let rawRef = ref.flatMap(UUID.init(uuidString:)), confirmedThisSession.contains(SelectionRef(rawRef)) else {
+            return snapshot(operation: "failed", code: "reselection-required")
+        }
+        do {
+            let tokens = try withRepository { repository in
+                guard let stored = try repository.readSnapshot().selections.first(where: { $0.selection.ref.rawValue == rawRef }) else {
+                    throw StorageError.invalidSelection
+                }
+                return Set(try decode(stored).applications.map(\.token))
+            }
+            guard !tokens.isEmpty else { return snapshot(operation: "failed", code: "empty-selection") }
+            guard tokens.count <= 50 else { return snapshot(operation: "failed", code: "too-many-applications") }
+            guard authorization == "approved" else { return snapshot(operation: "failed", code: "authorization-required") }
+            let store = ManagedSettingsStore(named: storeName)
+            store.shield.applications = tokens
+            return snapshot(operation: "requested", observation: store.shield.applications == tokens ? "own-store-matches" : "uncertain")
+        } catch { return snapshot(operation: "failed", code: "storage-failure") }
+    }
+
+    private func save(_ selection: FamilyActivitySelection, expectedEpoch: UInt64, preferredRef: SelectionRef? = nil) -> [String: Any] {
         guard authorization == "approved" else { return snapshot(operation: "failed", code: "authorization-required") }
         guard selectionEpoch == expectedEpoch else { return snapshot(operation: "failed", code: "reselection-required") }
         guard selection.categoryTokens.isEmpty, selection.webDomainTokens.isEmpty else {
@@ -231,6 +289,10 @@ final class ScreenTimePoC {
         do {
             let ref = try withRepository { repository in
                 let current = try repository.readSnapshot()
+                if let preferredRef, let stored = current.selections.first(where: { $0.selection.ref == preferredRef }),
+                   Set(try decode(stored).applications.map(\.token)) == selection.applicationTokens {
+                    return preferredRef // Confirm unchanged saved targets without creating duplicate history rows.
+                }
                 let previous = try current.selections.flatMap { try decode($0).applications }
                 var tokenRefs: [ApplicationToken: TargetRef] = [:]
                 var refTokens: [TargetRef: ApplicationToken] = [:]
@@ -250,6 +312,7 @@ final class ScreenTimePoC {
             }
             // Only the selection just reviewed in the native Picker can be manually applied.
             confirmedThisSession = [ref]
+            reviewedAfterAuthorization.insert(ref)
             return snapshot(operation: "saved")
         } catch { return snapshot(operation: "failed", code: "storage-failure") }
     }
@@ -257,19 +320,36 @@ final class ScreenTimePoC {
 
 @available(iOS 16.0, *)
 private struct PoCPicker: View {
-    @State private var selection = FamilyActivitySelection()
+    @State private var selection: FamilyActivitySelection
+    let applying: Bool
+    let requiresNewSelection: Bool
     let complete: (FamilyActivitySelection?) -> Void
+
+    init(initialSelection: FamilyActivitySelection, applying: Bool, requiresNewSelection: Bool,
+         complete: @escaping (FamilyActivitySelection?) -> Void) {
+        _selection = State(initialValue: initialSelection)
+        self.applying = applying; self.requiresNewSelection = requiresNewSelection; self.complete = complete
+    }
     var body: some View {
         NavigationStack {
             VStack {
-                Text("検証ではアプリだけを選択してください。保存しても制限は開始しません。")
+                Text(applying
+                     ? "対象を確認してください。「制限を開始」を押したときだけ保存して制限します。自動では終了しません。検証画面の停止ボタンで停止できます。"
+                     : "検証ではアプリだけを選択してください。保存しても制限は開始しません。")
                     .padding().fixedSize(horizontal: false, vertical: true)
+                if requiresNewSelection {
+                    Text("認可の変更が確認されたため、アプリを選び直してください。")
+                        .padding(.horizontal).fixedSize(horizontal: false, vertical: true)
+                }
                 FamilyActivityPicker(selection: $selection)
             }
-            .navigationTitle("検証対象を選択")
+            .navigationTitle(applying ? "保存した対象を確認" : "検証対象を選択")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { complete(nil) } }
-                ToolbarItem(placement: .confirmationAction) { Button("保存") { complete(selection) } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(applying ? "制限を開始" : "保存") { complete(selection) }
+                        .disabled(selection.applicationTokens.isEmpty)
+                }
             }
         }
         .tint(.primary)
