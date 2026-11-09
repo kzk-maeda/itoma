@@ -9,8 +9,8 @@ import UIKit
 final class SavedApplicationsView: ExpoView {
     let onContentSize = EventDispatcher()
     let onSelect = EventDispatcher()
-    var selectable = false { didSet { if oldValue != selectable { reload() } } }
-    var selected = false { didSet { if oldValue != selected { reload() } } }
+    var selectable = false { didSet { if oldValue != selectable, window != nil { show(applications: cachedApplications) } } }
+    var selected = false { didSet { if oldValue != selected, window != nil { show(applications: cachedApplications) } } }
     var selectionRef = "" { didSet { if oldValue != selectionRef { reload() } } }
     var refreshKey = 0 { didSet { if oldValue != refreshKey { reload() } } }
     var source = "poc" { didSet { if oldValue != source { reload() } } }
@@ -20,6 +20,7 @@ final class SavedApplicationsView: ExpoView {
     private var lastHeight: CGFloat = 0
     private var productTask: Task<Void, Never>?
     private var generation = 0
+    private var cachedApplications: [ApplicationToken]?
 
     required init(appContext: AppContext? = nil) {
         super.init(appContext: appContext)
@@ -30,6 +31,7 @@ final class SavedApplicationsView: ExpoView {
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window == nil {
+            cachedApplications = nil
             generation &+= 1; productTask?.cancel(); productTask = nil
             subscriptions.removeAll()
             host?.willMove(toParent: nil)
@@ -74,6 +76,7 @@ final class SavedApplicationsView: ExpoView {
 
     private func reload() {
         guard window != nil else { return }
+        cachedApplications = nil
         generation &+= 1; productTask?.cancel(); productTask = nil
         if source == "product", #available(iOS 16.0, *) {
             let current = generation, ref = selectionRef, target = targetRef.isEmpty ? nil : targetRef
@@ -91,6 +94,7 @@ final class SavedApplicationsView: ExpoView {
     }
 
     private func show(applications: [ApplicationToken]?) {
+        cachedApplications = applications
         let content: AnyView
         if #available(iOS 16.0, *) {
             content = AnyView(SavedApplicationsContent(applications: applications,

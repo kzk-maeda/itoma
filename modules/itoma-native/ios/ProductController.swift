@@ -86,7 +86,7 @@ struct ProductResponse: Encodable, Sendable {
     private var reviewGateActive = false
     private var candidate: (PolicyCandidate, PolicyEditAssessment)?
     private struct GrantPreview {
-        let id: UUID; let request: GrantRequest; let reason: String; let expiresAt: Instant
+        let id: UUID; let request: GrantRequest; let reasonRef: ReasonRef; let reason: String; let expiresAt: Instant
     }
     private var grantPreview: GrantPreview?
 
@@ -204,7 +204,8 @@ struct ProductResponse: Encodable, Sendable {
                 let confirmedRequest = GrantRequest(grantID: previewRequest.grantID, commandID: previewRequest.commandID, targetRef: target,
                     expectedPolicyRevision: before.policy.revision, expectedOccurrence: winner.key, condition: condition, duration: duration,
                     confirmedExpiresAt: previewGrant.effectiveExpiresAt)
-                grantPreview = GrantPreview(id: id, request: confirmedRequest, reason: request.reason ?? "", expiresAt: previewGrant.effectiveExpiresAt)
+                grantPreview = GrantPreview(id: id, request: confirmedRequest, reasonRef: ReasonRef(UUID()),
+                    reason: request.reason ?? "", expiresAt: previewGrant.effectiveExpiresAt)
                 return ProductResponse(status: "confirmation-required", ref: id.uuidString.lowercased(), minutes: duration.minutes,
                     previewEndsAt: previewGrant.effectiveExpiresAt.secondsSince1970,
                     shortened: previewGrant.effectiveExpiresAt.secondsSince1970 < context.now.secondsSince1970 + Double(duration.minutes * 60), snapshot: try snapshot(r))
@@ -216,7 +217,7 @@ struct ProductResponse: Encodable, Sendable {
                 let context = r.contexts.context(activation: before.activation)
                 guard context.now < preview.expiresAt else { throw GrantEvaluationError.confirmationChanged }
                 let command = try Command(id: preview.request.commandID, kind: .requestTemporaryGrant, status: .pending,
-                    expectedPolicyRevision: preview.request.expectedPolicyRevision, attempt: AttemptNumber(0), reasonRef: ReasonRef(UUID()))
+                    expectedPolicyRevision: preview.request.expectedPolicyRevision, attempt: AttemptNumber(0), reasonRef: preview.reasonRef)
                 try withHistory { history in _ = try history.acceptReasonGrant(in: r.repository, command: command, request: preview.request,
                     body: reason, context: context, expectedSequence: before.snapshotSequence) }
                 grantPreview = nil
@@ -386,7 +387,7 @@ struct ProductResponse: Encodable, Sendable {
     private func failureCode(_ error: any Error) -> String {
         switch error {
         case CommandServiceError.confirmationChanged, CommandServiceError.confirmationRequired, StorageError.conflict,
-             GrantEvaluationError.stalePolicy, GrantEvaluationError.staleOccurrence: return "changed"
+             GrantEvaluationError.stalePolicy, GrantEvaluationError.staleOccurrence, GrantEvaluationError.confirmationChanged: return "changed"
         case CommandServiceError.authorizationRequired, GrantEvaluationError.authorizationRequired: return "authorization-required"
         case ScreenTimeRuntimeError.busy, StorageError.busy: return "busy"
         case ScreenTimeRuntimeError.scheduleUnavailable: return "schedule-failed"
