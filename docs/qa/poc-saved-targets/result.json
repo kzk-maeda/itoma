@@ -37,11 +37,7 @@
     "targetRestrictionAndStop": "PASS reported",
     "repetitions": "One walkthrough reported; repeated trials not established",
     "notRunOrUnconfirmed": [
-      "Native Picker cancellation after new review",
-      "Observed authorization revoke/regrant and fresh selection requirement",
-      "Unobserved revoke/regrant while process was terminated",
-      "Max text/VoiceOver/long names",
-      "Full hardware reboot/offline/file protection/DB fault matrix"
+      "Superseded by additionalUserReportedQA for guided cancellation, reboot/offline, revoke/regrant and accessibility; detailed remaining scope below"
     ]
   },
   "checksExitCodes": {
@@ -67,5 +63,28 @@
     "launchMethod": "devicectl payload-url",
     "scope": "Read-only empty PoC screen; no stored app labels or actual Screen Time behavior",
     "screenshotSHA256": "430a870cc7a2142db0f69ee32da857604c7be2251a5ee285859165fd7382a57d"
+  },
+  "additionalUserReportedQA": {
+    "reportedDateJST": "2026-11-09",
+    "exactObservationTime": "not recorded",
+    "evidenceType": "User chat report; not direct agent observation",
+    "buildContinuity": "Same SRE05 walkthrough; no build update reported; no new binary/config comparison",
+    "reviewCancellation": "PASS reported",
+    "hardwareRebootAndOfflineWalkthrough": "PASS reported; pre-first-unlock file protection unverified",
+    "observedRevocationAndReauthorization": "PASS reported",
+    "revocationWhileTerminated": {
+      "sequence": "Terminate ITOMA -> revoke in Settings -> launch ITOMA -> reauthorize from ITOMA",
+      "result": "New app selection required; other guided behavior PASS reported",
+      "finding": "Unidentifiable saved selection rows accumulate",
+      "limitation": "Not a test of both revoke and regrant while the process remained terminated; no direct DB/token deletion observation"
+    },
+    "accessibilityAndAppearance": "Text enlargement, VoiceOver, Dark: PASS reported within guided scope; maximum size and detailed audit not established",
+    "findingIssue": "https://github.com/kzk-maeda/itoma/issues/123",
+    "remaining": [
+      "Unobserved authorization change paths and invalid tokens",
+      "Detailed accessibility, repetition and stress matrix",
+      "File Protection and database fault fixtures",
+      "Product integration, extensions and deadline re-restriction"
+    ]
   }
 }
