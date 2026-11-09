@@ -26,9 +26,13 @@ import ItomaStorage
     /// never permits activating a candidate. Old policy monitors remain until a new policy commits.
     @discardableResult public func prepare(_ policy: PolicySnapshot) throws -> PolicyMonitorPlan {
         if let plan = try readyPlan(for: policy) { return plan }
-        var plan = try PolicyMonitorPlan(policy: policy)
-        try repository.record(plan, expected: nil)
+        // Reuse the immutable policy's durable names across failures/relaunch. Creating a new
+        // generation on every partial retry can exhaust Apple's finite activity slots.
+        var plan: PolicyMonitorPlan
+        if let existing = try repository.plans().first(where: { $0.policy == policy }) { plan = existing }
+        else { plan = try PolicyMonitorPlan(policy: policy); try repository.record(plan, expected: nil) }
         for minute in plan.boundaryMinutes.sorted() {
+            if plan.acceptedMinutes.contains(minute), scheduler.containsActivities([plan.activityName(minute: minute)]) { continue }
             try scheduler.registerBoundary(name: plan.activityName(minute: minute), minute: minute)
             let updated = try PolicyMonitorPlan(id: plan.id, policy: policy, acceptedMinutes: plan.acceptedMinutes.union([minute]))
             try repository.record(updated, expected: plan)
