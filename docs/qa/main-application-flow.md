@@ -18,7 +18,7 @@ DESIGN原則1〜5、U01〜U07に従い、状態と問題、時間帯ごとの円
 
 ## Web画像の出所
 
-画像の製品コードは `4fbd85407881aff78cfe0bdb55163ceb9e2a489c`。後続の画像・文書コミットは表示コードを変えない。時刻を `2026-11-09T21:30:00Z` に固定したLinux Chromium。データは架空で、上部に「合成データによる画面QA · OS制限は未検証」と表示する。画像・bundleのSHA256、browser版、幅、実行エラーは [manifest.json](main-flow/manifest.json) に記録する。
+画像の製品コードは `c16f77867c4b512a90e07cf8bbe5765859f5c577`。後続の画像・文書コミットは表示コードを変えない。時刻を `2026-11-09T21:30:00Z` に固定したLinux Chromium。データは架空で、上部に「合成データによる画面QA · OS制限は未検証」と表示する。画像・bundleのSHA256、browser版、幅、実行エラーは [manifest.json](main-flow/manifest.json) に記録する。
 
 | 画像 | 条件 |
 | --- | --- |

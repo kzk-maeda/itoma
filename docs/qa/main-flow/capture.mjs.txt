@@ -15,7 +15,7 @@ const cases = [
   ['unlock-short-viewport', 'unlock', 'light', 390, 440, false],
 ];
 const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
-const proof = { sourceCommit: '4fbd85407881aff78cfe0bdb55163ceb9e2a489c', kind: 'synthetic-native-data-web-fixtures',
+const proof = { sourceCommit: 'c16f77867c4b512a90e07cf8bbe5765859f5c577', kind: 'synthetic-native-data-web-fixtures',
   physicalDevice: false, osRestrictionsVerified: false, fixedClock: new Date(fixedClock).toISOString(),
   browser: await browser.version(), platform: 'Linux Chromium; not iOS', mockedFiles: ['temp-only src/app/proof.tsx', 'temp-only src/components/flow/applications.tsx'],
   syntheticReasonOnly: true, nativeAppNames: 'synthetic substitutes only', cases: [] };

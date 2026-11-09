@@ -1,5 +1,5 @@
 {
-  "sourceCommit": "4fbd85407881aff78cfe0bdb55163ceb9e2a489c",
+  "sourceCommit": "c16f77867c4b512a90e07cf8bbe5765859f5c577",
   "kind": "synthetic-native-data-web-fixtures",
   "physicalDevice": false,
   "osRestrictionsVerified": false,
@@ -76,10 +76,10 @@
       "dimensions": {
         "viewport": 320,
         "scroll": 320,
-        "contentHeight": 2855
+        "contentHeight": 2944
       },
       "pageErrors": [],
-      "sha256": "9c93ee541941fa48a590df4138d61dd11c94049c6f7a5265ee4e16b3fbe7eb96"
+      "sha256": "71257abfd85cd65133aa11e77fd20ef9be5fe49249d951a00cb413f9c168c14e"
     },
     {
       "name": "grant-light",
@@ -165,13 +165,13 @@
       },
       "shortViewportCTAVisible": true,
       "pageErrors": [],
-      "sha256": "af5d971fceb506d0593671dac6adf65934d9181f5243c27eeafd160c9ebb6669"
+      "sha256": "f2e45a06c3f92914cc3de78c343493554ccc63da3c701a863d785e09ce6fdc9c"
     }
   ],
   "webBundles": [
     {
-      "name": "__common-df63e3193aaf199246af93d3e8b14b9f.js",
-      "sha256": "b82208f4da49a5dd844d4b64f3a5157e6cbab9ab208b47e7ea0cdb0e3e915e69"
+      "name": "__common-24a9632303b91b431cd98de62a37946a.js",
+      "sha256": "bbb3e0727aad08d27ce7017487b13bba67f0d87710961e08b031e27be8ac2596"
     },
     {
       "name": "__expo-metro-runtime-ed4c1cfa6193d76fc294130e42bd1916.js",
@@ -241,7 +241,7 @@
     },
     {
       "name": "capture.mjs.txt",
-      "sha256": "573d8b2d62feeaf19af1edf330c1798900c8c4a490c1e968a1ff1c29a9c85621"
+      "sha256": "64f74c807960d1b7c38a3ec71899fae72cff64cc7c5988edc5d501dfc7af181b"
     }
   ]
 }
