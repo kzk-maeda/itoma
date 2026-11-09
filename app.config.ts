@@ -4,6 +4,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: config.name ?? 'itoma',
   slug: config.slug ?? 'itoma',
+  plugins: [
+    ...(config.plugins ?? []),
+    ...(process.env.ITOMA_SCREEN_TIME === '1'
+      ? [['./plugins/with-itoma-screen-time.cjs', { appGroup: process.env.ITOMA_APP_GROUP }] as [string, { appGroup: string | undefined }]]
+      : []),
+  ],
   ios: {
     ...config.ios,
     // Local build opt-in only. This neither selects a Team nor registers/signs an App ID.
