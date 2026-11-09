@@ -34,11 +34,12 @@ public struct GrantRequest: Equatable, Sendable {
     public let expectedOccurrence: OccurrenceKey
     public let condition: UnlockCondition
     public let duration: UnlockDuration?
+    public let confirmedExpiresAt: Instant?
 
     public init(
         grantID: GrantID, commandID: CommandID, targetRef: TargetRef,
         expectedPolicyRevision: PolicyRevision, expectedOccurrence: OccurrenceKey,
-        condition: UnlockCondition, duration: UnlockDuration? = nil
+        condition: UnlockCondition, duration: UnlockDuration? = nil, confirmedExpiresAt: Instant? = nil
     ) {
         self.grantID = grantID
         self.commandID = commandID
@@ -47,6 +48,7 @@ public struct GrantRequest: Equatable, Sendable {
         self.expectedOccurrence = expectedOccurrence
         self.condition = condition
         self.duration = duration
+        self.confirmedExpiresAt = confirmedExpiresAt
     }
 }
 
@@ -126,7 +128,9 @@ public enum GrantEvaluator {
         guard winner.rule.unlockMode == request.condition.mode else { throw GrantEvaluationError.conditionMismatch }
         let duration = request.duration ?? policy.defaultUnlockDuration
         let requestedEnd = try Instant(secondsSince1970: context.now.secondsSince1970 + Double(duration.minutes * 60))
-        let end = min(requestedEnd, winner.endsAt, target.nextWinnerChange ?? rules.evaluatedThrough)
+        let end = min(requestedEnd, winner.endsAt, target.nextWinnerChange ?? rules.evaluatedThrough,
+                      request.confirmedExpiresAt ?? requestedEnd)
+        guard end > context.now else { throw GrantEvaluationError.confirmationChanged }
         return .proposed(try TemporaryGrant(
             id: request.grantID, commandID: request.commandID, targetRef: request.targetRef,
             occurrence: winner.key, acceptedAt: context.now, initialExpiresAt: end,

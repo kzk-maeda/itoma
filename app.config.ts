@@ -7,7 +7,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     ...(config.plugins ?? []),
     ...(process.env.ITOMA_SCREEN_TIME === '1'
-      ? [['./plugins/with-itoma-screen-time.cjs', { appGroup: process.env.ITOMA_APP_GROUP }] as [string, { appGroup: string | undefined }]]
+      ? [['./plugins/with-itoma-screen-time.cjs', {
+        appGroup: process.env.ITOMA_APP_GROUP,
+        historyWarningBytes: Number(process.env.ITOMA_HISTORY_WARNING_BYTES),
+        historyMaximumBytes: Number(process.env.ITOMA_HISTORY_MAXIMUM_BYTES),
+        pendingEventLimit: Number(process.env.ITOMA_PENDING_EVENT_LIMIT),
+      }] as [string, Record<string, string | number | undefined>]]
       : []),
   ],
   ios: {

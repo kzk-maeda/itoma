@@ -2,6 +2,41 @@ import ItomaCore
 import ItomaStorage
 
 extension CommandService {
+    /// Explicit early return for exactly one accepted grant. Its logical end is durable before
+    /// attempting reblock; a duplicate/stale command identity cannot end a later grant.
+    public func endTemporaryGrant(commandID: CommandID) async throws -> ReconciliationResult {
+        try observedTransaction { tx, capture in
+            let snapshot = try tx.snapshot()
+            let context = try recordCurrentFacts(context: capture(snapshot.activation), updateObservation: false, transaction: tx)
+            guard let stored = try tx.grantForCommand(commandID) else { throw CommandServiceError.invalidCommand }
+            if !stored.hasEnded {
+                _ = try tx.recordGrant(stored.grant.recording(status: .invalidated), expected: stored.grant)
+                _ = try tx.enqueueGrantHistory(eventID: identifiers.eventID(), grantID: stored.grant.id,
+                    at: context.now, capacity: historyCapacity)
+                try markObservationUncertain(at: context.now, failure: .interrupted, transaction: tx)
+            }
+        }
+        return await reconcile()
+    }
+
+    /// DeviceActivity callbacks are synchronous. Complete durable fire consumption and the own-
+    /// store reconciliation before returning to the OS. No Task/await or cancellation is hidden
+    /// here. Obsolete monitor cleanup remains durable for the app's later asynchronous pass.
+    public func reconcileSynchronously(registrationID: RegistrationID? = nil,
+                                      generation: RegistrationGeneration? = nil) -> ReconciliationResult {
+        do {
+            if let registrationID, let generation {
+                try recordDeadlineCallback(registrationID: registrationID, generation: generation)
+            } else if registrationID != nil || generation != nil {
+                return ReconciliationResult(disposition: .uncertain, failure: .interrupted)
+            }
+            switch try beginReconciliation(recoverInterruptedCommands: false) {
+            case let .blocked(result): return result
+            case let .ready(frame): return try finalizeReconciliation(frame).result
+            }
+        } catch { return ReconciliationResult(disposition: .uncertain, failure: .storageFailure) }
+    }
+
     struct ReconciliationFrame {
         let marker: EvaluationID
         let revision: PolicyRevision
@@ -144,7 +179,7 @@ extension CommandService {
             try observe(plan, result: .uncertain(.authorizationRequired), context: context, transaction: tx)
             return reconciliationCommit(.uncertain, failure: .authorizationRequired)
         }
-        let applied = restriction.apply(plan)
+        let applied = restriction.apply(plan, purpose: .reconciliation)
         let after = try recordCurrentFacts(context: capture(current.activation), updateObservation: false, transaction: tx)
         if validResult(plan, started: context, after: after) {
             return try commitReconciliation(plan, result: applied, context: after, transaction: tx)
@@ -156,7 +191,7 @@ extension CommandService {
         // One immediate baseline attempt if a deadline/zone/clock boundary crossed during the
         // short write. No recursive retry; a second context change stays Uncertain.
         let baseline = try reconciliationPlan(context: after, transaction: tx)
-        let recovery = restriction.apply(baseline)
+        let recovery = restriction.apply(baseline, purpose: .reconciliation)
         let recoveredAt = try recordCurrentFacts(context: capture(after.activation), updateObservation: false, transaction: tx)
         guard validResult(baseline, started: after, after: recoveredAt) else {
             try observe(baseline, result: .uncertain(.interrupted), context: recoveredAt, transaction: tx)

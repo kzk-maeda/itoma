@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.license = { :type => 'UNLICENSED' }
   s.author = 'ITOMA contributors'
   s.source = { :git => 'https://github.com/kzk-maeda/itoma.git', :tag => s.version.to_s }
-  s.platform = :ios, '15.1'
+  s.platform = :ios, '16.0'
   s.swift_version = '6.0'
   s.static_framework = true
   s.source_files = '**/*.swift'
@@ -15,5 +15,6 @@ Pod::Spec.new do |s|
   s.dependency 'ItomaStorage'
   s.dependency 'ItomaControl'
   s.dependency 'ItomaHistory'
+  s.dependency 'ItomaScreenTime'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
 end

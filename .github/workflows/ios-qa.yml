@@ -32,6 +32,10 @@ jobs:
       # Compile/embed the Extension using a placeholder group; no signing/registration.
       ITOMA_SCREEN_TIME: '1'
       ITOMA_APP_GROUP: group.com.example.itoma
+      # Experimental QA bounds only; shipping capacity remains a measurement/review gate.
+      ITOMA_HISTORY_WARNING_BYTES: '83886080'
+      ITOMA_HISTORY_MAXIMUM_BYTES: '104857600'
+      ITOMA_PENDING_EVENT_LIMIT: '10000'
       CI: '1'
     steps:
       - name: Validate immutable target

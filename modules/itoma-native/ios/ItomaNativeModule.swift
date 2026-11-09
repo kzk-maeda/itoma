@@ -18,14 +18,19 @@ public final class ItomaNativeModule: Module {
         Name("ItomaNative")
         Constant("apiVersion") { 1 }
         Constant("screenTimePoCUIVersion") { 2 }
+        Constant("screenTimeVersion") { 1 }
         View(SavedApplicationsView.self) {
-            Events("onContentSize")
+            Events("onContentSize", "onSelect")
             Prop("selectionRef") { (view: SavedApplicationsView, ref: String) in
                 view.selectionRef = ref
             }
             Prop("refreshKey") { (view: SavedApplicationsView, value: Int) in
                 view.refreshKey = value
             }
+            Prop("source") { (view: SavedApplicationsView, source: String) in view.source = source }
+            Prop("targetRef") { (view: SavedApplicationsView, target: String) in view.targetRef = target }
+            Prop("selectable") { (view: SavedApplicationsView, value: Bool) in view.selectable = value }
+            Prop("selected") { (view: SavedApplicationsView, value: Bool) in view.selected = value }
         }
         AsyncFunction("screenTimePoC") { (action: String, selectionRef: String?, promise: Promise) in
             // Expo's AppContext is Sendable; the Module itself must not cross actor isolation.
@@ -46,6 +51,17 @@ public final class ItomaNativeModule: Module {
                         }
                         promise.resolve(json)
                     } catch { promise.reject("ERR_ITOMA_POC_RESPONSE", "Native PoC response unavailable") }
+                }
+            }
+        }.runOnQueue(.main)
+        AsyncFunction("screenTime") { (action: String, payload: String?, promise: Promise) in
+            let context = self.appContext
+            MainActor.assumeIsolated {
+                guard #available(iOS 16.0, *) else {
+                    promise.resolve(#"{"status":"error","code":"unavailable"}"#); return
+                }
+                ProductUI.shared.perform(action, payload: payload, presenter: context?.utilities?.currentViewController()) { json in
+                    promise.resolve(json)
                 }
             }
         }.runOnQueue(.main)

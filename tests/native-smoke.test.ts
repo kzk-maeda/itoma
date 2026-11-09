@@ -2,6 +2,7 @@ jest.mock('expo-router', () => ({ router: { replace: jest.fn() } }));
 jest.mock('../modules/itoma-native', () => ({
   itomaNative: { getAvailability: jest.fn(), validateDuration: jest.fn() },
   screenTimePoC: { run: jest.fn() }, reportNativeSmokeResult: jest.fn(),
+  screenTime: { run: jest.fn() },
 }));
 
 const originalFlag = process.env.EXPO_PUBLIC_NATIVE_SMOKE;
@@ -18,12 +19,20 @@ function setup() {
   native.itomaNative.validateDuration.mockImplementation((minutes: number) => minutes === 5
     ? { status: 'valid', minutes: 5 } : { status: 'invalid', code: 'invalid-duration' });
   native.screenTimePoC.run.mockResolvedValue(response);
+  native.screenTime.run.mockResolvedValue({ status: 'error', code: 'unavailable', snapshot: { availability: 'simulator', storage: 'not-created', targets: [], observation: 'unknown' } });
   return { native, router, qa };
 }
 
 beforeEach(() => {
   jest.resetModules();
   process.env.EXPO_PUBLIC_NATIVE_SMOKE = '1'; process.env.EXPO_PUBLIC_BUILD_SHA = commit;
+});
+
+test('missing product bridge proof cannot pass using the old PoC bridge alone', async () => {
+  const { native, qa } = setup();
+  native.screenTime.run.mockResolvedValue({ status: 'error', code: 'unavailable' });
+  await qa.runNativeSmoke(); qa.completeNativePoCSmoke(response); qa.completeNativeHomeSmoke();
+  expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, false);
 });
 afterEach(() => {
   if (originalFlag === undefined) delete process.env.EXPO_PUBLIC_NATIVE_SMOKE;

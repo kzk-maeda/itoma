@@ -16,14 +16,18 @@ function validateOptions(options, bundleID) {
   if (!/^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/.test(bundleID ?? '')) {
     throw new Error('ITOMA Screen Time requires an explicit iOS bundleIdentifier.');
   }
+  const { historyWarningBytes: warning, historyMaximumBytes: maximum, pendingEventLimit: pending } = options;
+  if (![warning, maximum, pending].every(Number.isSafeInteger) || warning < 0 || maximum <= 0 || warning > maximum || pending <= 0) {
+    throw new Error('ITOMA requires explicit measured/test history byte limits and pending event limit. No provisional shipping defaults.');
+  }
 }
 
-function extensionInfo(appGroup) {
+function extensionInfo(appGroup, pendingEventLimit) {
   return {
     CFBundleDisplayName: 'ITOMA', CFBundleExecutable: '$(EXECUTABLE_NAME)',
     CFBundleIdentifier: '$(PRODUCT_BUNDLE_IDENTIFIER)', CFBundleName: '$(PRODUCT_NAME)',
     CFBundlePackageType: 'XPC!', CFBundleShortVersionString: '$(MARKETING_VERSION)',
-    CFBundleVersion: '$(CURRENT_PROJECT_VERSION)', ITOMAAppGroup: appGroup,
+    CFBundleVersion: '$(CURRENT_PROJECT_VERSION)', ITOMAAppGroup: appGroup, ITOMAPendingEventLimit: pendingEventLimit,
     NSExtension: {
       NSExtensionPointIdentifier: 'com.apple.deviceactivity.monitor-extension',
       NSExtensionPrincipalClass: `$(PRODUCT_MODULE_NAME).${TARGET}`,
@@ -37,6 +41,7 @@ function monitorPodfile(contents) {
     "  pod 'ItomaCore', :path => '../packages/itoma-core'",
     "  pod 'ItomaStorage', :path => '../packages/itoma-storage'",
     "  pod 'ItomaControl', :path => '../packages/itoma-control'",
+    "  pod 'ItomaScreenTime', :path => '../packages/itoma-screen-time'",
     'end', END].join('\n');
   const existing = new RegExp(`${MARKER}[\\s\\S]*?${END}\\n?`, 'g');
   return `${contents.replace(existing, '').trimEnd()}\n\n${block}\n`;
@@ -106,13 +111,16 @@ function withItomaScreenTime(config, options) {
   config = withInfoPlist(config, (mod) => {
     mod.modResults.ITOMAAppGroup = options.appGroup;
     mod.modResults.ITOMAScreenTime = true;
+    mod.modResults.ITOMAHistoryWarningBytes = options.historyWarningBytes;
+    mod.modResults.ITOMAHistoryMaximumBytes = options.historyMaximumBytes;
+    mod.modResults.ITOMAPendingEventLimit = options.pendingEventLimit;
     return mod;
   });
   config = withDangerousMod(config, ['ios', async (mod) => {
     const directory = path.join(mod.modRequest.platformProjectRoot, TARGET);
     await fs.mkdir(directory, { recursive: true });
     await fs.copyFile(path.join(mod.modRequest.projectRoot, 'extensions', TARGET, `${TARGET}.swift`), path.join(directory, `${TARGET}.swift`));
-    await fs.writeFile(path.join(directory, 'Info.plist'), plist.build(extensionInfo(options.appGroup)));
+    await fs.writeFile(path.join(directory, 'Info.plist'), plist.build(extensionInfo(options.appGroup, options.pendingEventLimit)));
     await fs.writeFile(path.join(directory, `${TARGET}.entitlements`), plist.build({
       'com.apple.developer.family-controls': true,
       'com.apple.security.application-groups': [options.appGroup],

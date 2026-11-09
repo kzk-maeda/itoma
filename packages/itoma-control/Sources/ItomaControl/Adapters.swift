@@ -28,11 +28,23 @@ public enum RestrictionApplicationResult: Equatable, Sendable {
     case failed(OperationFailure)
     case uncertain(OperationFailure)
 }
+public enum RestrictionPurpose: Equatable, Sendable { case temporaryGrant, policyCandidate, reconciliation }
 
 /// Only short synchronous own-store operations belong here. No prompt, network, or await.
 /// Native feasibility and evidence/readback limits must be measured separately on iOS.
 @ItomaControlActor public protocol RestrictionAdapter: AnyObject {
     func apply(_ evaluation: Evaluation) -> RestrictionApplicationResult
+    func apply(_ evaluation: Evaluation, purpose: RestrictionPurpose) -> RestrictionApplicationResult
+}
+extension RestrictionAdapter {
+    public func apply(_ evaluation: Evaluation, purpose: RestrictionPurpose) -> RestrictionApplicationResult { apply(evaluation) }
+}
+
+/// One clock precision for calendar schedules, context and API acceptance observations.
+public enum NativeScheduleClock {
+    public static func instant(_ date: Date) throws -> Instant {
+        try Instant(secondsSince1970: date.timeIntervalSince1970.rounded(.down))
+    }
 }
 
 @ItomaControlActor public protocol EvaluationContextProvider: AnyObject {
