@@ -2,6 +2,23 @@ import ItomaCore
 import ItomaStorage
 
 extension CommandService {
+    /// Explicit early return for exactly one accepted grant. Its logical end is durable before
+    /// attempting reblock; a duplicate/stale command identity cannot end a later grant.
+    public func endTemporaryGrant(commandID: CommandID) async throws -> ReconciliationResult {
+        try observedTransaction { tx, capture in
+            let snapshot = try tx.snapshot()
+            let context = try recordCurrentFacts(context: capture(snapshot.activation), updateObservation: false, transaction: tx)
+            guard let stored = try tx.grantForCommand(commandID) else { throw CommandServiceError.invalidCommand }
+            if !stored.hasEnded {
+                _ = try tx.recordGrant(stored.grant.recording(status: .invalidated), expected: stored.grant)
+                _ = try tx.enqueueGrantHistory(eventID: identifiers.eventID(), grantID: stored.grant.id,
+                    at: context.now, capacity: historyCapacity)
+                try markObservationUncertain(at: context.now, failure: .interrupted, transaction: tx)
+            }
+        }
+        return await reconcile()
+    }
+
     /// DeviceActivity callbacks are synchronous. Complete durable fire consumption and the own-
     /// store reconciliation before returning to the OS. No Task/await or cancellation is hidden
     /// here. Obsolete monitor cleanup remains durable for the app's later asynchronous pass.

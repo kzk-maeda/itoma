@@ -1,6 +1,6 @@
 # Screen Time native runtime
 
-## CNG foundation (#125)
+## CNG foundation (#125) and runtime (#127)
 
 `ITOMA_SCREEN_TIME=1 ITOMA_APP_GROUP=group.<owner-controlled identifier>` enables
 the local `plugins/with-itoma-screen-time.cjs` plugin. The group is an explicit
@@ -20,18 +20,88 @@ ios --no-install --no-clean` for incremental application and preservation of
 existing private signing choices; the test also covers this mode. Any clean
 regeneration must use the owner's original config/environment for private values.
 
-The initial foundation registers no activities and performs no callbacks. It is
-not evidence of automatic restrictions or completed product functionality.
-The next slices connect durable weekday plans, grant deadlines, synchronous
-Extension reconciliation, the typed product bridge and normal application UI.
+The foundation PR #126 only generates/builds the target. #127 connects the shared
+`ItomaScreenTime` pod and typed product bridge; normal application UI follows.
 The existing `itoma.poc.manual` store and private PoC database are separate;
 tokens are not silently migrated and that store is never automatically cleared.
 
 Unsigned Simulator QA enables this target with `group.com.example.itoma`, checks
-the embedded `.appex`/extension point and dependency list, and records the
-generated configuration digest. This placeholder grants no real App Group
+the embedded `.appex`/extension point and dynamic dependency list, and records the
+generated configuration digest. Static isolation uses the declared Pod closure;
+`otool -L` alone cannot audit static dependencies. This placeholder grants no real App Group
 access. API receipts, callbacks after termination/reboot, shared-file protection,
 and real app shielding remain physical-device gates (#48–#52).
+
+## Boundary and deadline adapters
+
+The host exclusively creates the shared Control schema6 DB and a separate
+PolicyMonitor schema1 SQLite journal. The Extension opens existing stores only.
+Both use the same Core evaluator and Control actor; private History schema2 is
+host-only. Directories/DB/WAL/SHM use UntilFirstUserAuthentication protection and
+backup exclusion. This source setup does not prove access before first unlock,
+protected-data behavior or coordination on a physical device.
+
+Each distinct enabled-rule start/end minute has a repeating **daily 15-minute
+monitor beginning at that boundary**. Both interval callbacks reevaluate the
+latest policy, including its weekday/overnight/DST/priority rules. The extra end
+callback is harmless. This avoids treating Core's finite query horizon as an OS
+wakeup, relying on undocumented weekly-repeat matching, or rejecting a short
+rule only because Apple's monitoring minimum is 15 minutes. Registration counts,
+closely spaced activities, timezone changes and missed/late callbacks still need
+real-device verification. Rejection leaves the old active policy and monitors.
+
+Plan preparation is durable before each OS call, with separate receipt commits.
+A partial plan cannot activate a candidate. `previewCandidate` and
+`executeAcceptedCandidate` preserve P2's confirmation and grant-deadline ordering.
+Old monitors are stopped only after the new policy commits and its complete
+plan is observed. The journal deletes an old plan only after **all** its activities
+are absent. Startup can restore configured policy monitoring; it never silently
+retries an unlock command.
+
+The grant adapter registers a one-shot absolute interval ending at Core's fixed
+deadline. To represent grants shorter than 15 minutes, the interval starts in
+the past; `intervalDidStart` is deliberately ignored for grant monitors. Core
+context timestamps are floored to seconds so calendar component serialization
+does not round a deadline later. An API receipt is not delivery/timing proof.
+Any registration failure prevents new unshielding (P1). A physical-device PoC
+must accept/reject this representation and measure early/late delivery; no JS
+timer substitutes for an unavailable OS deadline.
+
+The synchronous OS callback joins an independent native actor job before
+returning. Its critical path contains synchronous SQLite transactions (100ms
+busy timeout) and short own-store writes, with no network/prompt/await. Async
+obsolete-monitor cleanup is left for the host. Tokens are strictly decoded into
+an immutable registry **outside** Control's final writer. Missing/ambiguous token
+identities or aggregates exceeding the OS application limit fail before an OS
+write; no compactMap silently loses a target. Stale callbacks only reevaluate
+current durable policy, never replay a captured old plan.
+
+Explicit stop clears `itoma.product` under durable paused intent. Early return
+retires just the chosen grant before reconciliation; duplicates cannot end a
+later grant or another app's grant. Authorization denial invalidates grants and
+requires explicit resume/new selection after approval. Revocation/reapproval
+entirely between observations remains an unverified platform limitation.
+
+## Build-only bounds and product bridge
+
+There are no shipping capacity defaults. Opt-in builds must explicitly supply
+`ITOMA_HISTORY_WARNING_BYTES`, `ITOMA_HISTORY_MAXIMUM_BYTES`, and
+`ITOMA_PENDING_EVENT_LIMIT`; the plugin validates and injects them. CI uses the
+**experimental** 80/100MiB and 10,000-event candidates solely for QA. The final
+release capacity remains a measurement/review gate (#42).
+
+`screenTimeVersion=1` gates the typed bridge. Snapshots contain safe references,
+counts, settings, bounded observations and absolute deadlines. Native Apple
+Labels display app identity; neither identity data nor reasons appear in RN
+events, URLs or logs. The confirmed reason is committed privately via
+`acceptReasonGrant` before the shared grant command, then existing
+`executeAcceptedGrant` enforces P1. Review/cancel keeps drafts outside storage.
+Saving settings is distinguished from OS application. Unsupported builds and
+Simulator return explicit unavailable snapshots and perform no product I/O.
+
+An active legacy manual PoC store prevents product activation/unlock/resume
+until the user explicitly stops that store. It is not silently cleared, and
+its selection/token DB is never imported into the product database.
 
 Sources: [Expo SDK 58](https://docs.expo.dev/versions/v58.0.0/),
 [config plugins](https://docs.expo.dev/config-plugins/plugins/),

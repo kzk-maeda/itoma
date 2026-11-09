@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 
 import type { PoCResult } from '../../modules/itoma-native';
-import { itomaNative, reportNativeSmokeResult, screenTimePoC } from '../../modules/itoma-native';
+import { itomaNative, reportNativeSmokeResult, screenTimePoC, screenTime } from '../../modules/itoma-native';
 
 let ran = false;
 let bridgePassed = false;
@@ -29,9 +29,12 @@ export async function runNativeSmoke() {
   const valid = itomaNative.validateDuration(5);
   const invalid = itomaNative.validateDuration(0);
   const poc = await screenTimePoC.run('snapshot');
+  const product = await screenTime.run('snapshot');
   bridgePassed = availability.status === 'available' && availability.osRestrictions === 'unconnected'
     && valid.status === 'valid' && valid.minutes === 5 && invalid.status === 'invalid'
-    && simulatorSnapshot(poc);
+    && simulatorSnapshot(poc) && product.status === 'error' && product.code === 'unavailable'
+    && product.snapshot?.availability === 'simulator' && product.snapshot.storage === 'not-created'
+    && product.snapshot.targets.length === 0 && product.snapshot.observation === 'unknown';
   if (!bridgePassed) {
     completed = true; reportNativeSmokeResult(commit, false); return;
   }

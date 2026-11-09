@@ -15,6 +15,7 @@ import Testing
         activities.insert(name)
     }
     func containsActivities(_ names: Set<String>) -> Bool { names.isSubset(of: activities) }
+    func containsAnyActivity(_ names: Set<String>) -> Bool { !names.isDisjoint(with: activities) }
     func stopActivities(_ names: Set<String>) { activities.subtract(names); stopped.formUnion(names) }
 }
 
@@ -71,4 +72,21 @@ import Testing
     #expect(f.scheduler.cancellations.isEmpty)
     _ = await f.service.reconcile()
     #expect(f.scheduler.cancellations == [registration.id])
+}
+
+@Test @ItomaControlActor func explicitEarlyEndRetiresOnlyOneGrantAndCannotResurrectOnFailureOrDuplicate() async throws {
+    let f = try Fixture(); defer { f.remove() }
+    let first = try f.accept(1, target: 1), second = try f.accept(2, target: 2)
+    _ = try await f.service.executeAcceptedGrant(commandID: first.commandID)
+    _ = try await f.service.executeAcceptedGrant(commandID: second.commandID)
+    f.restriction.response = .failed(.osOperationFailure)
+    _ = try await f.service.endTemporaryGrant(commandID: first.commandID)
+    #expect(try f.repository.grant(first.id)?.hasEnded == true)
+    #expect(try f.repository.grant(second.id)?.grant.status == .active)
+    #expect(f.restriction.plans.last?.desiredTargets.count == 1)
+    #expect(try f.repository.readSnapshot().application?.observation.status == .uncertain)
+    f.restriction.response = .accepted(.writeAttempt)
+    _ = try await f.service.endTemporaryGrant(commandID: first.commandID)
+    #expect(try f.repository.grant(second.id)?.grant.status == .active)
+    #expect(try f.repository.grant(second.id)?.grant.effectiveExpiresAt == second.effectiveExpiresAt)
 }

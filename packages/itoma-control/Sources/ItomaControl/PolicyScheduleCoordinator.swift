@@ -6,6 +6,7 @@ import ItomaStorage
     /// current Core state; the extra end callback never applies an old captured policy.
     func registerBoundary(name: String, minute: Int) throws
     func containsActivities(_ names: Set<String>) -> Bool
+    func containsAnyActivity(_ names: Set<String>) -> Bool
     func stopActivities(_ names: Set<String>)
 }
 
@@ -43,7 +44,7 @@ import ItomaStorage
         guard plan.isReady, scheduler.containsActivities(plan.activityNames) else { throw CommandServiceError.invalidState }
         for old in try repository.plans() where old.id != plan.id {
             scheduler.stopActivities(old.activityNames)
-            if !scheduler.containsActivities(old.activityNames) { try repository.remove(old) }
+            if !scheduler.containsAnyActivity(old.activityNames) { try repository.remove(old) }
         }
     }
 }

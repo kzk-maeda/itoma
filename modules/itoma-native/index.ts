@@ -3,10 +3,13 @@ import { Platform } from 'react-native';
 
 import { createNativeClient } from './src/client';
 import { createScreenTimePoCClient } from './src/screen-time-poc';
+import { createScreenTimeClient } from './src/screen-time';
 
 interface ItomaNativePort extends NativeModule {
   readonly apiVersion: number;
   readonly screenTimePoCUIVersion?: number;
+  readonly screenTimeVersion?: number;
+  screenTime?(action: string, payload: string): Promise<string>;
   validateDuration(minutes: number): unknown;
   reportSmokeResult(commit: string, passed: boolean): boolean;
   screenTimePoC(action: string, ref: string | null): Promise<string>;
@@ -15,6 +18,8 @@ interface ItomaNativePort extends NativeModule {
 const load = () => requireOptionalNativeModule<ItomaNativePort>('ItomaNative');
 export const itomaNative = createNativeClient(Platform.OS, load);
 export const screenTimePoC = createScreenTimePoCClient(Platform.OS, load);
+export const screenTime = createScreenTimeClient(Platform.OS, load);
+export type { ScreenTimeAction, ScreenTimeCode, ScreenTimeRule, RuleInput, ScreenTimeTarget, ScreenTimePeriod, ScreenTimeSnapshot, ScreenTimeResponse, ScreenTimeRequest } from './src/screen-time';
 export type { PoCAction, PoCCode, PoCSnapshot, PoCResult } from './src/screen-time-poc';
 export type { BridgeAvailability, DurationValidation } from './src/client';
 

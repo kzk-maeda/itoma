@@ -12,13 +12,15 @@ const xcode = require('xcode');
 const plist = require('@expo/plist').default;
 const root = path.resolve(import.meta.dirname, '..');
 const group = 'group.com.example.itoma';
+const limits = { historyWarningBytes: 80 * 1024 * 1024, historyMaximumBytes: 100 * 1024 * 1024, pendingEventLimit: 10_000 };
 
 test('invalid or absent shared identities fail rather than silently selecting signing configuration', () => {
   for (const value of [undefined, '', 'com.example.itoma', 'group.bad\n', 'group.$(id).app']) {
-    assert.throws(() => plugin.validateOptions({ appGroup: value }, 'com.example.itoma'));
+    assert.throws(() => plugin.validateOptions({ ...limits, appGroup: value }, 'com.example.itoma'));
   }
   assert.throws(() => plugin.validateOptions({ appGroup: group }, undefined));
-  plugin.validateOptions({ appGroup: group }, 'com.example.itoma');
+  plugin.validateOptions({ ...limits, appGroup: group }, 'com.example.itoma');
+  assert.throws(() => plugin.validateOptions({ appGroup: group }, 'com.example.itoma'));
 });
 
 test('fresh CNG and repeated regeneration embed one isolated Extension and preserve private signing choices', { timeout: 120_000 }, () => {
@@ -29,7 +31,8 @@ test('fresh CNG and repeated regeneration embed one isolated Extension and prese
     }
     for (const file of ['node_modules', 'assets']) symlinkSync(path.join(root, file), path.join(directory, file));
     const prebuild = () => execFileSync(process.execPath, [path.join(root, 'node_modules/expo/bin/cli'), 'prebuild', '--platform', 'ios', '--no-install', '--no-clean'], {
-      cwd: directory, env: { ...process.env, EXPO_OFFLINE: '1', CI: '1', ITOMA_SCREEN_TIME: '1', ITOMA_APP_GROUP: group },
+      cwd: directory, env: { ...process.env, EXPO_OFFLINE: '1', CI: '1', ITOMA_SCREEN_TIME: '1', ITOMA_APP_GROUP: group,
+        ITOMA_HISTORY_WARNING_BYTES: String(limits.historyWarningBytes), ITOMA_HISTORY_MAXIMUM_BYTES: String(limits.historyMaximumBytes), ITOMA_PENDING_EVENT_LIMIT: String(limits.pendingEventLimit) },
       stdio: 'pipe', timeout: 60_000,
     });
     prebuild();
@@ -46,6 +49,9 @@ test('fresh CNG and repeated regeneration embed one isolated Extension and prese
     const second = parse();
     assert.equal(targets(second).length, targets(first).length);
     assert.ok(targets(second).some(([id]) => id === monitor[0]));
+    const host = second.getTarget('com.apple.product-type.application');
+    const dependencies = second.hash.project.objects.PBXTargetDependency;
+    assert.equal(host.target.dependencies.filter((entry) => dependencies[entry.value]?.target === monitor[0]).length, 1);
     for (const { value } of configs) assert.equal(second.pbxXCBuildConfigurationSection()[value].buildSettings.DEVELOPMENT_TEAM, 'PRIVATE_TEAM');
     const sources = Object.values(second.pbxFileReferenceSection()).filter((v) => v.path?.includes('ItomaActivityMonitor.swift'));
     assert.equal(sources.length, 1);

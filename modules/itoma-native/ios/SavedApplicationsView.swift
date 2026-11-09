@@ -10,9 +10,13 @@ final class SavedApplicationsView: ExpoView {
     let onContentSize = EventDispatcher()
     var selectionRef = "" { didSet { if oldValue != selectionRef { reload() } } }
     var refreshKey = 0 { didSet { if oldValue != refreshKey { reload() } } }
+    var source = "poc" { didSet { if oldValue != source { reload() } } }
+    var targetRef = "" { didSet { if oldValue != targetRef { reload() } } }
     private var host: UIHostingController<AnyView>?
     private var subscriptions: Set<AnyCancellable> = []
     private var lastHeight: CGFloat = 0
+    private var productTask: Task<Void, Never>?
+    private var generation = 0
 
     required init(appContext: AppContext? = nil) {
         super.init(appContext: appContext)
@@ -23,6 +27,7 @@ final class SavedApplicationsView: ExpoView {
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window == nil {
+            generation &+= 1; productTask?.cancel(); productTask = nil
             subscriptions.removeAll()
             host?.willMove(toParent: nil)
             host?.view.removeFromSuperview()
@@ -66,9 +71,25 @@ final class SavedApplicationsView: ExpoView {
 
     private func reload() {
         guard window != nil else { return }
+        generation &+= 1; productTask?.cancel(); productTask = nil
+        if source == "product", #available(iOS 16.0, *) {
+            let current = generation, ref = selectionRef, target = targetRef.isEmpty ? nil : targetRef
+            show(applications: nil)
+            productTask = Task { @MainActor [weak self] in
+                let data = try? await ProductController.shared.labelData(ref: ref, target: target)
+                guard let self, !Task.isCancelled, self.window != nil, self.generation == current else { return }
+                let applications = data.flatMap { try? JSONDecoder().decode([ApplicationToken].self, from: $0) }
+                self.show(applications: AuthorizationCenter.shared.authorizationStatus == .approved ? applications : nil)
+            }
+            return
+        }
+        if #available(iOS 16.0, *) { show(applications: ScreenTimePoC.shared.applicationsForDisplay(ref: selectionRef)) }
+        else { show(applications: nil) }
+    }
+
+    private func show(applications: [ApplicationToken]?) {
         let content: AnyView
         if #available(iOS 16.0, *) {
-            let applications = ScreenTimePoC.shared.applicationsForDisplay(ref: selectionRef)
             content = AnyView(SavedApplicationsContent(applications: applications) { [weak self] height in
                 Task { @MainActor [weak self] in
                     guard let self, self.window != nil, height.isFinite, height > 0, abs(height - self.lastHeight) > 0.5 else { return }

@@ -58,6 +58,10 @@
               {
                 "name": "ItomaControl",
                 "path": "../packages/itoma-control"
+              },
+              {
+                "name": "ItomaScreenTime",
+                "path": "../packages/itoma-screen-time"
               }
             ]
           }
