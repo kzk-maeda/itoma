@@ -42,6 +42,7 @@ export function SettingsScreen() {
       <Body muted>スクリーンタイム：{s?.authorization === 'approved' ? '許可されています' : '許可の確認が必要です'}</Body>
       <Button label="現在の反映を確認する" secondary disabled={!device || !!state.busy} onPress={() => { void state.run('reconcile'); }} />
     </Panel>
+    <Body muted>ここで確認できるのはITOMAが指定した制限の設定です。ほかの制限が重なると、一時解除後も対象アプリを使えない場合があります。</Body>
     {s?.needsSelectionReview && <Notice title="対象を選び直してください">各ルールの編集画面で、対象アプリを選び直して保存できます。確認後、ご自身で再開できます。</Notice>}
     {s?.rules.map((rule, index) => <Panel key={rule.id}><Heading>時間帯 {index + 1}</Heading><Body>{ruleText(rule)}</Body><Body muted>{rule.enabled ? '有効なルール' : '無効なルール'}</Body>
       {s.authorization === 'approved' && <Applications selectionRef={rule.selectionRef} count={s.selections.find((selection) => selection.ref === rule.selectionRef)?.count ?? 1} refreshKey={state.refreshKey} />}
