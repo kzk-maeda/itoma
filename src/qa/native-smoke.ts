@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 
 import type { PoCResult } from '../../modules/itoma-native';
-import { itomaNative, reportNativeSmokeResult, screenTimePoC, screenTime } from '../../modules/itoma-native';
+import { itomaNative, reportNativeSmokeResult, screenTimePoC, screenTime, historyRecords } from '../../modules/itoma-native';
 
 let ran = false;
 let bridgePassed = false;
 let completed = false;
 let pocPassed = false;
+let historyPassed = false;
 
 function qaCommit() {
   if (process.env.EXPO_PUBLIC_NATIVE_SMOKE !== '1') return null;
@@ -30,11 +31,13 @@ export async function runNativeSmoke() {
   const invalid = itomaNative.validateDuration(0);
   const poc = await screenTimePoC.run('snapshot');
   const product = await screenTime.run('snapshot');
+  const history = await historyRecords.run('page');
   bridgePassed = availability.status === 'available' && availability.osRestrictions === 'unconnected'
     && valid.status === 'valid' && valid.minutes === 5 && invalid.status === 'invalid'
     && simulatorSnapshot(poc) && product.status === 'error' && product.code === 'unavailable'
     && product.snapshot?.availability === 'simulator' && product.snapshot.storage === 'not-created'
-    && product.snapshot.targets.length === 0 && product.snapshot.observation === 'unknown';
+    && product.snapshot.targets.length === 0 && product.snapshot.observation === 'unknown'
+    && history.status === 'ok' && history.storage === 'not-created' && !history.page;
   if (!bridgePassed) {
     completed = true; reportNativeSmokeResult(commit, false); return;
   }
@@ -53,6 +56,16 @@ export function completeNativePoCSmoke(result: PoCResult) {
   }
   if (pocPassed) return;
   pocPassed = true;
+  try { router.replace('/history'); }
+  catch { completed = true; reportNativeSmokeResult(commit, false); }
+}
+
+/** The history route obtains its own bounded, read-only native response before returning home. */
+export function completeNativeHistorySmoke(passed: boolean) {
+  const commit = qaCommit();
+  if (!commit || !bridgePassed || !pocPassed || historyPassed || completed) return;
+  if (!passed) { completed = true; reportNativeSmokeResult(commit, false); return; }
+  historyPassed = true;
   try { router.replace('/'); }
   catch { completed = true; reportNativeSmokeResult(commit, false); }
 }
@@ -60,7 +73,7 @@ export function completeNativePoCSmoke(result: PoCResult) {
 /** Normal launches are a no-op. Pass only after bridge -> PoC screen -> home mount. */
 export function completeNativeHomeSmoke() {
   const commit = qaCommit();
-  if (!commit || !bridgePassed || !pocPassed || completed) return;
+  if (!commit || !bridgePassed || !pocPassed || !historyPassed || completed) return;
   completed = true;
   reportNativeSmokeResult(commit, true);
 }

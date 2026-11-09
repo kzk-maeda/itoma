@@ -23,7 +23,7 @@ private struct ReadFixture {
     func sql(_ statement: String) throws {
         let db = try SQLiteDatabase(path: url.path, busyTimeoutMilliseconds: 100)
         defer { try? db.close() }
-        try db.execute(statement)
+        for part in statement.split(separator: ";") { try db.execute(String(part)) }
     }
 }
 

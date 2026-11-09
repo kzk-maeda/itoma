@@ -55,6 +55,7 @@ export function SettingsScreen() {
     {!!s?.rules.length && (s.activation === 'enabled' ? <Button label="すべてのルールの停止を確認" secondary disabled={!device || !!state.busy} onPress={stop} />
       : <Button label="保存したルールの再開を確認" disabled={!device || !!state.busy || !!s.needsSelectionReview || s.authorization !== 'approved'} onPress={resume} />)}
     <Panel><Heading>理由の保存と削除</Heading><Body>確定した理由はこの端末内に保存します。削除しても制限の設定は変わりません。</Body>
+      <Button label="選択の記録と保存容量を見る" secondary onPress={() => router.navigate('/history')} />
       {deleted && <Body>保存した理由を削除しました。</Body>}
       <Button label="保存した理由の削除を確認" secondary disabled={!device || !!state.busy} onPress={deleteReasons} />
     </Panel>

@@ -1,7 +1,7 @@
 import CSQLite
 import Foundation
 import ItomaCore
-import ItomaHistory
+@testable import ItomaHistory
 import ItomaStorage
 import Testing
 

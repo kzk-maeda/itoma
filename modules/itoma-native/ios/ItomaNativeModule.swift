@@ -19,6 +19,7 @@ public final class ItomaNativeModule: Module {
         Constant("apiVersion") { 1 }
         Constant("screenTimePoCUIVersion") { 2 }
         Constant("screenTimeVersion") { 1 }
+        Constant("historyVersion") { 1 }
         View(SavedApplicationsView.self) {
             Events("onContentSize", "onSelect")
             Prop("selectionRef") { (view: SavedApplicationsView, ref: String) in
@@ -63,6 +64,14 @@ public final class ItomaNativeModule: Module {
                 ProductUI.shared.perform(action, payload: payload, presenter: context?.utilities?.currentViewController()) { json in
                     promise.resolve(json)
                 }
+            }
+        }.runOnQueue(.main)
+        AsyncFunction("history") { (action: String, payload: String?, promise: Promise) in
+            MainActor.assumeIsolated {
+                guard #available(iOS 16.0, *) else {
+                    promise.resolve(#"{"status":"error","code":"unavailable","storage":"unknown"}"#); return
+                }
+                ProductUI.shared.performHistory(action, payload: payload) { promise.resolve($0) }
             }
         }.runOnQueue(.main)
         Function("validateDuration") { (minutes: Int) -> DurationValidationRecord in

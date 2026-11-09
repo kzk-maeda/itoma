@@ -4,11 +4,14 @@ import { Platform } from 'react-native';
 import { createNativeClient } from './src/client';
 import { createScreenTimePoCClient } from './src/screen-time-poc';
 import { createScreenTimeClient } from './src/screen-time';
+import { createHistoryClient } from './src/history';
 
 interface ItomaNativePort extends NativeModule {
   readonly apiVersion: number;
   readonly screenTimePoCUIVersion?: number;
   readonly screenTimeVersion?: number;
+  readonly historyVersion?: number;
+  history?(action: string, payload: string): Promise<string>;
   screenTime?(action: string, payload: string): Promise<string>;
   validateDuration(minutes: number): unknown;
   reportSmokeResult(commit: string, passed: boolean): boolean;
@@ -19,6 +22,8 @@ const load = () => requireOptionalNativeModule<ItomaNativePort>('ItomaNative');
 export const itomaNative = createNativeClient(Platform.OS, load);
 export const screenTimePoC = createScreenTimePoCClient(Platform.OS, load);
 export const screenTime = createScreenTimeClient(Platform.OS, load);
+export const historyRecords = createHistoryClient(Platform.OS, load);
+export type { HistoryAction, HistoryKind, HistoryCode, HistoryCursor, HistoryRow, HistoryPage, HistoryReason, HistoryRequest, HistoryResponse } from './src/history';
 export type { ScreenTimeAction, ScreenTimeCode, ScreenTimeRule, RuleInput, ScreenTimeTarget, ScreenTimePeriod, ScreenTimeSnapshot, ScreenTimeResponse, ScreenTimeRequest } from './src/screen-time';
 export type { PoCAction, PoCCode, PoCSnapshot, PoCResult } from './src/screen-time-poc';
 export type { BridgeAvailability, DurationValidation } from './src/client';

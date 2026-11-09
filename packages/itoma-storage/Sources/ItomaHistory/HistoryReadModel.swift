@@ -21,11 +21,19 @@ public struct HistoryReadPage: Sendable {
     public let revision: Int64
     public let rows: [HistoryReadRow]
     public let next: HistoryPageKey?
+    public let previous: HistoryPageKey?
     public let capacity: HistoryCapacity
     public let incomplete: Bool
 }
 
 extension HistoryRepository {
+    public func readReason(for commandID: CommandID, expectedRevision: Int64? = nil) throws -> (revision: Int64, reason: ReasonRecord?) {
+        try transaction(writer: false) {
+            let revision = try readRevision()
+            if let expectedRevision, expectedRevision != revision { throw HistoryError.conflict }
+            return (revision, try loadReasons(filter: "WHERE command_id=?", bindings: [.text(commandID.rawValue.uuidString)]).first)
+        }
+    }
     func createReadIndex() throws {
         try database.execute("CREATE TABLE history_read_index (kind TEXT NOT NULL CHECK(kind IN ('event','reason')),record_key TEXT COLLATE NOCASE NOT NULL,occurred_at REAL NOT NULL,PRIMARY KEY(kind,record_key))")
         try database.execute("CREATE INDEX history_read_order ON history_read_index(kind,occurred_at DESC,record_key DESC)")
@@ -69,10 +77,11 @@ extension HistoryRepository {
         }
     }
 
-    public func readPage(kind: HistoryRecordKind, limit: Int = 40, after: HistoryPageKey? = nil,
+    public func readPage(kind: HistoryRecordKind, limit: Int = 40, after: HistoryPageKey? = nil, before: HistoryPageKey? = nil,
                          expectedRevision: Int64? = nil, from: Instant? = nil, until: Instant? = nil) throws -> HistoryReadPage {
         guard (1...40).contains(limit), (from == nil) == (until == nil),
-              from == nil || from! < until!, after == nil || UUID(uuidString: after!.key) != nil else { throw HistoryError.invalidPage }
+              from == nil || from! < until!, after == nil || before == nil,
+              [after, before].compactMap({ $0 }).allSatisfy({ UUID(uuidString: $0.key) != nil }) else { throw HistoryError.invalidPage }
         return try transaction(writer: false) {
             let revision = try readRevision()
             if let expectedRevision, expectedRevision != revision { throw HistoryError.conflict }
@@ -81,14 +90,18 @@ extension HistoryRepository {
                 predicate += " AND occurred_at>=CAST(? AS REAL) AND occurred_at<CAST(? AS REAL)"
                 values += [.text(String(from.secondsSince1970)), .text(String(until.secondsSince1970))]
             }
-            if let after {
-                predicate += " AND (occurred_at<CAST(? AS REAL) OR (occurred_at=CAST(? AS REAL) AND record_key<?))"
-                values += [.text(String(after.at.secondsSince1970)), .text(String(after.at.secondsSince1970)), .text(after.key.uppercased())]
+            let basePredicate = predicate, baseValues = values
+            if let key = after ?? before {
+                let comparison = before == nil ? "<" : ">"
+                predicate += " AND (occurred_at\(comparison)? OR (occurred_at=? AND record_key\(comparison)?))"
+                values += [.real(key.at.secondsSince1970), .real(key.at.secondsSince1970), .text(key.key.uppercased())]
             }
             values += [.integer(Int64(limit + 1))]
-            let keys = try database.rows("SELECT record_key,occurred_at FROM history_read_index WHERE \(predicate) ORDER BY occurred_at DESC,record_key DESC LIMIT ?", values)
+            let order = before == nil ? "DESC" : "ASC"
+            let fetched = try database.rows("SELECT record_key,occurred_at FROM history_read_index WHERE \(predicate) ORDER BY occurred_at \(order),record_key \(order) LIMIT ?", values)
+            let keys = before == nil ? Array(fetched.prefix(limit)) : Array(fetched.prefix(limit).reversed())
             var rows: [HistoryReadRow] = []
-            for row in keys.prefix(limit) {
+            for row in keys {
                 guard case let .text(key) = row[0], let id = UUID(uuidString: key), key == id.uuidString else { throw HistoryError.corrupt }
                 let at: Instant
                 switch row[1] {
@@ -109,8 +122,14 @@ extension HistoryRepository {
             }
             let used = try logicalBytes()
             let incomplete = try !database.rows("SELECT 1 FROM history_sources WHERE history_incomplete=1 LIMIT 1").isEmpty
+            func boundary(_ row: HistoryReadRow?, comparison: String) throws -> HistoryPageKey? {
+                guard let row else { return nil }
+                let found = try database.rows("SELECT 1 FROM history_read_index WHERE \(basePredicate) AND (occurred_at\(comparison)? OR (occurred_at=? AND record_key\(comparison)?)) LIMIT 1",
+                    baseValues + [.real(row.occurredAt.secondsSince1970), .real(row.occurredAt.secondsSince1970), .text(row.key)])
+                return found.isEmpty ? nil : HistoryPageKey(at: row.occurredAt, key: row.key)
+            }
             return HistoryReadPage(revision: revision, rows: rows,
-                next: keys.count > limit ? rows.last.map { HistoryPageKey(at: $0.occurredAt, key: $0.key) } : nil,
+                next: try boundary(rows.last, comparison: "<"), previous: try boundary(rows.first, comparison: ">"),
                 capacity: HistoryCapacity(logicalPayloadBytes: used, warningReached: used >= capacityPolicy.warningBytes, limitReached: used >= capacityPolicy.maximumBytes), incomplete: incomplete)
         }
     }

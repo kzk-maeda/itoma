@@ -90,7 +90,7 @@ struct ProductResponse: Encodable, Sendable {
     }
     private var grantPreview: GrantPreview?
 
-    private func open(create: Bool = false) throws -> ScreenTimeRuntime {
+    func open(create: Bool = false) throws -> ScreenTimeRuntime {
         if let runtime { return runtime }
         let opened = try ScreenTimeRuntime(createIfMissing: create, allowMonitorCreation: true)
         runtime = opened
@@ -224,7 +224,13 @@ struct ProductResponse: Encodable, Sendable {
                 grantPreview = nil
                 let result = try await r.makeService().executeAcceptedGrant(commandID: command.id)
                 return try commandResponse(result, in: r)
-            case "cancelUnlock": grantPreview = nil
+            case "cancelUnlock":
+                let hadPreview = grantPreview != nil
+                grantPreview = nil
+                if hadPreview {
+                    do { try withHistory { try $0.recordCancellation(eventID: EventID(UUID()), at: NativeScheduleClock.instant(Date())) } }
+                    catch { try? r.repository.markHistoryIncomplete() }
+                }
             case "retryGrant":
                 guard let id = request.ref.flatMap(UUID.init(uuidString:)) else { throw StorageError.conflict }
                 let before = try r.repository.readSnapshot()
@@ -289,16 +295,25 @@ struct ProductResponse: Encodable, Sendable {
         candidate = nil
     }
 
-    private func withHistory<T>(_ body: (HistoryRepository) throws -> T) throws -> T {
+    func withHistory<T>(createIfMissing: Bool = true, _ body: (HistoryRepository) throws -> T) throws -> T {
         guard let warning = Bundle.main.object(forInfoDictionaryKey: "ITOMAHistoryWarningBytes") as? Int64,
               let maximum = Bundle.main.object(forInfoDictionaryKey: "ITOMAHistoryMaximumBytes") as? Int64 else { throw HistoryError.invalidCapacity }
-        let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
-            appropriateFor: nil, create: true).appendingPathComponent("ITOMA-Private", isDirectory: true)
-        try ScreenTimeFiles.prepareDirectory(directory, protection: .complete)
+        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { throw HistoryError.unavailable }
+        let directory = base.appendingPathComponent("ITOMA-Private", isDirectory: true)
         let url = directory.appendingPathComponent("history.sqlite")
+        if !createIfMissing && !FileManager.default.fileExists(atPath: url.path) { throw HistoryError.missingDatabase }
+        try ScreenTimeFiles.prepareDirectory(directory, protection: .complete)
         let capacity = try HistoryCapacityPolicy(warningBytes: warning, maximumBytes: maximum)
-        let history = try FileManager.default.fileExists(atPath: url.path)
-            ? HistoryRepository.open(at: url, capacity: capacity) : HistoryRepository.create(at: url, capacity: capacity)
+        let history: HistoryRepository
+        if FileManager.default.fileExists(atPath: url.path) {
+            do { history = try HistoryRepository.open(at: url, capacity: capacity) }
+            catch HistoryError.unsupportedSchema(let version) where version == 1 || version == 2 {
+                history = try HistoryRepository.migrate(at: url, capacity: capacity)
+            }
+        } else {
+            guard createIfMissing else { throw HistoryError.missingDatabase }
+            history = try HistoryRepository.create(at: url, capacity: capacity)
+        }
         defer { try? history.close(); try? ScreenTimeFiles.protectDatabase(url, protection: .complete) }
         try ScreenTimeFiles.protectDatabase(url, protection: .complete)
         return try body(history)

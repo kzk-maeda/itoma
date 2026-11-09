@@ -3,6 +3,7 @@ jest.mock('../modules/itoma-native', () => ({
   itomaNative: { getAvailability: jest.fn(), validateDuration: jest.fn() },
   screenTimePoC: { run: jest.fn() }, reportNativeSmokeResult: jest.fn(),
   screenTime: { run: jest.fn() },
+  historyRecords: { run: jest.fn() },
 }));
 
 const originalFlag = process.env.EXPO_PUBLIC_NATIVE_SMOKE;
@@ -20,6 +21,7 @@ function setup() {
     ? { status: 'valid', minutes: 5 } : { status: 'invalid', code: 'invalid-duration' });
   native.screenTimePoC.run.mockResolvedValue(response);
   native.screenTime.run.mockResolvedValue({ status: 'error', code: 'unavailable', snapshot: { availability: 'simulator', storage: 'not-created', targets: [], observation: 'unknown' } });
+  native.historyRecords.run.mockResolvedValue({ status: 'ok', storage: 'not-created' });
   return { native, router, qa };
 }
 
@@ -61,12 +63,16 @@ test('bridge and PoC proof wait for the final home mount before emitting one pas
   expect(native.reportNativeSmokeResult).not.toHaveBeenCalled();
   qa.completeNativePoCSmoke(response); qa.completeNativePoCSmoke(response);
   expect(native.reportNativeSmokeResult).not.toHaveBeenCalled();
+  expect(router.replace).toHaveBeenLastCalledWith('/history');
+  qa.completeNativeHomeSmoke();
+  expect(native.reportNativeSmokeResult).not.toHaveBeenCalled();
+  qa.completeNativeHistorySmoke(true);
   expect(router.replace).toHaveBeenLastCalledWith('/');
   qa.completeNativeHomeSmoke(); qa.completeNativeHomeSmoke();
   await qa.runNativeSmoke();
   expect(native.reportNativeSmokeResult).toHaveBeenCalledTimes(1);
   expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, true);
-  expect(router.replace).toHaveBeenCalledTimes(2);
+  expect(router.replace).toHaveBeenCalledTimes(3);
 });
 
 test.each([
