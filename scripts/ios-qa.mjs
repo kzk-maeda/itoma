@@ -82,7 +82,7 @@ try {
     checkpoint(`sharedSwift-${name}`);
   }
   checkpoint('sharedSwiftOnMac');
-  build('npx', ['expo', 'prebuild', '--platform', 'ios', '--no-install'], 'prebuild.log', 300_000);
+  build('npx', ['expo', 'prebuild', '--platform', 'ios', '--no-install', '--no-clean'], 'prebuild.log', 300_000);
   assertCleanSource(root, commit);
   checkpoint('cng');
   // SDK58 autolinking reads extraPods from its process cwd, not --project-directory.
@@ -91,6 +91,11 @@ try {
   const nativeConfig = createHash('sha256');
   for (const file of ['app.json', 'app.config.ts', 'package-lock.json', 'modules/itoma-native/expo-module.config.json', 'ios/Podfile', 'ios/Podfile.properties.json', 'ios/Podfile.lock']) {
     nativeConfig.update(`${file}\0`); nativeConfig.update(readFileSync(path.join(root, file))); nativeConfig.update('\0');
+  }
+  if (process.env.ITOMA_SCREEN_TIME === '1') {
+    for (const file of ['plugins/with-itoma-screen-time.cjs', 'ios/itoma.xcodeproj/project.pbxproj', 'ios/ItomaActivityMonitor/Info.plist', 'ios/ItomaActivityMonitor/ItomaActivityMonitor.entitlements', 'ios/itoma/itoma.entitlements']) {
+      nativeConfig.update(`${file}\0`); nativeConfig.update(readFileSync(path.join(root, file))); nativeConfig.update('\0');
+    }
   }
   result.nativeConfigurationSHA256 = nativeConfig.digest('hex');
   const workspaces = readdirSync(path.join(root, 'ios')).filter((name) => name.endsWith('.xcworkspace'));
@@ -108,6 +113,14 @@ try {
   const products = path.join(derived, 'Build/Products/Release-iphonesimulator');
   const apps = readdirSync(products).filter((name) => name.endsWith('.app'));
   if (apps.length !== 1) throw new Error('Expected one built app');
+  if (process.env.ITOMA_SCREEN_TIME === '1') {
+    const extension = path.join(products, apps[0], 'PlugIns/ItomaActivityMonitor.appex');
+    const point = run('plutil', ['-extract', 'NSExtension.NSExtensionPointIdentifier', 'raw', '-o', '-', path.join(extension, 'Info.plist')]);
+    if (point !== 'com.apple.deviceactivity.monitor-extension') throw new Error('Missing/incorrect embedded activity monitor');
+    const dependencies = run('otool', ['-L', path.join(extension, 'ItomaActivityMonitor')]);
+    if (/Expo|React|ItomaHistory/.test(dependencies)) throw new Error('Extension links a host-only framework');
+    result.activityMonitor = { embedded: true, extensionPoint: point, signing: 'disabled', appGroupDeviceAccess: 'unverified' };
+  }
   const app = path.join(products, apps[0]);
   const bundleID = run('plutil', ['-extract', 'CFBundleIdentifier', 'raw', '-o', '-', path.join(app, 'Info.plist')]);
   result.bundleIdentifier = bundleID;

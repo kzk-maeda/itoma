@@ -52,4 +52,6 @@ PR #36で状態・ルール・責務・保存の設計を採用しました。�
 
 ## 限定PoCの確認導線
 
+- [Screen Time native runtime](screen-time-runtime.md) — #125。CNG/署名不要ビルドと、実機の署名・OS成立を分けた実装境界。
+
 - [保存済み検証対象の表示と再制限](poc-saved-targets.md) — [#119](https://github.com/kzk-maeda/itoma/issues/119)。限定PoC提案。製品の再認可/再開仕様や実機合格を確定しない。
