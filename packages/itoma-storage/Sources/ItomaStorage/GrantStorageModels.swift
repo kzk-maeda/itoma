@@ -29,9 +29,11 @@ struct GrantRequestIntent: Equatable, Codable {
     let occurrence: OccurrenceDTO
     let mode: UnlockMode
     let duration: UnlockDuration?
+    let confirmedExpiresAt: Instant?
     init(_ request: GrantRequest) {
         target = request.targetRef; occurrence = OccurrenceDTO(request.expectedOccurrence)
         mode = request.condition.mode; duration = request.duration
+        confirmedExpiresAt = request.confirmedExpiresAt
     }
 }
 

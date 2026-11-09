@@ -33,6 +33,7 @@ struct ProductTargetDTO: Encodable, Sendable {
     let ref: String; let selectionRef: String; let restricted: Bool
     let unlockable: Bool; let grantEndsAt: Double?; let grantCommandID: String?
     let ruleID: String?
+    let grantStatus: String?
 }
 struct ProductSelectionDTO: Encodable, Sendable { let ref: String; let count: Int }
 struct ProductPeriodDTO: Encodable, Sendable { let ruleID: String; let startsAt: Double; let endsAt: Double }
@@ -70,6 +71,7 @@ struct ProductResponse: Encodable, Sendable {
     var shortened: Bool?
     var snapshot: ProductSnapshotDTO?
     var legacyActive: Bool?
+    var retryable: Bool?
     func json() -> String { (try? String(data: JSONEncoder().encode(self), encoding: .utf8)) ?? #"{"status":"error","code":"unavailable"}"# }
 }
 
@@ -78,22 +80,29 @@ struct ProductResponse: Encodable, Sendable {
 @ItomaControlActor final class ProductController {
     static let shared = ProductController()
     private var runtime: ScreenTimeRuntime?
-    private var recovered = false
     private var busy = false
     private var confirmedSelections: Set<SelectionRef> = []
+    private var denialEpoch = 0
+    private var reviewGateActive = false
     private var candidate: (PolicyCandidate, PolicyEditAssessment)?
-    private var grantPreview: (UUID, TargetRef, PolicyRevision, OccurrenceKey, UnlockDuration)?
+    private struct GrantPreview {
+        let id: UUID; let request: GrantRequest; let reason: String; let expiresAt: Instant
+    }
+    private var grantPreview: GrantPreview?
 
     private func open(create: Bool = false) throws -> ScreenTimeRuntime {
         if let runtime { return runtime }
-        let opened = try ScreenTimeRuntime(createIfMissing: create)
+        let opened = try ScreenTimeRuntime(createIfMissing: create, allowMonitorCreation: true)
         runtime = opened
         return opened
     }
 
-    func selectionSaved(_ data: Data) throws -> String {
+    func selectionSaved(_ data: Data, authorizationEpoch: Int) throws -> String {
         guard !busy else { throw ScreenTimeRuntimeError.busy }
-        let runtime = try open(create: true), ref = try runtime.saveSelection(tokensData: data)
+        let runtime = try open(create: true)
+        try observeEpoch(authorizationEpoch, in: runtime)
+        checkReviewGate(try runtime.repository.readSnapshot(), in: runtime)
+        let ref = try runtime.saveSelection(tokensData: data)
         confirmedSelections.insert(ref)
         return ref.rawValue.uuidString.lowercased()
     }
@@ -105,17 +114,19 @@ struct ProductResponse: Encodable, Sendable {
         return try runtime.selectionData(ref: ref, target: target.flatMap(UUID.init(uuidString:)).map(TargetRef.init))
     }
 
-    func perform(_ action: String, request: ProductRequest) async -> ProductResponse {
+    func perform(_ action: String, request: ProductRequest, authorizationEpoch: Int = 0) async -> ProductResponse {
         if busy, action != "snapshot", action != "stop" { return ProductResponse(status: "error", code: "busy") }
         let mutates = action != "snapshot" && action != "stop"
         if mutates { busy = true }
         defer { if mutates { busy = false } }
         do {
             if action == "snapshot" {
-                do { let r = try open(); if !busy { try await refresh(r) }; return ProductResponse(snapshot: try snapshot(r)) }
+                do { let r = try open(); try observeEpoch(authorizationEpoch, in: r); if !busy { try await refresh(r) }; return ProductResponse(snapshot: try snapshot(r)) }
                 catch StorageError.missingDatabase { return ProductResponse(snapshot: ProductSnapshotDTO(authorization: authorization())) }
             }
             let r = try open(create: action == "initialize")
+            if action == "stop" { try? observeEpoch(authorizationEpoch, in: r) }
+            else { try observeEpoch(authorizationEpoch, in: r) }
             switch action {
             case "initialize": try await refresh(r)
             case "previewRule":
@@ -152,14 +163,26 @@ struct ProductResponse: Encodable, Sendable {
                 candidate = (proposedCandidate, assessment)
                 return ProductResponse(status: "confirmation-required", ref: command.id.rawValue.uuidString.lowercased(),
                     impacts: assessment.impacts.filter { $0.kind != .unchanged }.map { ProductImpactDTO(kind: String(describing: $0.kind), endsAt: $0.proposedExpiresAt?.secondsSince1970) }, snapshot: try snapshot(r))
-            case "commitRule":
+            case "reviewCandidate":
+                guard let id = request.ref.flatMap(UUID.init(uuidString:)),
+                      let pending = try r.repository.candidate(commandID: CommandID(id)) else { throw StorageError.conflict }
+                let assessment = try r.makeService(additionalPolicy: pending.proposedPolicy).previewCandidate(commandID: pending.commandID)
+                candidate = (pending, assessment)
+                let command = try r.repository.command(pending.commandID)
+                return ProductResponse(status: "confirmation-required", ref: pending.commandID.rawValue.uuidString.lowercased(),
+                    impacts: assessment.impacts.filter { $0.kind != .unchanged }.map { ProductImpactDTO(kind: String(describing: $0.kind), endsAt: $0.proposedExpiresAt?.secondsSince1970) },
+                    snapshot: try snapshot(r), retryable: command?.status == .failed || command?.status == .uncertain)
+            case "commitRule", "retryRule":
                 guard let (pending, confirmation) = candidate, request.ref?.lowercased() == pending.commandID.rawValue.uuidString.lowercased() else { throw StorageError.conflict }
                 _ = try r.monitors.prepare(pending.proposedPolicy)
-                let result = try await r.makeService(additionalPolicy: pending.proposedPolicy).executeAcceptedCandidate(commandID: pending.commandID, confirmation: confirmation)
+                let service = try r.makeService(additionalPolicy: pending.proposedPolicy)
+                let result: CommandRunResult
+                if action == "retryRule" { result = try await service.retryCandidate(commandID: pending.commandID, confirmation: confirmation) }
+                else { result = try await service.executeAcceptedCandidate(commandID: pending.commandID, confirmation: confirmation) }
                 let current = try r.repository.readSnapshot()
                 if current.policy == pending.proposedPolicy { candidate = nil }
                 if result.failure == nil, let ready = try r.monitors.readyPlan(for: current.policy) { try? r.monitors.cleanup(keeping: ready) }
-                return ProductResponse(status: result.failure == nil ? "ok" : "error", code: result.failure.map(code), snapshot: try snapshot(r))
+                return try commandResponse(result, in: r)
             case "cancelCandidate": try cancelCandidate(r)
             case "previewUnlock":
                 guard let targetUUID = request.targetRef.flatMap(UUID.init(uuidString:)) else { throw ScreenTimeRuntimeError.invalidSelection }
@@ -177,40 +200,52 @@ struct ProductResponse: Encodable, Sendable {
                 let proposed = try GrantEvaluator.propose(previewRequest, policy: before.policy, selections: before.selections.map(\.selection),
                     context: context, existingGrants: r.repository.unfinishedGrants().map(\.grant))
                 guard case let .proposed(previewGrant) = proposed else { throw ScreenTimeRuntimeError.busy }
-                let id = UUID(); grantPreview = (id, target, before.policy.revision, winner.key, duration)
+                let id = UUID()
+                let confirmedRequest = GrantRequest(grantID: previewRequest.grantID, commandID: previewRequest.commandID, targetRef: target,
+                    expectedPolicyRevision: before.policy.revision, expectedOccurrence: winner.key, condition: condition, duration: duration,
+                    confirmedExpiresAt: previewGrant.effectiveExpiresAt)
+                grantPreview = GrantPreview(id: id, request: confirmedRequest, reason: request.reason ?? "", expiresAt: previewGrant.effectiveExpiresAt)
                 return ProductResponse(status: "confirmation-required", ref: id.uuidString.lowercased(), minutes: duration.minutes,
                     previewEndsAt: previewGrant.effectiveExpiresAt.secondsSince1970,
                     shortened: previewGrant.effectiveExpiresAt.secondsSince1970 < context.now.secondsSince1970 + Double(duration.minutes * 60), snapshot: try snapshot(r))
             case "unlock":
-                guard let (previewID, target, revision, occurrence, duration) = grantPreview,
-                      request.ref?.lowercased() == previewID.uuidString.lowercased(), let reason = request.reason else { throw StorageError.conflict }
+                guard let preview = grantPreview, request.ref?.lowercased() == preview.id.uuidString.lowercased(),
+                      let reason = request.reason, reason == preview.reason else { throw StorageError.conflict }
                 let before = try r.repository.readSnapshot()
                 guard try r.monitors.readyPlan(for: before.policy) != nil else { throw ScreenTimeRuntimeError.scheduleUnavailable }
                 let context = r.contexts.context(activation: before.activation)
-                let command = try Command(id: CommandID(UUID()), kind: .requestTemporaryGrant, status: .pending,
-                    expectedPolicyRevision: revision, attempt: AttemptNumber(0), reasonRef: ReasonRef(UUID()))
-                let grant = GrantRequest(grantID: GrantID(UUID()), commandID: command.id, targetRef: target,
-                    expectedPolicyRevision: revision, expectedOccurrence: occurrence, condition: try UnlockCondition.reason(reason), duration: duration)
-                try withHistory { history in _ = try history.acceptReasonGrant(in: r.repository, command: command, request: grant,
+                guard context.now < preview.expiresAt else { throw GrantEvaluationError.confirmationChanged }
+                let command = try Command(id: preview.request.commandID, kind: .requestTemporaryGrant, status: .pending,
+                    expectedPolicyRevision: preview.request.expectedPolicyRevision, attempt: AttemptNumber(0), reasonRef: ReasonRef(UUID()))
+                try withHistory { history in _ = try history.acceptReasonGrant(in: r.repository, command: command, request: preview.request,
                     body: reason, context: context, expectedSequence: before.snapshotSequence) }
                 grantPreview = nil
                 let result = try await r.makeService().executeAcceptedGrant(commandID: command.id)
-                return ProductResponse(status: result.failure == nil ? "ok" : "error", code: result.failure.map(code), snapshot: try snapshot(r))
+                return try commandResponse(result, in: r)
+            case "cancelUnlock": grantPreview = nil
+            case "retryGrant":
+                guard let id = request.ref.flatMap(UUID.init(uuidString:)) else { throw StorageError.conflict }
+                let before = try r.repository.readSnapshot()
+                guard try r.monitors.readyPlan(for: before.policy) != nil else { throw ScreenTimeRuntimeError.scheduleUnavailable }
+                let result = try await r.makeService().retryGrant(commandID: CommandID(id))
+                return try commandResponse(result, in: r)
             case "stop":
                 let result = try await r.makeService(stopping: true).stop(commandID: CommandID(UUID()))
-                return ProductResponse(status: result.failure == nil ? "ok" : "error", code: result.failure.map(code), snapshot: try snapshot(r))
+                return try commandResponse(result, in: r)
             case "endGrant":
                 guard let id = request.ref.flatMap(UUID.init(uuidString:)) else { throw ScreenTimeRuntimeError.invalidSelection }
                 let result = try await r.makeService().endTemporaryGrant(commandID: CommandID(id))
-                return ProductResponse(status: result.failure == nil ? "ok" : "error", code: result.failure.map(code), snapshot: try snapshot(r))
+                return ProductResponse(status: result.failure == nil && result.disposition == .committed ? "ok" : "error",
+                    code: result.failure.map(code) ?? (result.disposition == .committed ? nil : "application-uncertain"), snapshot: try snapshot(r))
             case "resume":
                 let before = try r.repository.readSnapshot()
+                checkReviewGate(before, in: r)
                 if before.activation == .awaitingReauthorizationConfirmation {
                     guard Set(before.policy.rules.filter(\.enabled).map(\.selectionRef)).isSubset(of: confirmedSelections) else { throw ScreenTimeRuntimeError.invalidSelection }
                 }
                 _ = try r.monitors.prepare(before.policy)
                 let result = try await r.makeService().resume(commandID: CommandID(UUID()))
-                return ProductResponse(status: result.failure == nil ? "ok" : "error", code: result.failure.map(code), snapshot: try snapshot(r))
+                return try commandResponse(result, in: r)
             case "reconcile": try await refresh(r)
             case "deleteReasons": try withHistory { _ = try $0.deleteReasons() }
             default: throw ScreenTimeRuntimeError.unavailable
@@ -226,11 +261,12 @@ struct ProductResponse: Encodable, Sendable {
     private func refresh(_ r: ScreenTimeRuntime) async throws {
         let before = try r.repository.readSnapshot(), context = r.contexts.context(activation: before.activation)
         if context.authorization.status == .approved, before.activation == .enabled {
-            _ = try r.monitors.prepare(before.policy)
+            _ = try? r.monitors.prepare(before.policy)
         }
-        _ = await (try r.makeService(stopping: before.activation == .paused)).reconcile(recoverInterruptedCommands: !recovered)
-        recovered = true
-        if let ready = try r.monitors.readyPlan(for: r.repository.readSnapshot().policy) { try? r.monitors.cleanup(keeping: ready) }
+        // perform() skips refresh while any host command is in flight. At this serialized host
+        // boundary, remaining Scheduling/Applying belongs to an operation that already ended.
+        _ = await (try r.makeService(stopping: before.activation == .paused)).reconcile(recoverInterruptedCommands: true)
+        if let ready = try? r.monitors.readyPlan(for: r.repository.readSnapshot().policy) { try? r.monitors.cleanup(keeping: ready) }
         // Best-effort bounded import after OS/control reconciliation. Sink failure is persisted
         // as HistoryIncomplete by Storage; it never rolls back a restriction or confirmed reason.
         try? withHistory { _ = try r.repository.transferHistory(to: $0, limit: 500) }
@@ -256,19 +292,21 @@ struct ProductResponse: Encodable, Sendable {
               let maximum = Bundle.main.object(forInfoDictionaryKey: "ITOMAHistoryMaximumBytes") as? Int64 else { throw HistoryError.invalidCapacity }
         let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
             appropriateFor: nil, create: true).appendingPathComponent("ITOMA-Private", isDirectory: true)
-        try ScreenTimeFiles.prepareDirectory(directory)
+        try ScreenTimeFiles.prepareDirectory(directory, protection: .complete)
         let url = directory.appendingPathComponent("history.sqlite")
         let capacity = try HistoryCapacityPolicy(warningBytes: warning, maximumBytes: maximum)
         let history = try FileManager.default.fileExists(atPath: url.path)
             ? HistoryRepository.open(at: url, capacity: capacity) : HistoryRepository.create(at: url, capacity: capacity)
-        defer { try? history.close(); try? ScreenTimeFiles.protectDatabase(url) }
-        try ScreenTimeFiles.protectDatabase(url)
+        defer { try? history.close(); try? ScreenTimeFiles.protectDatabase(url, protection: .complete) }
+        try ScreenTimeFiles.protectDatabase(url, protection: .complete)
         return try body(history)
     }
 
     private func snapshot(_ r: ScreenTimeRuntime) throws -> ProductSnapshotDTO {
         let stored = try r.repository.readSnapshot(), context = r.contexts.context(activation: stored.activation)
-        let grants = try r.repository.unfinishedGrants().map(\.grant)
+        checkReviewGate(stored, in: r)
+        let reservations = try r.repository.unfinishedGrants().filter { !$0.hasEnded }
+        let grants = reservations.map(\.grant)
         let rules = try RuleEvaluator.evaluate(policy: stored.policy, selections: stored.selections.map(\.selection), context: context,
             through: Instant(secondsSince1970: context.now.secondsSince1970 + 8 * 86400))
         let evaluated = try GrantEvaluator.evaluate(policy: stored.policy, selections: stored.selections.map(\.selection), context: context, grants: grants)
@@ -276,7 +314,7 @@ struct ProductResponse: Encodable, Sendable {
         result.storage = "ready"; result.authorization = context.authorization.status.rawValue
         result.activation = stored.activation.rawValue; result.revision = String(stored.policy.revision.rawValue)
         result.sequence = String(stored.snapshotSequence.rawValue)
-        result.schedulesReady = try r.monitors.readyPlan(for: stored.policy) != nil
+        result.schedulesReady = (try? r.monitors.readyPlan(for: stored.policy)) != nil
         result.needsSelectionReview = stored.activation == .awaitingReauthorizationConfirmation
             && !Set(stored.policy.rules.filter(\.enabled).map(\.selectionRef)).isSubset(of: confirmedSelections)
         result.defaultMinutes = stored.policy.defaultUnlockDuration.minutes
@@ -292,12 +330,12 @@ struct ProductResponse: Encodable, Sendable {
         result.targets = targets.sorted { $0.rawValue.uuidString < $1.rawValue.uuidString }.map { ref in
             let selected = stored.selections.first { used.contains($0.selection.ref) && $0.selection.targets.contains(ref) }!
             let winner = evaluated.rules.targets[ref]?.winner
-            let active = grants.first { $0.targetRef == ref && $0.status == .active && $0.effectiveExpiresAt > context.now }
+            let active = grants.first { $0.targetRef == ref && $0.reservesTarget }
             return ProductTargetDTO(ref: ref.rawValue.uuidString.lowercased(), selectionRef: selected.selection.ref.rawValue.uuidString.lowercased(),
                 restricted: evaluated.desiredTargets.contains(ref), unlockable: stored.activation == .enabled && context.authorization.status == .approved
                     && winner?.rule.unlockMode == .reason && result.schedulesReady && active == nil,
                 grantEndsAt: active?.effectiveExpiresAt.secondsSince1970, grantCommandID: active?.commandID.rawValue.uuidString.lowercased(),
-                ruleID: winner?.rule.id.rawValue.uuidString.lowercased())
+                ruleID: winner?.rule.id.rawValue.uuidString.lowercased(), grantStatus: active?.status.rawValue)
         }
         let order = Dictionary(uniqueKeysWithValues: stored.policy.priorityOrder.enumerated().map { ($1, $0) })
         let active = rules.activeOccurrences.sorted { order[$0.rule.id, default: 0] < order[$1.rule.id, default: 0] }.first
@@ -320,6 +358,25 @@ struct ProductResponse: Encodable, Sendable {
 
     private func authorization() -> String {
         switch AuthorizationCenter.shared.authorizationStatus { case .approved: return "approved"; case .denied: return "denied"; default: return "unknown" }
+    }
+    private func commandResponse(_ result: CommandRunResult, in r: ScreenTimeRuntime) throws -> ProductResponse {
+        let status = try r.repository.command(result.commandID)?.status
+        let succeeded = result.failure == nil && result.disposition == .committed && status == .succeeded
+        let retryable = status == .failed || status == .uncertain
+        return ProductResponse(status: succeeded ? "ok" : "error",
+            code: succeeded ? nil : result.failure.map(code) ?? (retryable ? "retry-required" : "application-uncertain"),
+            ref: result.commandID.rawValue.uuidString.lowercased(), snapshot: try snapshot(r), retryable: retryable)
+    }
+    private func checkReviewGate(_ snapshot: ControlSnapshot, in r: ScreenTimeRuntime) {
+        let approved = r.contexts.context(activation: snapshot.activation).authorization.status == .approved
+        if !approved || (snapshot.activation == .awaitingReauthorizationConfirmation && !reviewGateActive) { confirmedSelections.removeAll() }
+        reviewGateActive = snapshot.activation == .awaitingReauthorizationConfirmation
+    }
+    private func observeEpoch(_ epoch: Int, in r: ScreenTimeRuntime) throws {
+        guard epoch > denialEpoch else { return }
+        confirmedSelections.removeAll(); grantPreview = nil
+        try r.makeService(stopping: true).recordAuthorizationDenial(observedAt: NativeScheduleClock.instant(Date()))
+        denialEpoch = epoch
     }
     private func code(_ failure: OperationFailure) -> String {
         switch failure { case .authorizationRequired: return "authorization-required"; case .registrationFailure: return "schedule-failed"

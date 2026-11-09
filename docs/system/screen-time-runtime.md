@@ -37,7 +37,8 @@ and real app shielding remain physical-device gates (#48–#52).
 The host exclusively creates the shared Control schema6 DB and a separate
 PolicyMonitor schema1 SQLite journal. The Extension opens existing stores only.
 Both use the same Core evaluator and Control actor; private History schema2 is
-host-only. Directories/DB/WAL/SHM use UntilFirstUserAuthentication protection and
+host-only with **Complete** protection for its directory/DB/WAL/SHM. Only shared
+control/monitor files use UntilFirstUserAuthentication protection and
 backup exclusion. This source setup does not prove access before first unlock,
 protected-data behavior or coordination on a physical device.
 
@@ -61,8 +62,13 @@ retries an unlock command.
 The grant adapter registers a one-shot absolute interval ending at Core's fixed
 deadline. To represent grants shorter than 15 minutes, the interval starts in
 the past; `intervalDidStart` is deliberately ignored for grant monitors. Core
-context timestamps are floored to seconds so calendar component serialization
-does not round a deadline later. An API receipt is not delivery/timing proof.
+context and receipt timestamps share second precision so a receipt cannot appear
+later than an immediately following context merely because of different
+precision. Calendar serialization does not round a deadline later. Confirmation
+captures an absolute expiry cap and exact reason in native RAM; acceptance may
+shorten, never extend that cap. The optional cap is also bound into the immutable
+shared request intent (without the reason). Old intents with no cap still decode.
+An API receipt is not delivery/timing proof.
 Any registration failure prevents new unshielding (P1). A physical-device PoC
 must accept/reject this representation and measure early/late delivery; no JS
 timer substitutes for an unavailable OS deadline.
@@ -73,13 +79,20 @@ busy timeout) and short own-store writes, with no network/prompt/await. Async
 obsolete-monitor cleanup is left for the host. Tokens are strictly decoded into
 an immutable registry **outside** Control's final writer. Missing/ambiguous token
 identities or aggregates exceeding the OS application limit fail before an OS
-write; no compactMap silently loses a target. Stale callbacks only reevaluate
+write; no compactMap silently loses a target. New grants/candidates require
+complete policy monitoring. Current-state reconciliation and explicit stop try
+their own-store operation even when the policy journal or registration fails;
+future-schedule readiness is reported separately. The journal is opened lazily,
+so it cannot prevent a stop backed by a healthy Control DB. The host may rebuild
+a missing derived monitor journal; a corrupt journal is never reset. Stale callbacks only reevaluate
 current durable policy, never replay a captured old plan.
 
 Explicit stop clears `itoma.product` under durable paused intent. Early return
 retires just the chosen grant before reconciliation; duplicates cannot end a
 later grant or another app's grant. Authorization denial invalidates grants and
-requires explicit resume/new selection after approval. Revocation/reapproval
+requires explicit resume/new selection after approval. Native authorization
+epochs invalidate confirmation资格 even when approval returns before the actor
+handles the captured denial. Revocation/reapproval
 entirely between observations remains an unverified platform limitation.
 
 ## Build-only bounds and product bridge
@@ -96,6 +109,10 @@ Labels display app identity; neither identity data nor reasons appear in RN
 events, URLs or logs. The confirmed reason is committed privately via
 `acceptReasonGrant` before the shared grant command, then existing
 `executeAcceptedGrant` enforces P1. Review/cancel keeps drafts outside storage.
+Command disposition and durable command status jointly determine success;
+`requiresExplicitRetry` is never returned as successful merely because its
+failure field is nil. Failed/uncertain grants retain their command identity,
+status and fixed deadline in snapshots, with explicit retry/end operations.
 Saving settings is distinguished from OS application. Unsupported builds and
 Simulator return explicit unavailable snapshots and perform no product I/O.
 

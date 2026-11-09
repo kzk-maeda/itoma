@@ -254,7 +254,7 @@ extension CommandService {
                 context: context, confirmation: frame.confirmation, grantChanges: changes(for: preview, frame: frame, transaction: tx))
             let grants = try protectedGrants(context: context, transaction: tx)
             let plan = try evaluation(snapshot: tx.snapshot(), context: context, grants: grants)
-            let applied = restriction.apply(plan)
+            let applied = restriction.apply(plan, purpose: .policyCandidate)
             let after = capture(snapshot.activation)
             let changed = after.now < context.now || after.now >= (plan.nextBoundary ?? context.now)
                 || after.timeZone != context.timeZone || after.authorization.status != .approved || after.activation != context.activation
@@ -263,7 +263,7 @@ extension CommandService {
                 let freshGrants = try protectedGrants(context: after, transaction: tx)
                 if after.authorization.status == .approved && after.activation == context.activation {
                     let recovery = try evaluation(snapshot: tx.snapshot(), context: after, grants: freshGrants)
-                    let recovered = restriction.apply(recovery), finalContext = capture(snapshot.activation)
+                    let recovered = restriction.apply(recovery, purpose: .reconciliation), finalContext = capture(snapshot.activation)
                     try recordDenied(context: finalContext, transaction: tx)
                     if finalContext.authorization.status != .approved { _ = try protectedGrants(context: finalContext, transaction: tx) }
                     let valid = finalContext.authorization.status == .approved && finalContext.activation == after.activation

@@ -179,7 +179,7 @@ extension CommandService {
             try observe(plan, result: .uncertain(.authorizationRequired), context: context, transaction: tx)
             return reconciliationCommit(.uncertain, failure: .authorizationRequired)
         }
-        let applied = restriction.apply(plan)
+        let applied = restriction.apply(plan, purpose: .reconciliation)
         let after = try recordCurrentFacts(context: capture(current.activation), updateObservation: false, transaction: tx)
         if validResult(plan, started: context, after: after) {
             return try commitReconciliation(plan, result: applied, context: after, transaction: tx)
@@ -191,7 +191,7 @@ extension CommandService {
         // One immediate baseline attempt if a deadline/zone/clock boundary crossed during the
         // short write. No recursive retry; a second context change stays Uncertain.
         let baseline = try reconciliationPlan(context: after, transaction: tx)
-        let recovery = restriction.apply(baseline)
+        let recovery = restriction.apply(baseline, purpose: .reconciliation)
         let recoveredAt = try recordCurrentFacts(context: capture(after.activation), updateObservation: false, transaction: tx)
         guard validResult(baseline, started: after, after: recoveredAt) else {
             try observe(baseline, result: .uncertain(.interrupted), context: recoveredAt, transaction: tx)

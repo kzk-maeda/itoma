@@ -1,10 +1,10 @@
-export type ScreenTimeAction = 'snapshot' | 'initialize' | 'authorize' | 'pickApplications' | 'previewRule' | 'commitRule' | 'cancelCandidate' | 'previewUnlock' | 'unlock' | 'stop' | 'endGrant' | 'resume' | 'reconcile' | 'deleteReasons' | 'stopLegacy';
-export type ScreenTimeCode = 'unavailable' | 'busy' | 'invalid-input' | 'changed' | 'authorization-required' | 'selection-required' | 'schedule-failed' | 'storage-failed' | 'reason-storage-full' | 'reason-required' | 'application-uncertain' | 'legacy-active';
+export type ScreenTimeAction = 'snapshot' | 'initialize' | 'authorize' | 'pickApplications' | 'previewRule' | 'commitRule' | 'reviewCandidate' | 'retryRule' | 'cancelCandidate' | 'previewUnlock' | 'unlock' | 'cancelUnlock' | 'retryGrant' | 'stop' | 'endGrant' | 'resume' | 'reconcile' | 'deleteReasons' | 'stopLegacy';
+export type ScreenTimeCode = 'unavailable' | 'busy' | 'invalid-input' | 'changed' | 'authorization-required' | 'selection-required' | 'schedule-failed' | 'storage-failed' | 'reason-storage-full' | 'reason-required' | 'application-uncertain' | 'legacy-active' | 'retry-required';
 export interface ScreenTimeRule {
   id: string; selectionRef: string; weekdays: number[]; startMinute: number; endMinute: number; nextDay: boolean; enabled: boolean;
 }
 export interface RuleInput extends Omit<ScreenTimeRule, 'id'> { id?: string; expectedRevision: string; remove?: boolean }
-export interface ScreenTimeTarget { ref: string; selectionRef: string; restricted: boolean; unlockable: boolean; grantEndsAt?: number; grantCommandID?: string; ruleID?: string }
+export interface ScreenTimeTarget { ref: string; selectionRef: string; restricted: boolean; unlockable: boolean; grantEndsAt?: number; grantCommandID?: string; ruleID?: string; grantStatus?: 'pending' | 'scheduling' | 'applying' | 'active' | 'expired' | 'invalidated' | 'reblockPending' | 'reconciled' | 'uncertain' | 'failed' }
 export interface ScreenTimePeriod { ruleID: string; startsAt: number; endsAt: number }
 export interface ScreenTimeSnapshot {
   availability: 'device' | 'simulator' | 'unsupported-os' | 'unconfigured' | 'native-missing' | 'unsupported-platform';
@@ -17,12 +17,12 @@ export interface ScreenTimeSnapshot {
 export interface ScreenTimeResponse {
   status: 'ok' | 'error' | 'cancelled' | 'confirmation-required'; code?: ScreenTimeCode; ref?: string;
   impacts: { kind: 'shorten' | 'invalidate' | 'expire' | 'uncertain'; endsAt?: number }[]; minutes?: number; previewEndsAt?: number; shortened?: boolean;
-  snapshot?: ScreenTimeSnapshot; legacyActive?: boolean;
+  snapshot?: ScreenTimeSnapshot; legacyActive?: boolean; retryable?: boolean;
 }
 export interface ScreenTimeRequest { rule?: RuleInput; ref?: string; targetRef?: string; reason?: string; minutes?: number }
 interface NativePort { readonly apiVersion?: number; readonly screenTimeVersion?: number; screenTime?: (action: string, payload: string) => Promise<string> }
 
-const codes: ScreenTimeCode[] = ['unavailable', 'busy', 'invalid-input', 'changed', 'authorization-required', 'selection-required', 'schedule-failed', 'storage-failed', 'reason-storage-full', 'reason-required', 'application-uncertain', 'legacy-active'];
+const codes: ScreenTimeCode[] = ['unavailable', 'busy', 'invalid-input', 'changed', 'authorization-required', 'selection-required', 'schedule-failed', 'storage-failed', 'reason-storage-full', 'reason-required', 'application-uncertain', 'legacy-active', 'retry-required'];
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const object = (v: unknown): Record<string, unknown> => { if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error(); return v as Record<string, unknown>; };
 const text = (v: unknown): string => { if (typeof v !== 'string') throw new Error(); return v; };
@@ -46,7 +46,8 @@ function snapshot(v: unknown): ScreenTimeSnapshot {
       weekdays: list(r.weekdays, (day) => integer(day, 1, 7)), startMinute: integer(r.startMinute, 0, 1439), endMinute: integer(r.endMinute, 0, 1439), nextDay: bool(r.nextDay), enabled: bool(r.enabled) }; }),
     selections: list(s.selections, (v) => { const r = object(v); return { ref: id(r.ref), count: integer(r.count, 1, 50) }; }),
     targets: list(s.targets, (v) => { const r = object(v); return { ref: id(r.ref), selectionRef: id(r.selectionRef), restricted: bool(r.restricted),
-      unlockable: bool(r.unlockable), grantEndsAt: optional(r.grantEndsAt, numeric), grantCommandID: optional(r.grantCommandID, id), ruleID: optional(r.ruleID, id) }; }),
+      unlockable: bool(r.unlockable), grantEndsAt: optional(r.grantEndsAt, numeric), grantCommandID: optional(r.grantCommandID, id), ruleID: optional(r.ruleID, id),
+      grantStatus: optional(r.grantStatus, (v) => choice(v, ['pending', 'scheduling', 'applying', 'active', 'expired', 'invalidated', 'reblockPending', 'reconciled', 'uncertain', 'failed'])) }; }),
     period: optional(s.period, period), periods: list(s.periods, period), nextPeriod: optional(s.nextPeriod, period),
     observation: choice(s.observation, ['unknown', 'applying', 'applied', 'failed', 'uncertain']), validUntil: optional(s.validUntil, numeric), evaluatedAt: optional(s.evaluatedAt, numeric),
     schedulesReady: bool(s.schedulesReady), needsSelectionReview: bool(s.needsSelectionReview), defaultMinutes: integer(s.defaultMinutes, 1, 30), historyIncomplete: bool(s.historyIncomplete),
@@ -59,7 +60,7 @@ export function parseScreenTimeResponse(json: string): ScreenTimeResponse {
   return { status: choice(r.status, ['ok', 'error', 'cancelled', 'confirmation-required']), code: optional(r.code, (v) => choice(v, codes)),
     ref: optional(r.ref, id), impacts: list(r.impacts ?? [], (v) => { const i = object(v); return { kind: choice(i.kind, ['shorten', 'invalidate', 'expire', 'uncertain']), endsAt: optional(i.endsAt, numeric) }; }),
     previewEndsAt: optional(r.previewEndsAt, numeric), shortened: optional(r.shortened, bool),
-    minutes: optional(r.minutes, (v) => integer(v, 1, 30)), snapshot: optional(r.snapshot, snapshot), legacyActive: optional(r.legacyActive, bool) };
+    minutes: optional(r.minutes, (v) => integer(v, 1, 30)), snapshot: optional(r.snapshot, snapshot), legacyActive: optional(r.legacyActive, bool), retryable: optional(r.retryable, bool) };
 }
 
 export function unavailableSnapshot(availability: ScreenTimeSnapshot['availability']): ScreenTimeSnapshot {

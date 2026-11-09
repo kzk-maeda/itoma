@@ -4,12 +4,23 @@ import Foundation
 import ManagedSettings
 import SwiftUI
 import UIKit
+import Combine
+import ItomaCore
 
 @available(iOS 16.0, *)
 @MainActor final class ProductUI {
     static let shared = ProductUI()
     private var busy = false
     private weak var picker: UIViewController?
+    private var authorizationEpoch = 0
+    private var subscriptions: Set<AnyCancellable> = []
+    private init() {
+        AuthorizationCenter.shared.$authorizationStatus.receive(on: DispatchQueue.main).sink { [weak self] status in
+            MainActor.assumeIsolated {
+                if status == .denied { self?.authorizationEpoch += 1 }
+            }
+        }.store(in: &subscriptions)
+    }
 
     func perform(_ action: String, payload: String?, presenter: UIViewController?, complete: @escaping (String) -> Void) {
         guard #available(iOS 16.0, *) else { unavailable("unsupported-os", complete); return }
@@ -18,7 +29,7 @@ import UIKit
         #endif
         guard Bundle.main.object(forInfoDictionaryKey: "ITOMAScreenTime") as? Bool == true else { unavailable("unconfigured", complete); return }
         guard !busy || action == "snapshot" || action == "stop" else { complete(ProductResponse(status: "error", code: "busy").json()); return }
-        if ["commitRule", "unlock", "resume"].contains(action), legacyActive {
+        if ["commitRule", "retryRule", "unlock", "retryGrant", "resume"].contains(action), legacyActive {
             finish(ProductResponse(status: "error", code: "legacy-active"), complete); return
         }
         let request: ProductRequest
@@ -36,8 +47,8 @@ import UIKit
                 Task { @MainActor in
                     let response: ProductResponse
                     do {
-                        let ref = try await ProductController.shared.selectionSaved(data)
-                        var saved = await ProductController.shared.perform("snapshot", request: ProductRequest())
+                        let ref = try await ProductController.shared.selectionSaved(data, authorizationEpoch: self.authorizationEpoch)
+                        var saved = await ProductController.shared.perform("snapshot", request: ProductRequest(), authorizationEpoch: self.authorizationEpoch)
                         saved.ref = ref; response = saved
                     } catch { response = ProductResponse(status: "error", code: "selection-required") }
                     self.busy = false; self.finish(response, complete)
@@ -62,7 +73,8 @@ import UIKit
                 do { try await AuthorizationCenter.shared.requestAuthorization(for: .individual) }
                 catch { self.finish(ProductResponse(status: "error", code: "authorization-required"), complete); return }
             }
-            let result = await ProductController.shared.perform(action == "authorize" ? "snapshot" : action, request: request)
+            let result = await ProductController.shared.perform(action == "authorize" ? "snapshot" : action, request: request,
+                authorizationEpoch: self.authorizationEpoch)
             self.finish(result, complete)
         }
     }

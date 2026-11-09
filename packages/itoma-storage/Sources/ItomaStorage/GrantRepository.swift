@@ -279,6 +279,7 @@ extension ControlRepository {
                   retired == 0 || ![GrantStatus.pending, .scheduling, .applying, .active].contains(grant.status) else { throw StorageError.corrupt }
             guard let owner = try loadCommand(grant.commandID), let intent = owner.intent.grant,
                   intent.target == grant.targetRef, intent.occurrence == OccurrenceDTO(grant.occurrence),
+                  intent.confirmedExpiresAt.map({ grant.initialExpiresAt <= $0 }) ?? true,
                   try loadGrantResultID(grant.commandID) == grant.id else { throw StorageError.corrupt }
             return StoredGrant(grant: grant, hasEnded: retired == 1)
         } catch { throw StorageError.corrupt }

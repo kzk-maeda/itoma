@@ -9,8 +9,12 @@ import Dispatch
 // The detached native actor job performs only bounded synchronous database/own-store operations.
 // Join it before returning: the OS may terminate the Extension immediately after the callback.
 final class ItomaActivityMonitor: DeviceActivityMonitor {
-    override func intervalDidStart(for activity: DeviceActivityName) { reconcile(activity, ended: false) }
-    override func intervalDidEnd(for activity: DeviceActivityName) { reconcile(activity, ended: true) }
+    override func intervalDidStart(for activity: DeviceActivityName) {
+        super.intervalDidStart(for: activity); reconcile(activity, ended: false)
+    }
+    override func intervalDidEnd(for activity: DeviceActivityName) {
+        super.intervalDidEnd(for: activity); reconcile(activity, ended: true)
+    }
     private func reconcile(_ activity: DeviceActivityName, ended: Bool) {
         let name = activity.rawValue
         let completed = DispatchSemaphore(value: 0)

@@ -7,19 +7,33 @@ import ItomaStorage
 
 @ItomaControlActor public final class ScreenTimeRuntime {
     public let repository: ControlRepository
-    public let monitors: PolicyScheduleCoordinator
     public let contexts = AppleEvaluationContexts()
     public let directory: URL
-    private let monitorRepository: PolicyMonitorRepository
+    private var monitorRepository: PolicyMonitorRepository?
+    private var coordinator: PolicyScheduleCoordinator?
+    private let mayCreateMonitor: Bool
     private let policyScheduler = ApplePolicyScheduler()
     public let outboxCapacity: HistoryOutboxCapacity
+    public var monitors: PolicyScheduleCoordinator {
+        get throws {
+            if let coordinator { return coordinator }
+            let url = directory.appendingPathComponent("monitors.sqlite")
+            let repository = try !FileManager.default.fileExists(atPath: url.path) && mayCreateMonitor
+                ? PolicyMonitorRepository.create(at: url) : PolicyMonitorRepository.open(at: url)
+            monitorRepository = repository
+            let created = PolicyScheduleCoordinator(repository: repository, scheduler: policyScheduler)
+            try ScreenTimeFiles.protectDatabase(url)
+            coordinator = created
+            return created
+        }
+    }
 
-    public init(createIfMissing: Bool) throws {
+    public init(createIfMissing: Bool, allowMonitorCreation: Bool = false) throws {
+        mayCreateMonitor = createIfMissing || allowMonitorCreation
         guard let limit = Bundle.main.object(forInfoDictionaryKey: "ITOMAPendingEventLimit") as? Int else { throw ScreenTimeRuntimeError.unavailable }
         outboxCapacity = try HistoryOutboxCapacity(maximumPendingEvents: limit)
         directory = try ScreenTimeFiles.sharedDirectory()
         let controlURL = directory.appendingPathComponent("control.sqlite")
-        let monitorURL = directory.appendingPathComponent("monitors.sqlite")
         if createIfMissing { try ScreenTimeFiles.prepareDirectory(directory) }
         if !FileManager.default.fileExists(atPath: controlURL.path), createIfMissing {
             repository = try ControlRepository.create(at: controlURL,
@@ -28,10 +42,6 @@ import ItomaStorage
             // No destructive recovery; migrations belong to the host and must be explicit.
             repository = try ControlRepository.open(at: controlURL)
         }
-        if !FileManager.default.fileExists(atPath: monitorURL.path), createIfMissing {
-            monitorRepository = try PolicyMonitorRepository.create(at: monitorURL)
-        } else { monitorRepository = try PolicyMonitorRepository.open(at: monitorURL) }
-        monitors = PolicyScheduleCoordinator(repository: monitorRepository, scheduler: policyScheduler)
         try protectFiles()
     }
 
@@ -43,8 +53,10 @@ import ItomaStorage
         let snapshot = try repository.readSnapshot()
         let registry = try ProductTokenRegistry(selections: stopping ? [] : snapshot.selections)
         var plans: [PolicyRevision: PolicyMonitorPlan] = [:]
-        for policy in [snapshot.policy, additionalPolicy].compactMap({ $0 }) {
-            if let ready = try monitors.readyPlan(for: policy) { plans[policy.revision] = ready }
+        for policy in [snapshot.policy, additionalPolicy].compactMap({ $0 }) where !stopping {
+            // A missing policy monitor must not prevent current-state reblock. New permission
+            // operations still require a complete plan in their explicit apply purpose.
+            if let ready = try? monitors.readyPlan(for: policy) { plans[policy.revision] = ready }
         }
         let restriction = AppleRestrictionAdapter(registry: registry, plans: plans, scheduler: policyScheduler, contexts: contexts)
         return CommandService(repository: repository, scheduler: AppleDeadlineScheduler(), restriction: restriction,

@@ -58,6 +58,25 @@ private func accept(_ f: Fixture, number: Int = 1, target: Int = 1) throws -> Gr
     let sequence = try f.repository.readSnapshot().snapshotSequence
     return try f.repository.write { try $0.acceptGrant(command: grantCommand(number), request: input, context: context(), expectedSequence: sequence) }
 }
+
+@Test func confirmedDeadlinePersistsAndCannotChangeOnTheSameCommandIdentity() throws {
+    let f = try Fixture(); defer { f.remove() }
+    let base = try request(f)
+    func confirmed(_ expiry: Instant) -> GrantRequest {
+        GrantRequest(grantID: base.grantID, commandID: base.commandID, targetRef: base.targetRef,
+            expectedPolicyRevision: base.expectedPolicyRevision, expectedOccurrence: base.expectedOccurrence,
+            condition: base.condition, duration: base.duration, confirmedExpiresAt: expiry)
+    }
+    let input = try confirmed(time("12:05")), sequence = try f.repository.readSnapshot().snapshotSequence
+    let accepted = try f.repository.write { try $0.acceptGrant(command: grantCommand(), request: input, context: context("12:02"), expectedSequence: sequence) }
+    #expect(accepted.grant.initialExpiresAt == (try time("12:05")))
+    try f.repository.close()
+    let reopened = try ControlRepository.open(at: f.url); defer { try? reopened.close() }
+    #expect(try reopened.grant(accepted.grant.id)?.grant.initialExpiresAt == accepted.grant.initialExpiresAt)
+    #expect(throws: StorageError.conflict) {
+        try reopened.write { try $0.acceptGrant(command: grantCommand(), request: confirmed(time("12:06")), context: context("12:02"), expectedSequence: sequence) }
+    }
+}
 private func registration(
     _ grant: TemporaryGrant, number: Int = 1, generation: Int64 = 0, command: CommandID? = nil,
     deadline: Instant? = nil, candidate: Int64? = nil

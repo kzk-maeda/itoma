@@ -64,6 +64,22 @@ private func pending(_ snapshot: PolicySnapshot? = nil, target: Int = 1, id: Int
 
 private enum TestFailure: Error { case expectedProposal }
 
+@Test func confirmationDeadlineCapsDelayedAcceptanceAndExpiredReviewCannotGrant() throws {
+    let p = try policy(), selected = selections(p), previewContext = try context("12:00")
+    let evaluated = try GrantEvaluator.evaluate(policy: p, selections: selected, context: previewContext, grants: [])
+    let occurrence = try #require(evaluated.rules.targets[gid(1)]?.winner?.key)
+    let request = try GrantRequest(grantID: gid(1), commandID: gid(1), targetRef: gid(1),
+        expectedPolicyRevision: p.revision, expectedOccurrence: occurrence, condition: UnlockCondition.reason("synthetic"),
+        duration: UnlockDuration(minutes: 5), confirmedExpiresAt: at("12:05"))
+    guard case let .proposed(grant) = try GrantEvaluator.propose(request, policy: p, selections: selected,
+        context: context("12:02"), existingGrants: []) else { throw TestFailure.expectedProposal }
+    #expect(grant.acceptedAt == (try at("12:02")))
+    #expect(grant.initialExpiresAt == (try at("12:05")) && grant.effectiveExpiresAt == grant.initialExpiresAt)
+    #expect(throws: GrantEvaluationError.confirmationChanged) {
+        try GrantEvaluator.propose(request, policy: p, selections: selected, context: context("12:05"), existingGrants: [])
+    }
+}
+
 private func recording(_ grant: TemporaryGrant, status: GrantStatus) throws -> TemporaryGrant {
     try TemporaryGrant(id: grant.id, commandID: grant.commandID, targetRef: grant.targetRef,
                        occurrence: grant.occurrence, acceptedAt: grant.acceptedAt,

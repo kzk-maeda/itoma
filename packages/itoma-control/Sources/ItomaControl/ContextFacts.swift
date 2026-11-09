@@ -8,6 +8,22 @@ private struct CapturedContextFacts {
 }
 
 extension CommandService {
+    /// Persist a captured native denial even if approval returned before the actor processed it.
+    /// This is a negative fact only, never permission to apply a previously confirmed selection.
+    public func recordAuthorizationDenial(observedAt: Instant) throws {
+        try repository.requireOutsideTransaction()
+        try repository.write { tx in
+            let snapshot = try tx.snapshot(), current = contexts.context(activation: snapshot.activation)
+            let denied = EvaluationContext(now: current.now, timeZone: current.timeZone,
+                authorization: AuthorizationObservation(status: .denied, observedAt: min(observedAt, current.now)), activation: current.activation)
+            _ = try recordCurrentFacts(context: denied, updateObservation: false, transaction: tx)
+        }
+        try? repository.write { tx in
+            try markObservationUncertain(at: contexts.context(activation: tx.snapshot().activation).now,
+                failure: .authorizationRequired, transaction: tx)
+        }
+    }
+
     func refreshCurrentFacts() throws -> EvaluationContext {
         try repository.requireOutsideTransaction()
         return try observedTransaction { tx, capture in

@@ -14,17 +14,18 @@ public enum ScreenTimeFiles {
         return container.appendingPathComponent("ITOMA-Control", isDirectory: true)
     }
 
-    public static func prepareDirectory(_ directory: URL) throws {
+    public static func prepareDirectory(_ directory: URL, protection: FileProtectionType = .completeUntilFirstUserAuthentication) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
-            attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
+            attributes: [.protectionKey: protection])
+        try FileManager.default.setAttributes([.protectionKey: protection], ofItemAtPath: directory.path)
         var directory = directory
         var values = URLResourceValues(); values.isExcludedFromBackup = true
         try directory.setResourceValues(values)
     }
 
-    public static func protectDatabase(_ url: URL) throws {
+    public static func protectDatabase(_ url: URL, protection: FileProtectionType = .completeUntilFirstUserAuthentication) throws {
         for file in [url.path, url.path + "-wal", url.path + "-shm"] where FileManager.default.fileExists(atPath: file) {
-            try FileManager.default.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: file)
+            try FileManager.default.setAttributes([.protectionKey: protection], ofItemAtPath: file)
         }
     }
 }

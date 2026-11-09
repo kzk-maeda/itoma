@@ -4,6 +4,27 @@ import ItomaStorage
 import Testing
 @testable import ItomaControl
 
+@Test func nativeReceiptAndContextUseTheSameSecondPrecision() throws {
+    let receipt = try NativeScheduleClock.instant(Date(timeIntervalSince1970: 43_200.4))
+    let immediatelyAfter = try NativeScheduleClock.instant(Date(timeIntervalSince1970: 43_200.5))
+    #expect(receipt <= immediatelyAfter)
+    #expect(receipt.secondsSince1970 == 43_200)
+    #expect(try NativeScheduleClock.instant(Date(timeIntervalSince1970: 43_201.1)) > receipt)
+}
+
+@Test @ItomaControlActor func delayedNativeDenialStillInvalidatesGrantAfterApprovalReturns() async throws {
+    let f = try Fixture(); defer { f.remove() }
+    let grant = try f.accept(1)
+    _ = try await f.service.executeAcceptedGrant(commandID: grant.commandID)
+    #expect(f.contexts.authorization == .approved)
+    try f.service.recordAuthorizationDenial(observedAt: f.contexts.now)
+    #expect(try f.repository.grant(grant.id)?.hasEnded == true)
+    #expect(try f.repository.readSnapshot().activation == .awaitingReauthorizationConfirmation)
+    _ = await f.service.reconcile()
+    #expect(try f.repository.readSnapshot().activation == .awaitingReauthorizationConfirmation)
+    #expect(try f.repository.grant(grant.id)?.grant.status != .active)
+}
+
 @ItomaControlActor private final class BoundaryScheduler: PolicyBoundaryScheduler {
     var activities: Set<String> = []
     var failMinute: Int?

@@ -52,7 +52,7 @@ public struct ProductSelectionPayload: Codable {
         @unknown default: status = .unknown
         }
         // Date and TimeZone.current are finite/valid Foundation values.
-        let now = try! Instant(secondsSince1970: Date().timeIntervalSince1970.rounded(.down))
+        let now = try! NativeScheduleClock.instant(Date())
         return EvaluationContext(now: now, timeZone: try! TimeZoneID(TimeZone.current.identifier),
             authorization: AuthorizationObservation(status: status, observedAt: now), activation: activation)
     }
@@ -106,7 +106,7 @@ public struct ProductSelectionPayload: Codable {
             try center.startMonitoring(DeviceActivityName(Self.name(registration)),
                 during: DeviceActivitySchedule(intervalStart: starts, intervalEnd: ends, repeats: false))
             return .accepted(DeadlineReceipt(registrationID: registration.id, generation: registration.generation,
-                scheduledFor: registration.scheduledFor, acceptedAt: try Instant(Date())))
+                scheduledFor: registration.scheduledFor, acceptedAt: try NativeScheduleClock.instant(Date())))
         } catch { return .rejected(.registrationFailure) }
     }
     public func cancel(_ registration: DeadlineRegistration) async -> DeadlineCancellationResult {
@@ -128,14 +128,19 @@ public struct ProductSelectionPayload: Codable {
         self.registry = registry; self.plans = plans; self.scheduler = scheduler; self.contexts = contexts
     }
     public func apply(_ evaluation: Evaluation) -> RestrictionApplicationResult {
+        apply(evaluation, purpose: .reconciliation)
+    }
+    public func apply(_ evaluation: Evaluation, purpose: RestrictionPurpose) -> RestrictionApplicationResult {
         // An explicit durable stop can always clear our own store, even if schedules/tokens fail.
         if contexts.lastActivation == .paused {
             guard evaluation.desiredTargets.isEmpty else { return .failed(.interrupted) }
             store.clearAllSettings()
             return store.shield.applications == nil ? .accepted(.ownStoreReadback) : .uncertain(.osOperationFailure)
         }
-        guard let plan = plans[evaluation.policyRevision], plan.isReady,
-              scheduler.containsActivities(plan.activityNames) else { return .failed(.registrationFailure) }
+        if purpose != .reconciliation {
+            guard let plan = plans[evaluation.policyRevision], plan.isReady,
+                  scheduler.containsActivities(plan.activityNames) else { return .failed(.registrationFailure) }
+        }
         guard evaluation.desiredTargets.count <= 50 else { return .failed(.osOperationFailure) }
         var applications: Set<ApplicationToken> = []
         for target in evaluation.desiredTargets {

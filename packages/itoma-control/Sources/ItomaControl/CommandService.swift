@@ -210,7 +210,7 @@ import ItomaStorage
             let all = try protectedGrants(context: context, excluding: applyingGrant.id, transaction: tx)
             let active = try applyingGrant.recording(status: .active)
             let plan = try evaluation(snapshot: tx.snapshot(), context: context, grants: all + [active])
-            let applied = restriction.apply(plan)
+            let applied = restriction.apply(plan, purpose: .temporaryGrant)
             let after = capture(snapshot.activation)
             if after.authorization.status != .approved || after.activation != snapshot.activation {
                 // Missing authorization is not a request to clear the own store. Keep the outcome
@@ -233,7 +233,7 @@ import ItomaStorage
                 _ = try tx.recordCommand(changing(applying, status: after.now >= active.effectiveExpiresAt ? .expired : .uncertain), expected: applying)
                 let remaining = try protectedGrants(context: after, transaction: tx)
                 let baseline = try evaluation(snapshot: tx.snapshot(), context: after, grants: remaining)
-                let recovery = restriction.apply(baseline)
+                let recovery = restriction.apply(baseline, purpose: .reconciliation)
                 let recoveredAt = capture(snapshot.activation)
                 try recordDenied(context: recoveredAt, transaction: tx)
                 if recoveredAt.authorization.status != .approved { _ = try protectedGrants(context: recoveredAt, transaction: tx) }
