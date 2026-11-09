@@ -101,6 +101,7 @@ struct ProductResponse: Encodable, Sendable {
         guard !busy else { throw ScreenTimeRuntimeError.busy }
         let runtime = try open(create: true)
         try observeEpoch(authorizationEpoch, in: runtime)
+        guard authorizationEpoch == denialEpoch else { throw ScreenTimeRuntimeError.invalidSelection }
         checkReviewGate(try runtime.repository.readSnapshot(), in: runtime)
         let ref = try runtime.saveSelection(tokensData: data)
         confirmedSelections.insert(ref)

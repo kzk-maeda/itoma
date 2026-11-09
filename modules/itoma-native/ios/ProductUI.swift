@@ -49,11 +49,15 @@ import ItomaCore
                     self.busy = false; self.finish(ProductResponse(status: "error", code: "selection-required"), complete); return
                 }
                 Task { @MainActor in
+                    guard self.authorizationEpoch == pickerEpoch, AuthorizationCenter.shared.authorizationStatus == .approved else {
+                        self.busy = false; self.finish(ProductResponse(status: "error", code: "selection-required"), complete); return
+                    }
                     let response: ProductResponse
                     do {
-                        let ref = try await ProductController.shared.selectionSaved(data, authorizationEpoch: self.authorizationEpoch)
+                        let ref = try await ProductController.shared.selectionSaved(data, authorizationEpoch: pickerEpoch)
                         var saved = await ProductController.shared.perform("snapshot", request: ProductRequest(), authorizationEpoch: self.authorizationEpoch)
-                        saved.ref = ref; response = saved
+                        if self.authorizationEpoch == pickerEpoch { saved.ref = ref; response = saved }
+                        else { response = ProductResponse(status: "error", code: "selection-required", snapshot: saved.snapshot) }
                     } catch { response = ProductResponse(status: "error", code: "selection-required") }
                     self.busy = false; self.finish(response, complete)
                 }
