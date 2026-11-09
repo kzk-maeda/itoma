@@ -25,7 +25,7 @@ SwiftPMはiOS15.1とMacテストhostのmacOS13を最低版として明示する�
 8. 遷移先のPoC画面が自身でread-only snapshotを取得し、`simulator-unavailable`・未認可/保存なし/対象なしを再確認してからホームへ戻る。戻ったホームのmount後にだけ、native起動フラグも通ったPASS markerを出す。認可・保存・制限の操作はしない。
 9. Light/DarkそれぞれOS外観を設定し、新しく起動したプロセス・別ログでbridge→PoC→homeの証明を再取得して`home-light.png`/`home-dark.png`を保存する。起動時の外観確認であり、稼働中の外観切替の合格は意味しない。画像生成を目視の合格と扱わない。旧sourceのhome.png/native-poc画像もupload対象に残す。
 
-`EXPO_PUBLIC_NATIVE_SMOKE=1`と`EXPO_PUBLIC_BUILD_SHA`はcompiled JSへ含まれる公開情報。秘密や本人データを置かない。native起動には別の`SIMCTL_CHILD_ITOMA_NATIVE_QA=1`を使い、通常起動でsmokeを実行しない。通常ホームは製品の時間帯ルールと未接続で、架空の時間・制限状態を表示しない。
+`EXPO_PUBLIC_NATIVE_SMOKE=1`と`EXPO_PUBLIC_BUILD_SHA`はcompiled JSへ含まれる公開情報。秘密や本人データを置かない。native起動には別の`SIMCTL_CHILD_ITOMA_NATIVE_QA=1`を使い、通常起動でsmokeを実行しない。通常ホームは製品bridgeへ接続する。Simulatorでは利用不可を表示し、架空の時間・制限状態を表示しない。[通常フローQA](qa/main-application-flow.md)の合成Web画像とは別の検証である。
 
 ## 証跡と判定
 

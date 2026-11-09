@@ -1,0 +1,47 @@
+// Temp-only visual fixture. Never part of the product source/route tree.
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Text, View } from 'react-native';
+import { ScreenTimeProvider, useScreenTime } from '@/state/screen-time';
+import { ProductHome } from '@/components/flow/home';
+import { RuleEditorScreen } from '@/components/flow/rule';
+import { UnlockScreen, UnlockConfirmationScreen } from '@/components/flow/unlock';
+import { GrantScreen } from '@/components/flow/grant';
+import { SettingsScreen } from '@/components/flow/settings';
+import { useFlowTheme } from '@/components/flow/ui';
+import { unavailableSnapshot } from '../../modules/itoma-native/src/screen-time';
+import type { ScreenTimeSnapshot, ScreenTimeResponse } from '../../modules/itoma-native';
+const NOW = Date.parse('2026-11-09T21:30:00Z');
+const selection = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', appA = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+const appB = 'cccccccc-cccc-cccc-cccc-cccccccccccc', ruleID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+const preview = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', command = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
+const reason = '【画面QA用の架空の理由】\n必要な情報をひとつ確認してから、読書の時間に戻ります。\nこれは長文でも省略せずに読めることを確かめるための合成テキストです。実際の利用者の理由ではありません。';
+function fixture(mode: string): ScreenTimeSnapshot {
+  const snapshot: ScreenTimeSnapshot = { ...unavailableSnapshot('device'), storage: 'ready', authorization: 'approved', revision: '1', sequence: '1', schedulesReady: true, observation: 'applied', validUntil: NOW / 1000 + 1800,
+    rules: [{ id: ruleID, selectionRef: selection, weekdays: [1, 2, 3, 4, 5], startMinute: 1260, endMinute: 1380, nextDay: false, enabled: true }], selections: [{ ref: selection, count: 2 }],
+    periods: [{ ruleID, startsAt: NOW / 1000 - 1800, endsAt: NOW / 1000 + 5400 }],
+    targets: [{ ref: appA, selectionRef: selection, ruleID, restricted: true, unlockable: true }, { ref: appB, selectionRef: selection, ruleID, restricted: true, unlockable: true }] };
+  if (mode === 'grant' || mode === 'failed') snapshot.targets[0] = { ...snapshot.targets[0], restricted: mode === 'failed', unlockable: false, grantStatus: mode === 'failed' ? 'failed' : 'active', grantCommandID: command, grantEndsAt: NOW / 1000 + 180 };
+  if (mode === 'failed') snapshot.observation = 'uncertain';
+  return mode === 'empty' ? { ...snapshot, rules: [], periods: [], targets: [], selections: [] } : snapshot;
+}
+function Content({ mode }: { mode: string }) {
+  const state = useScreenTime(), theme = useFlowTheme(), seeded = useRef(false), [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (seeded.current) return; seeded.current = true;
+    if (mode === 'rule') state.setRuleDraft({ id: ruleID, selectionRef: selection, weekdays: [1, 2, 3, 4, 5], start: '21:00', end: '23:00', nextDay: false, enabled: true, dirty: true });
+    if (mode === 'unlock' || mode === 'review') {
+      state.setUnlockDraft({ targetRef: appA, reason, minutes: '5' });
+      state.setUnlockReview({ status: 'confirmation-required', ref: preview, minutes: 5, impacts: [], previewEndsAt: NOW / 1000 + 120, shortened: true, snapshot: fixture(mode) });
+    }
+    setReady(true);
+  }, [state]);
+  if (!ready) return null;
+  const screen = mode === 'rule' ? <RuleEditorScreen /> : mode === 'unlock' ? <UnlockScreen /> : mode === 'review' ? <UnlockConfirmationScreen /> : mode === 'grant' || mode === 'failed' ? <GrantScreen /> : mode === 'settings' ? <SettingsScreen /> : <ProductHome />;
+  return <View style={{ flex: 1, backgroundColor: theme.background }}><Text testID="proof-banner" style={{ fontSize: 12, lineHeight: 18, color: theme.text, backgroundColor: theme.soft, padding: 10 }}>合成データによる画面QA · OS制限は未検証 · {mode}</Text><View style={{ flex: 1 }}>{screen}</View></View>;
+}
+export default function Proof() {
+  const params = useLocalSearchParams<{ mode: string }>(), mode = typeof params.mode === 'string' ? params.mode : 'home';
+  const client = useMemo(() => ({ run: async (): Promise<ScreenTimeResponse> => ({ status: 'ok', impacts: [], snapshot: fixture(mode) }) }), [mode]);
+  return <ScreenTimeProvider client={client}><Content mode={mode} /></ScreenTimeProvider>;
+}
