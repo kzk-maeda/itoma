@@ -153,7 +153,7 @@ try {
     outcome = smokeOutcome(readFileSync(path.join(output, 'app.log'), 'utf8'), commit);
     if (launchError || (launcher.exitCode !== null && outcome === 'pending')) throw new Error('App console exited before a native smoke result');
   }
-  // The destination is the adopted home, reached after the PoC screen's read-only proof.
+  // Home is reached after separate read-only PoC and History route proofs.
   await delay(5_000);
   outcome = smokeOutcome(readFileSync(path.join(output, 'app.log'), 'utf8'), commit);
   if (outcome !== 'pass') throw new Error(`Native JS-to-Swift smoke ${outcome === 'fail' ? 'failed' : 'timed out'}`);

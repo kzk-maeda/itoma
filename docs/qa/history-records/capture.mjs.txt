@@ -1,0 +1,36 @@
+import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
+import path from 'node:path';
+const require = createRequire(import.meta.url), { chromium } = require('playwright');
+const output='/workspace/itoma/docs/qa/history-records';mkdirSync(output,{recursive:true});
+const cases=[['events-light','events','light',390,844,false],['events-dark','events','dark',390,844,false],
+ ['day-narrow','day','light',320,800,false],['reason-large-dark','detail','dark',320,800,true],
+ ['deleted-light','deleted','light',390,844,false],['capacity-gap-dark','gap','dark',390,844,false],
+ ['unreadable-light','error','light',320,800,false],['not-created-light','new','light',390,844,false]];
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+const proof={sourceCommit:'04ee94f8127fa83ec96e783095bdaa71ba404c9c',kind:'synthetic-history-native-data-web-fixtures',physicalDevice:false,
+ realDatabase:false,osRestrictionsVerified:false,browser:await browser.version(),browserTimeZone:'UTC',nativeFixtureTimeZone:'Asia/Tokyo',
+ fixtureClock:'2026-11-09T12:30:00Z',syntheticReasonOnly:true,mockedFiles:['temp-only src/app/history-proof.tsx'],cases:[]};
+try {
+ for(const[name,mode,colorScheme,width,height,large]of cases){
+  const context=await browser.newContext({viewport:{width,height},colorScheme,reducedMotion:'reduce',timezoneId:'UTC'});
+  const page=await context.newPage(),errors=[];
+  page.on('pageerror',e=>errors.push(e.message.slice(0,180)));page.on('console',m=>{if(m.type()==='error')errors.push(m.text().slice(0,180))});
+  await page.goto(`http://127.0.0.1:8132/history-proof?mode=${mode}`,{waitUntil:'networkidle'});
+  await page.getByTestId('history-proof-banner').waitFor();await page.getByTestId('flow-scroll').waitFor();await page.waitForTimeout(1600);
+  if(mode==='detail')await page.getByText('あなたの言葉',{exact:true}).waitFor();
+  if(mode==='deleted')await page.getByText('理由本文は削除済みです').waitFor();
+  if(large)await page.evaluate(()=>{const values=Array.from(document.querySelectorAll('[dir="auto"],input,textarea')).map(el=>[el,parseFloat(getComputedStyle(el).fontSize),parseFloat(getComputedStyle(el).lineHeight)]);for(const[el,size,line]of values){el.style.fontSize=`${size*1.5}px`;if(Number.isFinite(line))el.style.lineHeight=`${line*1.5}px`}});
+  await page.getByTestId('flow-scroll').evaluate(el=>{for(let n=el;n;n=n.parentElement)Object.assign(n.style,{height:'auto',minHeight:'0',maxHeight:'none',flexGrow:'0',flexBasis:'auto',position:'relative',overflow:'visible'})});
+  const dimensions=await page.evaluate(()=>({viewport:innerWidth,scroll:document.documentElement.scrollWidth,contentHeight:document.documentElement.scrollHeight}));
+  const buttons=await page.getByRole('button').evaluateAll(items=>items.map(el=>({text:el.textContent,height:el.getBoundingClientRect().height})));
+  await page.screenshot({path:path.join(output,`${name}.png`),fullPage:true});
+  const hash=createHash('sha256').update(readFileSync(path.join(output,`${name}.png`))).digest('hex');
+  proof.cases.push({name,mode,colorScheme,width,height,textScale:large?1.5:1,imageKind:'full-scroll-content-export',dimensions,horizontalOverflow:dimensions.scroll>width+1,pageErrors:errors,buttons,sha256:hash});
+  console.log(`${name}: ${dimensions.scroll}/${width}px, errors=${errors.length}`);await context.close();
+ }
+ const folder='/tmp/itoma-history133-dist/_expo/static/js/web';proof.webBundles=readdirSync(folder).filter(n=>n.endsWith('.js')).sort().map(name=>({name,sha256:createHash('sha256').update(readFileSync(path.join(folder,name))).digest('hex')}));
+ writeFileSync(path.join(output,'manifest.json'),JSON.stringify(proof,null,2)+'\n');
+}finally{await browser.close()}
+if(proof.cases.some(c=>c.horizontalOverflow||c.pageErrors.length||c.buttons.some(b=>b.height<44)))process.exitCode=1;

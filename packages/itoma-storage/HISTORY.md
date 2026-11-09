@@ -4,7 +4,7 @@
 
 ## 契約
 
-- `create`は本人/初期化controllerが明示的に新規作成するときだけ使う。O_EXCL/0600、WAL/FULL、schema2、application ID `0x49544849`。`open`は既存DBだけを検証し、空/破損/未対応schema/保護で読めないDBを初期化しない。各transactionでschema/app IDを再確認する。schema1からの`migrate`は本体が明示し、理由/tombstoneを保ったままprivate履歴用の表をwriter TXで追加する。
+- `create`は本人/初期化controllerが明示的に新規作成するときだけ使う。O_EXCL/0600、WAL/FULL、schema3、application ID `0x49544849`。`open`は既存DBだけを検証し、空/破損/未対応schema/保護で読めないDBを初期化しない。各transactionでschema/app IDを再確認する。schema1/2からの`migrate`は本体が明示し、理由/tombstoneを保持して履歴表/検索索引を単一writer TXで追加する。
 - `prepareReason`は本人が確定した理由の非空白判定後、原文UTF8をBLOBとして保存する。前後空白・Unicode・NULを切詰めない。同commandID/reasonRefと同一UTF8の再送は最初の時刻を返し、別本文/identityの使い回しを拒否する。本文hashを保存しない。
 - IDはcanonical UUID表記を復元時に検証し、NOCASE UNIQUEと同じ照合のlookupで大小文字違いの論理重複/削除迂回を拒否する。`reason`はindexで検索し、`reasons`は最大500件のUUIDページ。容量集計のたびに全本文をSwiftへ読み込まない。
 - `ReasonRecord`のPreparedはprivate commitの事実だけ。共有command受理・予定登録・OS成功を意味しない。Draft/確定前取消の本文を渡すAPIは設けない。入力画面がこの境界を守る必要がある。
@@ -25,6 +25,8 @@
 - `history`はprivateの増加cursorによる最大500件のページ。共有eventは操作台帳のsnapshotであり、OS全体の実効状態/利用時間を測定した記録ではない。
 
 ## 後続境界
+
+#132で40件の日時keyset/日付範囲/private revisionと、本文を持たない理由metadataを追加。日付索引はkind/ID/時刻だけを持ち、本文を複製しない。全件検証/移行は100件ずつ処理する。通常画面の契約は [history-records.md](../../docs/system/history-records.md)。固定累計/週月集計の記録方式は #96〜#100 の別ゲート。
 
 実際のCommandServiceが予定登録/OS結果と同じ短いTXでoutboxへ記録する接続は#47、UI/最低限の削除操作は#57。モックI/OやこのRepositoryだけで解除・再制限の成立を宣言しない。
 

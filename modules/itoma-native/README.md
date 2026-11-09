@@ -1,16 +1,23 @@
 # ITOMA local Expo bridge
 
-[#94](https://github.com/kzk-maeda/itoma/issues/94)のiOS限定PoC。JS/Swiftの型付き境界と共通SwiftのiOSビルドを検証する。Screen Time・永続設定・認可・OS制限は接続せず、ホームの制限操作は引き続きモック。
+ローカルSwift packageと本体を接続するiOSのtyped Expo Module。#94のCore検証port、明示的な手動PoC、#127の通常製品port、#132のprivate履歴portを区別する。ビルド/bridgeの存在と実機のOS成功は別である。
 
-[#105](https://github.com/kzk-maeda/itoma/issues/105)で、製品APIから分離した`screenTimePoC`を追加。`/native-poc`から本人の明示操作で認可/Picker、app-privateの検証用ControlRepository、専用ManagedSettings storeへ接続する。通常ホーム・製品policy/command/grantは未接続のまま。`getAvailability().osRestrictions: unconnected`は製品フローの状態を引き続き表す。Simulatorでは実操作を無効化する。設定/署名条件、保存・再認可時の制約、実機手順は[限定実機PoC](../../docs/ios-device-poc.md)を参照。API v1へ追加した任意methodで、旧ビルドのclientはincompatible-moduleを返す。native/JSの両方を含む新ビルドが必要。
+| port | version / 責務 |
+| --- | --- |
+| itomaNative | apiVersion1。Core duration検証とQA marker。getAvailabilityのosRestrictions=unconnectedはこの旧検証portの範囲で、製品全体の状態ではない |
+| screenTimePoC | screenTimePoCUIVersion2。明示手動PoCの認可/Picker/own-store |
+| screenTime | screenTimeVersion1。通常ルール/理由grant/停止・再開/評価済みsnapshot。OS adapterはSwift。実機成立は #131 |
+| historyRecords | historyVersion1。最大40件のprivate履歴metadata、選択理由の詳細、明示取込/削除/容量・欠損。新binaryが必要。本文は一覧/URL/log/eventへ渡さない |
+
+[#105](https://github.com/kzk-maeda/itoma/issues/105)で、製品APIから分離した`screenTimePoC`を追加。`/native-poc`から本人の明示操作で認可/Picker、app-privateの検証用ControlRepository、専用ManagedSettings storeへ接続する。Simulatorでは実操作を無効化する。設定/署名条件と旧PoCの実機手順は[限定実機PoC](../../docs/ios-device-poc.md)、通常製品は[runtime](../../docs/system/screen-time-runtime.md)、履歴は[保存・API契約](../../docs/system/history-records.md)を参照。旧binaryを新APIの検証には使用しない。
 
 `screenTimePoC`のwire型はJSON文字列。MainActor内で表示用snapshotをserializeし、SendableなStringだけをExpoの`Promise.resolve(sending:)`へ渡す。TS clientでparse後に全fieldを検証する。Module自体や`[String: Any]`をactor境界へ渡さず、Swift6の競合検査を無効化しない。送信内容はopaque ref/件数/固定状態だけで、token/nameを含めない。
 
 `itomaNative.getAvailability()`は未対応platform、モジュール欠落（Expo Go等）、API不一致、nativeエラーを区別する。availableはAPI v1のブリッジが存在する意味だけで、`osRestrictions: 'unconnected'`を返す。`validateDuration`はSwift Coreへ入力を渡し、TSは返却shapeと同一入力への対応だけを確認する。TSに許可範囲や制限ルールを複製しない。
 
-Swiftの`validateDuration`は`UnlockDuration`を使う副作用のない呼出し。DB、予定、OS storeや認可を操作しない。main-app ModuleはCore/Storage/Control/Historyをimportするが、ItomaControl/ItomaStorageのpodspecはprivate Historyへ依存しない。将来のExtensionはshared productだけを参照する。
+Swiftの`validateDuration`は`UnlockDuration`を使う副作用のない呼出し。DB、予定、OS storeや認可を操作しない。main-app ModuleはCore/Storage/Control/Historyをimportするが、ItomaControl/ItomaStorageのpodspecはprivate Historyへ依存しない。Monitor Extensionは共有productだけを参照する。
 
-各Swift packageと同じ`Sources/`を5つのlocal podspecでコンパイルする。`expo-build-properties`の`ios.extraPods`にlocal pathを指定し、ItomaSQLiteはApple SDK標準の`SQLite3` moduleとsystem sqlite3を使う。LinuxのSwiftPM検証は既存の`CSQLite` system-library shimへfallbackする。SwiftPMソースのコピー・生成`ios/`の手編集は行わない。podspecの0.1.0はlocal metadataで、registry/tagへの公開ではない。既存dynamic app configとdemoの分岐は維持する。
+各Swift packageと同じ`Sources/`をlocal podspecでコンパイルする。`expo-build-properties`の`ios.extraPods`にlocal pathを指定し、ItomaSQLiteはApple SDK標準の`SQLite3` moduleとsystem sqlite3を使う。LinuxのSwiftPM検証は既存の`CSQLite` system-library shimへfallbackする。SwiftPMソースのコピー・生成`ios/`の手編集は行わない。podspecの0.1.0はlocal metadataで、registry/tagへの公開ではない。既存dynamic app configとdemoの分岐は維持する。
 
 SDK58の根拠:
 
