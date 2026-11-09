@@ -98,7 +98,7 @@ final class SavedApplicationsView: ExpoView {
         let content: AnyView
         if #available(iOS 16.0, *) {
             content = AnyView(SavedApplicationsContent(applications: applications,
-                selectable: source == "product" && selectable, selected: selected,
+                selectable: source == "product" && !targetRef.isEmpty && applications?.count == 1 && selectable, selected: selected,
                 onSelect: { [weak self] in self?.onSelect(["selected": true]) }) { [weak self] height in
                 Task { @MainActor [weak self] in
                     guard let self, self.window != nil, height.isFinite, height > 0, abs(height - self.lastHeight) > 0.5 else { return }
@@ -145,8 +145,8 @@ private struct SavedApplicationsContent: View {
                             HStack {
                                 Label(token).labelStyle(.titleAndIcon)
                                 Spacer()
-                                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                            }.font(.body).frame(minHeight: 44)
+                                Image(systemName: selected ? "checkmark.circle.fill" : "circle").accessibilityHidden(true)
+                            }.font(.body).frame(minHeight: 44).contentShape(Rectangle())
                         }.buttonStyle(.plain).accessibilityValue(selected ? "選択中" : "未選択")
                             .accessibilityHint("一時解除の対象に選びます")
                     } else {
