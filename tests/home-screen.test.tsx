@@ -5,9 +5,11 @@ import { Platform } from 'react-native';
 
 import { HomeScreen } from '../src/components/home/home-screen';
 import { type HomePeriod, HomeView } from '../src/components/home/home-view';
+import { ScreenTimeProvider } from '../src/state/screen-time';
 
 jest.mock('expo-constants', () => ({ __esModule: true, default: { expoConfig: null } }));
-jest.mock('expo-router', () => ({ router: { replace: jest.fn() } }));
+jest.mock('expo-router', () => ({ router: { replace: jest.fn() }, useFocusEffect: (callback: () => void) => require('react').useEffect(callback, [callback]) }));
+jest.mock('../modules/itoma-native', () => ({ screenTime: { run: jest.fn(async () => ({ status: 'error', code: 'unavailable', impacts: [], snapshot: require('../modules/itoma-native/src/screen-time').unavailableSnapshot('native-missing') })) } }));
 jest.mock('../src/qa/native-smoke', () => ({ completeNativeHomeSmoke: jest.fn() }));
 jest.mock('../src/global.css', () => ({}));
 
@@ -20,10 +22,9 @@ const fixture: HomePeriod = {
   targets: [{ key: 'fixture-1', label: 'テスト用アプリ', detail: 'この時間帯の対象' }],
 };
 
-test('the unconnected home has no fabricated rule, time, goal, apps or unlock action', async () => {
-  await render(<HomeScreen />);
-  expect(screen.getByRole('header', { name: '制限する時間を決める' })).toBeTruthy();
-  expect(screen.getByText('時間帯ルールは準備中です')).toBeTruthy();
+test('an unavailable product build has no fabricated rule, time, goal, apps or unlock action', async () => {
+  await render(<ScreenTimeProvider><HomeScreen /></ScreenTimeProvider>);
+  expect(screen.getByRole('header', { name: '自分の時間を、ここから。' })).toBeTruthy();
   expect(screen.queryByTestId('period-ring')).toBeNull();
   expect(screen.queryByText('この時間に、大切にしたいこと')).toBeNull();
   expect(screen.queryByText('YouTube')).toBeNull();
@@ -31,10 +32,10 @@ test('the unconnected home has no fabricated rule, time, goal, apps or unlock ac
   expect(screen.getByRole('button', { name: 'ルールをつくる' })).toBeDisabled();
 });
 
-test('a PoC launch always has a direct recovery route without reading or changing native state', async () => {
+test('an unavailable product build preserves a direct manual PoC recovery route', async () => {
   Platform.OS = 'ios';
   Constants.expoConfig = { name: 'itoma', slug: 'itoma', ios: { infoPlist: { ITOMAScreenTimePoC: true } } };
-  await render(<HomeScreen />);
+  await render(<ScreenTimeProvider><HomeScreen /></ScreenTimeProvider>);
   expect(screen.getByText(/アプリを閉じても自動では停止しません/)).toBeTruthy();
   expect(router.replace).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '検証画面を開く' }));
@@ -45,14 +46,14 @@ test('a PoC launch always has a direct recovery route without reading or changin
 test.each([undefined, false, 'true'])('normal iOS builds do not expose manual operations: %s', async (flag) => {
   Platform.OS = 'ios';
   Constants.expoConfig = { name: 'itoma', slug: 'itoma', ios: { infoPlist: { ITOMAScreenTimePoC: flag } } };
-  await render(<HomeScreen />);
+  await render(<ScreenTimeProvider><HomeScreen /></ScreenTimeProvider>);
   expect(screen.queryByRole('button', { name: '検証画面を開く' })).toBeNull();
 });
 
 test('web cannot expose the device recovery route through an iOS config flag', async () => {
   Platform.OS = 'web';
   Constants.expoConfig = { name: 'itoma', slug: 'itoma', ios: { infoPlist: { ITOMAScreenTimePoC: true } } };
-  await render(<HomeScreen />);
+  await render(<ScreenTimeProvider><HomeScreen /></ScreenTimeProvider>);
   expect(screen.queryByRole('button', { name: '検証画面を開く' })).toBeNull();
 });
 
