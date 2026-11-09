@@ -21,3 +21,7 @@ SDK58の根拠:
 公式サイトはこのcloud runtimeで403が継続しているため、公式リポジトリの対応版を参照した。Expo CLIでSDK58互換のbuild-propertiesを導入した。CLIはdynamic configを書換えないため、既存app.jsonへpluginを追加して`expo config`とautolinkingで検証する。
 
 検証手順は[iOS QA](../../docs/ios-qa.md)。CI専用JSフラグとnative起動フラグの両方があるときだけ、synthetic commit/booleanのsmoke結果をstdoutへ出す。理由・token・ユーザー設定を読まず、通常起動のUI・操作・保存は変えない。APIの成功を実機のOS制限成功と表示しない。
+
+## 保存対象のnative表示と再確認（#119）
+
+`screenTimePoCUIVersion=2`ではSavedApplicationsViewがAppleのLabelを描画し、JSへはSelectionRefと高さだけを渡す。`review-and-apply`は保存対象を初期表示したnative Pickerで本人が「制限を開始」を押してから保存/適用する。認可変更を観測した場合は初期選択を空にし、新規選択が必要。プロセス停止中の取消の完全検知や旧tokenの有効性は保証しない。[PoC提案](../../docs/system/poc-saved-targets.md)を参照。Swiftと新native viewを含むビルドが必須で、古いバイナリを検証に使わない。

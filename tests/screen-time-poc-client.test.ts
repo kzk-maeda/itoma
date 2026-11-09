@@ -53,3 +53,13 @@ test('unencoded objects and broken JSON cannot masquerade as a typed snapshot', 
     expect(await client.run('snapshot')).toEqual({ status: 'error', code: 'invalid-response' });
   }
 });
+
+
+test('saved review forwards only the opaque selection reference and filters private identity fields', async () => {
+  const method = jest.fn(async () => JSON.stringify({ ...snapshot, appName: 'private-name', token: 'private-token' }));
+  const client = createScreenTimePoCClient('ios', () => ({ apiVersion: 1, screenTimePoC: method }));
+  const result = await client.run('review-and-apply', ref);
+  expect(method).toHaveBeenCalledWith('review-and-apply', ref);
+  expect(result).toEqual({ status: 'snapshot', snapshot });
+  expect(JSON.stringify(result)).not.toContain('private-');
+});

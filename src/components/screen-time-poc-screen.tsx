@@ -6,7 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GraphiteColors, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { completeNativePoCSmoke } from '@/qa/native-smoke';
-import { type PoCAction, type PoCCode, type PoCResult, screenTimePoC } from '../../modules/itoma-native';
+import { SavedPoCApplications } from '@/components/saved-poc-applications';
+import { type PoCAction, type PoCCode, type PoCResult, screenTimePoC, supportsSavedSelectionUI } from '../../modules/itoma-native';
 
 const errors: Record<PoCCode, string> = {
   unavailable: 'このビルド・端末では実機操作を利用できません。', busy: '別の操作が進行中です。',
@@ -23,6 +24,7 @@ export function ScreenTimePoCScreen() {
   const theme = GraphiteColors[useColorScheme() === 'dark' ? 'dark' : 'light'];
   const [result, setResult] = useState<PoCResult>();
   const [busy, setBusy] = useState(false);
+  const [snapshotRevision, setSnapshotRevision] = useState(0);
   const inFlight = useRef(false), active = useRef(false);
   const execute = useCallback(async (action: PoCAction, ref?: string) => {
     if (inFlight.current) return;
@@ -31,6 +33,7 @@ export function ScreenTimePoCScreen() {
       const next = await screenTimePoC.run(action, ref);
       if (active.current) {
         setResult(next);
+        setSnapshotRevision((value) => value + 1);
         if (action === 'snapshot') completeNativePoCSmoke(next);
       }
     } finally { inFlight.current = false; if (active.current) setBusy(false); }
@@ -43,6 +46,7 @@ export function ScreenTimePoCScreen() {
     return () => { active.current = false; subscription.remove(); };
   }, [execute]));
   const snapshot = result?.status === 'snapshot' ? result.snapshot : undefined;
+  const savedUI = supportsSavedSelectionUI();
   const device = snapshot?.availability === 'device-poc';
   const label = { unknown: '未確認', denied: '拒否・取消', approved: '認可あり' };
   const storageLabel = { 'not-created': '未作成', ready: '保存先を読取可能', unavailable: '読取・保護を確認できません' };
@@ -71,11 +75,16 @@ export function ScreenTimePoCScreen() {
       <Text accessibilityRole="header" style={[styles.heading, { color: theme.text }]}>1. 本人の認可</Text>
       <PoCButton theme={theme} disabled={busy || !device} title="Screen Timeの認可を要求" onPress={() => void execute('authorize')} />
       <Text accessibilityRole="header" style={[styles.heading, { color: theme.text }]}>2. 対象を選び、保存する</Text>
-      <Text style={[styles.body, { color: theme.muted }]}>保存しても制限は開始しません。再起動・再認可・背景からの復帰後は、対象を選び直してから手動制限を試してください。</Text>
+      <Text style={[styles.body, { color: theme.muted }]}>保存しても制限は開始しません。保存した対象は下の行で確認し、再び制限を開始できます。認可を変更した場合や名前が表示されない場合は、対象を選び直してください。</Text>
       {snapshot?.storage === 'not-created' && <PoCButton theme={theme} disabled={busy || !device} title="検証用の保存先を作成" onPress={() => void execute('initialize')} />}
       <PoCButton theme={theme} disabled={busy || !device || snapshot?.authorization !== 'approved' || snapshot?.storage !== 'ready'} title="アプリを選択して保存" onPress={() => void execute('pick')} />
       {snapshot?.selections.map((selection, index) => <View key={selection.ref} style={[styles.selection, { borderColor: theme.line }]}>
-        <Text style={[styles.body, { color: theme.text }]}>{selection.confirmedThisSession ? 'いま選んだ対象' : `保存した選択 ${index + 1}`}：{selection.applicationCount}アプリ{!selection.confirmedThisSession ? '（再選択が必要）' : ''}</Text>
+        <Text style={[styles.body, { color: theme.text }]}>{selection.confirmedThisSession ? 'いま選んだ対象' : `保存した選択 ${index + 1}`}：{selection.applicationCount}アプリ{!selection.confirmedThisSession ? '（開始前に確認します）' : ''}</Text>
+        {device && snapshot.authorization === 'approved' && savedUI && <SavedPoCApplications
+          selectionRef={selection.ref} applicationCount={selection.applicationCount} refreshKey={snapshotRevision} />}
+        {!savedUI && <Text style={[styles.body, { color: theme.muted }]}>保存したアプリの表示と再制限には、新しい実機ビルドが必要です。</Text>}
+        {!selection.confirmedThisSession && <PoCButton theme={theme} title="保存した対象を確認して制限" disabled={busy || !device || !savedUI || snapshot.authorization !== 'approved' || snapshot.storage !== 'ready'}
+          onPress={() => void execute('review-and-apply', selection.ref)} />}
         {selection.confirmedThisSession && <PoCButton theme={theme} title="いま選んだ対象の手動制限を確認" onPress={() => Alert.alert('いま選んだ対象を手動で制限しますか',
           `${selection.applicationCount}アプリの制限を要求します。自動では終了しません。この画面の「検証用の制限を停止」で停止できます。`,
           [{ text: 'キャンセル', style: 'cancel' }, { text: '制限を要求', onPress: () => void execute('apply', selection.ref) }])}

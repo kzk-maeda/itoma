@@ -17,6 +17,16 @@ public final class ItomaNativeModule: Module {
     public func definition() -> ModuleDefinition {
         Name("ItomaNative")
         Constant("apiVersion") { 1 }
+        Constant("screenTimePoCUIVersion") { 2 }
+        View(SavedApplicationsView.self) {
+            Events("onContentSize")
+            Prop("selectionRef") { (view: SavedApplicationsView, ref: String) in
+                view.selectionRef = ref
+            }
+            Prop("refreshKey") { (view: SavedApplicationsView, value: Int) in
+                view.refreshKey = value
+            }
+        }
         AsyncFunction("screenTimePoC") { (action: String, selectionRef: String?, promise: Promise) in
             // Expo's AppContext is Sendable; the Module itself must not cross actor isolation.
             let context = self.appContext

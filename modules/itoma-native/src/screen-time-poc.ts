@@ -1,4 +1,4 @@
-export type PoCAction = 'snapshot' | 'initialize' | 'authorize' | 'pick' | 'apply' | 'stop';
+export type PoCAction = 'snapshot' | 'initialize' | 'authorize' | 'pick' | 'review-and-apply' | 'apply' | 'stop';
 export type PoCCode = 'unavailable' | 'busy' | 'storage-failure' | 'authorization-failed'
   | 'authorization-required' | 'presentation-unavailable' | 'reselection-required'
   | 'empty-selection' | 'applications-only' | 'too-many-applications' | 'invalid-action';
