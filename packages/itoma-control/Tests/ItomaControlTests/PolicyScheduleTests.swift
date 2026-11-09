@@ -30,7 +30,9 @@ import Testing
     var failMinute: Int?
     var onRegister: (() throws -> Void)?
     var stopped: Set<String> = []
+    var registeredMinutes: [Int] = []
     func registerBoundary(name: String, minute: Int) throws {
+        registeredMinutes.append(minute)
         try onRegister?()
         if minute == failMinute { throw CommandServiceError.invalidState }
         activities.insert(name)
@@ -65,12 +67,18 @@ import Testing
     scheduler.onRegister = nil; scheduler.failMinute = nil
     let ready = try coordinator.prepare(policy)
     #expect(ready.isReady && ready.policy == policy)
+    #expect(ready.id == partial.id)
+    #expect(scheduler.registeredMinutes == [2, 1439, 1439])
     #expect(try coordinator.prepare(policy) == ready)
+    let orphan = try PolicyMonitorPlan(policy: PolicySnapshot(revision: PolicyRevision(0), rules: [rule], priorityOrder: [ruleID]))
+    try repository.record(orphan, expected: nil)
+    scheduler.activities.insert(orphan.activityName(minute: 2)) // Crash after OS acceptance, before receipt commit.
     try coordinator.cleanup(keeping: ready)
     #expect(try repository.plans() == [ready])
-    #expect(scheduler.stopped == partial.activityNames)
+    #expect(scheduler.stopped == orphan.activityNames)
     scheduler.activities.remove(ready.activityName(minute: 2))
     #expect(try coordinator.readyPlan(for: policy) == nil)
+    #expect(try coordinator.prepare(policy).id == ready.id)
     try repository.close()
     let reopened = try PolicyMonitorRepository.open(at: url); defer { try? reopened.close() }
     #expect(try reopened.plans() == [ready])
