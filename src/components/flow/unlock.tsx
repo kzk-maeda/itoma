@@ -2,16 +2,35 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useScreenTime } from '@/state/screen-time';
 import { Applications } from './applications';
-import { back, useDraftGuard } from './navigation';
+import { back, home, useDraftGuard } from './navigation';
 import { endTime, ruleText } from './presentation';
 import { Body, Button, Field, FlowScreen, Heading, Notice, Panel, flowStyles } from './ui';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
+
+function useContinueRestrictions() {
+  const state = useScreenTime(), draft = state.unlockDraft;
+  return () => {
+    if (state.busy) return;
+    const discard = async () => {
+      const result = await state.run('cancelUnlock');
+      if (result.status !== 'ok') return;
+      state.setUnlockExitAllowed(true); state.resetUnlock(); home();
+    };
+    if (draft.reason || draft.targetRef || draft.minutes !== '5') {
+      Alert.alert('入力を破棄して制限を続けますか', '理由の保存や一時解除は行いません。入力を続けることもできます。', [
+        { text: '入力を続ける', style: 'cancel' },
+        { text: '破棄して制限を続ける', onPress: () => { void discard(); } },
+      ]);
+    } else void discard();
+  };
+}
 
 export function UnlockScreen() {
   const state = useScreenTime(), draft = state.unlockDraft;
+  const continueRestrictions = useContinueRestrictions();
   const { setUnlockExitAllowed } = state;
   useFocusEffect(useCallback(() => { setUnlockExitAllowed(false); }, [setUnlockExitAllowed]));
-  useDraftGuard((!!draft.reason || !!draft.targetRef) && !state.unlockExitAllowed, state.canExitUnlock, () => state.setUnlockExitAllowed(true), () => { void state.run('cancelUnlock'); state.resetUnlock(); });
+  useDraftGuard((!!draft.reason || !!draft.targetRef || draft.minutes !== '5') && !state.unlockExitAllowed, state.canExitUnlock, () => state.setUnlockExitAllowed(true), () => { void state.run('cancelUnlock'); state.resetUnlock(); });
   const selected = state.snapshot?.targets.find((t) => t.ref === draft.targetRef);
   const available = state.snapshot?.authorization === 'approved' && state.snapshot.activation === 'enabled' && state.snapshot.schedulesReady;
   const valid = available && !!selected?.unlockable && !!draft.reason.trim() && /^(?:[1-9]|[12][0-9]|30)$/.test(draft.minutes);
@@ -39,13 +58,15 @@ export function UnlockScreen() {
       onChangeText={(minutes) => { state.setUnlockExitAllowed(false); state.setUnlockDraft({ ...draft, minutes }); state.setUnlockReview(undefined); }} />
     <Body muted>理由は確認後、端末内に保存します。時間帯の終了やルールの切替で、解除時間が短くなる場合があります。</Body>
     {!valid && <Body muted>対象のアプリ・空白以外の理由・1〜30分の時間を指定してください。</Body>}
-    <Button label="解除内容を確認する" testID="unlock-review" disabled={!valid || !!state.busy} onPress={() => { void preview(); }} />
+    <Button label="制限を続ける" disabled={!!state.busy} onPress={continueRestrictions} />
+    <Button label="解除内容を確認する" testID="unlock-review" secondary disabled={!valid || !!state.busy} onPress={() => { void preview(); }} />
     <Button label="進行中の解除を確認する" secondary onPress={() => router.push('/grant')} />
   </FlowScreen>;
 }
 
 export function UnlockConfirmationScreen() {
   const state = useScreenTime(), draft = state.unlockDraft, review = state.unlockReview;
+  const continueRestrictions = useContinueRestrictions();
   const [failed, setFailed] = useState(false);
   const [openedAt] = useState(Date.now);
   const confirmed = review?.snapshot ?? state.snapshot;
@@ -72,7 +93,8 @@ export function UnlockConfirmationScreen() {
       {review?.shortened && <Notice title="時間が短くなります">時間帯の終了または優先ルールの切替に合わせて、解除の上限が早まっています。</Notice>}
     </Panel>
     <Body muted>再制限の予定を登録できた場合だけ解除を進めます。反映の結果は次の画面で確認できます。</Body>
-    {!failed && <Button label="理由を保存して一時解除する" testID="unlock-submit" disabled={!review?.ref || !rule || !!state.busy} onPress={() => { void submit(); }} />}
+    <Button label="制限を続ける" disabled={!!state.busy} onPress={continueRestrictions} />
+    {!failed && <Button label="理由を保存して一時解除する" testID="unlock-submit" secondary disabled={!review?.ref || !rule || !!state.busy} onPress={() => { void submit(); }} />}
     {failed && <Notice title="解除の完了を確認できません">入力は残っています。条件を確認し直せます。</Notice>}
     {failed && (state.error === 'busy' || state.error === 'storage-failed') && <Button label="同じ上限のまま受理を再試行する" disabled={!!state.busy} onPress={() => { void submit(); }} />}
     <Button label="入力に戻る" secondary disabled={!!state.busy} onPress={back} />

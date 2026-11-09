@@ -173,6 +173,25 @@ test('failed accepted grants expose retry of the same command and original absol
   expect(b.client.run.mock.calls.filter(([action]) => action === 'unlock')).toHaveLength(1);
 });
 
+test('continuing restrictions from input and confirmation preserves text until explicit discard and never accepts a grant', async () => {
+  const b = backend(), alert = jest.spyOn(Alert, 'alert');
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await press('一時解除する'); await press('テスト用アプリA');
+  await fireEvent.changeText(screen.getByLabelText('いま使う理由'), 'synthetic continued restriction');
+  await press('制限を続ける');
+  await act(async () => { alert.mock.calls.at(-1)?.[2]?.[0].onPress?.(); });
+  expect(screen.getByLabelText('いま使う理由')).toHaveDisplayValue('synthetic continued restriction');
+  expect(b.client.run.mock.calls.some(([action]) => action === 'cancelUnlock')).toBe(false);
+  await press('解除内容を確認する'); await press('制限を続ける');
+  expect(screen.getByText('synthetic continued restriction')).toBeTruthy();
+  await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
+  expect(screen.getByRole('header', { name: '自分で決めた時間' })).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([action]) => action === 'unlock')).toBe(false);
+  expect(b.current().targets.every((target) => target.restricted)).toBe(true);
+  await press('一時解除する');
+  expect(screen.getByLabelText('いま使う理由')).toHaveDisplayValue('');
+});
+
 test('stale observations remain unverified and reason deletion requires the separate explicit confirmation', async () => {
   const b = backend(), alert = jest.spyOn(Alert, 'alert');
   b.replace({ validUntil: now / 1000 - 1 });

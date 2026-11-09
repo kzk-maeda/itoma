@@ -4,11 +4,11 @@
 
 ## 画面と確認済みの範囲
 
-DESIGN原則1〜5、U01〜U07に従い、状態と問題、時間帯ごとの円、対象、次の操作の順に表示する。基本配色は「墨と白」。目的は未登録なので引用面を作らない。解除の対象・ルール・理由全文・期限上限を確定前に確認できる。保存と制限の反映を分け、不明を成功と表示しない。起動時のテンプレートExpoアニメーションは外し、Light/Darkの背景を揃えた。最終ブランドアイコンの制作は別作業。
+DESIGN原則1〜5、U01〜U07に従い、状態と問題、時間帯ごとの円、対象、次の操作の順に表示する。基本配色は「墨と白」。目的は未登録なので引用面を作らない。解除の対象・ルール・理由全文・期限上限を確定前に確認できる。理由入力/確認の両画面に「制限を続ける」を主操作で置き、入力の破棄を承認するまでは保持する。保存と制限の反映を分け、不明を成功と表示しない。起動時のテンプレートExpoアニメーションは外し、Light/Darkの背景を揃えた。最終ブランドアイコンの制作は別作業。
 
 | 確認層 | 記録と限界 |
 | --- | --- |
-| React component | `tests/main-flow.test.tsx`の9ケース。導入から保存、対象初期未選択と空白理由拒否、理由全文・適用ルールの確認と入力への戻り、破棄で新grantを作らないこと、failedの同command/固定期限の再試行、古い観測と理由削除確認、dirtyな設定入力の保持3操作、再認可で自動再開/重複ルールを作らないこと。fixtureのPagesは実際のnative Stack/gestureではない |
+| React component | `tests/main-flow.test.tsx`の10ケース。導入から保存、対象初期未選択と空白理由拒否、理由全文・適用ルールの確認と入力への戻り、破棄で新grantを作らないこと、入力/確認から制限継続を選んだときの保持/明示破棄、failedの同command/固定期限の再試行、古い観測と理由削除確認、dirtyな設定入力の保持3操作、再認可で自動再開/重複ルールを作らないこと。fixtureのPagesは実際のnative Stack/gestureではない |
 | 表示と既存テスト | TypeScript/Lint/Jest、demo検査、CNG/QAツール、expo-doctor。OS制限を実行するテストではない |
 | Web画面記録 | 下記9条件。合成native入力で表示を検査。Nativeアプリ名は合成表示へ置換。実機QAと別 |
 | 署名なしNative QA | 対象headのActions結果をPRへ記録。共通Swiftテスト、CNG、host/Extension compile/link/embed、Simulator install/launch/bridge、ホームLight/Dark画像。Simulatorのproduct bridgeは利用不可を返す |
