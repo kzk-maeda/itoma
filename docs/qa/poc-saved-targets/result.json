@@ -1,0 +1,71 @@
+{
+  "testedSourceCommit": "3dfa7fea55d04218438d63949c7b84e3243d4297",
+  "buildID": "2dc03893-6516-414f-9fa6-6e844c07d67a",
+  "configuration": "Release",
+  "sdk": "iphoneos",
+  "signing": "development-automatic",
+  "status": "pass",
+  "signatureVerificationExitCode": 0,
+  "profileChecks": {
+    "teamMatches": true,
+    "applicationIdentifierMatches": true,
+    "familyControls": true,
+    "developmentProfile": true,
+    "deviceIncluded": true
+  },
+  "signedEntitlementsChecks": {
+    "familyControls": true,
+    "teamMatches": true,
+    "bundleMatches": true,
+    "development": true
+  },
+  "appConfigSHA256": "22d1dd1aa3823df5e30c53215aa9d7df8f9a44608df5547ac1be485964c9886f",
+  "jsBundleSHA256": "67246860d8a96aaf851a369b55a489d2c7b04fc826acdff944dedeafc279ba40",
+  "targetDevice": {
+    "name": "SRE05",
+    "model": "iPad (9th generation)",
+    "os": "27.2"
+  },
+  "installedOnDevice": true,
+  "launchStatus": "OS launch success; process running verified by CLI",
+  "userReportedObservations": {
+    "recordedAt": "2026-11-09T01:23:52.699809+00:00",
+    "evidenceType": "User report in chat; not direct screen observation by agent",
+    "basis": "User replied 実機確認OK to the saved names/icons -> review saved targets -> start restriction -> verify target -> stop walkthrough",
+    "savedAppNamesAndIcons": "PASS reported",
+    "reviewSavedSelectionAndReapply": "PASS reported",
+    "targetRestrictionAndStop": "PASS reported",
+    "repetitions": "One walkthrough reported; repeated trials not established",
+    "notRunOrUnconfirmed": [
+      "Native Picker cancellation after new review",
+      "Observed authorization revoke/regrant and fresh selection requirement",
+      "Unobserved revoke/regrant while process was terminated",
+      "Max text/VoiceOver/long names",
+      "Full hardware reboot/offline/file protection/DB fault matrix"
+    ]
+  },
+  "checksExitCodes": {
+    "typecheck": 0,
+    "lint": 0,
+    "jest": 0,
+    "demo": 0,
+    "ios-tools": 0,
+    "expo-doctor": 0
+  },
+  "simulator": {
+    "device": "iPad (9th generation)",
+    "os": "iOS 27.2",
+    "sourceCommit": "3dfa7fea55d04218438d63949c7b84e3243d4297",
+    "buildID": "52080afe-4822-4708-9ac3-0216333a04bb",
+    "status": "pass",
+    "installed": true,
+    "launched": true,
+    "signing": "disabled",
+    "configuration": "Release",
+    "jsBundleSHA256": "afc47bf70bef94bff2a3abac8875af84d8de251b156f0e9f2f6bcd968d280da3",
+    "pocFlag": true,
+    "launchMethod": "devicectl payload-url",
+    "scope": "Read-only empty PoC screen; no stored app labels or actual Screen Time behavior",
+    "screenshotSHA256": "430a870cc7a2142db0f69ee32da857604c7be2251a5ee285859165fd7382a57d"
+  }
+}

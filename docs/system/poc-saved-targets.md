@@ -1,6 +1,6 @@
 # 保存済み検証対象の表示と再制限（限定PoC）
 
-状態: **レビュー前・実機確認待ちの限定PoC提案（作業ブランチで実装）**。本人の改善依頼に基づく[#119](https://github.com/kzk-maeda/itoma/issues/119)。製品の再開/認可モデルやPoC全体の採否を確定しない。
+状態: **レビュー前の限定PoC提案（SRE05で基本動作を本人確認、追加条件は未検証）**。本人の改善依頼に基づく[#119](https://github.com/kzk-maeda/itoma/issues/119)。製品の再開/認可モデルやPoC全体の採否を確定しない。
 
 ## 問題と本人のタスク
 
@@ -21,3 +21,7 @@
 SDK58のExpoView/Prop/EventDispatcherとrequireNativeViewManager、およびAppleのLabel(ApplicationToken)、FamilyActivityPicker、FamilyActivitySelectionを参照。UI21/22/23/24/25/26、DESIGN原則1/3/4/5の限定範囲に対応する。本文・余白は共通トークン、Apple提供のアプリラベルはnativeのシステム表示を使う。名前の取得APIやダミー名で本物の対象を置き換えない。
 
 native viewのサイズはSwiftUIで測定して数値だけ返し、Dynamic Typeで内容を固定高さに切り詰めない。実際のVoiceOver・文字拡大・Light/Dark・古いtokenの表示/初期選択の挙動・SRE05での再制限/取消は変更を含む新ビルドで別途確認する。旧buildの結果はstale native buildであり、この提案の実機合格に使わない。
+
+## 変更を含む実機での部分確認
+
+SRE05/iPadOS27.2で、保存名・アイコンの表示、対象確認後の再制限、停止を本人が確認した。[対象SHA・build ID・範囲と未検証](../qa/poc-saved-targets/README.md)を参照。取消/認可変更/無効token/全反復の保証や、提案の採用と同義にはしない。
