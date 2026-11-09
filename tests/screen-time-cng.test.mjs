@@ -46,6 +46,9 @@ test('fresh CNG and repeated regeneration embed one isolated Extension and prese
     const second = parse();
     assert.equal(targets(second).length, targets(first).length);
     assert.ok(targets(second).some(([id]) => id === monitor[0]));
+    const host = second.getTarget('com.apple.product-type.application');
+    const dependencies = second.hash.project.objects.PBXTargetDependency;
+    assert.equal(host.target.dependencies.filter((entry) => dependencies[entry.value]?.target === monitor[0]).length, 1);
     for (const { value } of configs) assert.equal(second.pbxXCBuildConfigurationSection()[value].buildSettings.DEVELOPMENT_TEAM, 'PRIVATE_TEAM');
     const sources = Object.values(second.pbxFileReferenceSection()).filter((v) => v.path?.includes('ItomaActivityMonitor.swift'));
     assert.equal(sources.length, 1);

@@ -28,8 +28,10 @@ The existing `itoma.poc.manual` store and private PoC database are separate;
 tokens are not silently migrated and that store is never automatically cleared.
 
 Unsigned Simulator QA enables this target with `group.com.example.itoma`, checks
-the embedded `.appex`/extension point and dependency list, and records the
-generated configuration digest. This placeholder grants no real App Group
+the embedded `.appex`/extension point and dynamic dependency list, and records the
+generated configuration digest. Static dependency isolation is checked through
+the Podfile declaration and its Core/Storage/Control dependency closure, rather
+than inferred from `otool -L` alone. This placeholder grants no real App Group
 access. API receipts, callbacks after termination/reboot, shared-file protection,
 and real app shielding remain physical-device gates (#48–#52).
 

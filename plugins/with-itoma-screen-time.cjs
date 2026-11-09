@@ -48,8 +48,16 @@ function configureProject(project, bundleID) {
     .find(([key, value]) => !key.endsWith('_comment') && unquote(value.name) === TARGET);
   const host = project.getTarget('com.apple.product-type.application');
   if (!host) throw new Error('ITOMA requires a host application target.');
+  // Expo's single-target template omits these sections. node-xcode otherwise silently
+  // skips addTargetDependency, leaving CocoaPods unable to identify the Extension's host.
+  project.hash.project.objects.PBXTargetDependency ??= {};
+  project.hash.project.objects.PBXContainerItemProxy ??= {};
   const targetID = existing?.[0] ?? project.addTarget(TARGET, 'app_extension', TARGET, `${bundleID}.activity-monitor`).uuid;
   const target = project.pbxNativeTargetSection()[targetID];
+  const dependencies = project.hash.project.objects.PBXTargetDependency;
+  if (!host.target.dependencies.some((entry) => dependencies[entry.value]?.target === targetID)) {
+    project.addTargetDependency(host.uuid, [targetID]);
+  }
   if (!existing) {
     for (const [type, name] of [['PBXSourcesBuildPhase', 'Sources'], ['PBXFrameworksBuildPhase', 'Frameworks'], ['PBXResourcesBuildPhase', 'Resources']]) {
       project.addBuildPhase([], type, name, targetID);
