@@ -14,7 +14,7 @@ function useContinueRestrictions() {
     const discard = async () => {
       const result = await state.run('cancelUnlock');
       if (result.status !== 'ok') return;
-      state.setUnlockExitAllowed(true); state.resetUnlock(); home();
+      state.resetUnlock(); state.setUnlockExitAllowed(true); home();
     };
     if (draft.reason || draft.targetRef || draft.minutes !== '5') {
       Alert.alert('入力を破棄して制限を続けますか', '理由の保存や一時解除は行いません。入力を続けることもできます。', [
