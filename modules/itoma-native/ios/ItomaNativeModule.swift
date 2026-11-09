@@ -20,7 +20,7 @@ public final class ItomaNativeModule: Module {
         Constant("screenTimePoCUIVersion") { 2 }
         Constant("screenTimeVersion") { 1 }
         View(SavedApplicationsView.self) {
-            Events("onContentSize")
+            Events("onContentSize", "onSelect")
             Prop("selectionRef") { (view: SavedApplicationsView, ref: String) in
                 view.selectionRef = ref
             }
@@ -29,6 +29,8 @@ public final class ItomaNativeModule: Module {
             }
             Prop("source") { (view: SavedApplicationsView, source: String) in view.source = source }
             Prop("targetRef") { (view: SavedApplicationsView, target: String) in view.targetRef = target }
+            Prop("selectable") { (view: SavedApplicationsView, value: Bool) in view.selectable = value }
+            Prop("selected") { (view: SavedApplicationsView, value: Bool) in view.selected = value }
         }
         AsyncFunction("screenTimePoC") { (action: String, selectionRef: String?, promise: Promise) in
             // Expo's AppContext is Sendable; the Module itself must not cross actor isolation.

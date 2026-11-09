@@ -8,6 +8,9 @@ import UIKit
 /// Only Apple-rendered activity labels are visible; tokens/names never become RN props or events.
 final class SavedApplicationsView: ExpoView {
     let onContentSize = EventDispatcher()
+    let onSelect = EventDispatcher()
+    var selectable = false { didSet { if oldValue != selectable { reload() } } }
+    var selected = false { didSet { if oldValue != selected { reload() } } }
     var selectionRef = "" { didSet { if oldValue != selectionRef { reload() } } }
     var refreshKey = 0 { didSet { if oldValue != refreshKey { reload() } } }
     var source = "poc" { didSet { if oldValue != source { reload() } } }
@@ -90,7 +93,9 @@ final class SavedApplicationsView: ExpoView {
     private func show(applications: [ApplicationToken]?) {
         let content: AnyView
         if #available(iOS 16.0, *) {
-            content = AnyView(SavedApplicationsContent(applications: applications) { [weak self] height in
+            content = AnyView(SavedApplicationsContent(applications: applications,
+                selectable: source == "product" && selectable, selected: selected,
+                onSelect: { [weak self] in self?.onSelect(["selected": true]) }) { [weak self] height in
                 Task { @MainActor [weak self] in
                     guard let self, self.window != nil, height.isFinite, height > 0, abs(height - self.lastHeight) > 0.5 else { return }
                     self.lastHeight = height
@@ -122,16 +127,28 @@ private struct SavedApplicationsHeight: PreferenceKey {
 @available(iOS 16.0, *)
 private struct SavedApplicationsContent: View {
     let applications: [ApplicationToken]?
+    let selectable: Bool
+    let selected: Bool
+    let onSelect: () -> Void
     let onHeight: (CGFloat) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let applications, !applications.isEmpty {
                 ForEach(Array(applications.enumerated()), id: \.offset) { _, token in
-                    Label(token)
-                        .labelStyle(.titleAndIcon)
-                        .font(.body)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if selectable {
+                        Button(action: onSelect) {
+                            HStack {
+                                Label(token).labelStyle(.titleAndIcon)
+                                Spacer()
+                                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                            }.font(.body).frame(minHeight: 44)
+                        }.buttonStyle(.plain).accessibilityValue(selected ? "選択中" : "未選択")
+                            .accessibilityHint("一時解除の対象に選びます")
+                    } else {
+                        Label(token).labelStyle(.titleAndIcon).font(.body)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
             } else {
                 Text("保存したアプリを表示できません。認可・保存状態を確認するか、対象を選び直してください。")

@@ -40,10 +40,14 @@ import ItomaCore
                 complete(ProductResponse(status: "error", code: "authorization-required").json()); return
             }
             busy = true
+            let pickerEpoch = authorizationEpoch
             let sheet = UIHostingController(rootView: ProductPicker { [weak self] data in
                 guard let self else { return }
                 self.picker?.dismiss(animated: true); self.picker = nil
                 guard let data else { self.busy = false; complete(ProductResponse(status: "cancelled").json()); return }
+                guard self.authorizationEpoch == pickerEpoch, AuthorizationCenter.shared.authorizationStatus == .approved else {
+                    self.busy = false; self.finish(ProductResponse(status: "error", code: "selection-required"), complete); return
+                }
                 Task { @MainActor in
                     let response: ProductResponse
                     do {
