@@ -1,0 +1,9 @@
+// Temp-only native Label substitute; names are synthetic, not shipped with ITOMA.
+import { Pressable, Text, View } from 'react-native';
+import { useFlowTheme } from './ui';
+export function Applications({ targetRef, count = 1, selected = false, onSelect }: { selectionRef: string; targetRef?: string; count?: number; refreshKey: number; selected?: boolean; onSelect?: () => void }) {
+  const theme = useFlowTheme();
+  const label = targetRef?.startsWith('bbbb') ? 'テスト用アプリA — 長い名前でも折り返して読めることを確認するための架空の表示' : targetRef?.startsWith('cccc') ? 'テスト用アプリB' : `テスト用アプリA・B（${count}件、架空の表示）`;
+  const text = <Text style={{ color: theme.text, fontSize: 17, lineHeight: 27 }}>{selected ? '✓ ' : ''}{label}</Text>;
+  return onSelect ? <Pressable accessibilityRole="button" onPress={onSelect} style={{ minHeight: 48 }}>{text}</Pressable> : <View>{text}</View>;
+}

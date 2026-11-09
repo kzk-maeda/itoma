@@ -21,7 +21,8 @@ existing private signing choices; the test also covers this mode. Any clean
 regeneration must use the owner's original config/environment for private values.
 
 The foundation PR #126 only generates/builds the target. #127 connects the shared
-`ItomaScreenTime` pod and typed product bridge; normal application UI follows.
+`ItomaScreenTime` pod and typed product bridge; #129 connects the normal application
+UI. See [main flow QA/handoff](../qa/main-application-flow.md) for usage and proof boundaries.
 The existing `itoma.poc.manual` store and private PoC database are separate;
 tokens are not silently migrated and that store is never automatically cleared.
 
@@ -92,7 +93,7 @@ Explicit stop clears `itoma.product` under durable paused intent. Early return
 retires just the chosen grant before reconciliation; duplicates cannot end a
 later grant or another app's grant. Authorization denial invalidates grants and
 requires explicit resume/new selection after approval. Native authorization
-epochs invalidate confirmation资格 even when approval returns before the actor
+epochs invalidate confirmation eligibility even when approval returns before the actor
 handles the captured denial. Revocation/reapproval
 entirely between observations remains an unverified platform limitation.
 

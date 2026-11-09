@@ -1,0 +1,68 @@
+import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+const require = createRequire(import.meta.url);
+const { chromium } = require('playwright');
+const output = '/workspace/itoma/docs/qa/main-flow';
+mkdirSync(output, { recursive: true });
+const fixedClock = Date.parse('2026-11-09T21:30:00Z');
+const cases = [
+  ['home-light', 'home', 'light', 390, 844, false], ['home-dark', 'home', 'dark', 390, 844, false],
+  ['rule-narrow', 'rule', 'light', 320, 800, false], ['review-large-dark', 'review', 'dark', 320, 800, true],
+  ['grant-light', 'grant', 'light', 390, 844, false], ['failed-dark', 'failed', 'dark', 390, 844, false],
+  ['settings-light', 'settings', 'light', 390, 844, false], ['empty-light', 'empty', 'light', 390, 844, false],
+  ['unlock-short-viewport', 'unlock', 'light', 390, 440, false],
+];
+const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
+const proof = { sourceCommit: 'c16f77867c4b512a90e07cf8bbe5765859f5c577', kind: 'synthetic-native-data-web-fixtures',
+  physicalDevice: false, osRestrictionsVerified: false, fixedClock: new Date(fixedClock).toISOString(),
+  browser: await browser.version(), platform: 'Linux Chromium; not iOS', mockedFiles: ['temp-only src/app/proof.tsx', 'temp-only src/components/flow/applications.tsx'],
+  syntheticReasonOnly: true, nativeAppNames: 'synthetic substitutes only', cases: [] };
+try {
+  for (const [name, mode, colorScheme, width, height, large] of cases) {
+    const context = await browser.newContext({ viewport: { width, height }, colorScheme, reducedMotion: 'reduce' });
+    await context.addInitScript((at) => { Date.now = () => at; }, fixedClock);
+    const page = await context.newPage(); const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message.slice(0, 180)));
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text().slice(0, 180)); });
+    await page.goto(`http://127.0.0.1:8130/proof?mode=${mode}`, { waitUntil: 'networkidle' });
+    await page.getByTestId('proof-banner').waitFor();
+    await page.getByTestId('flow-scroll').waitFor();
+    await page.waitForTimeout(1700);
+    if (large) await page.evaluate(() => {
+      const changes = Array.from(document.querySelectorAll('[dir="auto"], input, textarea')).map((el) => {
+        const s = getComputedStyle(el); return [el, parseFloat(s.fontSize), parseFloat(s.lineHeight)];
+      });
+      for (const [el, size, line] of changes) { el.style.fontSize = `${size * 1.5}px`; if (Number.isFinite(line)) el.style.lineHeight = `${line * 1.5}px`; }
+    });
+    let shortViewportCTAVisible;
+    if (mode === 'unlock') {
+      await page.getByRole('textbox', { name: 'いま使う理由' }).focus();
+      const button = page.getByRole('button', { name: '解除内容を確認する' });
+      await button.scrollIntoViewIfNeeded();
+      const box = await button.boundingBox(); shortViewportCTAVisible = !!box && box.y >= 0 && box.y + box.height <= height;
+      await page.screenshot({ path: path.join(output, `${name}.png`) });
+    } else {
+      // Export the complete scroll content by removing viewport clipping on its ancestors.
+      // Font, width, colors, content and component styles are unchanged (except large-text case).
+      await page.getByTestId('flow-scroll').evaluate((element) => {
+        for (let el = element; el; el = el.parentElement) Object.assign(el.style, {
+          height: 'auto', minHeight: '0', maxHeight: 'none', flexGrow: '0', flexBasis: 'auto', position: 'relative', overflow: 'visible',
+        });
+      });
+      await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true });
+    }
+    const dimensions = await page.evaluate(() => ({ viewport: innerWidth, scroll: document.documentElement.scrollWidth, contentHeight: document.documentElement.scrollHeight }));
+    const bytes = readFileSync(path.join(output, `${name}.png`));
+    proof.cases.push({ name, mode, colorScheme, width, height, textScale: large ? 1.5 : 1,
+      imageKind: mode === 'unlock' ? 'focused-input-small-web-viewport; not iOS keyboard' : 'full-scroll-content-export',
+      horizontalOverflow: dimensions.scroll > dimensions.viewport + 1, dimensions, shortViewportCTAVisible, pageErrors: errors,
+      sha256: createHash('sha256').update(bytes).digest('hex') });
+    console.log(`${name}: ${dimensions.scroll}/${dimensions.viewport}px, errors=${errors.length}`);
+    await context.close();
+  }
+  proof.webBundles = readdirSync('/tmp/itoma-ui130-dist/_expo/static/js/web').filter((n) => n.endsWith('.js')).sort().map((name) => ({ name, sha256: createHash('sha256').update(readFileSync(path.join('/tmp/itoma-ui130-dist/_expo/static/js/web', name))).digest('hex') }));
+  writeFileSync(path.join(output, 'manifest.json'), JSON.stringify(proof, null, 2) + '\n');
+} finally { await browser.close(); }
+if (proof.cases.some((item) => item.horizontalOverflow || item.pageErrors.length || item.shortViewportCTAVisible === false)) process.exitCode = 1;
