@@ -38,12 +38,13 @@ extension HistoryRepository: ControlHistorySink {
             let repository = try HistoryRepository(url: url, capacity: capacity, busyTimeoutMilliseconds: busyTimeoutMilliseconds)
             try repository.database.transaction(writer: true) {
                 guard case let .integer(version) = try repository.database.rows("PRAGMA user_version").first?.first else { throw HistoryError.corrupt }
-                guard [Int64(1), Self.schemaVersion].contains(version) else { throw HistoryError.unsupportedSchema(version) }
+                guard [Int64(1), 2, Self.schemaVersion].contains(version) else { throw HistoryError.unsupportedSchema(version) }
                 try repository.validateSchema(expected: version)
                 guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
                       try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw HistoryError.corrupt }
                 _ = try repository.loadReasons()
                 if version == 1 { try repository.createPrivateHistoryTables() }
+                if version < 3 { try repository.createReadIndex(); try repository.backfillReadIndex() }
                 try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
                 try repository.validatePrivateHistory()
             }
@@ -67,6 +68,7 @@ extension HistoryRepository: ControlHistorySink {
             try database.execute("INSERT INTO dummy_selections VALUES (?,?,?,?)", [
                 .text(commandID.rawValue.uuidString), .blob(try JSONEncoder().encode(at)), .blob(payload), .integer(Int64(payload.count))
             ])
+            try advanceReadRevision()
             return DummySelectionRecord(commandID: commandID, preparedAt: at, choice: choice)
         }
     }
@@ -97,6 +99,7 @@ extension HistoryRepository: ControlHistorySink {
 
     public func commitHistoryBatch(_ batch: HistoryOutboxBatch) throws -> HistoryImportResult {
         try transaction(writer: true) {
+            let before = try database.rows("SELECT observed_through,history_incomplete FROM history_sources WHERE source_id=?", [.text(batch.boundary.sourceID.rawValue.uuidString)])
             try observe(batch.boundary)
             let cutoff = try sourceState(batch.boundary.sourceID).deleted
             var imported = 0, existing = 0, deleted = 0
@@ -121,8 +124,11 @@ extension HistoryRepository: ControlHistorySink {
                     .text(entry.event.id.rawValue.uuidString), .text(batch.boundary.sourceID.rawValue.uuidString),
                     .integer(entry.sequence.rawValue), payload.map(SQLValue.blob) ?? .null, .integer(Int64(payload?.count ?? 0))
                 ])
+                if !removed { try indexRecord(kind: "event", key: entry.event.id.rawValue.uuidString, at: entry.event.occurredAt) }
                 if removed { deleted += 1 } else { imported += 1 }
             }
+            let after = try database.rows("SELECT observed_through,history_incomplete FROM history_sources WHERE source_id=?", [.text(batch.boundary.sourceID.rawValue.uuidString)])
+            if imported > 0 || before != after { try advanceReadRevision() }
             return HistoryImportResult(imported: imported, alreadyPresent: existing, skippedByDeletion: deleted)
         }
     }
@@ -143,6 +149,8 @@ extension HistoryRepository: ControlHistorySink {
             try database.execute("INSERT INTO history_events(event_id,source_id,sequence,record,payload_bytes) VALUES (?,NULL,NULL,?,?)", [
                 .text(eventID.rawValue.uuidString), .blob(payload), .integer(Int64(payload.count))
             ])
+            try indexRecord(kind: "event", key: eventID.rawValue.uuidString, at: at)
+            try advanceReadRevision()
         }
     }
 
@@ -176,6 +184,8 @@ extension HistoryRepository: ControlHistorySink {
             try database.execute("UPDATE history_events SET record=NULL,payload_bytes=0 WHERE source_id IS NULL OR sequence<=(SELECT deleted_through FROM history_sources WHERE history_sources.source_id=history_events.source_id)")
             try database.execute("UPDATE reasons SET body=NULL,payload_bytes=0")
             try database.execute("UPDATE dummy_selections SET payload=NULL,payload_bytes=0")
+            try database.execute("DELETE FROM history_read_index WHERE kind='event' AND record_key IN (SELECT event_id FROM history_events WHERE record IS NULL)")
+            try advanceReadRevision()
         }
     }
 
@@ -268,5 +278,11 @@ extension HistoryRepository: ControlHistorySink {
         for row in try database.rows("SELECT command_id,prepared_at,payload,payload_bytes FROM dummy_selections") { _ = try decodeDummy(row) }
         for row in try database.rows("SELECT cursor,event_id,source_id,sequence,record,payload_bytes FROM history_events") { _ = try validateEventRow(row) }
         _ = try logicalBytes()
+        _ = try readRevision()
+        for (kind, table, filter) in [("event", "history_events", "record IS NOT NULL"), ("reason", "reasons", "1=1")] {
+            let indexed = try database.rows("SELECT count(*) FROM history_read_index WHERE kind=?", [.text(kind)])
+            let actual = try database.rows("SELECT count(*) FROM \(table) WHERE \(filter)")
+            guard indexed == actual else { throw HistoryError.corrupt }
+        }
     }
 }

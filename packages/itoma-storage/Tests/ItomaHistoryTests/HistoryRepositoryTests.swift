@@ -151,7 +151,7 @@ func invalidBudgetsAreRejected(values: (Int64, Int64)) throws {
     #expect(throws: HistoryError.unsupportedSchema(77)) { try r.reasons() }
     #expect(throws: HistoryError.unsupportedSchema(77)) { try r.deleteReasons() }
     #expect(throws: HistoryError.unsupportedSchema(77)) { try HistoryRepository.open(at: other.url, capacity: capacity()) }
-    try sql(other.url) { execute($0, "PRAGMA user_version=2; PRAGMA application_id=123") }
+    try sql(other.url) { execute($0, "PRAGMA user_version=\(HistoryRepository.schemaVersion); PRAGMA application_id=123") }
     #expect(throws: HistoryError.wrongDatabase) { try r.prepareReason(reasonRef: id(1), commandID: id(2), body: "fixture", at: instant()) }
     try r.close()
 }
