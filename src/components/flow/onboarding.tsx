@@ -19,7 +19,7 @@ export function OnboardingScreen() {
     <Body>使いすぎを責めるためではなく、大切にしたい時間へ戻るために。離れたいアプリと曜日・時間帯を、あなたが選びます。</Body>
     <Panel><Heading>できること</Heading><Body>決めた時間に、選んだアプリを制限します。必要なときは理由を書いて、1〜30分の一時解除を確認できます。</Body></Panel>
     <Panel><Heading>許可とプライバシー</Heading><Body>iOSのスクリーンタイムの許可を使います。アプリの選択と理由は端末内に保存し、理由は設定から削除できます。制限はいつでも停止できます。</Body></Panel>
-    <Body muted>許可を取り消したあとに、自動で再開することはありません。</Body>
+    <Body muted>許可の取消を確認した場合は、対象を選び直してからご自身で再開できます。</Body>
     <Button label={state.snapshot?.authorization === 'approved' ? '許可を確認してルールへ' : 'スクリーンタイムを許可する'} disabled={!!state.busy || state.snapshot?.availability !== 'device'} onPress={() => { void authorize(); }} />
     <Button label="今は設定せずに戻る" secondary onPress={back} />
   </FlowScreen>;

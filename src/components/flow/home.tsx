@@ -43,7 +43,7 @@ export function ProductHome() {
       通常の一時解除を使う前に、以前の手動検証の制限を停止してください。
     </Notice>}
     {state.legacyActive && <Button label="手動検証の制限を確認して停止" secondary disabled={!!state.busy} onPress={stopLegacy} />}
-    {device && s.authorization !== 'approved' && <Notice title="スクリーンタイムの許可が必要です">設定を残したまま、許可を確認できます。許可だけで制限を再開することはありません。</Notice>}
+    {device && s.authorization !== 'approved' && <Notice title="スクリーンタイムの許可が必要です">設定を残したまま、許可を確認できます。再開前に対象アプリと保存したルールを確認できます。</Notice>}
     {device && s.authorization !== 'approved' && <Button label="許可を確認する" onPress={() => router.push('/onboarding')} />}
     {s?.activation === 'paused' && <Notice title="ルールの停止を保存しています">ルールは保存されています。再開にはご自身の操作が必要です。停止の反映は、現在の状態の確認から取得できます。</Notice>}
     {s?.activation === 'awaitingReauthorizationConfirmation' && <Notice title="再開前に対象を確認してください">ルールの対象アプリを選び直してから、設定画面で明示的に再開できます。</Notice>}
