@@ -2,6 +2,24 @@ import ItomaCore
 import ItomaStorage
 
 extension CommandService {
+    /// DeviceActivity callbacks are synchronous. Complete durable fire consumption and the own-
+    /// store reconciliation before returning to the OS. No Task/await or cancellation is hidden
+    /// here. Obsolete monitor cleanup remains durable for the app's later asynchronous pass.
+    public func reconcileSynchronously(registrationID: RegistrationID? = nil,
+                                      generation: RegistrationGeneration? = nil) -> ReconciliationResult {
+        do {
+            if let registrationID, let generation {
+                try recordDeadlineCallback(registrationID: registrationID, generation: generation)
+            } else if registrationID != nil || generation != nil {
+                return ReconciliationResult(disposition: .uncertain, failure: .interrupted)
+            }
+            switch try beginReconciliation(recoverInterruptedCommands: false) {
+            case let .blocked(result): return result
+            case let .ready(frame): return try finalizeReconciliation(frame).result
+            }
+        } catch { return ReconciliationResult(disposition: .uncertain, failure: .storageFailure) }
+    }
+
     struct ReconciliationFrame {
         let marker: EvaluationID
         let revision: PolicyRevision
