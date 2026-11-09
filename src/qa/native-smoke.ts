@@ -31,13 +31,14 @@ export async function runNativeSmoke() {
   const invalid = itomaNative.validateDuration(0);
   const poc = await screenTimePoC.run('snapshot');
   const product = await screenTime.run('snapshot');
-  const history = await historyRecords.run('page');
+  const history = simulatorSnapshot(poc) && product.snapshot?.availability === 'simulator'
+    ? await historyRecords.run('page') : undefined;
   bridgePassed = availability.status === 'available' && availability.osRestrictions === 'unconnected'
     && valid.status === 'valid' && valid.minutes === 5 && invalid.status === 'invalid'
     && simulatorSnapshot(poc) && product.status === 'error' && product.code === 'unavailable'
     && product.snapshot?.availability === 'simulator' && product.snapshot.storage === 'not-created'
     && product.snapshot.targets.length === 0 && product.snapshot.observation === 'unknown'
-    && history.status === 'ok' && history.storage === 'not-created' && !history.page;
+    && history?.status === 'ok' && history.storage === 'not-created' && !history.page;
   if (!bridgePassed) {
     completed = true; reportNativeSmokeResult(commit, false); return;
   }

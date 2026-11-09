@@ -36,6 +36,18 @@ test('missing product bridge proof cannot pass using the old PoC bridge alone', 
   await qa.runNativeSmoke(); qa.completeNativePoCSmoke(response); qa.completeNativeHomeSmoke();
   expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, false);
 });
+test('missing history bridge cannot pass using the Core and PoC proofs', async () => {
+  const { native, qa } = setup();
+  native.historyRecords.run.mockResolvedValue({ status: 'error', storage: 'unknown', code: 'unavailable' });
+  await qa.runNativeSmoke(); qa.completeNativePoCSmoke(response); qa.completeNativeHistorySmoke(true); qa.completeNativeHomeSmoke();
+  expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, false);
+});
+test('failed history route proof cannot be promoted by a later home mount', async () => {
+  const { native, qa } = setup();
+  await qa.runNativeSmoke(); qa.completeNativePoCSmoke(response); qa.completeNativeHistorySmoke(false); qa.completeNativeHomeSmoke();
+  expect(native.reportNativeSmokeResult).toHaveBeenCalledTimes(1);
+  expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, false);
+});
 afterEach(() => {
   if (originalFlag === undefined) delete process.env.EXPO_PUBLIC_NATIVE_SMOKE;
   else process.env.EXPO_PUBLIC_NATIVE_SMOKE = originalFlag;
@@ -100,6 +112,7 @@ test('failed or device-enabled bridge proof cannot navigate into a synthetic Sim
   expect(native.reportNativeSmokeResult).toHaveBeenCalledTimes(1);
   expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, false);
   expect(router.replace).not.toHaveBeenCalled();
+  expect(native.historyRecords.run).not.toHaveBeenCalled();
 });
 
 test('failure to return to home cannot be promoted by a later home callback', async () => {
