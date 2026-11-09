@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, Switch, Text, View } from 'react-native';
+import { Platform, Pressable, Switch, Text, View } from 'react-native';
 import { ruleInput, useScreenTime } from '@/state/screen-time';
 import { Applications } from './applications';
 import { back, home, useDraftGuard } from './navigation';
@@ -9,6 +9,8 @@ import { Body, Button, Field, FlowScreen, Heading, Notice, Panel, flowStyles, us
 
 export function RuleEditorScreen() {
   const state = useScreenTime(), theme = useFlowTheme(), draft = state.ruleDraft;
+  // react-native-web 0.21 uses a separate on-state thumb prop. Native iOS uses thumbColor.
+  const webSwitchColors = Platform.OS === 'web' ? { activeThumbColor: theme.onAccent } : {};
   const { setRuleExitAllowed, beginRule } = state;
   useFocusEffect(useCallback(() => { setRuleExitAllowed(false); if (!draft) beginRule(); }, [draft, beginRule, setRuleExitAllowed]));
   useDraftGuard(!!draft?.dirty && !state.ruleExitAllowed, state.canExitRule, () => state.setRuleExitAllowed(true), () => { void state.run('cancelCandidate'); state.setRuleDraft(undefined); });
@@ -29,7 +31,7 @@ export function RuleEditorScreen() {
       <Button label={draft.selectionRef ? '対象アプリを選び直す' : '対象アプリを選ぶ'} secondary disabled={!!state.busy || state.snapshot?.authorization !== 'approved'} onPress={() => { void pick(); }} />
       {state.snapshot?.authorization !== 'approved' && <Button label="許可を確認する" secondary onPress={() => router.push('/onboarding')} />}
     </View>
-    <View style={flowStyles.row}><Body>このルールを有効にする</Body><Switch accessibilityLabel="このルールを有効にする" value={draft.enabled} onValueChange={(enabled) => update({ enabled })} trackColor={{ false: theme.muted, true: theme.accent }} thumbColor={theme.onAccent} hitSlop={8} /></View>
+    <View style={flowStyles.row}><Body>このルールを有効にする</Body><Switch {...webSwitchColors} accessibilityLabel="このルールを有効にする" value={draft.enabled} onValueChange={(enabled) => update({ enabled })} trackColor={{ false: theme.muted, true: theme.accent }} thumbColor={theme.onAccent} hitSlop={8} /></View>
     <View style={flowStyles.section}><Heading>2. 曜日</Heading><View style={flowStyles.row}>
       {weekdayNames.map((day, index) => { const value = index + 1, selected = draft.weekdays.includes(value); return <Pressable key={day}
         accessibilityRole="checkbox" accessibilityLabel={`${day}曜日`} accessibilityState={{ checked: selected }}
@@ -41,7 +43,7 @@ export function RuleEditorScreen() {
     <View style={flowStyles.section}><Heading>3. 時間帯</Heading>
       <Field label="開始時刻（24時間 HH:MM）" value={draft.start} onChangeText={(start) => update({ start })} keyboardType="numbers-and-punctuation" autoCapitalize="none" />
       <Field label="終了時刻（24時間 HH:MM）" value={draft.end} onChangeText={(end) => update({ end })} keyboardType="numbers-and-punctuation" autoCapitalize="none" />
-      <View style={flowStyles.row}><Body>翌日に終了する</Body><Switch accessibilityLabel="翌日に終了する" value={draft.nextDay} onValueChange={(nextDay) => update({ nextDay })} trackColor={{ false: theme.muted, true: theme.accent }} thumbColor={theme.onAccent} hitSlop={8} /></View>
+      <View style={flowStyles.row}><Body>翌日に終了する</Body><Switch {...webSwitchColors} accessibilityLabel="翌日に終了する" value={draft.nextDay} onValueChange={(nextDay) => update({ nextDay })} trackColor={{ false: theme.muted, true: theme.accent }} thumbColor={theme.onAccent} hitSlop={8} /></View>
       <Body muted>この端末の現地時刻に従います。日付をまたぐ場合は「翌日に終了」を選んでください。</Body>
     </View>
     {!input && <Body muted>アプリ・曜日・正しい時刻を選ぶと、確認へ進めます。</Body>}
