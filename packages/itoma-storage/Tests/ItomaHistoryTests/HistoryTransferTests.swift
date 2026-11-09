@@ -308,6 +308,23 @@ private func execute(_ db: OpaquePointer, _ text: String) { #expect(sqlite3_exec
     #expect(throws: StorageError.corrupt) { try f.control.readSnapshot() }
 }
 
+@Test func deletedEventsNeverReappearInTheDateIndexWhenOldOutboxIsReplayed() throws {
+    let f = try Fixture(); defer { f.remove() }
+    try accept(f.control); try enqueue(f.control, event: 1)
+    let batch = try f.control.historyBatch()
+    _ = try f.history.commitHistoryBatch(batch)
+    let before = try f.history.readPage(kind: .event)
+    #expect(before.rows.count == 1)
+    try f.history.deleteHistory(from: f.control)
+    _ = try f.history.commitHistoryBatch(batch)
+    #expect(try f.history.readPage(kind: .event).rows.isEmpty)
+    #expect(throws: HistoryError.conflict) { try f.history.readPage(kind: .event, expectedRevision: before.revision) }
+    try enqueue(f.control, event: 2)
+    _ = try f.control.transferHistory(to: f.history)
+    let after = try f.history.readPage(kind: .event)
+    #expect(after.rows.map(\.key) == [(id(2) as EventID).rawValue.uuidString])
+}
+
 @Test func privatePrepareCompletesBeforeSharedIntentAndFailureNeverLooksAccepted() throws {
     let f = try Fixture(); defer { f.remove() }
     // Private Prepared survives an independent shared writer; no shared acceptance can occur.

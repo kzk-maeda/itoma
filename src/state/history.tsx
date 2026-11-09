@@ -23,9 +23,13 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
   const clear = useCallback(() => { sequence.current += 1; pageRef.current = undefined; setPage(undefined); setReason(undefined); setBusy(false); }, []);
   useEffect(() => {
     if (identity.current.historyEpoch === historyEpoch && identity.current.client === client) return;
-    identity.current = { historyEpoch, client }; sequence.current += 1; pageRef.current = undefined; position.current = undefined;
-    queueMicrotask(() => { clear(); setSeenEpoch(historyEpoch); });
-  }, [clear, historyEpoch, client]);
+    identity.current = { historyEpoch, client }; const barrier = ++sequence.current; pageRef.current = undefined; position.current = undefined;
+    queueMicrotask(() => {
+      if (identity.current.historyEpoch !== historyEpoch || identity.current.client !== client) return;
+      setSeenEpoch(historyEpoch);
+      if (sequence.current === barrier) { setPage(undefined); setReason(undefined); setBusy(false); }
+    });
+  }, [historyEpoch, client]);
   const run = useCallback(async (action: HistoryAction, extra: { cursor?: HistoryCursor; direction?: 'older' | 'newer'; commandID?: string } = {}): Promise<void> => {
     if (mutation.current) { if (action === 'page') pendingRefresh.current = true; return; }
     const writes = action === 'deleteHistory' || action === 'deleteReasons' || action === 'import';
@@ -35,8 +39,8 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
     if (action === 'deleteHistory' || action === 'deleteReasons') { pageRef.current = undefined; setPage(undefined); }
     try {
       const response = await client.run(action, { ...selected, day: selected.day || undefined,
-        ...(extra.cursor ? { afterAt: extra.cursor.at, afterKey: extra.cursor.key, direction: extra.direction, revision: pageRef.current?.revision } : {}),
-        ...(extra.commandID ? { commandID: extra.commandID, revision: pageRef.current?.revision } : {}) });
+        ...(extra.cursor ? { afterAt: extra.cursor.at, afterKey: extra.cursor.key, direction: extra.direction, revision: pageRef.current?.revision, timeZone: pageRef.current?.timeZone } : {}),
+        ...(extra.commandID ? { commandID: extra.commandID, revision: pageRef.current?.revision, timeZone: pageRef.current?.timeZone } : {}) });
       if (ticket !== sequence.current) return;
       setStorage(response.storage);
       if (response.status === 'error') {

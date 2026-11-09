@@ -90,7 +90,7 @@ struct ProductResponse: Encodable, Sendable {
     }
     private var grantPreview: GrantPreview?
 
-    func open(create: Bool = false) throws -> ScreenTimeRuntime {
+    private func open(create: Bool = false) throws -> ScreenTimeRuntime {
         if let runtime { return runtime }
         let opened = try ScreenTimeRuntime(createIfMissing: create, allowMonitorCreation: true)
         runtime = opened
@@ -219,8 +219,8 @@ struct ProductResponse: Encodable, Sendable {
                 guard context.now < preview.expiresAt else { throw GrantEvaluationError.confirmationChanged }
                 let command = try Command(id: preview.request.commandID, kind: .requestTemporaryGrant, status: .pending,
                     expectedPolicyRevision: preview.request.expectedPolicyRevision, attempt: AttemptNumber(0), reasonRef: preview.reasonRef)
-                try withHistory { history in _ = try history.acceptReasonGrant(in: r.repository, command: command, request: preview.request,
-                    body: reason, context: context, expectedSequence: before.snapshotSequence) }
+                try await ProductHistoryController.shared.acceptReasonGrant(command: command, request: preview.request,
+                    body: reason, context: context, expectedSequence: before.snapshotSequence)
                 grantPreview = nil
                 let result = try await r.makeService().executeAcceptedGrant(commandID: command.id)
                 return try commandResponse(result, in: r)
@@ -228,7 +228,7 @@ struct ProductResponse: Encodable, Sendable {
                 let hadPreview = grantPreview != nil
                 grantPreview = nil
                 if hadPreview {
-                    do { try withHistory { try $0.recordCancellation(eventID: EventID(UUID()), at: NativeScheduleClock.instant(Date())) } }
+                    do { try await ProductHistoryController.shared.recordCancellation(eventID: EventID(UUID()), at: NativeScheduleClock.instant(Date())) }
                     catch { try? r.repository.markHistoryIncomplete() }
                 }
             case "retryGrant":
@@ -255,7 +255,7 @@ struct ProductResponse: Encodable, Sendable {
                 let result = try await r.makeService().resume(commandID: CommandID(UUID()))
                 return try commandResponse(result, in: r)
             case "reconcile": try await refresh(r)
-            case "deleteReasons": try withHistory { _ = try $0.deleteReasons() }
+            case "deleteReasons": try await ProductHistoryController.shared.deleteReasonsForSettings()
             default: throw ScreenTimeRuntimeError.unavailable
             }
             try r.protectFiles()
@@ -277,7 +277,7 @@ struct ProductResponse: Encodable, Sendable {
         if let ready = try? r.monitors.readyPlan(for: r.repository.readSnapshot().policy) { try? r.monitors.cleanup(keeping: ready) }
         // Best-effort bounded import after OS/control reconciliation. Sink failure is persisted
         // as HistoryIncomplete by Storage; it never rolls back a restriction or confirmed reason.
-        try? withHistory { _ = try r.repository.transferHistory(to: $0, limit: 500) }
+        try? await ProductHistoryController.shared.importForMaintenance()
         try r.protectFiles()
     }
 
@@ -293,30 +293,6 @@ struct ProductResponse: Encodable, Sendable {
             }
         }
         candidate = nil
-    }
-
-    func withHistory<T>(createIfMissing: Bool = true, _ body: (HistoryRepository) throws -> T) throws -> T {
-        guard let warning = Bundle.main.object(forInfoDictionaryKey: "ITOMAHistoryWarningBytes") as? Int64,
-              let maximum = Bundle.main.object(forInfoDictionaryKey: "ITOMAHistoryMaximumBytes") as? Int64 else { throw HistoryError.invalidCapacity }
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { throw HistoryError.unavailable }
-        let directory = base.appendingPathComponent("ITOMA-Private", isDirectory: true)
-        let url = directory.appendingPathComponent("history.sqlite")
-        if !createIfMissing && !FileManager.default.fileExists(atPath: url.path) { throw HistoryError.missingDatabase }
-        try ScreenTimeFiles.prepareDirectory(directory, protection: .complete)
-        let capacity = try HistoryCapacityPolicy(warningBytes: warning, maximumBytes: maximum)
-        let history: HistoryRepository
-        if FileManager.default.fileExists(atPath: url.path) {
-            do { history = try HistoryRepository.open(at: url, capacity: capacity) }
-            catch HistoryError.unsupportedSchema(let version) where version == 1 || version == 2 {
-                history = try HistoryRepository.migrate(at: url, capacity: capacity)
-            }
-        } else {
-            guard createIfMissing else { throw HistoryError.missingDatabase }
-            history = try HistoryRepository.create(at: url, capacity: capacity)
-        }
-        defer { try? history.close(); try? ScreenTimeFiles.protectDatabase(url, protection: .complete) }
-        try ScreenTimeFiles.protectDatabase(url, protection: .complete)
-        return try body(history)
     }
 
     private func snapshot(_ r: ScreenTimeRuntime) throws -> ProductSnapshotDTO {

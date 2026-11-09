@@ -42,6 +42,11 @@ private struct ReadFixture {
     let expected = (1...42).sorted { $0 % 3 != $1 % 3 ? $0 % 3 > $1 % 3 : $0 > $1 }
         .map { (entity($0) as EventID).rawValue.uuidString }
     #expect(seen == expected)
+    let first = try f.history.readPage(kind: .event, limit: 7)
+    let older = try f.history.readPage(kind: .event, limit: 7, after: first.next, expectedRevision: first.revision)
+    let restored = try f.history.readPage(kind: .event, limit: 7, before: older.previous, expectedRevision: first.revision)
+    #expect(restored.rows.map(\.key) == first.rows.map(\.key))
+    #expect(restored.previous == nil)
 }
 
 @Test func fractionalTimesAndHalfOpenDayRangeDoNotRoundIntoAnotherDay() throws {
@@ -63,6 +68,7 @@ private struct ReadFixture {
     #expect(try f.history.reason(for: entity(1))?.body == "架空の理由\n\0exact")
     try f.history.deleteReasons()
     #expect(throws: HistoryError.conflict) { try f.history.readPage(kind: .reason, expectedRevision: before.revision) }
+    #expect(throws: HistoryError.conflict) { try f.history.readReason(for: entity(1), expectedRevision: before.revision) }
     let after = try f.history.readPage(kind: .reason)
     #expect(after.rows[0].reasonDeleted == true && after.capacity.logicalPayloadBytes == 0)
     #expect(try f.history.reason(for: entity(1))?.body == nil)
@@ -116,4 +122,14 @@ private struct ReadFixture {
     let timestamp = 1_793_000_000.1234567
     #expect(try db.rows("SELECT ?", [.real(timestamp)]) == [[.real(timestamp)]])
     #expect(throws: SQLiteFailure.invalidArgument) { try db.rows("SELECT ?", [.real(.infinity)]) }
+}
+
+@Test func historyDayFiltersRespectDSTAndRejectNormalizedInvalidDates() throws {
+    let zone = try #require(TimeZone(identifier: "America/New_York"))
+    let short = try HistoryDayRange(day: "2026-03-08", timeZone: zone)
+    let long = try HistoryDayRange(day: "2026-11-01", timeZone: zone)
+    #expect(short.end.secondsSince1970 - short.start.secondsSince1970 == 23 * 3600)
+    #expect(long.end.secondsSince1970 - long.start.secondsSince1970 == 25 * 3600)
+    #expect(throws: HistoryError.invalidPage) { try HistoryDayRange(day: "2026-02-30", timeZone: zone) }
+    #expect(throws: HistoryError.invalidPage) { try HistoryDayRange(day: "2026-1-01", timeZone: zone) }
 }

@@ -8,7 +8,7 @@ export type HistoryPage = { revision: string; asOf: number; timeZone: string; ro
   databaseBytes?: string; walBytes?: string; sharedMemoryBytes?: string; incomplete: boolean; transfer: 'current' | 'pending' | 'unavailable' };
 export type HistoryReason = { revision: string; state: 'deleted' | 'missing' | 'prepared-only' | 'shared-accepted' | 'unavailable'; body?: string };
 export type HistoryResponse = { status: 'ok' | 'error'; code?: HistoryCode; storage: 'ready' | 'not-created' | 'unknown'; page?: HistoryPage; reason?: HistoryReason };
-export type HistoryRequest = { kind?: HistoryKind; day?: string; afterAt?: number; afterKey?: string; direction?: 'older' | 'newer'; revision?: string; commandID?: string };
+export type HistoryRequest = { kind?: HistoryKind; day?: string; afterAt?: number; afterKey?: string; direction?: 'older' | 'newer'; revision?: string; commandID?: string; timeZone?: string };
 interface NativePort { readonly apiVersion?: number; readonly historyVersion?: number; history?: (action: string, payload: string) => Promise<string> }
 const object = (value: unknown): Record<string, unknown> => { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(); return value as Record<string, unknown>; };
 const text = (value: unknown): string => { if (typeof value !== 'string') throw new Error(); return value; };

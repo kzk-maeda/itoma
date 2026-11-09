@@ -68,7 +68,7 @@ public final class HistoryRepository {
             try repository.transaction(writer: false) {
                 guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
                       try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw HistoryError.corrupt }
-                _ = try repository.loadReasons()
+                try repository.validateReasons()
                 try repository.validatePrivateHistory()
             }
             return repository
@@ -142,7 +142,7 @@ public final class HistoryRepository {
     /// This deletes reasons only. Use deleteHistory(from:) for history payloads and source cutoffs.
     public func deleteReasons() throws {
         try transaction(writer: true) {
-            _ = try loadReasons()
+            try validateReasons()
             try database.execute("UPDATE reasons SET body=NULL,payload_bytes=0")
             try advanceReadRevision()
         }
@@ -239,6 +239,15 @@ public final class HistoryRepository {
             default: throw HistoryError.corrupt
             }
             return ReasonRecord(reasonRef: ReasonRef(ref), commandID: CommandID(command), preparedAt: time, body: body)
+        }
+    }
+
+    func validateReasons() throws {
+        var key = ""
+        while true {
+            let page = try loadReasons(filter: "WHERE reason_ref>?", bindings: [.text(key)], limit: 100)
+            guard let last = page.last else { return }
+            key = last.reasonRef.rawValue.uuidString
         }
     }
 }

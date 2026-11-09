@@ -11,7 +11,12 @@ const actions: Record<HistoryRow['action'], string> = { reason: '保存した理
 const statuses: Record<HistoryRow['status'], string> = { prepared: '理由の保存', pending: '受付済み', scheduling: '予定を登録中', applying: '反映処理中', succeeded: '処理の完了を記録', failed: '処理できませんでした', uncertain: '反映を確認できません', superseded: '新しい操作に置き換え済み', expired: '期限が終了', cancelled: '取消済み' };
 const grantStatuses: Record<string, string> = { pending: '受付済み', scheduling: '予定登録中', applying: '反映処理中', active: '解除の反映を確認', expired: '期限終了', invalidated: '条件変更により終了', reblockPending: '再制限の処理待ち', reconciled: '再制限の反映を確認', uncertain: '反映が不明', failed: '処理失敗' };
 const errors: Record<HistoryCode, string> = { unavailable: 'この環境では履歴を利用できません。履歴機能を含むiPhone版で確認できます。', 'storage-failed': '保存した記録を読み取れません。空の履歴とは扱わず、端末のロックを解除してから再度確認してください。', busy: '前の操作を確認しています。少し待ってから再度確認できます。', changed: '記録が更新されました。古いページは閉じています。最新の記録を確認してください。', 'invalid-input': '日付をYYYY-MM-DDの形式で確認してください。', 'capacity-full': '記録を保存する上限に達しました。不要な理由や操作履歴を削除してから、取込を再試行できます。' };
-const when = (at: number) => new Date(at * 1000).toLocaleString('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const when = (at: number, timeZone: string) => {
+  const date = new Date(at * 1000);
+  if (!Number.isFinite(date.getTime())) return '日時を表示できません';
+  try { return date.toLocaleString('ja-JP', { timeZone, year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+  catch { return date.toISOString(); }
+};
 function bytes(value: string) { const number = Number(value); return number >= 1_048_576 ? `${(number / 1_048_576).toFixed(2)} MiB` : `${value} B`; }
 
 export function HistoryScreen() {
@@ -42,7 +47,7 @@ export function HistoryScreen() {
     {page && <>
       {page.incomplete && <Notice title="記録の一部が欠けている可能性があります">残っている記録だけを表示しています。取込を再試行しても、保存できなかった過去の記録がすべて戻るとは限りません。</Notice>}
       {page.transfer !== 'current' && <Notice title={page.transfer === 'pending' ? '未取込の記録があります' : '新しい記録の取込状況を確認できません'}>保存済みの記録は下で確認できます。取込はご自身で再試行できます。</Notice>}
-      <Body muted>取得時点：{when(page.asOf)} · {page.timeZone}。表示は新しい記録から、最大40件ずつです。</Body>
+      <Body muted>取得時点：{when(page.asOf, page.timeZone)} · {page.timeZone}。表示は新しい記録から、最大40件ずつです。</Body>
       <Button label="新しい記録を取り込む" secondary disabled={state.busy} onPress={() => state.mutate('import')} />
       <View style={flowStyles.row}>
         <Button label="新しい40件へ" secondary disabled={state.busy || !page.previous} onPress={() => { if (page.previous) state.move(page.previous, 'newer'); }} />
@@ -50,10 +55,10 @@ export function HistoryScreen() {
       </View>
       {!page.rows.length && <Body>この範囲に保存された記録はありません。</Body>}
       {page.rows.map((row) => <Panel key={row.key}>
-        <Heading>{actions[row.action]}</Heading><Body muted>{when(row.at)}</Body>
+        <Heading>{actions[row.action]}</Heading><Body muted>{when(row.at, page.timeZone)}</Body>
         <Body>{row.reasonDeleted ? '理由本文は削除済みです' : `記録時の状態：${statuses[row.status]}`}</Body>
         {row.grantStatus && <Body muted>解除の記録：{grantStatuses[row.grantStatus] ?? '状態を確認できません'}</Body>}
-        {row.expiresAt !== undefined && <Body>記録上の解除上限：{when(row.expiresAt)}</Body>}
+        {row.expiresAt !== undefined && <Body>記録上の解除上限：{when(row.expiresAt, page.timeZone)}</Body>}
         {row.action === 'cancelled' && <Body muted>確定前に取り消した本文は保存していません。</Body>}
         {(row.action === 'reason' || row.action === 'requestTemporaryGrant') && row.commandID && !row.reasonDeleted && <Button label="この記録の理由を読む" secondary disabled={state.busy} onPress={() => { state.readReason(row.commandID!); router.push('/history-reason'); }} />}
       </Panel>)}

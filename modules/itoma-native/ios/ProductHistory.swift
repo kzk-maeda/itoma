@@ -2,6 +2,7 @@ import Foundation
 import ItomaCore
 import ItomaStorage
 import ItomaHistory
+import ItomaScreenTime
 
 struct ProductHistoryRequest: Decodable, Sendable {
     var kind: String?
@@ -11,6 +12,7 @@ struct ProductHistoryRequest: Decodable, Sendable {
     var direction: String?
     var revision: String?
     var commandID: String?
+    var timeZone: String?
 }
 struct ProductHistoryRow: Encodable, Sendable {
     let key: String
@@ -55,7 +57,39 @@ struct ProductHistoryResponse: Encodable, Sendable {
     func json() -> String { (try? String(data: JSONEncoder().encode(self), encoding: .utf8)) ?? #"{"status":"error","code":"unavailable","storage":"unknown"}"# }
 }
 
-extension ProductController {
+/// Own executor/connections: a large private read/import never occupies the control actor.
+actor ProductHistoryController {
+    static let shared = ProductHistoryController()
+    private var privateStore: (HistoryRepository, URL)?
+    private var controlStore: ControlRepository?
+    private func controlRepository() throws -> ControlRepository {
+        if let controlStore { return controlStore }
+        let url = try ScreenTimeFiles.sharedDirectory().appendingPathComponent("control.sqlite")
+        let repository = try ControlRepository.open(at: url)
+        controlStore = repository
+        return repository
+    }
+    private func withHistory<T>(createIfMissing: Bool, _ body: (HistoryRepository) throws -> T) throws -> T {
+        if privateStore == nil { privateStore = try ProductHistoryStore.open(createIfMissing: createIfMissing) }
+        guard let (history, url) = privateStore else { throw HistoryError.unavailable }
+        try ScreenTimeFiles.protectDatabase(url, protection: .complete)
+        defer { try? ScreenTimeFiles.protectDatabase(url, protection: .complete) }
+        return try body(history)
+    }
+    func acceptReasonGrant(command: Command, request: GrantRequest, body: String, context: EvaluationContext,
+                           expectedSequence: SnapshotSequence) throws {
+        try withHistory(createIfMissing: true) { history in
+            _ = try history.acceptReasonGrant(in: controlRepository(), command: command, request: request, body: body,
+                context: context, expectedSequence: expectedSequence)
+        }
+    }
+    func recordCancellation(eventID: EventID, at: Instant) throws {
+        try withHistory(createIfMissing: true) { try $0.recordCancellation(eventID: eventID, at: at) }
+    }
+    func deleteReasonsForSettings() throws { try withHistory(createIfMissing: false) { try $0.deleteReasons() } }
+    func importForMaintenance() throws {
+        try withHistory(createIfMissing: true) { _ = try controlRepository().transferHistory(to: $0, limit: 500) }
+    }
     /// No authorization prompt, picker, monitor registration, or restriction mutation is performed.
     func performHistory(_ action: String, request: ProductHistoryRequest) -> ProductHistoryResponse {
         do {
@@ -65,7 +99,9 @@ extension ProductController {
                 guard let number = Int64(raw), number >= 0, String(number) == raw else { throw HistoryError.invalidPage }
                 expected = number
             } else { expected = nil }
-            let range = try historyDay(request.day)
+            let queryZone = TimeZone.current
+            if expected != nil && request.timeZone != queryZone.identifier { throw HistoryError.conflict }
+            let range = try historyDay(request.day, timeZone: queryZone)
             guard request.direction == nil || ["older", "newer"].contains(request.direction!) else { throw HistoryError.invalidPage }
             let cursor: HistoryPageKey?
             if request.afterAt != nil || request.afterKey != nil {
@@ -79,7 +115,7 @@ extension ProductController {
                     let state: String
                     if let reason = detail.reason {
                         if reason.isDeleted { state = "deleted" }
-                        else if let control = try? open().repository {
+                        else if let control = try? controlRepository() {
                             switch try? history.reconcileReason(for: CommandID(id), in: control) {
                             case .preparedOnly: state = "prepared-only"
                             case .sharedAccepted: state = "shared-accepted"
@@ -92,8 +128,8 @@ extension ProductController {
                 switch action {
                 case "page": break
                 case "deleteReasons": try history.deleteReasons()
-                case "deleteHistory": try history.deleteHistory(from: open().repository)
-                case "import": _ = try open().repository.transferHistory(to: history, limit: 500)
+                case "deleteHistory": try history.deleteHistory(from: controlRepository())
+                case "import": _ = try controlRepository().transferHistory(to: history, limit: 500)
                 default: throw HistoryError.invalidPage
                 }
                 // Snapshot is private-DB consistent. Shared pending/gap is a separate bounded sample.
@@ -102,7 +138,7 @@ extension ProductController {
                     before: action == "page" && request.direction == "newer" ? cursor : nil,
                     expectedRevision: action == "page" ? expected : nil, from: range?.0, until: range?.1)
                 var transfer = "unavailable", controlGap = false
-                if let repository = try? open().repository {
+                if let repository = try? controlRepository() {
                     do {
                         let batch = try repository.historyBatch(limit: 1)
                         transfer = batch.entries.isEmpty ? "current" : "pending"
@@ -127,7 +163,7 @@ extension ProductController {
                 guard let warning = Bundle.main.object(forInfoDictionaryKey: "ITOMAHistoryWarningBytes") as? Int64,
                       let maximum = Bundle.main.object(forInfoDictionaryKey: "ITOMAHistoryMaximumBytes") as? Int64 else { throw HistoryError.invalidCapacity }
                 return ProductHistoryResponse(page: ProductHistoryPage(revision: String(page.revision), asOf: Date().timeIntervalSince1970,
-                    timeZone: TimeZone.current.identifier, rows: rows,
+                    timeZone: queryZone.identifier, rows: rows,
                     next: page.next.map { ProductHistoryCursor(at: $0.at.secondsSince1970, key: $0.key.lowercased()) },
                     previous: page.previous.map { ProductHistoryCursor(at: $0.at.secondsSince1970, key: $0.key.lowercased()) },
                     logicalBytes: String(page.capacity.logicalPayloadBytes), warningBytes: String(warning), maximumBytes: String(maximum),
@@ -143,16 +179,10 @@ extension ProductController {
         catch { return ProductHistoryResponse(status: "error", code: "storage-failed", storage: "unknown") }
     }
 
-    private func historyDay(_ text: String?) throws -> (Instant, Instant)? {
+    private func historyDay(_ text: String?, timeZone: TimeZone) throws -> (Instant, Instant)? {
         guard let text, !text.isEmpty else { return nil }
-        guard text.range(of: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", options: .regularExpression) != nil else { throw HistoryError.invalidPage }
-        let numbers = text.split(separator: "-").compactMap { Int($0) }
-        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = .current
-        guard numbers.count == 3, (1900...9998).contains(numbers[0]),
-              let date = calendar.date(from: DateComponents(year: numbers[0], month: numbers[1], day: numbers[2])),
-              calendar.component(.year, from: date) == numbers[0], calendar.component(.month, from: date) == numbers[1],
-              calendar.component(.day, from: date) == numbers[2], let day = calendar.dateInterval(of: .day, for: date) else { throw HistoryError.invalidPage }
-        return (try Instant(day.start), try Instant(day.end))
+        let range = try HistoryDayRange(day: text, timeZone: timeZone)
+        return (range.start, range.end)
     }
 }
 
@@ -165,6 +195,27 @@ extension ProductUI {
         let request: ProductHistoryRequest
         do { request = try JSONDecoder().decode(ProductHistoryRequest.self, from: Data((payload ?? "{}").utf8)) }
         catch { complete(ProductHistoryResponse(status: "error", code: "invalid-input", storage: "unknown").json()); return }
-        Task { let result = await ProductController.shared.performHistory(action, request: request); complete(result.json()) }
+        Task { let result = await ProductHistoryController.shared.performHistory(action, request: request); complete(result.json()) }
+    }
+}
+
+enum ProductHistoryStore {
+    static func open(createIfMissing: Bool) throws -> (HistoryRepository, URL) {
+        guard let warning = Bundle.main.object(forInfoDictionaryKey: "ITOMAHistoryWarningBytes") as? Int64,
+              let maximum = Bundle.main.object(forInfoDictionaryKey: "ITOMAHistoryMaximumBytes") as? Int64 else { throw HistoryError.invalidCapacity }
+        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { throw HistoryError.unavailable }
+        let directory = base.appendingPathComponent("ITOMA-Private", isDirectory: true), url = directory.appendingPathComponent("history.sqlite")
+        if !createIfMissing && !FileManager.default.fileExists(atPath: url.path) { throw HistoryError.missingDatabase }
+        try ScreenTimeFiles.prepareDirectory(directory, protection: .complete)
+        let capacity = try HistoryCapacityPolicy(warningBytes: warning, maximumBytes: maximum)
+        let history: HistoryRepository
+        if FileManager.default.fileExists(atPath: url.path) {
+            do { history = try HistoryRepository.open(at: url, capacity: capacity) }
+            catch HistoryError.unsupportedSchema(let version) where version == 1 || version == 2 {
+                history = try HistoryRepository.migrate(at: url, capacity: capacity)
+            }
+        } else { history = try HistoryRepository.create(at: url, capacity: capacity) }
+        try ScreenTimeFiles.protectDatabase(url, protection: .complete)
+        return (history, url)
     }
 }

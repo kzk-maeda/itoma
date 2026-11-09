@@ -74,7 +74,7 @@ test('pagination replaces one page, retains date selection and sends the pinned 
   await press('この日付の記録を見る'); await press('前の40件へ');
   expect(screen.getByText('確定前の取消')).toBeTruthy();
   expect(screen.queryByText('一時解除の要求')).toBeNull();
-  expect(b.run).toHaveBeenLastCalledWith('page', expect.objectContaining({ day: '2026-11-09', afterKey: id, direction: 'older', revision: '1' }));
+  expect(b.run).toHaveBeenLastCalledWith('page', expect.objectContaining({ day: '2026-11-09', afterKey: id, direction: 'older', revision: '1', timeZone: 'Asia/Tokyo' }));
   await press('新しい40件へ');
   expect(screen.getByLabelText('日付で絞り込む（YYYY-MM-DD・空欄はすべて）')).toHaveDisplayValue('2026-11-09');
 });

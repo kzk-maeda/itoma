@@ -42,7 +42,7 @@ extension HistoryRepository: ControlHistorySink {
                 try repository.validateSchema(expected: version)
                 guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
                       try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw HistoryError.corrupt }
-                _ = try repository.loadReasons()
+                try repository.validateReasons()
                 if version == 1 { try repository.createPrivateHistoryTables() }
                 if version < 3 { try repository.createReadIndex(); try repository.backfillReadIndex() }
                 try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
@@ -275,8 +275,22 @@ extension HistoryRepository: ControlHistorySink {
 
     func validatePrivateHistory() throws {
         _ = try sourceStates()
-        for row in try database.rows("SELECT command_id,prepared_at,payload,payload_bytes FROM dummy_selections") { _ = try decodeDummy(row) }
-        for row in try database.rows("SELECT cursor,event_id,source_id,sequence,record,payload_bytes FROM history_events") { _ = try validateEventRow(row) }
+        var key = ""
+        while true {
+            let rows = try database.rows("SELECT command_id,prepared_at,payload,payload_bytes FROM dummy_selections WHERE command_id>? ORDER BY command_id LIMIT 100", [.text(key)])
+            guard !rows.isEmpty else { break }
+            for row in rows { key = try decodeDummy(row).commandID.rawValue.uuidString }
+        }
+        var cursor: Int64 = 0
+        while true {
+            let rows = try database.rows("SELECT cursor,event_id,source_id,sequence,record,payload_bytes FROM history_events WHERE cursor>? ORDER BY cursor LIMIT 100", [.integer(cursor)])
+            guard !rows.isEmpty else { break }
+            for row in rows {
+                _ = try validateEventRow(row)
+                guard case let .integer(next) = row[0] else { throw HistoryError.corrupt }
+                cursor = next
+            }
+        }
         _ = try logicalBytes()
         _ = try readRevision()
         for (kind, table, filter) in [("event", "history_events", "record IS NOT NULL"), ("reason", "reasons", "1=1")] {
