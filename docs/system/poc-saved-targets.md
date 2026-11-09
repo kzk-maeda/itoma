@@ -1,6 +1,6 @@
 # 保存済み検証対象の表示と再制限（限定PoC）
 
-状態: **レビュー前の限定PoC提案（SRE05で基本動作を本人確認、追加条件は未検証）**。本人の改善依頼に基づく[#119](https://github.com/kzk-maeda/itoma/issues/119)。製品の再開/認可モデルやPoC全体の採否を確定しない。
+状態: **限定PoCの実装・記録はPR #120/#121でmain反映済み（SRE05の通常操作を本人確認、製品仕様の採否と全PoC合格は別）**。本人の改善依頼に基づく[#119](https://github.com/kzk-maeda/itoma/issues/119)。製品の再開/認可モデルやPoC全体の採否を確定しない。
 
 ## 問題と本人のタスク
 
@@ -20,8 +20,10 @@
 
 SDK58のExpoView/Prop/EventDispatcherとrequireNativeViewManager、およびAppleのLabel(ApplicationToken)、FamilyActivityPicker、FamilyActivitySelectionを参照。UI21/22/23/24/25/26、DESIGN原則1/3/4/5の限定範囲に対応する。本文・余白は共通トークン、Apple提供のアプリラベルはnativeのシステム表示を使う。名前の取得APIやダミー名で本物の対象を置き換えない。
 
-native viewのサイズはSwiftUIで測定して数値だけ返し、Dynamic Typeで内容を固定高さに切り詰めない。実際のVoiceOver・文字拡大・Light/Dark・古いtokenの表示/初期選択の挙動・SRE05での再制限/取消は変更を含む新ビルドで別途確認する。旧buildの結果はstale native buildであり、この提案の実機合格に使わない。
+native viewのサイズはSwiftUIで測定して数値だけ返し、Dynamic Typeで内容を固定高さに切り詰めない。SRE05での通常操作と文字拡大・VoiceOver・Darkの本人確認は下記の範囲に限定する。最大文字・長い名前・無効tokenの全経路等は未検証。旧buildの結果はstale native buildであり、この提案の実機合格に使わない。
 
 ## 変更を含む実機での部分確認
 
 SRE05/iPadOS27.2で、保存名・アイコンの表示、対象確認後の再制限、停止を本人が確認した。[対象SHA・build ID・範囲と未検証](../qa/poc-saved-targets/README.md)を参照。取消/認可変更/無効token/全反復の保証や、提案の採用と同義にはしない。
+
+PR #121後の追加報告では、確認Picker取消、端末再起動/オフライン、認可取消/再許可、文字拡大・VoiceOver・Darkは案内範囲でOK。ITOMA終了中の取消後にアプリへ復帰して再許可すると新規選択が必要で、対象を確認できない保存行が蓄積する。[#123](https://github.com/kzk-maeda/itoma/issues/123)で表示・再選択・整理方針を検討する。DB/tokenの削除を直接確認した結果ではなく、製品仕様の変更は未採用。詳細は上記QA記録を参照。

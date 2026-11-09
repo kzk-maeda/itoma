@@ -64,6 +64,8 @@ ITOMA_SCREEN_TIME_POC=1 npx expo config --type introspect
 
 ## 最初の実機試験
 
+以下は初期計画の表で、現在のSRE05の実施結果を上書きするものではない。PR #120/#121後の保存対象表示・再制限、取消、端末再起動/オフライン、認可変更、文字拡大・VoiceOver・Darkの本人報告と残件は[最新のQA記録](qa/poc-saved-targets/README.md)を参照。認可取消後に対象を確認できない保存行が蓄積する問題は[#123](https://github.com/kzk-maeda/itoma/issues/123)で追跡する。
+
 実施前に端末/iOS、Xcode、commit/JS bundle、build ID、生成entitlement、署名profileと構成一致を記録する。本人の対象はSE第3世代/iOS27.0.1/Xcode27.2。クラウドのiPhone17 Pro/iOS26.5/Xcode26.6の結果を、その実機結果へ転用しない。[AppleのXcode対応表](https://developer.apple.com/xcode/system-requirements)も確認した。Team/端末の識別子・証明書・token・本人データは証跡へ貼らない。まず少数の、本人が試験に選んだアプリを使う。
 
 | ID | 手順 | 期待する観測 | 現在 |
