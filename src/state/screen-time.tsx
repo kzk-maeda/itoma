@@ -7,7 +7,7 @@ export type RuleDraft = { id?: string; selectionRef: string; weekdays: number[];
 export type UnlockDraft = { targetRef?: string; reason: string; minutes: string };
 type Client = Pick<typeof screenTime, 'run'>;
 type State = {
-  snapshot?: ScreenTimeSnapshot; error?: ScreenTimeCode; loading: boolean; busy?: ScreenTimeAction; legacyActive: boolean; refreshKey: number;
+  snapshot?: ScreenTimeSnapshot; error?: ScreenTimeCode; loading: boolean; busy?: ScreenTimeAction; legacyActive: boolean; refreshKey: number; historyEpoch: number;
   run: Client['run']; refresh: () => Promise<ScreenTimeResponse>; clearError: () => void;
   ruleDraft?: RuleDraft; setRuleDraft: (draft: RuleDraft | undefined) => void; beginRule: (rule?: ScreenTimeRule) => void;
   ruleReview?: ScreenTimeResponse; setRuleReview: (review: ScreenTimeResponse | undefined) => void;
@@ -31,6 +31,7 @@ export function ScreenTimeProvider({ children, client = screenTime }: { children
   const [busy, setBusy] = useState<ScreenTimeAction>();
   const [legacyActive, setLegacyActive] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [historyEpoch, setHistoryEpoch] = useState(0);
   const mutation = useRef(false);
   const read = useRef<Promise<ScreenTimeResponse> | undefined>(undefined);
   const [ruleDraft, setRuleDraft] = useState<RuleDraft>();
@@ -48,6 +49,7 @@ export function ScreenTimeProvider({ children, client = screenTime }: { children
     const operation = (async () => {
       try {
         const result = await client.run(action, request);
+        if (action === 'deleteReasons' && result.status === 'ok') setHistoryEpoch((value) => value + 1);
         if (result.snapshot) {
           const incoming = result.snapshot;
           const previous = latest.current;
@@ -80,7 +82,7 @@ export function ScreenTimeProvider({ children, client = screenTime }: { children
     setRuleDraft(rule ? { ...rule, start: time(rule.startMinute), end: time(rule.endMinute), dirty: false }
       : { selectionRef: '', weekdays: [1, 2, 3, 4, 5], start: '21:00', end: '23:00', nextDay: false, enabled: true, dirty: false });
   }, [setRuleExitAllowed]);
-  return <Context.Provider value={{ snapshot, error, loading, busy, legacyActive, refreshKey, run, refresh, clearError: () => setError(undefined),
+  return <Context.Provider value={{ snapshot, error, loading, busy, legacyActive, refreshKey, historyEpoch, run, refresh, clearError: () => setError(undefined),
     ruleDraft, setRuleDraft, beginRule, ruleReview, setRuleReview, unlockDraft, setUnlockDraft, unlockReview, setUnlockReview,
     ruleExitAllowed, unlockExitAllowed, canExitRule: () => ruleExitRef.current, canExitUnlock: () => unlockExitRef.current,
     setRuleExitAllowed, setUnlockExitAllowed,

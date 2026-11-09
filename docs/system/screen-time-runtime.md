@@ -38,7 +38,7 @@ and real app shielding remain physical-device gates (#48–#52).
 
 The host exclusively creates the shared Control schema6 DB and a separate
 PolicyMonitor schema1 SQLite journal. The Extension opens existing stores only.
-Both use the same Core evaluator and Control actor; private History schema2 is
+Both use the same Core evaluator and Control actor; private History schema3 is
 host-only with **Complete** protection for its directory/DB/WAL/SHM. Only shared
 control/monitor files use UntilFirstUserAuthentication protection and
 backup exclusion. This source setup does not prove access before first unlock,
@@ -121,6 +121,12 @@ Simulator return explicit unavailable snapshots and perform no product I/O.
 An active legacy manual PoC store prevents product activation/unlock/resume
 until the user explicitly stops that store. It is not silently cleared, and
 its selection/token DB is never imported into the product database.
+
+The private History actor handles initialization/migration, confirmed reason
+acceptance, import and deletion outside the Control actor. Control's CAS/fresh
+evaluation still guards accepted grants if stop or policy changes while awaiting
+private I/O. See [history records](history-records.md). This adds no History
+dependency to the monitor Extension.
 
 Sources: [Expo SDK 58](https://docs.expo.dev/versions/v58.0.0/),
 [config plugins](https://docs.expo.dev/config-plugins/plugins/),

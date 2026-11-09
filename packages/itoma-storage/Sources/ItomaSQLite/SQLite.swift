@@ -11,7 +11,7 @@ public enum SQLiteFailure: Error, Equatable, Sendable {
 }
 
 public enum SQLValue: Equatable {
-    case integer(Int64), text(String), blob(Data), null
+    case integer(Int64), real(Double), text(String), blob(Data), null
 }
 
 public final class SQLiteDatabase {
@@ -62,6 +62,9 @@ public final class SQLiteDatabase {
             let code: Int32
             switch value {
             case let .integer(number): code = sqlite3_bind_int64(statement, index, number)
+            case let .real(number):
+                guard number.isFinite else { throw SQLiteFailure.invalidArgument }
+                code = sqlite3_bind_double(statement, index, number)
             case let .text(text):
                 // Explicit UTF-8 byte count preserves embedded NUL and never silently truncates text.
                 let count = text.utf8.count
@@ -85,6 +88,10 @@ public final class SQLiteDatabase {
             for column in 0..<sqlite3_column_count(statement) {
                 switch sqlite3_column_type(statement, column) {
                 case SQLITE_INTEGER: row.append(.integer(sqlite3_column_int64(statement, column)))
+                case SQLITE_FLOAT:
+                    let number = sqlite3_column_double(statement, column)
+                    guard number.isFinite else { throw SQLiteFailure.corrupt }
+                    row.append(.real(number))
                 case SQLITE_TEXT:
                     guard let bytes = sqlite3_column_text(statement, column),
                           let text = String(data: Data(bytes: bytes, count: Int(sqlite3_column_bytes(statement, column))), encoding: .utf8)

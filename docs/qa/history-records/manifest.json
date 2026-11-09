@@ -1,0 +1,519 @@
+{
+  "sourceCommit": "04ee94f8127fa83ec96e783095bdaa71ba404c9c",
+  "kind": "synthetic-history-native-data-web-fixtures",
+  "physicalDevice": false,
+  "realDatabase": false,
+  "osRestrictionsVerified": false,
+  "browser": "155.0.8059.79",
+  "browserTimeZone": "UTC",
+  "nativeFixtureTimeZone": "Asia/Tokyo",
+  "fixtureClock": "2026-11-09T12:30:00Z",
+  "syntheticReasonOnly": true,
+  "mockedFiles": [
+    "temp-only src/app/history-proof.tsx"
+  ],
+  "cases": [
+    {
+      "name": "events-light",
+      "mode": "events",
+      "colorScheme": "light",
+      "width": 390,
+      "height": 844,
+      "textScale": 1,
+      "imageKind": "full-scroll-content-export",
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390,
+        "contentHeight": 2056
+      },
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 操作の記録",
+          "height": 52
+        },
+        {
+          "text": "保存した理由",
+          "height": 52
+        },
+        {
+          "text": "この日付の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "新しい40件へ",
+          "height": 52
+        },
+        {
+          "text": "前の40件へ",
+          "height": 52
+        },
+        {
+          "text": "この記録の理由を読む",
+          "height": 52
+        },
+        {
+          "text": "理由の全削除を確認",
+          "height": 52
+        },
+        {
+          "text": "操作履歴と理由の全削除を確認",
+          "height": 52
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        }
+      ],
+      "sha256": "260c60892c6edd891934d135565490c380edacfa9d4420aba1deb3815772382e"
+    },
+    {
+      "name": "events-dark",
+      "mode": "events",
+      "colorScheme": "dark",
+      "width": 390,
+      "height": 844,
+      "textScale": 1,
+      "imageKind": "full-scroll-content-export",
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390,
+        "contentHeight": 2056
+      },
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 操作の記録",
+          "height": 52
+        },
+        {
+          "text": "保存した理由",
+          "height": 52
+        },
+        {
+          "text": "この日付の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "新しい40件へ",
+          "height": 52
+        },
+        {
+          "text": "前の40件へ",
+          "height": 52
+        },
+        {
+          "text": "この記録の理由を読む",
+          "height": 52
+        },
+        {
+          "text": "理由の全削除を確認",
+          "height": 52
+        },
+        {
+          "text": "操作履歴と理由の全削除を確認",
+          "height": 52
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        }
+      ],
+      "sha256": "cbfd5e9f5419e9823c008ccd9761c8a59cc6b2ad13125f020d56171fea1ca5d0"
+    },
+    {
+      "name": "day-narrow",
+      "mode": "day",
+      "colorScheme": "light",
+      "width": 320,
+      "height": 800,
+      "textScale": 1,
+      "imageKind": "full-scroll-content-export",
+      "dimensions": {
+        "viewport": 320,
+        "scroll": 320,
+        "contentHeight": 2286
+      },
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 操作の記録",
+          "height": 52
+        },
+        {
+          "text": "保存した理由",
+          "height": 52
+        },
+        {
+          "text": "この日付の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "新しい40件へ",
+          "height": 52
+        },
+        {
+          "text": "前の40件へ",
+          "height": 52
+        },
+        {
+          "text": "この記録の理由を読む",
+          "height": 52
+        },
+        {
+          "text": "理由の全削除を確認",
+          "height": 52
+        },
+        {
+          "text": "操作履歴と理由の全削除を確認",
+          "height": 78
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        }
+      ],
+      "sha256": "fdcc000be996dc7df1169e63ac3c36068d59a33142b4dab1b40ac502b2aad0c6"
+    },
+    {
+      "name": "reason-large-dark",
+      "mode": "detail",
+      "colorScheme": "dark",
+      "width": 320,
+      "height": 800,
+      "textScale": 1.5,
+      "imageKind": "full-scroll-content-export",
+      "dimensions": {
+        "viewport": 320,
+        "scroll": 320,
+        "contentHeight": 1454
+      },
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 65
+        },
+        {
+          "text": "理由を再確認する",
+          "height": 65
+        },
+        {
+          "text": "記録の一覧へ戻る",
+          "height": 65
+        }
+      ],
+      "sha256": "d4a262d0cd58517c5cba60e0187d494ce70cb2a32121501ef27ce9208151eb7a"
+    },
+    {
+      "name": "deleted-light",
+      "mode": "deleted",
+      "colorScheme": "light",
+      "width": 390,
+      "height": 844,
+      "textScale": 1,
+      "imageKind": "full-scroll-content-export",
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390,
+        "contentHeight": 1508
+      },
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "操作の記録",
+          "height": 52
+        },
+        {
+          "text": "✓ 保存した理由",
+          "height": 52
+        },
+        {
+          "text": "この日付の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "新しい40件へ",
+          "height": 52
+        },
+        {
+          "text": "前の40件へ",
+          "height": 52
+        },
+        {
+          "text": "理由の全削除を確認",
+          "height": 52
+        },
+        {
+          "text": "操作履歴と理由の全削除を確認",
+          "height": 52
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        }
+      ],
+      "sha256": "1835fed043d0ba156d2365ee356faa7c78dc75bfe8cc7d9817b24cfdc1f99427"
+    },
+    {
+      "name": "capacity-gap-dark",
+      "mode": "gap",
+      "colorScheme": "dark",
+      "width": 390,
+      "height": 844,
+      "textScale": 1,
+      "imageKind": "full-scroll-content-export",
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390,
+        "contentHeight": 2440
+      },
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 操作の記録",
+          "height": 52
+        },
+        {
+          "text": "保存した理由",
+          "height": 52
+        },
+        {
+          "text": "この日付の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "新しい40件へ",
+          "height": 52
+        },
+        {
+          "text": "前の40件へ",
+          "height": 52
+        },
+        {
+          "text": "この記録の理由を読む",
+          "height": 52
+        },
+        {
+          "text": "理由の全削除を確認",
+          "height": 52
+        },
+        {
+          "text": "操作履歴と理由の全削除を確認",
+          "height": 52
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        }
+      ],
+      "sha256": "0378923ee2c76bb2aade0ad84ad66cd6640bb724dea74cd14a57a3e420d0537a"
+    },
+    {
+      "name": "unreadable-light",
+      "mode": "error",
+      "colorScheme": "light",
+      "width": 320,
+      "height": 800,
+      "textScale": 1,
+      "imageKind": "full-scroll-content-export",
+      "dimensions": {
+        "viewport": 320,
+        "scroll": 320,
+        "contentHeight": 860
+      },
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 操作の記録",
+          "height": 52
+        },
+        {
+          "text": "保存した理由",
+          "height": 52
+        },
+        {
+          "text": "この日付の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        }
+      ],
+      "sha256": "e714d701d11f2ea6559776e85f859675ae6796ed0e5f63e6f4a17b17036979d3"
+    },
+    {
+      "name": "not-created-light",
+      "mode": "new",
+      "colorScheme": "light",
+      "width": 390,
+      "height": 844,
+      "textScale": 1,
+      "imageKind": "full-scroll-content-export",
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390,
+        "contentHeight": 844
+      },
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 操作の記録",
+          "height": 52
+        },
+        {
+          "text": "保存した理由",
+          "height": 52
+        },
+        {
+          "text": "この日付の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        }
+      ],
+      "sha256": "fb5883ac82d09d27f9e5e48e3da73672baa5a7e9ac25ec6199df9ed490ad582d"
+    }
+  ],
+  "webBundles": [
+    {
+      "name": "__common-32a046f447d659d937311f2d825623df.js",
+      "sha256": "155ae4a3a716bb94ae04dcd4a9d8bb6519642dd2689d01a0546269df9465cb37"
+    },
+    {
+      "name": "__expo-metro-runtime-ed4c1cfa6193d76fc294130e42bd1916.js",
+      "sha256": "05f8ad2270b1fcf20739f7f5bb9d66f1d158ac32923ceae243df78864e47b745"
+    },
+    {
+      "name": "_layout-6bb3c680144610e3d87f5956ba2fa9ce.js",
+      "sha256": "a9ccdf3cd3617db614ea8de8a56a1e170fa09515833ef3dd95654abee1846a8c"
+    },
+    {
+      "name": "entry-9bc748e90c8ca7f4658f783774c3aa01.js",
+      "sha256": "f959ed45e303249818e8eb5f5bcd51a64adc0d22c3d23efe09b1d5cbc4874ac9"
+    },
+    {
+      "name": "explore-785829556b437c3bb6cfc3bc75272aba.js",
+      "sha256": "eeeb517ce0c21ba194e1bfc8bf69949669caacf7f133a06c4828ae4a8293a622"
+    },
+    {
+      "name": "grant-9df2e254b83393c97adf66b044e6ec94.js",
+      "sha256": "9066b17fcc91da4043101ac8e701a1a457a690affc794cc50346da9381d7b735"
+    },
+    {
+      "name": "history-56327dfda5cd1a2f31fc3c8e2fabdc74.js",
+      "sha256": "38e7c36e2e3aceecc3bae2d0e2da2ddc76ae8edd29ada545d8c3e8c08597adb2"
+    },
+    {
+      "name": "history-proof-a99b3c948db10c511636522e66e9e340.js",
+      "sha256": "66348ae39dbf842adcb39abce1527379849a283bf923d0fdaaa52f17d6412b3a"
+    },
+    {
+      "name": "history-reason-584d298d76c2ed8bdcb1043eacbab5ed.js",
+      "sha256": "4b0e8fde615249531351e6ec684fe805b0fe8806b4a3dd0c3fb0623c4cadf1b3"
+    },
+    {
+      "name": "index-0ca5180a5d41dcb6e13ac2e2c5ace189.js",
+      "sha256": "824e3a608591a2502b68c449dda10a045385e3c2605f1e1f0b9e7ccad57ce2a3"
+    },
+    {
+      "name": "native-poc-de7916810b1956c82785216f8fcd645c.js",
+      "sha256": "63b43ae6e90bbace563020f27b1c1ff6d76c24107c4d55daac40ca361323eeba"
+    },
+    {
+      "name": "onboarding-325b863d04800b536016b5cef584c989.js",
+      "sha256": "68d7bd3bf8b85fb271bc0abca84a563d91f803e10375d7d9437080d10eb79f07"
+    },
+    {
+      "name": "rule-8863cbaee46a5f682ec6f68bc0604918.js",
+      "sha256": "82e23c5f923abd1e09cade1cd7ce9a72c2664c613725399685e2c798e4a03164"
+    },
+    {
+      "name": "rule-confirm-c58ce76b84ae5a1513ca22763b7e50d2.js",
+      "sha256": "9bced22556f94b08b70bead313f8479378854349ac4926780b1d2ab0cbf1ca24"
+    },
+    {
+      "name": "settings-5054b5c273459f9d0554fccd641fb9b6.js",
+      "sha256": "ae9f4fa109f1f03790985b98728766c213bb525c6c8dc3c8f4e0fba992715b3d"
+    },
+    {
+      "name": "unlock-confirm-b344f048069629d96d721a356a3b77e5.js",
+      "sha256": "f3aa33dfcfbbd8de11f003ef6def3f3efc2f836f885fd4e8d14cadc4f70953dd"
+    },
+    {
+      "name": "unlock-da2af55b020486bb46a9715763bacbb8.js",
+      "sha256": "97f3dea919891e4711ce291948dfdff59501ff5f95b0eb281fe7533bab3915a7"
+    }
+  ],
+  "fixtureFiles": [
+    {
+      "name": "fixture.tsx.txt",
+      "sha256": "2332835c664c725e1e578d9ee462391b626c5d57eb8d8421eec93de4ef383b39"
+    },
+    {
+      "name": "capture.mjs.txt",
+      "sha256": "662878380a5920661e296d9a4198c293acd3b85afe827494e84b51434ff4502f"
+    }
+  ],
+  "productFilesChecked": 128,
+  "allProductFilesMatchSource": true
+}

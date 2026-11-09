@@ -1,0 +1,45 @@
+// Temporary visual fixture only. Never ship this route or synthetic data.
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Text, View } from 'react-native';
+import { HistoryProvider, useHistoryRecords } from '@/state/history';
+import { HistoryScreen, HistoryReasonScreen } from '@/components/flow/history';
+import { useFlowTheme } from '@/components/flow/ui';
+import type { HistoryPage, HistoryResponse, HistoryAction, HistoryRequest } from '../../modules/itoma-native';
+const now = Date.parse('2026-11-09T12:30:00Z') / 1000;
+const a = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', b = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', c = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+const reason = '【画面QA用の架空の理由】\n必要な情報をひとつ確認して、自分で決めた時間に戻ります。\n改行も、長い文章も、途中で省略せずに読めることを確認するための合成データです。実際の利用者が書いた理由ではありません。\n入力した言葉を採点したり、使い道を推測したりする表示がないことも確認しています。';
+function snapshot(mode: string, request: HistoryRequest): HistoryPage {
+  const reasons = request.kind === 'reason';
+  return { revision: '12', asOf: now, timeZone: 'Asia/Tokyo', rows: mode === 'empty' ? [] : reasons
+    ? [{ key: a, at: now - 300, action: 'reason', status: 'prepared', commandID: a, reasonDeleted: mode === 'deleted' }]
+    : [{ key: a, at: now - 300, action: 'requestTemporaryGrant', status: 'uncertain', commandID: a, expiresAt: now, grantStatus: 'uncertain' },
+      { key: b, at: now - 3600, action: 'stop', status: 'succeeded' }, { key: c, at: now - 7200, action: 'cancelled', status: 'cancelled' }],
+    next: mode === 'day' ? { at: now - 7200, key: c } : undefined,
+    logicalBytes: mode === 'gap' ? '104857600' : '4096', warningBytes: '83886080', maximumBytes: '104857600',
+    warningReached: mode === 'gap', limitReached: mode === 'gap', databaseBytes: '151552', walBytes: '32768', sharedMemoryBytes: '32768',
+    incomplete: mode === 'gap', transfer: mode === 'gap' ? 'pending' : 'current' };
+}
+function Scene({ mode }: { mode: string }) {
+  const state = useHistoryRecords(), seeded = useRef(false), theme = useFlowTheme(), [ready,setReady] = useState(false);
+  useEffect(() => {
+    if (seeded.current) return; seeded.current = true;
+    if (mode === 'detail') state.readReason(a);
+    else if (mode === 'deleted') state.choose('reason', '');
+    else if (mode === 'day') state.choose('event', '2026-11-09');
+    setReady(true);
+  }, [state, mode]);
+  return <View style={{ flex: 1, backgroundColor: theme.background }}><Text testID="history-proof-banner" style={{ padding: 10, fontSize: 12, lineHeight: 18, color: theme.text, backgroundColor: theme.soft }}>合成データによる履歴画面QA · 実機未検証 · {mode}</Text><View style={{ flex: 1 }}>{ready && (mode === 'detail' ? <HistoryReasonScreen /> : <HistoryScreen />)}</View></View>;
+}
+export default function Proof() {
+  const params = useLocalSearchParams<{ mode: string }>(), mode = typeof params.mode === 'string' ? params.mode : 'events';
+  const [mounted,setMounted] = useState(false);
+  useEffect(()=>{queueMicrotask(()=>setMounted(true))},[]);
+  const client = useMemo(() => ({ run: async (action: HistoryAction, request: HistoryRequest = {}): Promise<HistoryResponse> => {
+    if (mode === 'error') return { status: 'error', code: 'storage-failed', storage: 'unknown' };
+    if (mode === 'new') return { status: 'ok', storage: 'not-created' };
+    if (action === 'reason') return { status: 'ok', storage: 'ready', reason: { revision: '12', state: 'prepared-only', body: reason } };
+    return { status: 'ok', storage: 'ready', page: snapshot(mode, request) };
+  } }), [mode]);
+  return mounted ? <HistoryProvider client={client}><Scene mode={mode} /></HistoryProvider> : <Text>合成データを準備しています</Text>;
+}

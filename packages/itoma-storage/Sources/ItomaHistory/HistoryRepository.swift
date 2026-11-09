@@ -11,7 +11,7 @@ import Glibc
 /// iOS protection/backup attributes to the DB and sidecars; this portable layer cannot verify them.
 /// Non-Sendable, synchronous, and locally serialized. No public callback can hold its writer open.
 public final class HistoryRepository {
-    static let schemaVersion: Int64 = 2
+    static let schemaVersion: Int64 = 3
     static let applicationID: Int64 = 0x49544849
     let database: SQLiteDatabase
     let capacityPolicy: HistoryCapacityPolicy
@@ -50,6 +50,7 @@ public final class HistoryRepository {
                     )
                     """)
                 try repository.createPrivateHistoryTables()
+                try repository.createReadIndex()
                 try repository.database.execute("PRAGMA application_id=0x49544849")
                 try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
             }
@@ -67,7 +68,7 @@ public final class HistoryRepository {
             try repository.transaction(writer: false) {
                 guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
                       try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw HistoryError.corrupt }
-                _ = try repository.loadReasons()
+                try repository.validateReasons()
                 try repository.validatePrivateHistory()
             }
             return repository
@@ -118,6 +119,8 @@ public final class HistoryRepository {
                 .text(reasonRef.rawValue.uuidString), .text(commandID.rawValue.uuidString),
                 .blob(try JSONEncoder().encode(at)), .blob(bytes), .integer(Int64(bytes.count))
             ])
+            try indexRecord(kind: "reason", key: reasonRef.rawValue.uuidString, at: at)
+            try advanceReadRevision()
             return ReasonRecord(reasonRef: reasonRef, commandID: commandID, preparedAt: at, body: body)
         }
     }
@@ -139,8 +142,9 @@ public final class HistoryRepository {
     /// This deletes reasons only. Use deleteHistory(from:) for history payloads and source cutoffs.
     public func deleteReasons() throws {
         try transaction(writer: true) {
-            _ = try loadReasons()
+            try validateReasons()
             try database.execute("UPDATE reasons SET body=NULL,payload_bytes=0")
+            try advanceReadRevision()
         }
     }
 
@@ -188,6 +192,12 @@ public final class HistoryRepository {
                 try database.execute("SELECT cursor,event_id,source_id,sequence,record,payload_bytes FROM history_events LIMIT 0")
             } catch SQLiteFailure.failure { throw HistoryError.corrupt }
         }
+        if expected >= 3 {
+            do {
+                try database.execute("SELECT kind,record_key,occurred_at FROM history_read_index LIMIT 0")
+                try database.execute("SELECT singleton,revision FROM history_read_state LIMIT 0")
+            } catch SQLiteFailure.failure { throw HistoryError.corrupt }
+        }
     }
 
     func logicalBytes() throws -> Int64 {
@@ -229,6 +239,15 @@ public final class HistoryRepository {
             default: throw HistoryError.corrupt
             }
             return ReasonRecord(reasonRef: ReasonRef(ref), commandID: CommandID(command), preparedAt: time, body: body)
+        }
+    }
+
+    func validateReasons() throws {
+        var key = ""
+        while true {
+            let page = try loadReasons(filter: "WHERE reason_ref>?", bindings: [.text(key)], limit: 100)
+            guard let last = page.last else { return }
+            key = last.reasonRef.rawValue.uuidString
         }
     }
 }

@@ -79,6 +79,7 @@ export function ProductHome() {
     {device && s.authorization === 'approved' && s.activation === 'enabled' && s.schedulesReady && s.targets.some((t) => t.unlockable)
       && <Button label="一時解除する" testID="home-unlock-entry" disabled={!!state.busy} onPress={unlock} />}
     <Button label="ルールと設定" secondary onPress={() => router.push('/settings')} />
+    <Button label="選択の記録を見る" secondary onPress={() => router.navigate('/history')} />
     {device && <Button label="現在の状態を確認する" secondary disabled={!!state.busy} onPress={() => { void state.run('reconcile'); }} />}
     {!device && <PoCRecoveryEntry />}
   </FlowScreen>;

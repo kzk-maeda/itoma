@@ -17,7 +17,7 @@ const result = {
   buildID: process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}` : randomUUID(),
   workflowCommit: process.env.GITHUB_WORKFLOW_SHA ?? null,
   configuration: 'Release', sdk: 'iphonesimulator', signing: 'disabled',
-  coverage: 'JS-to-Swift Core/PoC transport and product adapter compilation; Simulator disables product Screen Time operations',
+  coverage: 'JS-to-Swift Core/PoC/History read-only transport and product adapter compilation; Simulator disables product Screen Time operations',
   stages: {}, startedAt: new Date().toISOString(),
 };
 let simulatorID, launcher, launchLog;
@@ -153,7 +153,7 @@ try {
     outcome = smokeOutcome(readFileSync(path.join(output, 'app.log'), 'utf8'), commit);
     if (launchError || (launcher.exitCode !== null && outcome === 'pending')) throw new Error('App console exited before a native smoke result');
   }
-  // The destination is the adopted home, reached after the PoC screen's read-only proof.
+  // Home is reached after separate read-only PoC and History route proofs.
   await delay(5_000);
   outcome = smokeOutcome(readFileSync(path.join(output, 'app.log'), 'utf8'), commit);
   if (outcome !== 'pass') throw new Error(`Native JS-to-Swift smoke ${outcome === 'fail' ? 'failed' : 'timed out'}`);
@@ -184,7 +184,7 @@ try {
     await delay(3_000);
     run('xcrun', ['simctl', 'io', simulatorID, 'screenshot', '--type=png', path.join(output, `home-${appearance}.png`)]);
     if (smokeOutcome(readFileSync(path.join(output, logName), 'utf8'), commit) !== 'pass') throw new Error('Native smoke failed after home capture');
-    result.homeImages[appearance] = { file: `home-${appearance}.png`, proof: 'bridge -> read-only PoC screen -> home mount', launch: 'fresh' };
+    result.homeImages[appearance] = { file: `home-${appearance}.png`, proof: 'bridge -> read-only PoC -> read-only History -> home mount', launch: 'fresh' };
   }
   checkpoint('nativeHomeImagesCaptured');
   result.status = 'pass';

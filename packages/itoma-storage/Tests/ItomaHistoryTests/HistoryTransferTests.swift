@@ -284,7 +284,7 @@ private func execute(_ db: OpaquePointer, _ text: String) { #expect(sqlite3_exec
     _ = try f.history.prepareReason(reasonRef: id(100), commandID: id(100), body: "fixture", at: time())
     try f.control.close(); try f.history.close()
     try sql(f.controlURL) { execute($0, "DROP TABLE activation_state; DROP TABLE application_state; DROP TABLE history_outbox; DROP TABLE history_event_ids; DROP TABLE history_state; PRAGMA user_version=3") }
-    try sql(f.historyURL) { execute($0, "DROP TABLE history_events; DROP TABLE history_sources; DROP TABLE dummy_selections; PRAGMA user_version=1") }
+    try sql(f.historyURL) { execute($0, "DROP TABLE history_events; DROP TABLE history_sources; DROP TABLE dummy_selections; DROP TABLE history_read_index; DROP TABLE history_read_state; PRAGMA user_version=1") }
     #expect(throws: StorageError.unsupportedSchema(3)) { try ControlRepository.open(at: f.controlURL) }
     #expect(throws: HistoryError.unsupportedSchema(1)) { try HistoryRepository.open(at: f.historyURL, capacity: budget()) }
     let control = try ControlRepository.migrate(at: f.controlURL)
@@ -306,6 +306,23 @@ private func execute(_ db: OpaquePointer, _ text: String) { #expect(sqlite3_exec
     try sql(f.controlURL) { execute($0, "DELETE FROM history_event_ids") }
     #expect(throws: StorageError.corrupt) { try f.control.historyBoundary() }
     #expect(throws: StorageError.corrupt) { try f.control.readSnapshot() }
+}
+
+@Test func deletedEventsNeverReappearInTheDateIndexWhenOldOutboxIsReplayed() throws {
+    let f = try Fixture(); defer { f.remove() }
+    try accept(f.control); try enqueue(f.control, event: 1)
+    let batch = try f.control.historyBatch()
+    _ = try f.history.commitHistoryBatch(batch)
+    let before = try f.history.readPage(kind: .event)
+    #expect(before.rows.count == 1)
+    try f.history.deleteHistory(from: f.control)
+    _ = try f.history.commitHistoryBatch(batch)
+    #expect(try f.history.readPage(kind: .event).rows.isEmpty)
+    #expect(throws: HistoryError.conflict) { try f.history.readPage(kind: .event, expectedRevision: before.revision) }
+    try enqueue(f.control, event: 2)
+    _ = try f.control.transferHistory(to: f.history)
+    let after = try f.history.readPage(kind: .event)
+    #expect(after.rows.map(\.key) == [(id(2) as EventID).rawValue.uuidString])
 }
 
 @Test func privatePrepareCompletesBeforeSharedIntentAndFailureNeverLooksAccepted() throws {
