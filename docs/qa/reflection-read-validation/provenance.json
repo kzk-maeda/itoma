@@ -1,0 +1,21 @@
+{
+  "sourceCommit": "6c9ce806567b8a7ed728530d2394858a8d19398b",
+  "localSourceCommit": "a07bdfd76dad0999956d9dbe8d13a1c314978020",
+  "sourceTree": "3b52e58de1d76985c7591dd32c38398add73d768",
+  "baselineSourceCommit": "e31cadb0dfcdd598dee501594a743ff3bf374358",
+  "dockerImage": "sha256:030b9705d4787c8aa9601e2032d063b3d066d6b45f7aa89d4cc3ae0362561558",
+  "sourceMount": "/tmp/itoma-reflection-read-cache:/src:ro",
+  "build": "swift build -c release --jobs 2",
+  "network": "none",
+  "sha256": {
+    "benchmark-measure.py.txt": "5129c9d01f4eb9e55cb4fc484f98261ee0fd30a84eee5fb5b7b303eed6082ee6",
+    "benchmark-main.swift.txt": "04ed6b935a574c6577b8cff64686ed074943dd6e4992b79e0525fe3ebe6296f5",
+    "benchmark-first-hash-buffer.log.txt": "ff69889422ab46e43acb1e89f14004291d1b6205382717fced6abed919f09a0d",
+    "benchmark-final.log.txt": "e656b74505ad503c7f8d3bf2d159ce51ce720af901a4c30fa29111ac5a7e957a",
+    "benchmark-first-hash-buffer.py.txt": "f6dedee2f3c5690ea7afa11588f9eca4013dd06afd085953fe4e614bed6a903a",
+    "benchmark.json": "feb8c704903fa7c28a4d61a580ebb1f44a32548ab6726533ac695e14e673bbf4",
+    "benchmark-build.log.txt": "ed3ed42a992e91d5ef38a8e206e6e0b2f03ea4e096c94745939e02a7772ef443",
+    "benchmark-package.swift.txt": "22a8be192d730a6c6f6babeb3a1c08c7c5cff785aef7f512347f72d3d52a971c",
+    "benchmark-baseline.json": "4f3d57940b9c3caf36eae13e74e2a9557d476b25bbaf9d071b58bcacad6fb37d"
+  }
+}

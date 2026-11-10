@@ -1,0 +1,48 @@
+{
+  "kind": "synthetic SQL prepared dataset, production repositories, Linux Swift6.2.3 Release diagnostic only",
+  "sourceCommit": "e31cadb0dfcdd598dee501594a743ff3bf374358",
+  "results": [
+    {
+      "observations": 2982,
+      "openSeconds": 0.0983806848526001,
+      "readSeconds": [
+        0.08058643341064453,
+        0.07336974143981934,
+        0.08265960216522217
+      ],
+      "payloadBytes": 1048557,
+      "targetBytes": 1048576,
+      "rows": 2982,
+      "peakRSSKiB": 32428,
+      "sqliteBytes": 98304
+    },
+    {
+      "observations": 29736,
+      "openSeconds": 0.858600378036499,
+      "readSeconds": [
+        0.7997771501541138,
+        0.8515485525131226,
+        0.8078939914703369
+      ],
+      "payloadBytes": 10485702,
+      "targetBytes": 10485760,
+      "rows": 29736,
+      "peakRSSKiB": 32624,
+      "sqliteBytes": 16773120
+    },
+    {
+      "observations": 296521,
+      "openSeconds": 8.573708415031433,
+      "readSeconds": [
+        8.305383205413818,
+        8.189064025878906,
+        8.106483697891235
+      ],
+      "payloadBytes": 104857329,
+      "targetBytes": 104857600,
+      "rows": 296521,
+      "peakRSSKiB": 32624,
+      "sqliteBytes": 178524160
+    }
+  ]
+}

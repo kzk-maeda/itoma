@@ -1,0 +1,29 @@
+import hashlib,json,os,pathlib,shutil,sqlite3,statistics,subprocess
+root=pathlib.Path('/work');baseline=pathlib.Path('/baseline')
+source=os.environ['ITOMA_BENCH_COMMIT'];results=[]
+def file_hash(path):
+    digest=hashlib.sha256()
+    with path.open('rb') as f:
+        for block in iter(lambda:f.read(1_048_576),b''):digest.update(block)
+    return digest.hexdigest()
+old=json.loads((baseline/'measurement.log').read_text().splitlines()[-1])['results']
+for previous in old:
+    target=previous['targetBytes'];original=baseline/('size-'+str(target))
+    folder=root/('stream-size-'+str(target));shutil.copytree(original,folder)
+    digest=file_hash(original/'history.sqlite')
+    assert file_hash(folder/'history.sqlite')==digest
+    db=sqlite3.connect(folder/'history.sqlite')
+    count,payload=db.execute('select count(*),sum(payload_bytes) from reflection_facts').fetchone();db.close()
+    assert count==previous['rows'] and payload==previous['payloadBytes']
+    p=subprocess.Popen(['/work/.build/release/reflection-read-benchmark','read',str(folder)],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    _,status,usage=os.wait4(p.pid,0);p.returncode=os.waitstatus_to_exitcode(status)
+    out=p.stdout.read().decode();err=p.stderr.read().decode()
+    if p.returncode:raise RuntimeError((p.returncode,out,err))
+    result=json.loads(out);assert result['observations']==count
+    result.update(payloadBytes=payload,rows=count,datasetSHA256=digest,peakRSSKiB=usage.ru_maxrss,
+                  baselineOpenSeconds=previous['openSeconds'],baselineReadSeconds=previous['readSeconds'],
+                  medianReadSpeedup=statistics.median(previous['readSeconds'])/statistics.median(result['readSeconds']))
+    results.append(result);print(json.dumps(result),flush=True)
+print(json.dumps(dict(sourceCommit=source,sqlite=sqlite3.sqlite_version,
+    kind='same minimum synthetic SQLite datasets; production repositories; Linux Swift6.2.3 Release; three week reads after fresh open; warm OS cache; no RN/iOS or producer/import qualification',
+    results=results)),flush=True)
