@@ -40,4 +40,4 @@ fixtureは次でSwiftから生成する。Tools targetはCore Podの`Sources/Ito
 swift run --package-path packages/itoma-core --jobs 2 reflection-prototype-fixtures --ui > tests/fixtures/reflection-prototype.json
 ```
 
-Native QA/画像/最終SHAはPRへ記録する。raw ledgerを本体/Extensionへ配線し、採用済みの根拠で正値を返すことと、本PoCの保存/算術/表示の合格を区別する。
+画像/再現方法は[QA記録](../qa/reflection-prototype.md)、Native QA/最終SHAはPRへ記録する。raw ledgerを本体/Extensionへ配線し、採用済みの根拠で正値を返すことと、本PoCの保存/算術/表示の合格を区別する。

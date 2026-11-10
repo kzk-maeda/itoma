@@ -1,0 +1,18 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Text } from 'react-native';
+import { ReflectionPrototypePreview } from '@/experiments/reflection/preview';
+import type { ReflectionRequest } from '@/experiments/reflection/model';
+import data from '../../tests/fixtures/reflection-prototype.json';
+
+export default function Proof() {
+  const [scenario, setScenario] = useState<string>(), [selected, setSelected] = useState('');
+  useEffect(() => { setScenario(new URLSearchParams(window.location.search).get('scenario') ?? 'recorded'); }, []);
+  const source = useMemo(() => ({ read: async (request: ReflectionRequest) => {
+    const rows = (data as Record<string, { request: { period: string; day: string; clippedTo?: { from: number; until: number } }; response: unknown }[]>)[scenario ?? 'notRecorded'];
+    const row = rows.find(x => x.request.period === request.period && x.request.day === request.day && JSON.stringify(x.request.clippedTo) === JSON.stringify(request.clippedTo));
+    if (!row) throw new Error('fixture not exported');
+    return JSON.stringify(row.response);
+  } }), [scenario]);
+  if (!scenario) return <Text>プレビューを準備しています。</Text>;
+  return <><ReflectionPrototypePreview source={source} initialAnchor="2026-11-09" onDay={day => setSelected(day)} /><Text>{selected ? `日別記録への要求：${selected}` : ''}</Text></>;
+}

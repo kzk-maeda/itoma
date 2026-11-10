@@ -1,0 +1,51 @@
+import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
+import path from 'node:path';
+const require = createRequire(import.meta.url);
+const { chromium } = require('/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const output = '/tmp/itoma-reflection-foundation/docs/qa/reflection-prototype';
+mkdirSync(output, { recursive: true });
+const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', args: ['--no-sandbox'] });
+const proof = { sourceCommit: '3e4348305953de0fd0598479491a3924a7efe6d0', sourceTree: 'de3f291c40676ff2e7f0307e4d36ca043644c600',
+  kind: 'synthetic Swift-generated DTO / RN Web full-scroll export', physicalDevice: 'unverified', browser: await browser.version(),
+  asOf: '2026-11-10T00:00:00Z', fixtureTimeZone: 'UTC', cases: [] };
+const cases = [
+  ['week-light', 'recorded', 'light', 390, false, false],
+  ['month-dark', 'recorded', 'dark', 390, true, false],
+  ['partial-narrow', 'partial', 'light', 320, false, false],
+  ['observed-dark', 'observed', 'dark', 390, false, false],
+  ['deleted-light', 'deleted', 'light', 390, false, false],
+  ['not-recorded-dark', 'notRecorded', 'dark', 320, false, false],
+  ['zero-light', 'zero', 'light', 320, false, false],
+  ['month-large-dark', 'recorded', 'dark', 320, true, true],
+];
+try {
+  for (const [name, scenario, colorScheme, width, month, large] of cases) {
+    const context = await browser.newContext({ viewport: { width, height: 844 }, colorScheme, reducedMotion: 'reduce', timezoneId: 'UTC' });
+    const page = await context.newPage(), errors = [];
+    page.on('pageerror', e => errors.push(String(e.message)));
+    page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+    await page.goto(`http://127.0.0.1:8140/reflection-proof?scenario=${scenario}`, { waitUntil: 'networkidle' });
+    await page.getByText('検証用プレビュー', { exact: true }).waitFor();
+    await page.getByText('記録を確認しています。', { exact: true }).waitFor({ state: 'hidden' });
+    if (month) { await page.getByRole('button', { name: '月次', exact: true }).click(); await page.getByText('2026年11月', { exact: true }).waitFor(); }
+    await page.evaluate(async () => { await document.fonts.ready; });
+    if (large) await page.evaluate(() => {
+      const elements = [...document.querySelectorAll('[dir="auto"]')].map(el => [el, parseFloat(getComputedStyle(el).fontSize), parseFloat(getComputedStyle(el).lineHeight)]);
+      for (const [el, font, line] of elements) { el.style.fontSize = `${font * 1.5}px`; if (Number.isFinite(line)) el.style.lineHeight = `${line * 1.5}px`; }
+    });
+    await page.getByTestId('reflection-preview-scroll').evaluate(el => { for (let n = el; n; n = n.parentElement) Object.assign(n.style, { height: 'auto', minHeight: '0', maxHeight: 'none', flexGrow: '0', flexBasis: 'auto', position: 'relative', overflow: 'visible' }); });
+    const dimensions = await page.evaluate(() => ({ viewport: innerWidth, scroll: document.documentElement.scrollWidth, contentHeight: document.documentElement.scrollHeight }));
+    const buttons = await page.getByRole('button').evaluateAll(items => items.map(el => ({ text: el.textContent, height: el.getBoundingClientRect().height })));
+    await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true });
+    proof.cases.push({ name, scenario, colorScheme, width, textScale: large ? 1.5 : 1, dimensions, horizontalOverflow: dimensions.scroll > width + 1, errors, buttons,
+      sha256: createHash('sha256').update(readFileSync(path.join(output, `${name}.png`))).digest('hex') });
+    console.log(`${name}: ${dimensions.scroll}/${width}px, errors=${errors.length}`);
+    await context.close();
+  }
+} finally { await browser.close(); }
+const jsRoot = '/tmp/itoma-reflection-proof-dist/_expo/static/js/web';
+proof.bundles = readdirSync(jsRoot).filter(x => x.endsWith('.js')).map(name => ({ name, sha256: createHash('sha256').update(readFileSync(path.join(jsRoot, name))).digest('hex') }));
+writeFileSync(path.join(output, 'manifest.json'), JSON.stringify(proof, null, 2) + '\n');
+if (proof.cases.some(x => x.horizontalOverflow || x.errors.length || x.buttons.some(b => b.height < 44))) process.exitCode = 1;
