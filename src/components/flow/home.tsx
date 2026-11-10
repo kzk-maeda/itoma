@@ -1,15 +1,16 @@
 import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useVisibleClock } from '@/hooks/use-visible-clock';
 import { useScreenTime } from '@/state/screen-time';
 import { completeNativeHomeSmoke } from '@/qa/native-smoke';
 import { PeriodRing } from '../home/period-ring';
 import { presentPeriod } from '../home/period-presentation';
 import { PoCRecoveryEntry } from '../home/poc-recovery-entry';
+import { OpenCircle } from '../home/open-circle';
 import { Applications } from './applications';
-import { Body, Button, FlowScreen, Heading, Notice, Panel, useFlowTheme, flowStyles } from './ui';
-import { endTime, grantRemaining } from './presentation';
+import { Body, Button, FlowScreen, Heading, LinkRow, Notice, Panel, useFlowTheme } from './ui';
+import { endTime, grantRemaining, ruleText } from './presentation';
 
 export function ProductHome() {
   const state = useScreenTime(), theme = useFlowTheme(), now = useVisibleClock();
@@ -33,7 +34,7 @@ export function ProductHome() {
   const stopLegacy = () => Alert.alert('手動検証の制限を停止しますか', '以前の手動検証で指定した制限だけを停止します。通常のルールと保存した対象は削除しません。', [
     { text: '戻る', style: 'cancel' }, { text: '手動検証の制限を停止', onPress: () => { void state.run('stopLegacy'); } },
   ]);
-  return <FlowScreen title={s?.rules.length ? '自分で決めた時間' : '自分の時間を、ここから。'}>
+  return <FlowScreen title="いとま" tab="home">
     {state.loading && <Body muted>現在の設定を確認しています。</Body>}
     {!state.loading && !device && <Notice title="iPhoneのITOMAで設定できます">
       {s?.availability === 'simulator' ? 'この環境ではスクリーンタイムの認可や実際の制限は行いません。対応するiPhone版で設定できます。'
@@ -50,38 +51,60 @@ export function ProductHome() {
     {device && !!s.rules.length && s.activation === 'enabled' && (!s.schedulesReady || !observed) && <Notice title="制限の状態を確認してください">
       {s.schedulesReady ? '反映を確認できていません。以下の時間帯は保存した設定です。' : '自動切替の予定を確認できていません。現在の制限と今後の予定を確認できます。'}
     </Notice>}
-    {current.map((p) => { const presentation = presentPeriod(p.startsAt * 1000, p.endsAt * 1000, now); return <View key={`${p.ruleID}:${p.startsAt}`} style={flowStyles.center}>
-      <Heading>時間帯 {Math.max(1, (s?.rules.findIndex((r) => r.id === p.ruleID) ?? 0) + 1)}</Heading>
-      <Body muted>{s?.activation === 'enabled' && observed ? '制限設定を反映しました' : '保存した設定上の時間'}</Body>
+    {current.map((p) => { const presentation = presentPeriod(p.startsAt * 1000, p.endsAt * 1000, now);
+      const rule = s?.rules.find(r => r.id === p.ruleID);
+      return <View key={`${p.ruleID}:${p.startsAt}`} style={styles.period}>
+      <View style={styles.periodHeading}>
+        <View style={styles.periodLabel}>
+          {rule && <Text style={[styles.caption, { color: theme.muted }]}>{ruleText(rule)}</Text>}
+          <Heading>時間帯 {Math.max(1, (s?.rules.findIndex((r) => r.id === p.ruleID) ?? 0) + 1)}</Heading>
+        </View>
+        <OpenCircle color={theme.accent} size={28} />
+      </View>
       {presentation.state === 'current' && <PeriodRing period={presentation} theme={theme} />}
+      <Text style={[styles.caption, styles.observation, { color: theme.muted }]}>{s?.activation === 'enabled' && observed ? '制限設定を反映しました' : '保存した設定上の時間'}</Text>
     </View>; })}
     {!current.length && !!s?.rules.length && <Panel><Heading>次の時間まで</Heading>
       <Body>{s.nextPeriod ? `${endTime(s.nextPeriod.startsAt, now)}から予定しています。` : '有効な次の時間帯はありません。ルールを確認できます。'}</Body>
     </Panel>}
+    {!s?.rules.length && <Heading>自分の時間を、ここから。</Heading>}
     {!s?.rules.length && <Panel><Heading>離れたいアプリと、時間を決める</Heading>
       <Body>いつ、どのアプリから離れたいか。あなたのペースで決めていきましょう。</Body>
       <Body muted>必要なときは、自分の言葉で理由を書いて一時解除できます。</Body>
     </Panel>}
     {!s?.rules.length && <Button label="ルールをつくる" disabled={!device || !!state.busy} onPress={create} />}
     {!!s?.rules.length && state.ruleDraft?.dirty && <Button label="編集中のルールに戻る" secondary onPress={() => router.navigate('/rule')} />}
-    {!!s?.rules.length && <View style={flowStyles.section}><Heading>対象のアプリ</Heading>
-      {s.authorization === 'approved' ? s.targets.map((target) => <Panel key={target.ref}>
-        <Applications selectionRef={target.selectionRef} targetRef={target.ref} refreshKey={state.refreshKey} />
-        {target.ruleID && <Body muted>適用するルール：時間帯 {s.rules.findIndex((rule) => rule.id === target.ruleID) + 1}</Body>}
-        <Body muted>{s.activation === 'paused' ? 'ルールの停止を保存しています' : s.activation === 'awaitingReauthorizationConfirmation' ? '再開前の確認待ちです' : target.grantCommandID ? target.grantStatus === 'active' && observed && (target.grantEndsAt ?? 0) * 1000 > now
+    {!!s?.rules.length && <View style={styles.targets}><Heading>対象のアプリ</Heading>
+      {s.authorization === 'approved' ? s.targets.map((target) => <View key={target.ref} style={[styles.target, { borderColor: theme.line }]}>
+        <View style={styles.targetLine}>
+          <View style={styles.appIdentity}><Applications selectionRef={target.selectionRef} targetRef={target.ref} refreshKey={state.refreshKey} /></View>
+          <Text style={[styles.targetStatus, { color: theme.muted }]}>{s.activation === 'paused' ? '停止を保存済み' : s.activation === 'awaitingReauthorizationConfirmation' ? '再開前の確認待ち' : target.grantCommandID ? target.grantStatus === 'active' && observed && (target.grantEndsAt ?? 0) * 1000 > now
+            ? '一時解除中' : '解除の状態を確認'
+            : target.restricted ? observed ? '制限設定を反映済み' : '設定上の制限対象' : '時間帯の対象外'}</Text>
+        </View>
+        {s.rules.length > 1 && target.ruleID && <Text style={[styles.caption, { color: theme.muted }]}>適用するルール：時間帯 {s.rules.findIndex((rule) => rule.id === target.ruleID) + 1}</Text>}
+        {target.grantCommandID && <Text style={[styles.caption, { color: theme.muted }]}>{target.grantStatus === 'active' && observed && (target.grantEndsAt ?? 0) * 1000 > now
           ? `一時解除の残り ${grantRemaining(target.grantEndsAt!, now)} · ${endTime(target.grantEndsAt!, now)}まで`
-          : '解除の要求・再制限の状態を確認できます。'
-          : target.restricted ? observed ? 'この時間帯の制限設定を反映しました' : '設定上の制限対象です' : '現在の時間帯の制限対象ではありません'}</Body>
-        {target.grantCommandID && <Button label="解除の状況を見る" secondary onPress={() => router.push('/grant')} />}
-      </Panel>) : <Body muted>許可を確認すると、保存した対象を確認できます。</Body>}
+          : '解除の要求・再制限の状態を確認できます。'}</Text>}
+        {target.grantCommandID && <LinkRow label="解除の状況を見る" onPress={() => router.navigate('/grant')} />}
+      </View>) : <Body muted>許可を確認すると、保存した対象を確認できます。</Body>}
       {s.targets.length === 0 && <Body muted>対象のアプリはありません。</Body>}
     </View>}
     {device && s.authorization === 'approved' && s.activation === 'enabled' && s.schedulesReady && s.targets.some((t) => t.unlockable)
       && <Button label="一時解除する" testID="home-unlock-entry" disabled={!!state.busy} onPress={unlock} />}
-    <Button label="ルールと設定" secondary onPress={() => router.push('/settings')} />
-    <Button label="選択の記録を見る" secondary onPress={() => router.navigate('/history')} />
-    <Button label="自分の時間を振り返る" secondary onPress={() => router.navigate('/reflection')} />
-    {device && <Button label="現在の状態を確認する" secondary disabled={!!state.busy} onPress={() => { void state.run('reconcile'); }} />}
+    <View>
+      <LinkRow label="ルールと設定" onPress={() => router.navigate('/settings')} />
+      <LinkRow label="選択の記録を見る" onPress={() => router.navigate('/history')} />
+      {device && <LinkRow label="現在の状態を確認する" disabled={!!state.busy} onPress={() => { void state.run('reconcile'); }} />}
+    </View>
     {!device && <PoCRecoveryEntry />}
   </FlowScreen>;
 }
+
+const styles = StyleSheet.create({
+  period: { gap: 12 }, periodHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, periodLabel: { flex: 1, gap: 4 },
+  caption: { fontSize: 13, lineHeight: 20 }, observation: { textAlign: 'center' },
+  targets: { gap: 8 }, target: { paddingVertical: 10, borderBottomWidth: 1, gap: 4 },
+  targetLine: { flexDirection: 'row', alignItems: 'center', gap: 12 }, appIdentity: { flex: 1, minWidth: 0 },
+  targetStatus: { maxWidth: '43%', flexShrink: 1, textAlign: 'right', fontSize: 13, lineHeight: 21 },
+});

@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { Body, Button, Heading, Notice, Panel, useFlowTheme } from '@/components/flow/ui';
+import { Body, Heading, LinkRow, Notice, useFlowTheme } from '@/components/flow/ui';
 import { HomeLayout } from '@/constants/theme';
 import { parseReflectionSnapshot, parseReflectionPrototypeSnapshot, reflectionDuration, ReflectionReadError, type ReflectionBucket, type ReflectionPeriod, type ReflectionSource, type ReflectionRequest, type ReflectionSnapshot } from '../../../modules/itoma-native/src/reflection-model';
 
@@ -19,7 +19,10 @@ function Trend({ buckets }: { buckets: ReflectionBucket[] }) {
   }).join(' ');
   const description = buckets.map(b => `${shortDay(b.day)}、${reflectionDuration(b.knownSeconds)}${b.coverage !== 'recorded' ? '、一部不明または未記録' : ''}`).join('。');
   return <View accessible accessibilityRole="image" accessibilityLabel={`これまでの推移。${description}。不明な区間は線をつないでいません。`}>
-    <Svg width="100%" height={52} viewBox="0 0 320 52" accessible={false}>{path ? <Path d={path} fill="none" stroke={theme.accent} strokeWidth={2} /> : null}</Svg>
+    <Svg width="100%" height={52} viewBox="0 0 320 52" accessible={false}>
+      <Path d="M0 51H320" stroke={theme.line} strokeWidth={1} />
+      {path ? <Path d={path} fill="none" stroke={theme.accent} strokeWidth={2} /> : null}
+    </Svg>
   </View>;
 }
 
@@ -30,7 +33,7 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
   prototype?: boolean; embedded?: boolean; disabled?: boolean; initialMemory?: ReflectionMemory; onMemory?: (value: ReflectionMemory) => void;
   onRead?: (state: 'ready' | 'not-created' | 'error') => void; controls?: ReactNode;
 }) {
-  const theme = useFlowTheme();
+  const theme = useFlowTheme(), { fontScale } = useWindowDimensions();
   const [request, setRequest] = useState<ReflectionRequest>(initialMemory?.request ?? { period: 'week', day: initialAnchor });
   const [positions, setPositions] = useState<ReflectionMemory['positions']>(initialMemory?.positions ?? { week: { period: 'week', day: initialAnchor }, month: { period: 'month', day: initialAnchor } });
   const [owned, setOwned] = useState<{ source: ReflectionSource; prototype: boolean; value: ReflectionSnapshot }>();
@@ -73,50 +76,72 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
   const content = <>
     {prototype && <Notice title="検証用プレビュー">合成データまたは点の観測を使う実装検証です。実機の制限時間との接続はまだ行っていません。</Notice>}
     {!embedded && <Heading>これまでの自分の時間</Heading>}
-    <Panel>
-      <Body muted>制限を続けた時間</Body>
+    <View style={[styles.totalCard, { backgroundColor: theme.background }]}>
+      <Text style={[styles.caption, { color: theme.muted }]}>これまでに制限を続けた時間</Text>
       <Text testID="reflection-total" style={[styles.total, { color: theme.text }]}>{reflectionDuration(snapshot?.total.knownSeconds)}</Text>
+      <Text style={[styles.caption, { color: theme.muted }]}>記録全体の累計 · 一時解除を除く</Text>
       {snapshot && <>
-        <Body>{describe(snapshot.total)}</Body>
-        {!prototype && <Body muted>保存した状態の記録：{snapshot.observationCount}件。確認できない時間は加算していません。</Body>}
-        {!prototype && snapshot.incomplete && <Body muted>記録の一部が欠けている可能性があります。</Body>}
-        {!prototype && snapshot.sharedIncomplete && <Body muted>新しい状態の記録に欠落の可能性があります。保存済みの記録とは別の時点で確認しています。</Body>}
-        {!prototype && snapshot.transfer !== 'current' && <Body muted>{snapshot.transfer === 'pending' ? 'まだ取り込んでいない記録があります。' : '新しい記録の取込状況を確認できません。'}</Body>}
+        {(prototype || snapshot.total.coverage !== 'partial') && <Text style={[styles.caption, { color: theme.muted }]}>{describe(snapshot.total)}</Text>}
         {snapshot.total.knownSeconds !== undefined && snapshot.total.knownSeconds > 0 && <Body>自分の時間を、少しずつ積み重ねています。</Body>}
-        {snapshot.proofScope === 'syntheticFixture' && <Body muted>表示の時間はすべて架空の検証値です。</Body>}
         <Trend buckets={snapshot.trend} />
       </>}
-    </Panel>
+      {!prototype && <Text style={[styles.caption, { color: theme.text }]}>時間の集計は準備中です</Text>}
+    </View>
+    {!prototype && <>
+      {snapshot?.incomplete && <Body muted>記録の一部が欠けている可能性があります。</Body>}
+      {snapshot?.sharedIncomplete && <Body muted>新しい状態の記録に欠落の可能性があります。保存済みの記録とは別の時点で確認しています。</Body>}
+      {snapshot && snapshot.transfer !== 'current' && <Body muted>{snapshot.transfer === 'pending' ? 'まだ取り込んでいない記録があります。' : '新しい記録の取込状況を確認できません。'}</Body>}
+    </>}
+    {snapshot?.proofScope === 'syntheticFixture' && <Body muted>表示の時間はすべて架空の検証値です。</Body>}
     {visibleError?.empty && <Notice title="まだ時間の記録がありません">これからの記録を、ここで確認できます。記録のない時間を0分としていません。</Notice>}
     {visibleError && !visibleError.empty && <Notice title={visibleError.changed ? '記録が更新されました' : '記録を読み取れませんでした'}>
       {visibleError.changed ? '累計と期間の記録を、同じ時点で再確認できます。' : '空の記録とは扱っていません。もう一度確認できます。'}
     </Notice>}
     {busy && <Body muted>記録を確認しています。</Body>}
-    <View style={styles.row}>
-      <Button label={(snapshot?.period ?? request.period) === 'week' ? '✓ 週次' : '週次'} secondary disabled={blocked} onPress={() => choose('week')} />
-      <Button label={(snapshot?.period ?? request.period) === 'month' ? '✓ 月次' : '月次'} secondary disabled={blocked} onPress={() => choose('month')} />
+    <Text accessibilityRole="header" style={[styles.sectionTitle, { color: theme.text }]}>期間ごとに見る</Text>
+    <View style={[styles.segments, { backgroundColor: theme.background }]}>
+      {(['week', 'month'] as const).map(period => {
+        const selected = (snapshot?.period ?? request.period) === period;
+        return <Pressable key={period} accessibilityRole="button" accessibilityState={{ selected, disabled: blocked }} disabled={blocked}
+          onPress={() => choose(period)} style={({ pressed }) => [styles.segment, { backgroundColor: selected ? theme.surface : 'transparent', borderColor: selected ? theme.accent : 'transparent', opacity: pressed ? 0.75 : 1 }]}>
+          <Text style={[styles.segmentText, { color: theme.text, fontWeight: selected ? '600' : '400' }]}>{period === 'week' ? '週次' : '月次'}</Text>
+        </Pressable>;
+      })}
     </View>
     {snapshot && <>
-      <Heading>{snapshot.period === 'month' ? `${snapshot.anchor.slice(0, 4)}年${Number(snapshot.anchor.slice(5, 7))}月` : `${shortDay(snapshot.anchor)}からの週`}</Heading>
-      <Body>{snapshot.period === 'month' ? 'この月' : request.clippedTo ? '月内の週' : 'この週'}の記録：{reflectionDuration(snapshot.selected.knownSeconds)}</Body>
-      <Body muted>{describe(snapshot.selected)} · {snapshot.timeZone}</Body>
-      <View style={styles.row}>
-        <Button label="前の期間" secondary disabled={blocked || !snapshot.previousAnchor} onPress={() => { if (snapshot.previousAnchor) ask({ period: snapshot.period, day: snapshot.previousAnchor }); }} />
-        <Button label="次の期間" secondary disabled={blocked || !snapshot.nextAnchor} onPress={() => { if (snapshot.nextAnchor) ask({ period: snapshot.period, day: snapshot.nextAnchor }); }} />
+      <View style={styles.periodNavigation}>
+        <Pressable accessibilityRole="button" accessibilityLabel="前の期間" accessibilityState={{ disabled: blocked || !snapshot.previousAnchor }}
+          disabled={blocked || !snapshot.previousAnchor} onPress={() => { if (snapshot.previousAnchor) ask({ period: snapshot.period, day: snapshot.previousAnchor }); }}
+          style={[styles.round, { borderColor: theme.muted }]}><Text style={{ color: theme.muted, fontSize: 24 }}>‹</Text></Pressable>
+        <Text accessibilityRole="header" style={[styles.periodTitle, { color: theme.text }]}>{snapshot.period === 'month' ? `${snapshot.anchor.slice(0, 4)}年${Number(snapshot.anchor.slice(5, 7))}月` : `${shortDay(snapshot.anchor)}からの週`}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="次の期間" accessibilityState={{ disabled: blocked || !snapshot.nextAnchor }}
+          disabled={blocked || !snapshot.nextAnchor} onPress={() => { if (snapshot.nextAnchor) ask({ period: snapshot.period, day: snapshot.nextAnchor }); }}
+          style={[styles.round, { borderColor: theme.muted }]}><Text style={{ color: theme.muted, fontSize: 24 }}>›</Text></Pressable>
       </View>
-      {snapshot.buckets.map((bucket) => <Pressable key={bucket.day} accessibilityRole="button"
+      <View accessible accessibilityLabel={`${snapshot.period === 'month' ? 'この月' : request.clippedTo ? '月内の週' : 'この週'}の記録：${reflectionDuration(snapshot.selected.knownSeconds)}`} style={styles.periodTotal}>
+        <Text style={[styles.caption, { color: theme.muted }]}>{snapshot.period === 'month' ? 'この月' : request.clippedTo ? '月内の週' : 'この週'}の記録</Text>
+        <Text testID="reflection-period-total" style={[styles.periodNumber, { color: theme.text }]}>{reflectionDuration(snapshot.selected.knownSeconds)}</Text>
+      </View>
+      <Text style={[styles.caption, { color: theme.muted }]}>{describe(snapshot.selected)} · {snapshot.timeZone}</Text>
+      <View>{snapshot.buckets.map((bucket) => <Pressable key={bucket.day} accessibilityRole="button"
         accessibilityLabel={`${shortDay(bucket.day)}、${reflectionDuration(bucket.knownSeconds)}、${coverageText(bucket)}`}
         disabled={blocked || (snapshot.period === 'week' && !onDay)}
         onPress={() => snapshot.period === 'month' ? ask({ period: 'week', day: bucket.day, clippedTo: { from: bucket.from, until: bucket.until } }) : onDay?.(bucket.day, snapshot)}
         style={[styles.bucket, { borderColor: theme.line }]}>
-        <Body>{shortDay(bucket.day)}{snapshot.period === 'month' ? 'から' : ''}</Body>
-        <Body>{reflectionDuration(bucket.knownSeconds)}{bucket.coverage === 'partial' ? ' · 一部の記録' : ''}</Body>
-        <View accessible={false} style={[styles.track, { backgroundColor: theme.soft }]}>
-          {bucket.knownSeconds !== undefined && <View style={[styles.bar, { backgroundColor: theme.accent, width: `${bucket.knownSeconds / max * 100}%` }]} />}
+        <View style={[styles.barRow, fontScale > 1.2 && styles.expandedBarRow]}>
+          <Text style={[styles.barLabel, fontScale > 1.2 && styles.expandedBarText, { color: theme.text }]}>{shortDay(bucket.day)}{snapshot.period === 'month' ? '〜' : ''}</Text>
+          <View accessible={false} style={[styles.track, fontScale > 1.2 && styles.expandedTrack, { backgroundColor: theme.background }]}>
+            {bucket.knownSeconds !== undefined && <View style={[styles.bar, { backgroundColor: theme.accent, width: `${bucket.knownSeconds / max * 100}%` }]} />}
+          </View>
+          <Text style={[styles.barValue, fontScale > 1.2 && styles.expandedBarText, { color: theme.muted }]}>{reflectionDuration(bucket.knownSeconds)}{bucket.coverage === 'partial' ? ' · 一部不明' : ''}</Text>
         </View>
-      </Pressable>)}
+      </Pressable>)}</View>
     </>}
-    <Button label="最新の記録を確認する" secondary disabled={blocked} onPress={() => {
+    {!prototype && <View style={styles.metadata}>
+      <Text style={[styles.caption, { color: theme.muted }]}>制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。</Text>
+      {snapshot && <Text style={[styles.caption, { color: theme.muted }]}>保存した状態の記録：{snapshot.observationCount}件。確認できない時間は加算していません。</Text>}
+    </View>}
+    <LinkRow label="最新の記録を確認する" disabled={blocked} onPress={() => {
       latest.current = undefined; setOwned(undefined); setBusy(true); setRetry(n => n + 1);
     }} />
     {controls}
@@ -126,8 +151,19 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
 const styles = StyleSheet.create({
   embedded: { gap: 20 },
   content: { width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center', paddingHorizontal: HomeLayout.gutter, paddingTop: 24, paddingBottom: 44, gap: 20 },
-  total: { fontSize: 38, lineHeight: 52, fontWeight: '500', flexShrink: 1 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, minHeight: 44 },
-  bucket: { minHeight: 52, paddingVertical: 12, gap: 8, borderBottomWidth: 1 },
-  track: { height: 6, borderRadius: 3, overflow: 'hidden' }, bar: { height: 6, borderRadius: 3 },
+  totalCard: { padding: 18, borderRadius: 18, gap: 8 }, total: { fontSize: 36, lineHeight: 52, fontWeight: '400', fontVariant: ['tabular-nums'], flexShrink: 1 },
+  metadata: { gap: 4 }, caption: { fontSize: 13, lineHeight: 21 }, sectionTitle: { fontSize: 15, lineHeight: 24, fontWeight: '600', marginTop: 4 },
+  segments: { flexDirection: 'row', padding: 4, borderRadius: 13, gap: 4 },
+  segment: { flex: 1, minHeight: 46, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 10, borderBottomWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  segmentText: { fontSize: 14, lineHeight: 22 },
+  periodNavigation: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  round: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  periodTitle: { fontSize: 16, lineHeight: 26, fontWeight: '600', textAlign: 'center', flex: 1 },
+  periodTotal: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 },
+  periodNumber: { fontSize: 26, lineHeight: 38, fontVariant: ['tabular-nums'], flexShrink: 1 },
+  bucket: { minHeight: 52, paddingVertical: 12, borderBottomWidth: 1 },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: 10 }, expandedBarRow: { flexDirection: 'column', alignItems: 'stretch' },
+  barLabel: { width: 74, fontSize: 13, lineHeight: 21 }, barValue: { width: 78, fontSize: 13, lineHeight: 21, textAlign: 'right' },
+  expandedBarText: { width: '100%' }, expandedTrack: { flex: 0, width: '100%', minHeight: 16 },
+  track: { flex: 1, minWidth: 24, height: 16, borderRadius: 3, overflow: 'hidden' }, bar: { height: 16, borderRadius: 3 },
 });

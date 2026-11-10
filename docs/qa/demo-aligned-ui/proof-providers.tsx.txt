@@ -1,0 +1,42 @@
+// Temporary synthetic native ports. Never shipped in the product.
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { Text, View } from 'react-native';
+import { ScreenTimeProvider } from '@/state/screen-time';
+import { HistoryProvider } from '@/state/history';
+import { ReflectionProvider } from '@/state/reflection';
+import { useFlowTheme } from '@/components/flow/ui';
+import { unavailableSnapshot } from '../../modules/itoma-native/src/screen-time';
+import type { ScreenTimeSnapshot, ScreenTimeResponse, HistoryResponse } from '../../modules/itoma-native';
+import type { ReflectionRequest, ReflectionSnapshot } from '../../modules/itoma-native/src/reflection-model';
+import data from '../../tests/fixtures/reflection-records.json';
+const now = Date.parse('2026-11-09T21:30:00Z') / 1000;
+const selection = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', appA = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+const appB = 'cccccccc-cccc-cccc-cccc-cccccccccccc', ruleID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+function snapshot(mode: string): ScreenTimeSnapshot {
+  const s: ScreenTimeSnapshot = { ...unavailableSnapshot('device'), authorization: 'approved', storage: 'ready', sequence: '1', revision: '1', schedulesReady: true, observation: mode === 'uncertain' ? 'uncertain' : 'applied', validUntil: now + 1800,
+    rules: [{ id: ruleID, selectionRef: selection, weekdays: [1, 2, 3, 4, 5], startMinute: 1260, endMinute: 1380, nextDay: false, enabled: true }],
+    selections: [{ ref: selection, count: 2 }], periods: [{ ruleID, startsAt: now - 1800, endsAt: now + 5400 }],
+    targets: [{ ref: appA, selectionRef: selection, ruleID, restricted: true, unlockable: true }, { ref: appB, selectionRef: selection, ruleID, restricted: true, unlockable: true }] };
+  if (mode === 'grant') s.targets[0] = { ...s.targets[0], restricted: false, unlockable: false, grantStatus: 'active', grantCommandID: 'ffffffff-ffff-ffff-ffff-ffffffffffff', grantEndsAt: now + 180 };
+  if (mode === 'paused') s.activation = 'paused';
+  return mode === 'empty' ? { ...s, rules: [], periods: [], targets: [], selections: [] } : s;
+}
+export function ProofProviders({ children }: { children: ReactNode }) {
+  const theme = useFlowTheme(), [mode, setMode] = useState<string>();
+  useEffect(() => { setMode(new URLSearchParams(window.location.search).get('scenario') ?? 'observed'); }, []);
+  const control = useMemo(() => ({ run: async (): Promise<ScreenTimeResponse> => ({ status: 'ok', impacts: [], snapshot: snapshot(mode ?? '') }) }), [mode]);
+  const reflection = useMemo(() => ({ run: async (action: string, request: Partial<ReflectionRequest> = {}) => {
+    if (action !== 'read') throw new Error('visual proof is read only');
+    if (mode === 'error') return { status: 'error' as const, code: 'storage-failed' as const, storage: 'unknown' as const, transfer: 'unavailable' as const };
+    const samples = (data as Record<string, { request: ReflectionRequest; response: ReflectionSnapshot }[]>)[['deleted','notRecorded','incomplete'].includes(mode ?? '') ? mode! : 'observed'];
+    const row = samples.find(x => x.request.period === (request.period ?? 'week') && (!request.day || x.request.day === request.day) && JSON.stringify(x.request.clippedTo) === JSON.stringify(request.clippedTo));
+    if (!row) throw new Error('query missing from synthetic SQLite fixture');
+    return { status: 'ok' as const, storage: 'ready' as const, transfer: 'current' as const, sharedIncomplete: false, snapshot: row.response };
+  } }), [mode]);
+  const history = useMemo(() => ({ run: async (): Promise<HistoryResponse> => ({ status: 'ok', storage: 'ready', page: { revision: '0', asOf: now, timeZone: 'UTC', rows: [], logicalBytes: '0', warningBytes: '1000', maximumBytes: '2000', warningReached: false, limitReached: false, incomplete: false, transfer: 'current' } }) }), []);
+  if (!mode) return null;
+  return <View style={{ flex: 1, backgroundColor: theme.surface }}>
+    <Text testID="proof-banner" style={{ fontSize: 11, lineHeight: 17, padding: 5, color: theme.text, backgroundColor: theme.background }}>画面QA用の合成データ · Web表示 · 実機の制限は未検証</Text>
+    <ScreenTimeProvider client={control}><HistoryProvider client={history}><ReflectionProvider client={reflection}>{children}</ReflectionProvider></HistoryProvider></ScreenTimeProvider>
+  </View>;
+}

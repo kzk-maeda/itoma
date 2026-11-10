@@ -1,0 +1,9 @@
+// Synthetic app identity only. Native Apple view remains unchanged in the product.
+import { Pressable, Text, View } from 'react-native';
+import { useFlowTheme } from './ui';
+export function Applications({ targetRef, onSelect }: { selectionRef: string; targetRef?: string; count?: number; refreshKey: number; selected?: boolean; onSelect?: () => void }) {
+  const theme = useFlowTheme();
+  const label = targetRef?.startsWith('cccc') ? 'テスト用アプリB' : 'テスト用アプリA';
+  const content = <Text style={{ fontSize: 16, lineHeight: 25, color: theme.text }}>{label}</Text>;
+  return onSelect ? <Pressable accessibilityRole="radio" accessibilityLabel={label} onPress={onSelect}>{content}</Pressable> : <View>{content}</View>;
+}

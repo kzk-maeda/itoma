@@ -1,0 +1,741 @@
+{
+  "baseCommit": "5d521f5862acf9d1305e226fc7a88d7d5636c49c",
+  "scope": "product application inputs; docs and QA images excluded",
+  "substitutedFiles": [
+    "src/app/_layout.tsx",
+    "src/components/flow/applications.tsx"
+  ],
+  "extraFile": "src/qa/layout-proof.tsx",
+  "checkedFileCount": 182,
+  "allBytesMatch": true,
+  "files": [
+    {
+      "path": "src/components/flow/product-navigation.tsx",
+      "sha256": "74d480e2e57e965833a5497f72aaaa0aa73ef54a27f4617c726ca872359f2b94"
+    },
+    {
+      "path": "app.config.ts",
+      "sha256": "1929d76734a42da5900e853f900e2f99223cb84eeb7df96ec95370d08df9e308"
+    },
+    {
+      "path": "app.json",
+      "sha256": "e1465b754da04a3bd98fe2c6623c399c2c64fa612ed007ad00e0246f6f701c20"
+    },
+    {
+      "path": "assets/expo.icon/Assets/expo-symbol 2.svg",
+      "sha256": "ad117d20fd819f4ec71876ce09c0e8b9275b1f20c5ec3c9d7d1914977ceffec6"
+    },
+    {
+      "path": "assets/expo.icon/Assets/grid.png",
+      "sha256": "8247d79a2b31328fe4e330a973e6fae16924ed9aebd72c64d464d6856ab18c72"
+    },
+    {
+      "path": "assets/expo.icon/icon.json",
+      "sha256": "747c56e178222a6255c6dd61c5de011b286cdc935febe89f04d1b191c3d076fe"
+    },
+    {
+      "path": "assets/images/android-icon-background.png",
+      "sha256": "fb139c2dee362ebf2070e23b96da6fc0d43f8492de38b8af1fd7223e19b5861d"
+    },
+    {
+      "path": "assets/images/android-icon-foreground.png",
+      "sha256": "9e3d0315a33c6799de601dd34cd8bf8cc3a8d16f3bf75592baec2ceb7240b391"
+    },
+    {
+      "path": "assets/images/android-icon-monochrome.png",
+      "sha256": "6371fc2c12e33ad2215a86c281db3d682a81bebe7c957a842c13b8bf00cceb83"
+    },
+    {
+      "path": "assets/images/expo-badge-white.png",
+      "sha256": "d9ba28c5e93aea3c2dabd901ee96fea3bb296ad8e648f6f64706dae11a1a62bd"
+    },
+    {
+      "path": "assets/images/expo-badge.png",
+      "sha256": "ff353c7efadbd379903923cb604fca11c908cba0d4658cc2bd1f147d98317249"
+    },
+    {
+      "path": "assets/images/expo-logo.png",
+      "sha256": "27b060a757a29038c9618586baa0ba3894dbe60d084c6059df497ff429c2d92f"
+    },
+    {
+      "path": "assets/images/favicon.png",
+      "sha256": "a4e030697a7571b3e95d31860e4da55d2f98e5e861e2b55e414f45a8556828ba"
+    },
+    {
+      "path": "assets/images/icon.png",
+      "sha256": "7a667804bb80a6a424a5daf18a2599c4f32237cf06fe78fc0de45dbb09e0eccf"
+    },
+    {
+      "path": "assets/images/logo-glow.png",
+      "sha256": "bbd98a3f3c12d090f4df6065b7462fcdf6bc266209d002b4ef5fe554c245f66c"
+    },
+    {
+      "path": "assets/images/react-logo.png",
+      "sha256": "224b7636b15e672801579b5b418077cbc2ca42f0146389062364356b0ecb5c5c"
+    },
+    {
+      "path": "assets/images/react-logo@2x.png",
+      "sha256": "fa600be9ad2f869c7a8dbaffc78bb15af741123e1319c948f0be51753a153cde"
+    },
+    {
+      "path": "assets/images/react-logo@3x.png",
+      "sha256": "cd84e02a5d542a3e71b7fa10a685c1b9fb51db4aff92aca6c0da6461ce17be16"
+    },
+    {
+      "path": "assets/images/splash-icon.png",
+      "sha256": "27b060a757a29038c9618586baa0ba3894dbe60d084c6059df497ff429c2d92f"
+    },
+    {
+      "path": "assets/images/tabIcons/explore.png",
+      "sha256": "e2dea1c2d20929d83e8eebd74818e808b1b72e376d3a1f3a03679fff0255d073"
+    },
+    {
+      "path": "assets/images/tabIcons/explore@2x.png",
+      "sha256": "1b54913b3a0acc3e1fb72d3b9b79ad04814304b35bbb9d03a533e6130ad6c26a"
+    },
+    {
+      "path": "assets/images/tabIcons/explore@3x.png",
+      "sha256": "2f3e43801df70ebe83273b90a7d170bacf5ca74a8a8dc5c154a020c2c8b06609"
+    },
+    {
+      "path": "assets/images/tabIcons/home.png",
+      "sha256": "3829632ec7d495225395f5da3d0942935d7d055979b174613d1ade82fe420e76"
+    },
+    {
+      "path": "assets/images/tabIcons/home@2x.png",
+      "sha256": "21c5a07df9017d97464a0a8256e265288f2fca0741ca651de05e12b32f32f5ab"
+    },
+    {
+      "path": "assets/images/tabIcons/home@3x.png",
+      "sha256": "fe5b397975e7cb70ae7a122472d174ed12ec2ae106f7b49c968225ad37f8b3b8"
+    },
+    {
+      "path": "assets/images/tutorial-web.png",
+      "sha256": "e372ec23ad6262e2e0dc2799ce416b495a631a565bcd24f0615d4afc04dac3bd"
+    },
+    {
+      "path": "modules/itoma-native/README.md",
+      "sha256": "bb491afd7ccfae3ef0741688b035e9def31452be1f6ec7e44db4da50204558fe"
+    },
+    {
+      "path": "modules/itoma-native/expo-module.config.json",
+      "sha256": "0ba7ee3fc6013a1311a55c6d7d702a065769583a6f68e2dfd5b66f8a0f517a92"
+    },
+    {
+      "path": "modules/itoma-native/index.ts",
+      "sha256": "0b047a1648bba60f72e8d73d3296ac70dd2497b68f7eec2036f214c51fda802a"
+    },
+    {
+      "path": "modules/itoma-native/ios/ItomaNative.podspec",
+      "sha256": "2c715ae375463641b53185c935dcc473cd69fff51ca02337f1b10e9e532c692e"
+    },
+    {
+      "path": "modules/itoma-native/ios/ItomaNativeModule.swift",
+      "sha256": "9c5f873d13fcca558688412eada6fce967f0426e16a1153d63e781d5e28851ee"
+    },
+    {
+      "path": "modules/itoma-native/ios/ProductController.swift",
+      "sha256": "6bb3ac1082ba1791c8f9a33c9d3b18c5e3a0a822086049f17e7f3ef2c5a95cd6"
+    },
+    {
+      "path": "modules/itoma-native/ios/ProductHistory.swift",
+      "sha256": "457fb2825a06f60164318e816562bb52c16873c684ed442400706bba53b0d80a"
+    },
+    {
+      "path": "modules/itoma-native/ios/ProductReflection.swift",
+      "sha256": "05b36b5f09f3035b82446608f24f5a22fc63342e5280d07cb5ea741f60e1d914"
+    },
+    {
+      "path": "modules/itoma-native/ios/ProductUI.swift",
+      "sha256": "56f598b9d83bd6cc3409726891298984427d608dfdc68047a3fbe44be2439258"
+    },
+    {
+      "path": "modules/itoma-native/ios/SavedApplicationsView.swift",
+      "sha256": "98995e076d15d8b5e3208dc51d1c2aa3ed40822c3f3f77ad6c63c91bd08a96ef"
+    },
+    {
+      "path": "modules/itoma-native/ios/ScreenTimePoC.swift",
+      "sha256": "1bf282c2f626f0dbf7ad9d358a13b7f2aa0f278f9f92305d30921fb65ad8ef71"
+    },
+    {
+      "path": "modules/itoma-native/package.json",
+      "sha256": "842f0e30a6342f964e4ac500380637fe2cd686f0b3055c477030147febb6d798"
+    },
+    {
+      "path": "modules/itoma-native/src/client.ts",
+      "sha256": "3ac357581d10050e9b7579c7632a7af1aaea5f11ae92c2e94e1e44ada2da2dd5"
+    },
+    {
+      "path": "modules/itoma-native/src/history.ts",
+      "sha256": "4283176d446d7b1f4751c65c29bee675d8a842655f4aa0485a1347967d63c065"
+    },
+    {
+      "path": "modules/itoma-native/src/reflection-model.ts",
+      "sha256": "2c116960a76fd910e3751f4002081c5399952ab3b24c5485756afe4147182067"
+    },
+    {
+      "path": "modules/itoma-native/src/reflection.ts",
+      "sha256": "5c45f7fe255957eda10da2e6a7452dafa851a6d25db42133566968887a499735"
+    },
+    {
+      "path": "modules/itoma-native/src/screen-time-poc.ts",
+      "sha256": "0542f61e4156e752043c6827ca5f46526250084a23543d04230e88148215df9d"
+    },
+    {
+      "path": "modules/itoma-native/src/screen-time.ts",
+      "sha256": "5657e952bb8507184c7e6e74d1444ea99a693c333ba895cf9a37bbd6b7963187"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "434cd2d86116e1f435cc05a3a448f0027e0f321d3b793a0c3017ce8f67d3e745"
+    },
+    {
+      "path": "package.json",
+      "sha256": "fa14f205cad9677a2ebfc1e184e319c79831cc066bb0e7ba2295b7f03be0ffdb"
+    },
+    {
+      "path": "packages/itoma-control/ItomaControl.podspec",
+      "sha256": "0113ebe438d5d7dc9429353768eb1411a1e87caeb710eeaa45b32a51e7b25fb2"
+    },
+    {
+      "path": "packages/itoma-control/Package.swift",
+      "sha256": "04c20c6a563a2b164613f97c1a82d135e74a8531281b77f9bdffc083e4c5fcce"
+    },
+    {
+      "path": "packages/itoma-control/README.md",
+      "sha256": "b50ea069865a40495799e7df2c7aa7301de2484e656d871dc6640096c90cd8b7"
+    },
+    {
+      "path": "packages/itoma-control/Sources/CSQLiteTest/module.modulemap",
+      "sha256": "5be92ac9ef41e3f9ee81fd5fbc5d02ab4eb07cbdcc323047105984c3f9c589ad"
+    },
+    {
+      "path": "packages/itoma-control/Sources/CSQLiteTest/shim.h",
+      "sha256": "b052d8e561e942f97b503033ecd2eaa2b35213bdbf374983efe9e68eabdfc024"
+    },
+    {
+      "path": "packages/itoma-control/Sources/ItomaControl/ActivationService.swift",
+      "sha256": "46b0d9c401e4ad132c9b26618c8adf95f12a051b4f9044b965a46e998c505c5d"
+    },
+    {
+      "path": "packages/itoma-control/Sources/ItomaControl/Adapters.swift",
+      "sha256": "f632f512117886fdffe07c9557bfafe56e7651b7bff86dadecbfc3eb418f4ec2"
+    },
+    {
+      "path": "packages/itoma-control/Sources/ItomaControl/CandidateService.swift",
+      "sha256": "9aefcdfc711874991bdcac423a5442cebc8a722d5266592e26d217827f37bae4"
+    },
+    {
+      "path": "packages/itoma-control/Sources/ItomaControl/CommandService.swift",
+      "sha256": "cac5f40f42d89c45f8ade4128d0e03f638bfec2d6ffee2dac6b1352d4ad9235c"
+    },
+    {
+      "path": "packages/itoma-control/Sources/ItomaControl/ContextFacts.swift",
+      "sha256": "07c01b26f249e0e964bbe91d55416b84c73fedaa6a6228d8bb248bc64c95dea4"
+    },
+    {
+      "path": "packages/itoma-control/Sources/ItomaControl/PolicyScheduleCoordinator.swift",
+      "sha256": "2c24abd195049a7d2ac6abd0c6c95ad7e9a036d6cb85299b9483fb90901d0dbd"
+    },
+    {
+      "path": "packages/itoma-control/Sources/ItomaControl/Reconciler.swift",
+      "sha256": "a665347923a78115f46b8755a8912c67ac86f0f82f682d5c0b967bf9802ea856"
+    },
+    {
+      "path": "packages/itoma-control/Tests/ItomaControlTests/ActivationServiceTests.swift",
+      "sha256": "ef77cc476118f74fde1a162ac2bf03b48f98d663721e7fd49024ce2e26ca64e4"
+    },
+    {
+      "path": "packages/itoma-control/Tests/ItomaControlTests/CandidateServiceTests.swift",
+      "sha256": "78ac00e22a542082d29dced33082e110b78790a3ccbb66691029d037f3b6a123"
+    },
+    {
+      "path": "packages/itoma-control/Tests/ItomaControlTests/CommandServiceTests.swift",
+      "sha256": "729bf70c005c1211d19f4ec44af2e7eee0a9c8b63db99c57726dd5d8a8553a90"
+    },
+    {
+      "path": "packages/itoma-control/Tests/ItomaControlTests/PolicyScheduleTests.swift",
+      "sha256": "f82c9c9356290af26653c48a217e057a2dfec01c9724ea107667077f31c4ffb8"
+    },
+    {
+      "path": "packages/itoma-control/Tests/ItomaControlTests/ReconcilerTests.swift",
+      "sha256": "df07524a8f37f709a78b5e403e2de0c1e0f460e6b524fec1ea086cb85bc1d6d8"
+    },
+    {
+      "path": "packages/itoma-core/.gitignore",
+      "sha256": "acc718146d21aae829cba1761475e05de39d73209d83af2ab8487a74843cead0"
+    },
+    {
+      "path": "packages/itoma-core/ItomaCore.podspec",
+      "sha256": "ac142391ba718e12e680dbce3161f38733ad663cba9a250184af3bfa7109e030"
+    },
+    {
+      "path": "packages/itoma-core/Package.swift",
+      "sha256": "564acd3b30cf80b2ec3d60a0fec17d6f91aee80ea5b6574600e5be2706623842"
+    },
+    {
+      "path": "packages/itoma-core/README.md",
+      "sha256": "d603e52a2e1a782d04fa97ffb1b2cbb20f6d9b46ef464a2d4890b824cae5e2c6"
+    },
+    {
+      "path": "packages/itoma-core/Sources/ItomaCore/GrantEditEvaluator.swift",
+      "sha256": "ec5dad43ee99044d7ff6955b6688017df0b0e4c625a8f1142f89c12693ea5ad9"
+    },
+    {
+      "path": "packages/itoma-core/Sources/ItomaCore/GrantEvaluator.swift",
+      "sha256": "d9015ef582c21b9579749dc4569334fbdf1be97d3e1a1f4771cf745b3f8cf900"
+    },
+    {
+      "path": "packages/itoma-core/Sources/ItomaCore/Observations.swift",
+      "sha256": "3ab6bd275eb553208b7e8ac8a5c740bb3ec61a0f3794bc8d2091d26ea9b9c82b"
+    },
+    {
+      "path": "packages/itoma-core/Sources/ItomaCore/Operations.swift",
+      "sha256": "a5ceafb69dc93d6d71e23395a2ecd5828be632e2fe205ee0e85ad6dfe7819deb"
+    },
+    {
+      "path": "packages/itoma-core/Sources/ItomaCore/Policy.swift",
+      "sha256": "f58e24eb9b29421b92ea6cc46139011f065a847673ffd61c5b04d561d1766d0b"
+    },
+    {
+      "path": "packages/itoma-core/Sources/ItomaCore/ReflectionPrototype.swift",
+      "sha256": "1ee02c0be629cc3e5d29655ad94045d28d9bb91ed64cb2f0fdaf0cc489705fda"
+    },
+    {
+      "path": "packages/itoma-core/Sources/ItomaCore/RuleEvaluator.swift",
+      "sha256": "5e27f0b253dd8f58f270fb4aa6d11f54496ad02a51f7fa9b4ac1c6f92a3c2b07"
+    },
+    {
+      "path": "packages/itoma-core/Sources/ItomaCore/Values.swift",
+      "sha256": "cbfa330eaf400af0c5baa08e1bc86ef0d46e0732d8706f529c3e579abf55db0d"
+    },
+    {
+      "path": "packages/itoma-core/Tests/ItomaCoreTests/GrantEvaluatorTests.swift",
+      "sha256": "7cdd6a11cc032a1a76326248cf4c9208a272a3fda3f37f45e15dd99b3b7974c5"
+    },
+    {
+      "path": "packages/itoma-core/Tests/ItomaCoreTests/ModelTests.swift",
+      "sha256": "01dede59d79c5d29e0fb198e9740b25e57dca805ad4f5a345b914ff68f470919"
+    },
+    {
+      "path": "packages/itoma-core/Tests/ItomaCoreTests/PolicyCandidateTests.swift",
+      "sha256": "e6e7d36b790f9e68cb59259365dd5b0805cf481166b0f1bdcc47f644ceb81914"
+    },
+    {
+      "path": "packages/itoma-core/Tests/ItomaCoreTests/ReflectionPrototypeTests.swift",
+      "sha256": "69baa784309a2bb59b73c9a8fdcecf3b3e5dd047544b1e559b5520ed30b2d9f6"
+    },
+    {
+      "path": "packages/itoma-core/Tests/ItomaCoreTests/RuleEvaluatorTests.swift",
+      "sha256": "b1e5ac7ceff6c37ae4c32a88223e40cf692553a4a26ac0b6792b0b275c95db54"
+    },
+    {
+      "path": "packages/itoma-core/Tools/ReflectionPrototypeFixtures/main.swift",
+      "sha256": "7c9e2b72303e665b7ddffcddf205ba868f19b5f6aabbb06655b8dc03dc5b45a0"
+    },
+    {
+      "path": "packages/itoma-screen-time/ItomaScreenTime.podspec",
+      "sha256": "cef228fe7ea0d98cc9f8aec3e687d1997a3bdbd5d1faa8805385015337c0f32d"
+    },
+    {
+      "path": "packages/itoma-screen-time/Sources/ItomaScreenTime/AppleAdapters.swift",
+      "sha256": "8ca9af420d0fbef8ad8c69122874dfdd5e15675716032e1be21489cf85956cc1"
+    },
+    {
+      "path": "packages/itoma-screen-time/Sources/ItomaScreenTime/ScreenTimeFiles.swift",
+      "sha256": "2b3f181149da1abd6919c52f3b8ef7b2b07e60a758c85f7be256e32cb8a0c823"
+    },
+    {
+      "path": "packages/itoma-screen-time/Sources/ItomaScreenTime/ScreenTimeRuntime.swift",
+      "sha256": "6769fd1e7df5d8ca8123e3325aef10f95f45e0f3a432bb6963e8868ad420686a"
+    },
+    {
+      "path": "packages/itoma-storage/.gitignore",
+      "sha256": "acc718146d21aae829cba1761475e05de39d73209d83af2ab8487a74843cead0"
+    },
+    {
+      "path": "packages/itoma-storage/HISTORY.md",
+      "sha256": "ee92c9bee9d85d0fd72bd12d87860439b4c06f71f5e91423f5f1df301eb36b43"
+    },
+    {
+      "path": "packages/itoma-storage/ItomaHistory.podspec",
+      "sha256": "b75b0ba39c0124e57ac5859ba849c38599405df9b7f97d26157914280f5750d2"
+    },
+    {
+      "path": "packages/itoma-storage/ItomaSQLite.podspec",
+      "sha256": "20878b74bd64e5fa3afe4f65c783b6feeaf71c197442dc35d8780f64bd766557"
+    },
+    {
+      "path": "packages/itoma-storage/ItomaStorage.podspec",
+      "sha256": "bbada892b0168e9f01734de554de15565a9e25f87778158201f85e4e0dadd981"
+    },
+    {
+      "path": "packages/itoma-storage/Package.swift",
+      "sha256": "ece5f537018c9a1fdb4eb212c6dc35ab27c78e335a70ff8ff18bf5ac5ee99330"
+    },
+    {
+      "path": "packages/itoma-storage/README.md",
+      "sha256": "bf1ca4fc9f4e34fa70137eec8ef585d2f02ce15123adb3a36d06716d58f0eb47"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/CSQLite/module.modulemap",
+      "sha256": "bbfe59a972a3e8e09e347c04bc22c0eacd2544881af8a4b6068bfc30b38466e8"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/CSQLite/shim.h",
+      "sha256": "b052d8e561e942f97b503033ecd2eaa2b35213bdbf374983efe9e68eabdfc024"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaHistory/HistoryDayRange.swift",
+      "sha256": "922d71c0ea4aa1f024e21f60a741aac37cf899ae02eaf84258b981c68203e09a"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaHistory/HistoryImport.swift",
+      "sha256": "79fc8285493c4eb693d3ca27def690a12591e0759ff2cee3b77f62cc7adc2283"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaHistory/HistoryModels.swift",
+      "sha256": "0d15503094599fdace4b5949ac58899d3ba2388c9a41bd5a91d57f77bebbdb36"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaHistory/HistoryReadModel.swift",
+      "sha256": "7b94f51a2e2d746fb8326ca353ddb4e51de945a591285dd08f06dfdce6897712"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaHistory/HistoryReflection.swift",
+      "sha256": "ce456ed876cdcc819aa5d4c6a00624b37a9a705c052eccfd24e74c1ee07c19e7"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaHistory/HistoryRepository.swift",
+      "sha256": "4a53c84d26a7f693813e804455e24fcea3a85b4b710150a00109030180174572"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaHistory/ReflectionObservationLedger.swift",
+      "sha256": "50110ca56027817c45962f9196a5510fdbbcbc4a8b3b7a233ddf6dc5dcacf01e"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaSQLite/SQLite.swift",
+      "sha256": "3b4ec1a7ac039a529b4c297dd5554b6f141239aba1b4dcbf3e70da6c86d44d37"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaStorage/ActivationRepository.swift",
+      "sha256": "31449d8613347d734df3936a8240f91db80cd34d95b8909f96c79f9808ddd062"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaStorage/ApplicationRepository.swift",
+      "sha256": "0d5e84b7b3b92c4af6d9f6933257aa638166defebe0914c585a75a71bce246d8"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaStorage/CommandRepository.swift",
+      "sha256": "90db461c55a9715d8b0fddadea6f0fda4c17ba564ec2fab1b149e09b9576b232"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaStorage/ControlRepository.swift",
+      "sha256": "4dcbd2d71e9f0c209b177abc2fa01b896ed511558b7996ff093a8a1a35f9c356"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaStorage/GrantRepository.swift",
+      "sha256": "00a4b8573a3c4f80748c8768d1206c8e75b20088a0f37074ba5f88d6ef1ada74"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaStorage/GrantStorageModels.swift",
+      "sha256": "d03895a5a674a5ddeb069f6c98e57c80634bf1b44974c28671669e048f0d9cc7"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaStorage/HistoryOutbox.swift",
+      "sha256": "e040ddf82cf46bdc2bd9e0c50f2d93399404500fcda6a93975912cad6e1db027"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaStorage/PolicyMonitorRepository.swift",
+      "sha256": "c76a638021901208603c37909ac2361ff2e2f34dfd91b4ed5ebda8a46c014def"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaStorage/ReflectionOutbox.swift",
+      "sha256": "8f51b34a6efd2cb27ccc45a8ca7f7c7df2c9af9281f0ef1ea84602f581254ed3"
+    },
+    {
+      "path": "packages/itoma-storage/Sources/ItomaStorage/StorageError.swift",
+      "sha256": "1f8c5ebb6d0465a00f6aebff39593f45633270fa22af4f2ea7ab969daca4ab6b"
+    },
+    {
+      "path": "packages/itoma-storage/Tests/ItomaHistoryTests/HistoryReadModelTests.swift",
+      "sha256": "2e8a6e5cb2b82b347a378e2220d422939cbbe9dda8452c4ad9f6830795f338b2"
+    },
+    {
+      "path": "packages/itoma-storage/Tests/ItomaHistoryTests/HistoryReflectionTests.swift",
+      "sha256": "6ecc7be56da4439bb4666c88eda470cd7eafb97f19f624803f3274ce6dcb5cb0"
+    },
+    {
+      "path": "packages/itoma-storage/Tests/ItomaHistoryTests/HistoryRepositoryTests.swift",
+      "sha256": "6d915818a1d2bce4cfb39cc569a55b6877d85b3406e5cec0423ddf088e2b3cac"
+    },
+    {
+      "path": "packages/itoma-storage/Tests/ItomaHistoryTests/HistoryTransferTests.swift",
+      "sha256": "576777c620240dc2549cafcc893b83e8aa4882e67cc9e01562964f4d8a73c4d9"
+    },
+    {
+      "path": "packages/itoma-storage/Tests/ItomaHistoryTests/ReflectionObservationLedgerTests.swift",
+      "sha256": "c579351e1ea7bd99a6a80ba812dd73c7ec6b563f097307350aca962f3062e95d"
+    },
+    {
+      "path": "packages/itoma-storage/Tests/ItomaSQLiteTests/SQLiteTests.swift",
+      "sha256": "e6c8ba5f4af1be7904e73ce40250eeaff6fc04bdaa22ba0f410ff7e416f7970e"
+    },
+    {
+      "path": "packages/itoma-storage/Tests/ItomaStorageTests/ActivationRepositoryTests.swift",
+      "sha256": "408f2c18660fe55eb9a5e83fc5f495a88b09a7db4eb2615ee77bc0ffe43b0168"
+    },
+    {
+      "path": "packages/itoma-storage/Tests/ItomaStorageTests/ApplicationRepositoryTests.swift",
+      "sha256": "c915a7673ab0f55cfd61181bd72556d6bb01b38b6f969c0c725cb75876d3d715"
+    },
+    {
+      "path": "packages/itoma-storage/Tests/ItomaStorageTests/CommandRepositoryTests.swift",
+      "sha256": "8caf40360991a9dedb19d9ff9df744535dd925410f5abefd8f4f8f1541ad2506"
+    },
+    {
+      "path": "packages/itoma-storage/Tests/ItomaStorageTests/ControlRepositoryTests.swift",
+      "sha256": "a2fe2081b4cd3a6e0fcfeb53d072374da7a86789e3a92c373f7528a5f44e6b4d"
+    },
+    {
+      "path": "packages/itoma-storage/Tests/ItomaStorageTests/GrantRepositoryTests.swift",
+      "sha256": "179b9d3d7c5251c1338a10f93cb35d1b9d5d2f3a139da119e2b15a328892eeae"
+    },
+    {
+      "path": "packages/itoma-storage/Tools/ReflectionRecordFixtures/main.swift",
+      "sha256": "8b3957790f8afe67e72350544c21cfe8fd78f79775b8e75a8f5067f9a8ce93c4"
+    },
+    {
+      "path": "plugins/with-itoma-screen-time.cjs",
+      "sha256": "25c76d07f24bde7dba5af584b61047e3668cc3b43560931e542fae5459c038f4"
+    },
+    {
+      "path": "src/app/explore.tsx",
+      "sha256": "7b6d6e452bf6356ac29d10de9532c4be05324f65fce6b0233fdfefc70dfc7bba"
+    },
+    {
+      "path": "src/app/grant.tsx",
+      "sha256": "8039bf1e691b7c01cf5fe1a344d9c3bec3bdaf48d32f91019367ade03e07d8af"
+    },
+    {
+      "path": "src/app/history-reason.tsx",
+      "sha256": "fb2ff46a1587ffc8b927686287913907e5ecc4d06df79b7b0c52fee72513a2d3"
+    },
+    {
+      "path": "src/app/history.tsx",
+      "sha256": "1a1497caeac1927bbddb0d0f09ff5cb6c106fba7d585aa61391a5e5eccd9de78"
+    },
+    {
+      "path": "src/app/index.tsx",
+      "sha256": "e848e6b8bb3e9a7c287cb8aae209390f030cc45e451dd2f157635fd244a7c8e8"
+    },
+    {
+      "path": "src/app/native-poc.tsx",
+      "sha256": "f5c2c1c4ad629db1a5dd33397680acdb4535c6b5769e5f3d2629a42d4f3413be"
+    },
+    {
+      "path": "src/app/onboarding.tsx",
+      "sha256": "54d76a4fcee899dabba4d0652c6045a2f9c8bf5e4a2df9f316f92211cf58b10e"
+    },
+    {
+      "path": "src/app/reflection.tsx",
+      "sha256": "7c12bf50a9dd1018e5bf49799125c447396aef9be84fee4dc2dffc248e4c4f44"
+    },
+    {
+      "path": "src/app/rule-confirm.tsx",
+      "sha256": "c20443a517fac470a8e272aeec1a8dbd09fca000100c4d4d030736f897b8a687"
+    },
+    {
+      "path": "src/app/rule.tsx",
+      "sha256": "88efb32c583acf850b767adee1d7646e6f59db60b6807610c7360c0b9a8847d6"
+    },
+    {
+      "path": "src/app/settings.tsx",
+      "sha256": "93bb8aaed4e55a6bfb3d37c5cdf2235d2b2ba71acac02b92d1aa76d678416edd"
+    },
+    {
+      "path": "src/app/unlock-confirm.tsx",
+      "sha256": "3412c7a54cf63dba5cda4a00e1644622d5eab6dd9c8d2c13340066c57eb59fb4"
+    },
+    {
+      "path": "src/app/unlock.tsx",
+      "sha256": "37c2d5f72f6fc924b9502f104ad5f447009fae741adb85750110a0145275102f"
+    },
+    {
+      "path": "src/components/animated-icon.module.css",
+      "sha256": "a70d5b1b0561336e53541e4fcca0431fa9e3671fc29dd232a44d546ff488423c"
+    },
+    {
+      "path": "src/components/animated-icon.tsx",
+      "sha256": "53772b1cfee876e9e79be0456fc6a4500b76a88e12990c63b3cc96d9ba9842b5"
+    },
+    {
+      "path": "src/components/animated-icon.web.tsx",
+      "sha256": "d99b902d487bb7a0c6357b201cc5c5fda1fd1a482e6edea3d896324e949712d2"
+    },
+    {
+      "path": "src/components/app-tabs.tsx",
+      "sha256": "69f9558ef4b19a57d6ab124e12a95d778e36d4691df3e2a135ddbc91c5f5ec92"
+    },
+    {
+      "path": "src/components/app-tabs.web.tsx",
+      "sha256": "8d021e99f42ba5e3c7c5123701e9a6dbe3ad75a54cfc2c55aeb1c6e306f7bbd3"
+    },
+    {
+      "path": "src/components/external-link.tsx",
+      "sha256": "2838582e2dc21877652b710d4aee5f4ba5a795b17fcf63bd7ac9c25a749c8c26"
+    },
+    {
+      "path": "src/components/flow/grant.tsx",
+      "sha256": "c7f035b5987fe249acbfc56d90c40734f34d170c2fa6e4df1f250216c59749bc"
+    },
+    {
+      "path": "src/components/flow/history.tsx",
+      "sha256": "ae5aae9767a3c9b6a4ad0bf7465ae0e0d326b56380e9945767e1eb966d2edc50"
+    },
+    {
+      "path": "src/components/flow/home.tsx",
+      "sha256": "404e56bf98ca7b1cb2224b1416e0461901bd4c3dd74a4c09beed4d379b49a94c"
+    },
+    {
+      "path": "src/components/flow/navigation.ts",
+      "sha256": "6524b2be2d6d27020091b40aca16f57fba636ccd02d55376aa58a6a433192766"
+    },
+    {
+      "path": "src/components/flow/onboarding.tsx",
+      "sha256": "a71a2753258b73d97c95787fb5681b8aa3e14be1b82b0813d9c3fdb85df329cf"
+    },
+    {
+      "path": "src/components/flow/presentation.ts",
+      "sha256": "5ae4362bf1f1b6cb9a2c630d93b54227068a7303a506be5873e8bc411cda8e74"
+    },
+    {
+      "path": "src/components/flow/reflection-content.tsx",
+      "sha256": "32aaa98af7f742b607f16ff97422b23478bf235f38a46328db42b815838c2858"
+    },
+    {
+      "path": "src/components/flow/reflection.tsx",
+      "sha256": "d6265bbd71d0cfe3baebeecf486895309d3c61e0223f4b33646a21b7d82729d8"
+    },
+    {
+      "path": "src/components/flow/rule.tsx",
+      "sha256": "94bdfa5ad852d4cd299177e3d4072efa28c88cb05968c436337d0b7d3b3fe13f"
+    },
+    {
+      "path": "src/components/flow/settings.tsx",
+      "sha256": "060fc18a4a603f59fb5ebbd0a5e91b65150f614a8102fc5b68ab83c6d19ae71c"
+    },
+    {
+      "path": "src/components/flow/ui.tsx",
+      "sha256": "d10fa01a164209655fc573c88f343ca4c9f1d800dd6c7bcd936bbac07d126e2d"
+    },
+    {
+      "path": "src/components/flow/unlock.tsx",
+      "sha256": "9119e2d70675de232bb9eb591e5c2102b17a8a8b0c9da637d40c4eb1b5b5914b"
+    },
+    {
+      "path": "src/components/hint-row.tsx",
+      "sha256": "2b5b1bbd4da6d9946e9a267587d7d6279059b0fab01dfeca144cd8cc3653a099"
+    },
+    {
+      "path": "src/components/home/home-screen.tsx",
+      "sha256": "49be356b19b3eba427275462bc5a58e4b95d57e48ae119ff216a170e4a93b2f0"
+    },
+    {
+      "path": "src/components/home/home-view.tsx",
+      "sha256": "75ee28c354dcd67bdf15e52815298028029b9ed0c2784f7cf90e30349645bb1c"
+    },
+    {
+      "path": "src/components/home/open-circle.tsx",
+      "sha256": "15b635ed5a84c727a98a65dac179e904e6facf7b64f4f06b712532dc96368def"
+    },
+    {
+      "path": "src/components/home/period-presentation.ts",
+      "sha256": "fd6b7df76b2533053a0a1d88ae75c70a3e81a6d2dbb27d490a51d98eebb87fc0"
+    },
+    {
+      "path": "src/components/home/period-ring.tsx",
+      "sha256": "d4e53ee4c2bcf6d1c13d06e893056d22a5c091d97a2c1beb9cadfb616e9e4118"
+    },
+    {
+      "path": "src/components/home/poc-recovery-entry.tsx",
+      "sha256": "9dcd6833d0dd88294897d7047abae31eb3bce50fb621025c170bb877cfa7f614"
+    },
+    {
+      "path": "src/components/saved-poc-applications.tsx",
+      "sha256": "496d29f75415956dad48b63871528443d8a5c4b164d71872c7ac669e861181c3"
+    },
+    {
+      "path": "src/components/screen-time-poc-screen.tsx",
+      "sha256": "da195d7a6e056329a987dfcf0bf6d59012437dd3b2bce42a9a620764a5ee2e9e"
+    },
+    {
+      "path": "src/components/themed-text.tsx",
+      "sha256": "ae907d2b52a6a231963db7882acb5f853e6a08b94c34efc88d89fb1cd5f83264"
+    },
+    {
+      "path": "src/components/themed-view.tsx",
+      "sha256": "e13930b2f4dfd4dab093d1a86c1586825a97d56e895ba8cb9c89233e654138c9"
+    },
+    {
+      "path": "src/components/ui/collapsible.tsx",
+      "sha256": "73613fbb9c2d64215f7c365683ec790dbf6f04160bea48bc7273cc0a36d4a95b"
+    },
+    {
+      "path": "src/components/web-badge.tsx",
+      "sha256": "0af7715337e070c7c476202c8dd77f2fd6a3514255ace1ead9f832ccc8351a7f"
+    },
+    {
+      "path": "src/constants/theme.ts",
+      "sha256": "bb0618e6422276a56e253e744427452c4673f0626b2d62f19e09f8fdf64451ce"
+    },
+    {
+      "path": "src/experiments/reflection/model.ts",
+      "sha256": "36a807858e72a2d18c6122a82501af4cbfa4d55192025cda023a5fbe6133cc36"
+    },
+    {
+      "path": "src/experiments/reflection/preview.tsx",
+      "sha256": "cb682ee3d5480a133bd9fe0b899918f7e757e81978ddc9d72342b05af0356595"
+    },
+    {
+      "path": "src/global.css",
+      "sha256": "3d65b4b82fe8112cd874d5058bb78b94743d2679958a421191802f4239cedf56"
+    },
+    {
+      "path": "src/hooks/use-color-scheme.ts",
+      "sha256": "33beb965500ae5fdfe5c8699805a6be94c8c126a751fbe2ed7bcae87df394882"
+    },
+    {
+      "path": "src/hooks/use-color-scheme.web.ts",
+      "sha256": "e2dcbad20ea6a5de279be93533f0c903eeb6cd8199eedc2fcc3c28f1879a27b6"
+    },
+    {
+      "path": "src/hooks/use-theme.ts",
+      "sha256": "267508aef2ef836c3267d3ffb52bbd499282a4ea1dab2c36e061e008945d77b8"
+    },
+    {
+      "path": "src/hooks/use-visible-clock.ts",
+      "sha256": "bb2def1a923bc7e299e22cf496218e25238cd6c073659e5623174d9c31b70b90"
+    },
+    {
+      "path": "src/qa/native-smoke.ts",
+      "sha256": "692c43cf12df072deb5b5839dfaee658cf4ff5a230688c09b1188c8e078a1f1a"
+    },
+    {
+      "path": "src/state/history.tsx",
+      "sha256": "12b3b111ecf51b2ffb5250f2e116539a215435edb5ac38fecd65b3192cb747b3"
+    },
+    {
+      "path": "src/state/reflection.tsx",
+      "sha256": "4d0d4bffb92368c0c620a948a3b872e95b1c4f424c26725126eb988f8239ab13"
+    },
+    {
+      "path": "src/state/screen-time.tsx",
+      "sha256": "cec703013b48b1a6323470e95f146db2afe3a82709e3d453b5d4c6d8b8bef726"
+    },
+    {
+      "path": "src/types/expo.d.ts",
+      "sha256": "936f8b75018a571b1920a75fec16cf18796ca10fb47aa05dde92240285e257e2"
+    }
+  ]
+}

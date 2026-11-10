@@ -6,6 +6,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useScreenTime } from '@/state/screen-time';
 import type { ScreenTimeCode } from '../../../modules/itoma-native';
 import { OpenCircle } from '../home/open-circle';
+import { ProductNavigation, type ProductTab } from './product-navigation';
 
 export function useFlowTheme() { return GraphiteColors[useColorScheme() === 'dark' ? 'dark' : 'light']; }
 export function Body({ children, muted = false }: { children: ReactNode; muted?: boolean }) {
@@ -23,6 +24,15 @@ export function Button({ label, onPress, disabled = false, secondary = false, te
     style={({ pressed }) => [styles.button, { backgroundColor: disabled ? theme.soft : secondary ? 'transparent' : theme.accent,
       borderColor: secondary ? theme.muted : 'transparent', opacity: pressed ? 0.75 : 1 }]}>
     <Text style={[styles.buttonText, { color: disabled ? theme.muted : secondary ? theme.text : theme.onAccent }]}>{label}</Text>
+  </Pressable>;
+}
+/** Quiet secondary destinations, matching the demo's flat rows. */
+export function LinkRow({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
+  const theme = useFlowTheme();
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
+    style={({ pressed }) => [styles.link, { borderColor: theme.line, opacity: pressed ? 0.75 : 1 }]}>
+    <Text style={[styles.linkText, { color: disabled ? theme.muted : theme.text }]}>{label}</Text>
+    <Text accessible={false} style={{ color: theme.muted, fontSize: 20 }}>›</Text>
   </Pressable>;
 }
 export function Field({ label, ...props }: TextInputProps & { label: string }) {
@@ -52,28 +62,35 @@ export const errorText: Record<ScreenTimeCode, string> = {
   'legacy-active': '以前の手動検証の制限が残っています。確認のうえ、手動検証の制限を停止してください。',
   'retry-required': '前の要求は完了していません。内容を確認して、明示的に再試行できます。',
 };
-export function FlowScreen({ title, children, onBack, footer }: { title: string; children: ReactNode; onBack?: () => void; footer?: ReactNode }) {
+export function FlowScreen({ title, children, onBack, footer, tab, eyebrow }: { title: string; children: ReactNode; onBack?: () => void; footer?: ReactNode; tab?: ProductTab; eyebrow?: string }) {
   const theme = useFlowTheme(), state = useScreenTime();
-  return <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
+  return <SafeAreaView style={[styles.screen, { backgroundColor: tab ? theme.surface : theme.background }]}>
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView testID="flow-scroll" keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-        <View style={styles.top}>
+      <ScrollView testID="flow-scroll" style={styles.screen} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, tab && styles.productContent]}>
+        {(!tab || onBack) && <View style={styles.top}>
           {onBack ? <Button label="‹ 戻る" secondary onPress={onBack} /> : <View style={styles.brand}><OpenCircle color={theme.accent} /><Text style={[styles.brandName, { color: theme.text }]}>いとま</Text></View>}
+        </View>}
+        <View style={{ gap: 6 }}>
+          {eyebrow && <Text style={[styles.caption, { color: theme.muted }]}>{eyebrow}</Text>}
+          <Text accessibilityRole="header" style={[styles.title, tab && styles.productTitle, tab === 'home' && styles.homeTitle, { color: theme.text }]}>{title}</Text>
         </View>
-        <Text accessibilityRole="header" style={[styles.title, { color: theme.text }]}>{title}</Text>
         {state.error && <View accessibilityLiveRegion="polite"><Notice title="状態を確認してください">{errorText[state.error]}</Notice></View>}
         {state.busy && <Body muted>操作の結果を確認しています。画面を離れても、受け付けた処理は続きます。</Body>}
         {children}{footer}
       </ScrollView>
+      {tab && <ProductNavigation current={tab} theme={theme} />}
     </KeyboardAvoidingView>
   </SafeAreaView>;
 }
 export const flowStyles = StyleSheet.create({ row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', minHeight: 44, gap: 8 }, section: { gap: 12 }, center: { alignItems: 'center', gap: 12 } });
 const styles = StyleSheet.create({
   screen: { flex: 1 }, content: { flexGrow: 1, width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center', paddingHorizontal: HomeLayout.gutter, paddingTop: 20, paddingBottom: 40, gap: HomeLayout.sectionGap },
+  productContent: { gap: 20, paddingBottom: 28 }, productTitle: { fontSize: 24, lineHeight: 36 }, homeTitle: { fontSize: 22, letterSpacing: 3 }, caption: { fontSize: 13, lineHeight: 20 },
   top: { minHeight: 44, alignItems: 'flex-start' }, brand: { flexDirection: 'row', gap: 12, alignItems: 'center' }, brandName: { fontSize: 22, fontWeight: '500', letterSpacing: 2 },
   title: { fontSize: 28, lineHeight: 40, fontWeight: '500' }, heading: { fontSize: 20, lineHeight: 30, fontWeight: '500' }, body: { fontSize: 16, lineHeight: 26 },
   panel: { padding: 20, borderWidth: 1, borderRadius: 20, gap: 12 }, notice: { gap: 8, paddingLeft: 16, borderLeftWidth: 3 },
   button: { minHeight: 50, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, justifyContent: 'center' }, buttonText: { fontSize: 16, lineHeight: 26, fontWeight: '600', textAlign: 'center' },
   field: { gap: 8 }, label: { fontSize: 14, lineHeight: 22, fontWeight: '600' }, input: { fontSize: 17, lineHeight: 26, minHeight: 50, padding: 14, borderWidth: 1, borderRadius: 12 }, multiline: { minHeight: 150, textAlignVertical: 'top' },
+  link: { minHeight: 52, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottomWidth: 1 },
+  linkText: { fontSize: 14, lineHeight: 23, flexShrink: 1 },
 });

@@ -43,21 +43,21 @@ test('rejects positive point observations, unsupported versions, impossible seco
 });
 test('keeps cumulative fixed while switching week/month and moving periods using native anchors', async () => {
   const client = source(); await render(<ReflectionPrototypePreview source={client} initialAnchor="2026-11-09" />);
-  expect(await screen.findByText('この週の記録：1時間55分')).toBeTruthy();
+  expect(await screen.findByLabelText('この週の記録：1時間55分')).toBeTruthy();
   const total = screen.getByTestId('reflection-total').props.children;
   await press('月次'); expect(await screen.findByText('2026年11月')).toBeTruthy();
   expect(screen.getByTestId('reflection-total').props.children).toBe(total);
   expect(screen.queryByRole('button', { name: '全期間' })).toBeNull();
   await press('前の期間'); expect(await screen.findByText('2026年10月')).toBeTruthy();
   expect(screen.getByTestId('reflection-total').props.children).toBe(total);
-  await press('週次'); expect(await screen.findByText('この週の記録：1時間55分')).toBeTruthy();
+  await press('週次'); expect(await screen.findByLabelText('この週の記録：1時間55分')).toBeTruthy();
   await press('月次'); expect(await screen.findByText('2026年10月')).toBeTruthy();
   expect(client.read.mock.calls.slice(1).every(([r]) => Boolean(r.expectedToken))).toBe(true);
 });
 test('month row drills into its clipped week then selects a day without reason or identity in navigation', async () => {
   const onDay = jest.fn(), client = source();
   await render(<ReflectionPrototypePreview source={client} initialAnchor="2026-11-09" onDay={onDay} />);
-  await screen.findByText('この週の記録：1時間55分'); await press('月次'); await screen.findByText('2026年11月');
+  await screen.findByLabelText('この週の記録：1時間55分'); await press('月次'); await screen.findByText('2026年11月');
   const row = screen.getAllByRole('button').find(node => String(node.props.accessibilityLabel).startsWith('11月2日、'))!;
   await fireEvent.press(row);
   await screen.findByText('11月2日からの週');
@@ -84,7 +84,7 @@ test('explicit refresh releases old token and typed changed failure does not cau
     return json('recorded', request);
   }) };
   await render(<ReflectionPrototypePreview source={client} initialAnchor="2026-11-09" />);
-  await screen.findByText('この週の記録：1時間55分'); changed = true;
+  await screen.findByLabelText('この週の記録：1時間55分'); changed = true;
   await press('月次'); await screen.findByText('記録が更新されました');
   expect(screen.getByTestId('reflection-total').props.children).toBe('—');
   await press('最新の記録を確認する'); await screen.findByText('2026年11月');
@@ -98,7 +98,7 @@ test('malformed and synchronous source failures remain errors rather than empty 
   await render(<ReflectionPrototypePreview source={client} initialAnchor="2026-11-09" />);
   await screen.findByText('記録を読み取れませんでした');
   expect(screen.queryByText(/raw error stays private/)).toBeNull();
-  fail = false; await press('最新の記録を確認する'); await screen.findByText('この週の記録：1時間55分');
+  fail = false; await press('最新の記録を確認する'); await screen.findByLabelText('この週の記録：1時間55分');
 });
 test('source replacement hides old cumulative immediately and ignores a delayed old response', async () => {
   let resolve: ((value: string) => void) | undefined;

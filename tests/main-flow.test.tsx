@@ -114,7 +114,7 @@ test('onboarding → native selection → weekdays/time review → saved rule on
   await press('編集へ戻る');
   expect(screen.getByLabelText('開始時刻（24時間 HH:MM）')).toHaveDisplayValue('21:00');
   await press('内容を確認する'); await press('この内容で保存する');
-  expect(screen.getByRole('header', { name: '自分で決めた時間' })).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
   expect(screen.queryByText('時間帯ルールは準備中です')).toBeNull();
   expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
   expect(mockHistory).not.toContain('/native-poc');
@@ -155,7 +155,7 @@ test('dirty cancellation keeps text on Keep, and confirmed discard does not requ
   expect(alert).toHaveBeenCalledWith('入力を破棄して戻りますか', expect.any(String), expect.any(Array));
   expect(screen.getByLabelText('いま使う理由')).toHaveDisplayValue('synthetic draft');
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
-  expect(screen.getByRole('header', { name: '自分で決めた時間' })).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
   expect(b.client.run.mock.calls.some(([action]) => action === 'unlock')).toBe(false);
 });
 
@@ -185,7 +185,7 @@ test('continuing restrictions from input and confirmation preserves text until e
   await press('解除内容を確認する'); await press('制限を続ける');
   expect(screen.getByText('synthetic continued restriction')).toBeTruthy();
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
-  expect(screen.getByRole('header', { name: '自分で決めた時間' })).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
   expect(b.client.run.mock.calls.some(([action]) => action === 'unlock')).toBe(false);
   expect(b.current().targets.every((target) => target.restricted)).toBe(true);
   await press('一時解除する');
