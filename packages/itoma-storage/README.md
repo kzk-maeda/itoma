@@ -1,5 +1,10 @@
 # ItomaStorage
 
+## 振り返りのoptional auxiliary stream（Control6のまま）
+
+main schema6を維持し、host maintenanceが同DB内にversion1のoptional reflection streamをinstallする。domain writer変更/明示baselineだけを同commitで記録し、ack自身からfactを増やさない。旧Extension接続/未設置/未知auxでも既存制御を維持する。合算pending上限と高水位/lossを分け、private History4へcommitしてからackする。詳細は docs/system/reflection-records.md。以下は既存Control6以前の記録。
+
+
 ## 停止・再開intent（schema6）
 
 [#91](https://github.com/kzk-maeda/itoma/issues/91)でcontrol schema6へ進める。`stop`/`resumeAfterAuthorization`はimmutable commandとして受理し、最新の本人操作IDをsnapshotの`activationCommandID`へ返す。同じIDの再受理は元の結果と現在snapshotを返し、過去の停止/再開意図を再適用しない。

@@ -284,7 +284,7 @@ private func execute(_ db: OpaquePointer, _ text: String) { #expect(sqlite3_exec
     _ = try f.history.prepareReason(reasonRef: id(100), commandID: id(100), body: "fixture", at: time())
     try f.control.close(); try f.history.close()
     try sql(f.controlURL) { execute($0, "DROP TABLE activation_state; DROP TABLE application_state; DROP TABLE history_outbox; DROP TABLE history_event_ids; DROP TABLE history_state; PRAGMA user_version=3") }
-    try sql(f.historyURL) { execute($0, "DROP TABLE history_events; DROP TABLE history_sources; DROP TABLE dummy_selections; DROP TABLE history_read_index; DROP TABLE history_read_state; PRAGMA user_version=1") }
+    try sql(f.historyURL) { execute($0, "DROP TABLE reflection_facts; DROP TABLE reflection_sources; DROP TABLE reflection_state; DROP TABLE history_events; DROP TABLE history_sources; DROP TABLE dummy_selections; DROP TABLE history_read_index; DROP TABLE history_read_state; PRAGMA user_version=1") }
     #expect(throws: StorageError.unsupportedSchema(3)) { try ControlRepository.open(at: f.controlURL) }
     #expect(throws: HistoryError.unsupportedSchema(1)) { try HistoryRepository.open(at: f.historyURL, capacity: budget()) }
     let control = try ControlRepository.migrate(at: f.controlURL)

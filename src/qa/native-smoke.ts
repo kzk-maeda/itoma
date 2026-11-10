@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
 
 import type { PoCResult } from '../../modules/itoma-native';
-import { itomaNative, reportNativeSmokeResult, screenTimePoC, screenTime, historyRecords } from '../../modules/itoma-native';
+import { itomaNative, reportNativeSmokeResult, screenTimePoC, screenTime, historyRecords, reflectionRecords } from '../../modules/itoma-native';
 
 let ran = false;
 let bridgePassed = false;
 let completed = false;
 let pocPassed = false;
 let historyPassed = false;
+let reflectionPassed = false;
 
 function qaCommit() {
   if (process.env.EXPO_PUBLIC_NATIVE_SMOKE !== '1') return null;
@@ -33,12 +34,15 @@ export async function runNativeSmoke() {
   const product = await screenTime.run('snapshot');
   const history = simulatorSnapshot(poc) && product.snapshot?.availability === 'simulator'
     ? await historyRecords.run('page') : undefined;
+  const reflection = history?.status === 'ok' && history.storage === 'not-created'
+    ? await reflectionRecords.run('read') : undefined;
   bridgePassed = availability.status === 'available' && availability.osRestrictions === 'unconnected'
     && valid.status === 'valid' && valid.minutes === 5 && invalid.status === 'invalid'
     && simulatorSnapshot(poc) && product.status === 'error' && product.code === 'unavailable'
     && product.snapshot?.availability === 'simulator' && product.snapshot.storage === 'not-created'
     && product.snapshot.targets.length === 0 && product.snapshot.observation === 'unknown'
-    && history?.status === 'ok' && history.storage === 'not-created' && !history.page;
+    && history?.status === 'ok' && history.storage === 'not-created' && !history.page
+    && reflection?.status === 'ok' && reflection.storage === 'not-created' && !reflection.snapshot;
   if (!bridgePassed) {
     completed = true; reportNativeSmokeResult(commit, false); return;
   }
@@ -67,6 +71,16 @@ export function completeNativeHistorySmoke(passed: boolean) {
   if (!commit || !bridgePassed || !pocPassed || historyPassed || completed) return;
   if (!passed) { completed = true; reportNativeSmokeResult(commit, false); return; }
   historyPassed = true;
+  try { router.replace('/reflection'); }
+  catch { completed = true; reportNativeSmokeResult(commit, false); }
+}
+
+/** The normal reflection route proves its own read-only response, without fixture or OS writes. */
+export function completeNativeReflectionSmoke(passed: boolean) {
+  const commit = qaCommit();
+  if (!commit || !bridgePassed || !pocPassed || !historyPassed || reflectionPassed || completed) return;
+  if (!passed) { completed = true; reportNativeSmokeResult(commit, false); return; }
+  reflectionPassed = true;
   try { router.replace('/'); }
   catch { completed = true; reportNativeSmokeResult(commit, false); }
 }
@@ -74,7 +88,7 @@ export function completeNativeHistorySmoke(passed: boolean) {
 /** Normal launches are a no-op. Pass only after bridge -> PoC screen -> home mount. */
 export function completeNativeHomeSmoke() {
   const commit = qaCommit();
-  if (!commit || !bridgePassed || !pocPassed || !historyPassed || completed) return;
+  if (!commit || !bridgePassed || !pocPassed || !historyPassed || !reflectionPassed || completed) return;
   completed = true;
   reportNativeSmokeResult(commit, true);
 }

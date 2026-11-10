@@ -221,8 +221,12 @@ extension ControlRepository {
             guard case let .blob(data) = row[1], try decodeHistoryEvent(data) == event else { throw StorageError.conflict }
             return .alreadyPending(try HistorySequence(sequence))
         }
-        guard case let .integer(count) = try database.rows("SELECT count(*) FROM history_outbox").first?.first else { throw StorageError.corrupt }
-        if count >= Int64(capacity.maximumPendingEvents) || boundary.highWatermark.rawValue == Int64.max {
+        let count = try pendingHistoryAndReflectionCount()
+        var maximum = Int64(capacity.maximumPendingEvents)
+        if try hasReflectionCapture(),
+           let configured = try? database.rows("SELECT maximum_pending FROM reflection_capture_state WHERE singleton=1"),
+           case let .integer(limit) = configured.first?.first, limit > 0 { maximum = min(maximum, limit) }
+        if count >= maximum || boundary.highWatermark.rawValue == Int64.max {
             try database.execute("UPDATE history_state SET history_incomplete=1 WHERE singleton=1")
             return .gap
         }

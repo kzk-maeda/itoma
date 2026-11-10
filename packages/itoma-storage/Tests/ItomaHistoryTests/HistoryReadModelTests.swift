@@ -91,7 +91,7 @@ private struct ReadFixture {
     try f.history.recordCancellation(eventID: entity(2), at: instant(9.999999))
     let used = try f.history.capacity().logicalPayloadBytes
     try f.history.close()
-    try f.sql("DROP TABLE history_read_index; DROP TABLE history_read_state")
+    try f.sql("DROP TABLE reflection_facts; DROP TABLE reflection_sources; DROP TABLE reflection_state; DROP TABLE history_read_index; DROP TABLE history_read_state")
     try f.sql("PRAGMA user_version=2")
     #expect(throws: HistoryError.unsupportedSchema(2)) { try HistoryRepository.open(at: f.url, capacity: f.capacity) }
     let migrated = try HistoryRepository.migrate(at: f.url, capacity: f.capacity)
@@ -106,7 +106,7 @@ private struct ReadFixture {
     let f = try ReadFixture(); defer { f.remove() }
     try f.history.recordCancellation(eventID: entity(1), at: instant(10))
     try f.history.close()
-    try f.sql("DROP TABLE history_read_index; DROP TABLE history_read_state")
+    try f.sql("DROP TABLE reflection_facts; DROP TABLE reflection_sources; DROP TABLE reflection_state; DROP TABLE history_read_index; DROP TABLE history_read_state")
     try f.sql("PRAGMA user_version=2")
     try f.sql("UPDATE history_events SET record=x'7b',payload_bytes=1")
     #expect(throws: HistoryError.corrupt) { try HistoryRepository.migrate(at: f.url, capacity: f.capacity) }

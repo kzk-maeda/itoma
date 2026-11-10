@@ -23,12 +23,13 @@ export function HistoryScreen() {
   const state = useHistoryRecords(), [day, setDay] = useState(state.day);
   const { refresh } = state;
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
+  useEffect(() => { let active = true; queueMicrotask(() => { if (active) setDay(state.day); }); return () => { active = false; }; }, [state.day]);
   useEffect(() => {
     if (!state.busy && (state.storage === 'not-created' || state.error)) completeNativeHistorySmoke(state.storage === 'not-created' && !state.error);
   }, [state.busy, state.storage, state.error]);
   const page = state.page;
   const confirmDelete = (all: boolean) => Alert.alert(all ? '保存した操作履歴と理由を削除しますか' : '保存した理由をすべて削除しますか',
-    all ? '保存済みの操作記録と理由本文を削除します。ルールと現在の一時解除は変わりません。削除前の記録を再取込しても復活させません。この操作は元に戻せません。' : '理由本文を削除します。操作の記録、ルール、現在の一時解除は変わりません。この操作は元に戻せません。', [
+    all ? '保存済みの操作記録と理由本文を削除します。振り返りの記録と累計、ルールと現在の一時解除は変わりません。削除前の記録を再取込しても復活させません。この操作は元に戻せません。' : '理由本文を削除します。操作と振り返りの記録、累計、ルール、現在の一時解除は変わりません。この操作は元に戻せません。', [
       { text: '戻る', style: 'cancel' }, { text: all ? '履歴と理由を削除する' : '理由をすべて削除する', style: 'destructive', onPress: () => state.mutate(all ? 'deleteHistory' : 'deleteReasons') },
     ]);
   const files = page && page.databaseBytes !== undefined && page.walBytes !== undefined && page.sharedMemoryBytes !== undefined
@@ -48,6 +49,8 @@ export function HistoryScreen() {
       {page.incomplete && <Notice title="記録の一部が欠けている可能性があります">残っている記録だけを表示しています。取込を再試行しても、保存できなかった過去の記録がすべて戻るとは限りません。</Notice>}
       {page.transfer !== 'current' && <Notice title={page.transfer === 'pending' ? '未取込の記録があります' : '新しい記録の取込状況を確認できません'}>保存済みの記録は下で確認できます。取込はご自身で再試行できます。</Notice>}
       <Body muted>取得時点：{when(page.asOf, page.timeZone)} · {page.timeZone}。表示は新しい記録から、最大40件ずつです。</Body>
+      {state.reference && (state.reference.revision !== page.revision || state.reference.asOf !== page.asOf || state.reference.timeZone !== page.timeZone)
+        && <Body muted>振り返りとは別の時点で取得した操作記録です。時間の集計と同じ時点の一覧とは限りません。</Body>}
       <Button label="新しい記録を取り込む" secondary disabled={state.busy} onPress={() => state.mutate('import')} />
       <View style={flowStyles.row}>
         <Button label="新しい40件へ" secondary disabled={state.busy || !page.previous} onPress={() => { if (page.previous) state.move(page.previous, 'newer'); }} />

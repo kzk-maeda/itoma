@@ -136,11 +136,12 @@ extension ControlRepository {
     public func write<T>(_ body: (ControlTransaction) throws -> T) throws -> T {
         try serialized {
             try database.transaction(writer: true) {
-                _ = try loadSnapshot()
+                let before = try loadSnapshot()
                 let transaction = ControlTransaction(repository: self)
                 defer { transaction.finish() }
                 let result = try body(transaction)
                 try transaction.validateCommit()
+                try captureReflection(before: before.snapshotSequence)
                 return result
             }
         }

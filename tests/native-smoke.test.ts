@@ -4,6 +4,7 @@ jest.mock('../modules/itoma-native', () => ({
   screenTimePoC: { run: jest.fn() }, reportNativeSmokeResult: jest.fn(),
   screenTime: { run: jest.fn() },
   historyRecords: { run: jest.fn() },
+  reflectionRecords: { run: jest.fn() },
 }));
 
 const originalFlag = process.env.EXPO_PUBLIC_NATIVE_SMOKE;
@@ -22,6 +23,7 @@ function setup() {
   native.screenTimePoC.run.mockResolvedValue(response);
   native.screenTime.run.mockResolvedValue({ status: 'error', code: 'unavailable', snapshot: { availability: 'simulator', storage: 'not-created', targets: [], observation: 'unknown' } });
   native.historyRecords.run.mockResolvedValue({ status: 'ok', storage: 'not-created' });
+  native.reflectionRecords.run.mockResolvedValue({ status: 'ok', storage: 'not-created', transfer: 'unavailable' });
   return { native, router, qa };
 }
 
@@ -45,6 +47,21 @@ test('missing history bridge cannot pass using the Core and PoC proofs', async (
 test('failed history route proof cannot be promoted by a later home mount', async () => {
   const { native, qa } = setup();
   await qa.runNativeSmoke(); qa.completeNativePoCSmoke(response); qa.completeNativeHistorySmoke(false); qa.completeNativeHomeSmoke();
+  expect(native.reportNativeSmokeResult).toHaveBeenCalledTimes(1);
+  expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, false);
+});
+test('missing reflection bridge cannot pass using earlier read-only proofs', async () => {
+  const { native, qa } = setup();
+  native.reflectionRecords.run.mockResolvedValue({ status: 'error', code: 'unavailable', storage: 'unknown' });
+  await qa.runNativeSmoke(); qa.completeNativePoCSmoke(response); qa.completeNativeHistorySmoke(true);
+  qa.completeNativeReflectionSmoke(true); qa.completeNativeHomeSmoke();
+  expect(native.reportNativeSmokeResult).toHaveBeenCalledTimes(1);
+  expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, false);
+});
+test('failed reflection route proof cannot be promoted by a later home mount', async () => {
+  const { native, qa } = setup();
+  await qa.runNativeSmoke(); qa.completeNativePoCSmoke(response); qa.completeNativeHistorySmoke(true);
+  qa.completeNativeReflectionSmoke(false); qa.completeNativeHomeSmoke();
   expect(native.reportNativeSmokeResult).toHaveBeenCalledTimes(1);
   expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, false);
 });
@@ -79,12 +96,16 @@ test('bridge and PoC proof wait for the final home mount before emitting one pas
   qa.completeNativeHomeSmoke();
   expect(native.reportNativeSmokeResult).not.toHaveBeenCalled();
   qa.completeNativeHistorySmoke(true);
+  expect(router.replace).toHaveBeenLastCalledWith('/reflection');
+  qa.completeNativeHomeSmoke();
+  expect(native.reportNativeSmokeResult).not.toHaveBeenCalled();
+  qa.completeNativeReflectionSmoke(true);
   expect(router.replace).toHaveBeenLastCalledWith('/');
   qa.completeNativeHomeSmoke(); qa.completeNativeHomeSmoke();
   await qa.runNativeSmoke();
   expect(native.reportNativeSmokeResult).toHaveBeenCalledTimes(1);
   expect(native.reportNativeSmokeResult).toHaveBeenCalledWith(commit, true);
-  expect(router.replace).toHaveBeenCalledTimes(3);
+  expect(router.replace).toHaveBeenCalledTimes(4);
 });
 
 test.each([

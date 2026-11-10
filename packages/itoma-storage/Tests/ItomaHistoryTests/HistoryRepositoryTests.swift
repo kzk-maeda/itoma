@@ -159,7 +159,7 @@ func invalidBudgetsAreRejected(values: (Int64, Int64)) throws {
 @Test func sharedAndPrivateProductsRejectEachOthersDatabase() throws {
     let f = try Fixture(); defer { f.remove() }
     let r = try create(f)
-    #expect(throws: StorageError.unsupportedSchema(3)) { try ControlRepository.open(at: f.url) }
+    #expect(throws: StorageError.unsupportedSchema(4)) { try ControlRepository.open(at: f.url) }
     let controlURL = f.directory.appendingPathComponent("control.sqlite")
     let control = try ControlRepository.create(at: controlURL, initialPolicy: PolicySnapshot(revision: PolicyRevision(0), rules: [], priorityOrder: []), activation: .paused)
     #expect(throws: HistoryError.unsupportedSchema(6)) { try HistoryRepository.open(at: controlURL, capacity: capacity()) }

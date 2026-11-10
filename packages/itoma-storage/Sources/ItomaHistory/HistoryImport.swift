@@ -38,15 +38,17 @@ extension HistoryRepository: ControlHistorySink {
             let repository = try HistoryRepository(url: url, capacity: capacity, busyTimeoutMilliseconds: busyTimeoutMilliseconds)
             try repository.database.transaction(writer: true) {
                 guard case let .integer(version) = try repository.database.rows("PRAGMA user_version").first?.first else { throw HistoryError.corrupt }
-                guard [Int64(1), 2, Self.schemaVersion].contains(version) else { throw HistoryError.unsupportedSchema(version) }
+                guard [Int64(1), 2, 3, Self.schemaVersion].contains(version) else { throw HistoryError.unsupportedSchema(version) }
                 try repository.validateSchema(expected: version)
                 guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
                       try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw HistoryError.corrupt }
                 try repository.validateReasons()
                 if version == 1 { try repository.createPrivateHistoryTables() }
                 if version < 3 { try repository.createReadIndex(); try repository.backfillReadIndex() }
+                if version < 4 { try repository.createReflectionTables() }
                 try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
                 try repository.validatePrivateHistory()
+                try repository.validateReflectionPayloads()
             }
             return repository
         }
@@ -173,7 +175,11 @@ extension HistoryRepository: ControlHistorySink {
     }
 
     func deleteHistory(through boundary: HistoryBoundary) throws {
-        try transaction(writer: true) {
+        try transaction(writer: true) { try deleteHistoryPayload(through: boundary) }
+    }
+
+    /// Internal only; caller already owns the one private writer.
+    func deleteHistoryPayload(through boundary: HistoryBoundary) throws {
             try observe(boundary)
             for (source, observed) in try sourceStates() {
                 let through = source == boundary.sourceID ? boundary.highWatermark.rawValue : observed
@@ -186,7 +192,6 @@ extension HistoryRepository: ControlHistorySink {
             try database.execute("UPDATE dummy_selections SET payload=NULL,payload_bytes=0")
             try database.execute("DELETE FROM history_read_index WHERE kind='event' AND record_key IN (SELECT event_id FROM history_events WHERE record IS NULL)")
             try advanceReadRevision()
-        }
     }
 
     public func historyIncomplete() throws -> Bool {

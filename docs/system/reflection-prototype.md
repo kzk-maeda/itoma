@@ -1,5 +1,8 @@
 # 振り返りの独立実装PoC
 
+> 現在: 本人がPR134を採用・マージした。#138で [製品接続](reflection-records.md) を追加し、Calendar helperと表示を再利用する。synthetic entryと独立schema1 ledgerは通常route/製品storeへ配線しない。以下はPR137作成時の限定PoCの記録。
+
+
 対象 #136。本人の「進められる実装は進めて」に従い、#97〜#99から保存・計算・表示の基盤を分離する。AGENTS.mdの小さい明示的PoCの範囲。#96/[PR134](https://github.com/kzk-maeda/itoma/pull/134)の詳細採用は未完了で、ADR0007をAcceptedに変更しない。PR134のマージは人間の採用ゲートによって自動承認レビューで拒否された。本PoCはそれを迂回して製品集計を採用するものではない。
 
 ## 接続範囲
