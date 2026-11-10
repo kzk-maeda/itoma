@@ -1,0 +1,32 @@
+import Foundation
+import ItomaCore
+import ItomaStorage
+import ItomaHistory
+let folder = URL(fileURLWithPath: CommandLine.arguments[2])
+let url = folder.appendingPathComponent("history.sqlite")
+let capacity = try HistoryCapacityPolicy(warningBytes: 83_886_080, maximumBytes: 104_857_600)
+if CommandLine.arguments[1] == "prepare" {
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let control = try ControlRepository.create(at: folder.appendingPathComponent("control.sqlite"), initialPolicy: PolicySnapshot(revision: PolicyRevision(0), rules: [], priorityOrder: []), activation: .enabled)
+    try control.installReflectionCapture(capacity: HistoryOutboxCapacity(maximumPendingEvents: 100))
+    let history = try HistoryRepository.create(at: url, capacity: capacity)
+    try control.transferReflection(to: history)
+    try history.close(); try control.close()
+    print("prepared synthetic baseline")
+} else {
+    let start = Date()
+    let history = try HistoryRepository.open(at: url, capacity: capacity)
+    let opened = Date()
+    var timings: [Double] = []
+    var observationCount: Int64 = 0
+    for _ in 0..<3 {
+        let before = Date()
+        let result = try history.readReflection(period: .week, day: "2026-11-10", timeZone: "UTC")
+        guard result.total.knownSeconds == nil else { fatalError("numeric point") }
+        observationCount = result.observationCount
+        timings.append(Date().timeIntervalSince(before))
+    }
+    try history.close()
+    let data = try JSONSerialization.data(withJSONObject: ["openSeconds": opened.timeIntervalSince(start), "readSeconds": timings, "observations": observationCount], options: [.sortedKeys])
+    print(String(data: data, encoding: .utf8)!)
+}

@@ -1,0 +1,11 @@
+Building for production...
+[0/8] Write sources
+[5/8] Write swift-version-24593BA9C3E375BF.txt
+[7/10] Compiling ItomaSQLite SQLite.swift
+[8/10] Compiling ItomaCore GrantEditEvaluator.swift
+[9/11] Compiling ItomaStorage ActivationRepository.swift
+[10/12] Compiling ItomaHistory HistoryDayRange.swift
+[11/13] Compiling ReflectionReadBenchmark main.swift
+[11/13] Write Objects.LinkFileList
+[12/13] Linking reflection-read-benchmark
+Build complete! (40.31s)
