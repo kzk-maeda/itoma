@@ -35,6 +35,8 @@
 
 技術的な選択の採用と、実機での検証済みは別軸です。ADRがAcceptedでもPoCが未実施なら保証しません。Issueが閉じているだけで設計採用とみなさず、マージされた決定PRを確認します。
 
+- [ルール名と行動目標の本体private保存](rule-details.md) — #147。本人の追加依頼に沿う実装契約。PRレビュー中、実機未検証。
+
 ## 本実装の設計比較
 
 - [一時解除を除いた制限時間の累計・週月集計契約](time-reflection-contract.md) / [ADR0007](../adr/0007-recorded-setting-time-reflection.md) — #96。本人がPR134を採用・マージしたAccepted契約。詳細の採用/実装/実機成立を区別し、正値qualification gateを保持する。

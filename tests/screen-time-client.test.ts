@@ -30,3 +30,14 @@ test('unknown results, malformed native values and thrown errors stay unknown wi
   expect(JSON.stringify(failed)).not.toContain('private');
   expect(() => parseScreenTimeResponse(JSON.stringify({ status: 'ok', snapshot: { ...snapshot, rules: [{ id: 'bad' }] } }))).toThrow();
 });
+
+test('private names/goals are allowlisted only with an available versioned private snapshot', () => {
+  const rule = { id: ref, selectionRef: ref, weekdays: [1], startMinute: 0, endMinute: 60, nextDay: false, enabled: true, title: '合成名', goal: '合成の目標\n🌙', extra: 'private-extra' };
+  const ready = { ...snapshot, ruleDetailsStatus: 'ready', ruleDetailsRevision: '2', rules: [rule] };
+  const parsed = parseScreenTimeResponse(JSON.stringify({ status: 'ok', snapshot: ready })).snapshot!;
+  expect(parsed.rules[0].goal).toBe(rule.goal); expect(parsed.rules[0]).not.toHaveProperty('extra');
+  const hidden = parseScreenTimeResponse(JSON.stringify({ status: 'ok', snapshot: { ...ready, ruleDetailsStatus: 'unavailable' } })).snapshot!;
+  expect(hidden.rules[0].title).toBeUndefined(); expect(hidden.rules[0].goal).toBeUndefined();
+  expect(() => parseScreenTimeResponse(JSON.stringify({ status: 'ok', snapshot: { ...ready, ruleDetailsRevision: undefined } }))).toThrow();
+  expect(() => parseScreenTimeResponse(JSON.stringify({ status: 'ok', snapshot: { ...ready, rules: [{ ...rule, title: 'あ'.repeat(81) }] } }))).toThrow();
+});

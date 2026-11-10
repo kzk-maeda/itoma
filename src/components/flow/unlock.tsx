@@ -4,6 +4,7 @@ import { useScreenTime } from '@/state/screen-time';
 import { Applications } from './applications';
 import { back, home, useDraftGuard } from './navigation';
 import { endTime, ruleText } from './presentation';
+import { ruleTitle } from './rule-identity';
 import { Body, Button, Field, FlowScreen, Heading, Notice, Panel, flowStyles } from './ui';
 import { Alert, View } from 'react-native';
 
@@ -85,7 +86,7 @@ export function UnlockConfirmationScreen() {
   return <FlowScreen title="この内容で一時解除しますか" onBack={back}>
     {target && <Panel><Heading>このアプリだけを解除</Heading><Applications selectionRef={target.selectionRef} targetRef={target.ref} refreshKey={state.refreshKey} />
       <Body>ほかの対象アプリの設定は変更しません。</Body></Panel>}
-    {rule ? <Panel><Heading>この解除に適用するルール</Heading><Body>時間帯 {(confirmed?.rules.findIndex((r) => r.id === rule.id) ?? 0) + 1}</Body><Body>{ruleText(rule)}</Body></Panel>
+    {rule ? <Panel><Heading>この解除に適用するルール</Heading><Body>{ruleTitle(rule, confirmed?.rules.findIndex(r => r.id === rule.id) ?? 0)}</Body><Body>{ruleText(rule)}</Body></Panel>
       : <Notice title="適用するルールを確認し直してください">入力へ戻って、最新の解除内容を確認できます。</Notice>}
     <Panel><Heading>あなたの理由</Heading><Body>{draft.reason}</Body></Panel>
     <Panel><Heading>解除の時間</Heading><Body>最大 {review?.minutes ?? draft.minutes}分</Body>

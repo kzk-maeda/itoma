@@ -19,6 +19,7 @@ struct ProductRuleInput: Decodable, Sendable {
 }
 struct ProductRequest: Decodable, Sendable {
     var rule: ProductRuleInput?
+    var details: ProductRuleDetailsInput?
     var ref: String?
     var targetRef: String?
     var reason: String?
@@ -28,6 +29,8 @@ struct ProductRequest: Decodable, Sendable {
 struct ProductRuleDTO: Encodable, Sendable {
     let id: String; let selectionRef: String; let weekdays: [Int]
     let startMinute: Int; let endMinute: Int; let nextDay: Bool; let enabled: Bool
+    var title: String?
+    var goal: String?
 }
 struct ProductTargetDTO: Encodable, Sendable {
     let ref: String; let selectionRef: String; let restricted: Bool
@@ -57,6 +60,8 @@ struct ProductSnapshotDTO: Encodable, Sendable {
     var needsSelectionReview = false
     var defaultMinutes = 5
     var historyIncomplete = false
+    var ruleDetailsStatus = "ready"
+    var ruleDetailsRevision = "0"
 }
 struct ProductImpactDTO: Encodable, Sendable {
     let kind: String; let endsAt: Double?
@@ -130,6 +135,10 @@ struct ProductResponse: Encodable, Sendable {
             else { try observeEpoch(authorizationEpoch, in: r) }
             switch action {
             case "initialize": try await refresh(r)
+            case "saveRuleDetails":
+                let current = try r.repository.readSnapshot()
+                guard let details = request.details, details.expectedPolicyRevision == String(current.policy.revision.rawValue) else { throw RuleDetailsError.changed }
+                try ProductRuleDetailsStore.save(details, activeRuleIDs: Set(current.policy.rules.map { $0.id.rawValue }))
             case "previewRule":
                 guard let input = request.rule else { throw ScreenTimeRuntimeError.invalidSelection }
                 try cancelCandidate(r)
@@ -313,10 +322,14 @@ struct ProductResponse: Encodable, Sendable {
         result.defaultMinutes = stored.policy.defaultUnlockDuration.minutes
         result.historyIncomplete = try r.repository.historyBoundary().historyIncomplete
         result.selections = stored.selections.map { ProductSelectionDTO(ref: $0.selection.ref.rawValue.uuidString.lowercased(), count: $0.selection.targets.count) }
+        var details = RuleDetailsSnapshot()
+        do { details = try ProductRuleDetailsStore.read(activeRuleIDs: Set(stored.policy.rules.map { $0.id.rawValue })); result.ruleDetailsRevision = String(details.revision) }
+        catch { result.ruleDetailsStatus = "unavailable" }
         result.rules = stored.policy.priorityOrder.compactMap { id in stored.policy.rules.first { $0.id == id } }.map { rule in
             ProductRuleDTO(id: rule.id.rawValue.uuidString.lowercased(), selectionRef: rule.selectionRef.rawValue.uuidString.lowercased(),
                 weekdays: rule.schedule.weekdays.map(\.rawValue).sorted(), startMinute: rule.schedule.startMinute,
-                endMinute: rule.schedule.endMinute, nextDay: rule.schedule.endDayOffset == .nextDay, enabled: rule.enabled)
+                endMinute: rule.schedule.endMinute, nextDay: rule.schedule.endDayOffset == .nextDay, enabled: rule.enabled,
+                title: details.rules[rule.id.rawValue]?.title, goal: details.rules[rule.id.rawValue]?.goal)
         }
         let used = Set(stored.policy.rules.map(\.selectionRef))
         let targets = Set(stored.selections.filter { used.contains($0.selection.ref) }.flatMap { $0.selection.targets })
@@ -378,6 +391,9 @@ struct ProductResponse: Encodable, Sendable {
     }
     private func failureCode(_ error: any Error) -> String {
         switch error {
+        case RuleDetailsError.changed: return "changed"
+        case RuleDetailsError.invalidInput: return "invalid-input"
+        case is RuleDetailsError: return "storage-failed"
         case CommandServiceError.confirmationChanged, CommandServiceError.confirmationRequired, StorageError.conflict,
              GrantEvaluationError.stalePolicy, GrantEvaluationError.staleOccurrence, GrantEvaluationError.confirmationChanged: return "changed"
         case CommandServiceError.authorizationRequired, GrantEvaluationError.authorizationRequired: return "authorization-required"

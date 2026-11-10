@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
+import { currentControlSnapshot } from './control-snapshot';
 
 import { screenTime, type RuleInput, type ScreenTimeAction, type ScreenTimeCode, type ScreenTimeRequest, type ScreenTimeResponse, type ScreenTimeRule, type ScreenTimeSnapshot } from '../../modules/itoma-native';
 
@@ -22,7 +23,6 @@ type State = {
 };
 const Context = createContext<State | undefined>(undefined);
 const time = (minute: number) => `${Math.floor(minute / 60).toString().padStart(2, '0')}:${(minute % 60).toString().padStart(2, '0')}`;
-const newer = (a: string, b: string) => a.length > b.length || (a.length === b.length && a >= b);
 // Application labels depend on saved identities/authorization, not countdowns or OS observation times.
 const labelIdentity = (s: ScreenTimeSnapshot) => JSON.stringify([s.availability, s.storage, s.authorization, s.needsSelectionReview,
   s.selections.map(value => `${value.ref}:${value.count}`).sort(), s.targets.map(value => `${value.ref}:${value.selectionRef}`).sort()]);
@@ -60,7 +60,7 @@ export function ScreenTimeProvider({ children, client = screenTime }: { children
         if (result.snapshot) {
           const incoming = result.snapshot;
           const previous = latest.current;
-          const chosen = !previous || incoming.storage !== 'ready' || newer(incoming.sequence, previous.sequence) ? incoming : previous;
+          const chosen = currentControlSnapshot(previous, incoming);
           const same = chosen === previous || (previous && JSON.stringify(chosen) === JSON.stringify(previous));
           latest.current = same ? previous : chosen;
           if (!same) setSnapshot(chosen);

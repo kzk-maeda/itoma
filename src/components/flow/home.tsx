@@ -7,7 +7,7 @@ import { completeNativeHomeSmoke } from '@/qa/native-smoke';
 import { PeriodRing } from '../home/period-ring';
 import { presentPeriod } from '../home/period-presentation';
 import { PoCRecoveryEntry } from '../home/poc-recovery-entry';
-import { OpenCircle } from '../home/open-circle';
+import { RuleGoal, ruleTitle } from './rule-identity';
 import { Applications } from './applications';
 import { Body, Button, FlowScreen, Heading, LinkRow, Notice, Panel, useFlowTheme } from './ui';
 import { endTime, grantRemaining, ruleText } from './presentation';
@@ -35,6 +35,7 @@ export function ProductHome() {
     { text: '戻る', style: 'cancel' }, { text: '手動検証の制限を停止', onPress: () => { void state.run('stopLegacy'); } },
   ]);
   return <FlowScreen title="いとま" tab="home">
+    {s?.ruleDetailsStatus === 'unavailable' && <Notice title="ルール名と行動目標を確認できません">制限の設定は引き続き確認できます。設定タブからもう一度読み直せます。</Notice>}
     {state.loading && <Body muted>現在の設定を確認しています。</Body>}
     {!state.loading && !device && <Notice title="iPhoneのITOMAで設定できます">
       {s?.availability === 'simulator' ? 'この環境ではスクリーンタイムの認可や実際の制限は行いません。対応するiPhone版で設定できます。'
@@ -57,12 +58,12 @@ export function ProductHome() {
       <View style={styles.periodHeading}>
         <View style={styles.periodLabel}>
           {rule && <Text style={[styles.caption, { color: theme.muted }]}>{ruleText(rule)}</Text>}
-          <Heading>時間帯 {Math.max(1, (s?.rules.findIndex((r) => r.id === p.ruleID) ?? 0) + 1)}</Heading>
+          <Heading>{ruleTitle(rule, s?.rules.findIndex(r => r.id === p.ruleID) ?? 0)}</Heading>
         </View>
-        <OpenCircle color={theme.accent} size={28} />
       </View>
       {presentation.state === 'current' && <PeriodRing period={presentation} theme={theme} />}
       <Text style={[styles.caption, styles.observation, { color: theme.muted }]}>{s?.activation === 'enabled' && observed ? '制限設定を反映しました' : '保存した設定上の時間'}</Text>
+      <RuleGoal goal={rule?.goal} />
     </View>; })}
     {!current.length && !!s?.rules.length && <Panel><Heading>次の時間まで</Heading>
       <Body>{s.nextPeriod ? `${endTime(s.nextPeriod.startsAt, now)}から予定しています。` : '有効な次の時間帯はありません。ルールを確認できます。'}</Body>
@@ -82,7 +83,7 @@ export function ProductHome() {
             ? '一時解除中' : '解除の状態を確認'
             : target.restricted ? observed ? '制限設定を反映済み' : '設定上の制限対象' : '時間帯の対象外'}</Text>
         </View>
-        {s.rules.length > 1 && target.ruleID && <Text style={[styles.caption, { color: theme.muted }]}>適用するルール：時間帯 {s.rules.findIndex((rule) => rule.id === target.ruleID) + 1}</Text>}
+        {s.rules.length > 1 && target.ruleID && <Text style={[styles.caption, { color: theme.muted }]}>適用するルール：{ruleTitle(s.rules.find(rule => rule.id === target.ruleID), s.rules.findIndex(rule => rule.id === target.ruleID))}</Text>}
         {target.grantCommandID && <Text style={[styles.caption, { color: theme.muted }]}>{target.grantStatus === 'active' && observed && (target.grantEndsAt ?? 0) * 1000 > now
           ? `一時解除の残り ${grantRemaining(target.grantEndsAt!, now)} · ${endTime(target.grantEndsAt!, now)}まで`
           : '解除の要求・再制限の状態を確認できます。'}</Text>}

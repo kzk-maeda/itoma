@@ -40,6 +40,7 @@ jest.mock('expo-router', () => ({
 }));
 jest.mock('../modules/itoma-native', () => ({ screenTime: { run: jest.fn() } }));
 jest.mock('../src/qa/native-smoke', () => ({ completeNativeHomeSmoke: jest.fn() }));
+jest.mock('../src/state/reflection', () => ({ useReflection: () => ({ busy: false, mutate: jest.fn() }) }));
 jest.mock('../src/global.css', () => ({}));
 jest.mock('../src/components/flow/applications', () => ({ Applications: ({ targetRef, count, onSelect, selected }: { targetRef?: string; count: number; onSelect?: () => void; selected: boolean }) => {
   const React = require('react'), RN = require('react-native');

@@ -112,3 +112,7 @@ Preparing、外部受理/発火事実、最終適用のcommit境界を分け、�
 [#80](https://github.com/kzk-maeda/itoma/issues/80)でcontrol schema4/private schema2へ明示移行する。型付きcommand/grantのoutboxをprivate commit後にだけackし、payloadは削除、eventID/sequenceの冪等台帳は維持する。private commit後/ack前の再実行、sourceID別の削除cutoff、境界後の新eventの保持、容量/INSERT失敗による全rollbackとack抑止を一時SQLiteで検証する。取消recordはID/時刻だけで本文を持てず、確定ダミー選択の保存はUI金額の採用や決済ではない。
 
 `acceptReasonGrant`はprivate Preparedを閉じてから共有intentを受理し、private失敗で共有grantを作らない。outbox満杯/履歴障害はcontrolのhistoryIncompleteへ残し、履歴のためだけに停止/再制限のmetadataを失敗させない。実OS副作用は#47以降、iOSの保護・2プロセスのkill/lockは#49。S03/S04/S06/S07のDB単体部分と実機ゲートを分ける。
+
+## ルール名・行動目標（#147）
+
+本人の文章をhost-onlyの独立`RuleDetailsRepository` / `rule-details.sqlite`へ保存する。共有Ruleや既存control/history schemaは変更せず、名前/目標だけの保存でOS予定やgrant期限を変えない。native `saveRuleDetails`とsnapshotの`ruleDetailsStatus`/`ruleDetailsRevision`を使用し、旧nativeでは編集を有効化しない。詳細は [保存契約](rule-details.md) を参照。新しいnative buildでのiOSリンク/Complete保護/端末UIは別に確認する。
