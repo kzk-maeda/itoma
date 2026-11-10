@@ -19,6 +19,18 @@
 
 成功件数と実行headはPR本文の最終結果を正本とする。開発中のSwift macro/入れ子savepoint/旧schema fixture・JS戻りラベル/spy cleanupの失敗は修正後と区別し、失敗した実行を成功証拠へ流用しない。
 
+## 2026-11-10 JST のsource/Web結果
+
+sourceは `91bdc3eba7aaebb2837758928227a2dd0b3d185a`（local `72843e66da8774da92b51afcb0510912eb7696a3`）、同tree `15d2aa7744bae89d147c5f7ee799e919fd4e8b8e`。Core 74 / Storage 122 / Control 85、Jest 112 / 14 suites、typecheck・lint・demo 20・iOS tools 18・doctor 20/20が成功した。Swift frontend parseは構文確認だけで、SDK buildの代わりにはしない。doctor初回のnpm cache EROFSはcommand単位の `/tmp` cache指定で解消し、再実行20/20を使用した。
+
+独立した2レビュアーがsourceとtree一致を確認し、blocking findingなし。UIレビュアーは関連5 suites / 42 testsを別に実行した。初回indexのwriter競合と読取O(total payload)の最大容量測定は未実施として残す。
+
+[画像manifest](reflection-records/manifest.json)に9ケース・PNG/JS hashを記録した。全ケースconsole/page errorなし、横overflowなし、ボタン最小52 CSS px（文字倍率1.5時65）。週Light、月Dark、320px欠落、削除、未記録、DB未作成、読取失敗、320px月Dark/文字1.5倍、共有側gapを確認した。全totalは「—」。描画内容は合成SQLite由来で、本人の実績ではない。
+
+再現はsourceを別directoryへarchiveし、[一時QA route](reflection-records/proof-route.tsx.txt)だけを追加する。製品のReflectionScreen/client/providersを使い、native portだけread-only fixtureに置き換えた。[source照合](reflection-records/source-verification.json)は345 tracked filesすべてbyte一致を確認している。製品app.jsonは変更せず、SDK58の `expo export --platform web` と `expo serve --port 8151` を使用した。初回のPython静的serverはserver出力形式を扱えず404/待機timeoutとなったため破棄し、Expo serverで再取得した画像だけを採用した。
+
+[capture手順](reflection-records/capture.mjs.txt)では画像出力のためScrollViewと祖先を全高へ展開する。これはiPhone viewportの画像ではない。文字倍率はDOM CSSだけで、iOS Dynamic Type/VoiceOver・戻るgesture・実際のday route往復・実機100回操作の検証には使わない。QA wrapperは追加providerを持つため、Webの購読数を通常rootの購読数として数えない。Jestのroute往復はmock Routerであり、実機確認と分ける。
+
 ## SQLiteから作るfixture
 
 Core/Storageの実Repositoryを使い、一時Control6/History4へ合成factを作る。actual token・実アプリ名・本人の理由・Screen Time APIは使わない。生成targetはTools配下で、Pod/Extensionのsource globに入らない。
