@@ -39,6 +39,9 @@ export const GraphiteColors = {
 export type GraphiteTheme = (typeof GraphiteColors)['light' | 'dark'];
 export const HomeLayout = { maxWidth: 480, gutter: 24, sectionGap: 24 } as const;
 
+/** Brief responses to period selection; never used for domain deadlines. */
+export const FlowMotion = { periodDuration: 180, periodOffset: 16, tabDuration: 240 } as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

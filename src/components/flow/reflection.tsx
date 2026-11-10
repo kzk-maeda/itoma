@@ -1,15 +1,15 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { Alert } from 'react-native';
+import { Alert, View } from 'react-native';
 import { useHistoryRecords } from '@/state/history';
 import { useReflection } from '@/state/reflection';
-import { back } from './navigation';
-import { Body, Button, FlowScreen, Notice } from './ui';
+import { useProductTabs } from '@/state/product-tabs';
+import { Body, FlowScreen, LinkRow, Notice } from './ui';
 import { ReflectionContent } from './reflection-content';
 import { completeNativeReflectionSmoke } from '@/qa/native-smoke';
 
 export function ReflectionScreen() {
-  const state = useReflection(), history = useHistoryRecords();
+  const state = useReflection(), history = useHistoryRecords(), tabs = useProductTabs();
   const { refresh } = state;
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
   const onRead = useCallback((value: 'ready' | 'not-created' | 'error') => {
@@ -20,10 +20,9 @@ export function ReflectionScreen() {
       { text: '戻る', style: 'cancel' },
       { text: '全記録と累計を削除する', style: 'destructive', onPress: () => state.mutate('deleteAll') },
     ]);
-  return <FlowScreen title="自分の時間" onBack={back}>
-    <Body>一時解除している時間を除いた記録を振り返ります。確認できない時間は、成果として加算しません。</Body>
-    <Notice title="時間の集計は準備中です">このバージョンでは、制限を続けた時間をまだ集計できません。保存した操作の記録は確認できます。</Notice>
+  return <FlowScreen title="時間の積み上げ" eyebrow="自分の時間を、振り返る" tab="reflection">
     <ReflectionContent source={state.source} embedded initialMemory={state.memory} onMemory={state.remember} onRead={onRead} disabled={state.busy}
+      visible={!tabs || (tabs.active && tabs.current === 'reflection')}
       onDay={(day, snapshot) => {
         if (!snapshot.historyRevision) return;
         history.chooseReflectionDay(day, { revision: snapshot.historyRevision, asOf: snapshot.asOf, timeZone: snapshot.timeZone });
@@ -35,8 +34,10 @@ export function ReflectionScreen() {
         : '操作の結果と最新の記録を、もう一度確認してください。空の記録とは扱っていません。'}
     </Notice>}
     {state.response?.status === 'ok' && <Body muted>操作後の記録を読み直しています。</Body>}
-    <Button label="新しい記録を取り込む" secondary disabled={state.busy} onPress={() => state.mutate('import')} />
-    <Button label="選択の記録を見る" secondary disabled={state.busy} onPress={() => router.navigate('/history')} />
-    <Button label="全記録と累計を削除する" secondary disabled={state.busy} onPress={confirmDelete} />
+    <View>
+      <LinkRow label="新しい記録を取り込む" disabled={state.busy} onPress={() => state.mutate('import')} />
+      <LinkRow label="選択の記録を見る" disabled={state.busy} onPress={() => router.navigate('/history')} />
+      <LinkRow label="全記録と累計を削除する" disabled={state.busy} onPress={confirmDelete} />
+    </View>
   </FlowScreen>;
 }

@@ -101,6 +101,7 @@ function backend(configured = true, failGrant = false) {
 beforeEach(() => { mockHistory = ['/']; mockGuard = undefined; jest.spyOn(Date, 'now').mockReturnValue(now); });
 afterEach(() => jest.restoreAllMocks());
 const press = async (name: string) => { await fireEvent.press(screen.getByRole('button', { name })); };
+const openSettings = async () => fireEvent.press(screen.getByRole('tab', { name: '設定' }));
 
 test('onboarding → native selection → weekdays/time review → saved rule on the home, without PoC navigation', async () => {
   const b = backend(false);
@@ -114,7 +115,7 @@ test('onboarding → native selection → weekdays/time review → saved rule on
   await press('編集へ戻る');
   expect(screen.getByLabelText('開始時刻（24時間 HH:MM）')).toHaveDisplayValue('21:00');
   await press('内容を確認する'); await press('この内容で保存する');
-  expect(screen.getByRole('header', { name: '自分で決めた時間' })).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
   expect(screen.queryByText('時間帯ルールは準備中です')).toBeNull();
   expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
   expect(mockHistory).not.toContain('/native-poc');
@@ -155,7 +156,7 @@ test('dirty cancellation keeps text on Keep, and confirmed discard does not requ
   expect(alert).toHaveBeenCalledWith('入力を破棄して戻りますか', expect.any(String), expect.any(Array));
   expect(screen.getByLabelText('いま使う理由')).toHaveDisplayValue('synthetic draft');
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
-  expect(screen.getByRole('header', { name: '自分で決めた時間' })).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
   expect(b.client.run.mock.calls.some(([action]) => action === 'unlock')).toBe(false);
 });
 
@@ -185,7 +186,7 @@ test('continuing restrictions from input and confirmation preserves text until e
   await press('解除内容を確認する'); await press('制限を続ける');
   expect(screen.getByText('synthetic continued restriction')).toBeTruthy();
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
-  expect(screen.getByRole('header', { name: '自分で決めた時間' })).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
   expect(b.client.run.mock.calls.some(([action]) => action === 'unlock')).toBe(false);
   expect(b.current().targets.every((target) => target.restricted)).toBe(true);
   await press('一時解除する');
@@ -198,7 +199,7 @@ test('stale observations remain unverified and reason deletion requires the sepa
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
   expect(screen.getByText('保存した設定上の時間')).toBeTruthy();
   expect(screen.queryByText('制限設定を反映しました')).toBeNull();
-  await press('ルールと設定'); await press('保存した理由の削除を確認');
+  await openSettings(); await press('保存した理由の削除を確認');
   expect(b.client.run.mock.calls.some(([action]) => action === 'deleteReasons')).toBe(false);
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
   expect(b.client.run).toHaveBeenCalledWith('deleteReasons', {});
@@ -209,7 +210,7 @@ test('stale observations remain unverified and reason deletion requires the sepa
 test.each(['ルールを追加する', '時間帯 1を編集', '時間帯 1を削除する内容を確認'])('settings cannot overwrite a retained dirty rule draft via %s', async (action) => {
   const b = backend(), alert = jest.spyOn(Alert, 'alert');
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await press('ルールと設定'); await press('時間帯 1を編集');
+  await openSettings(); await press('時間帯 1を編集');
   await fireEvent.changeText(screen.getByLabelText('開始時刻（24時間 HH:MM）'), '20:00');
   await press('内容を確認する'); await press('保存したルールを確認する');
   const before = b.client.run.mock.calls.length;
@@ -230,4 +231,18 @@ test('reauthorization keeps existing rules awaiting explicit review/resume and d
   expect(screen.getByRole('header', { name: 'ルールと設定' })).toBeTruthy();
   expect(screen.getByRole('button', { name: '保存したルールの再開を確認' })).toBeDisabled();
   expect(b.client.run.mock.calls.some(([name]) => name === 'resume' || name === 'previewRule' || name === 'commitRule')).toBe(false);
+});
+
+test('home keeps its primary flow and the settings tab retains history and explicit reconciliation', async () => {
+  const b = backend(); await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  for (const name of ['ルールと設定', '選択の記録を見る', '現在の状態を確認する']) {
+    expect(screen.queryByRole('button', { name })).toBeNull();
+  }
+  expect(screen.getByRole('tab', { name: 'ホーム' })).toBeSelected();
+  await openSettings();
+  expect(screen.getByRole('tab', { name: '設定' })).toBeSelected();
+  expect(screen.getByRole('button', { name: '選択の記録を見る' })).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([action]) => action === 'reconcile')).toBe(false);
+  await press('現在の状態を確認する');
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'reconcile')).toHaveLength(1);
 });

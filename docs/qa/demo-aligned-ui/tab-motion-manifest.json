@@ -1,0 +1,73 @@
+{
+  "kind": "synthetic-web-shared-tab-motion",
+  "physicalDevice": false,
+  "osRestrictionsVerified": false,
+  "browser": "155.0.8059.79",
+  "transitions": [
+    {
+      "from": "home",
+      "to": "reflection",
+      "intermediateFrames": 14,
+      "directionCorrect": true,
+      "maxProgressDifference": 6.462159558684455e-06,
+      "footerYStable": true,
+      "skippedSceneHidden": true
+    },
+    {
+      "from": "reflection",
+      "to": "settings",
+      "intermediateFrames": 13,
+      "directionCorrect": true,
+      "maxProgressDifference": 5.775815422270902e-06,
+      "footerYStable": true,
+      "skippedSceneHidden": true
+    },
+    {
+      "from": "settings",
+      "to": "home",
+      "intermediateFrames": 13,
+      "directionCorrect": true,
+      "maxProgressDifference": 2.8204765567529932e-06,
+      "footerYStable": true,
+      "skippedSceneHidden": true
+    },
+    {
+      "from": "home",
+      "to": "settings",
+      "intermediateFrames": 14,
+      "directionCorrect": true,
+      "maxProgressDifference": 3.472943972293585e-06,
+      "footerYStable": true,
+      "skippedSceneHidden": true
+    },
+    {
+      "from": "settings",
+      "to": "reflection",
+      "intermediateFrames": 13,
+      "directionCorrect": true,
+      "maxProgressDifference": 6.8490545219734855e-06,
+      "footerYStable": true,
+      "skippedSceneHidden": true
+    },
+    {
+      "from": "reflection",
+      "to": "home",
+      "intermediateFrames": 13,
+      "directionCorrect": true,
+      "maxProgressDifference": 3.4474187217414798e-06,
+      "footerYStable": true,
+      "skippedSceneHidden": true
+    }
+  ],
+  "errors": [],
+  "sameTabIsNoOp": true,
+  "reflectionMonthAndNodeRetained": true,
+  "rapidLastSelectionWins": true,
+  "rapidViewportCovered": true,
+  "dynamicReducedMotionSettles": true,
+  "reducedMotionNoIntermediateScene": true,
+  "singlePersistentFooter": true,
+  "inactiveSceneNotAccessible": true,
+  "videoSHA256": "7fdeedae464ed7c9344cb80005b89fc2dfc3c123562352fe0399b335fcc6c0d5",
+  "videoEncoding": "VP9 CRF40, original frame timing"
+}

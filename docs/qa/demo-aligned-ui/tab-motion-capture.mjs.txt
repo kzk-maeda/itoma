@@ -1,0 +1,79 @@
+import {createRequire} from 'node:module';
+import {writeFileSync,copyFileSync,readFileSync,mkdirSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
+const {chromium}=createRequire(import.meta.url)('playwright');
+const output='/tmp/itoma-demo-aligned-ui/docs/qa/demo-aligned-ui';
+mkdirSync('/tmp/itoma-tab-video',{recursive:true});
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+const context=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'no-preference',recordVideo:{dir:'/tmp/itoma-tab-video',size:{width:390,height:844}}});
+await context.addInitScript(base=>{Date.now=()=>base+performance.now();},Date.parse('2026-11-09T21:30:00Z'));
+const page=await context.newPage(),errors=[],names=['ホーム','振り返り','設定'],keys=['home','reflection','settings'];
+page.on('pageerror',e=>errors.push(e.message));
+page.on('console',m=>{if(m.type()==='error')errors.push(m.text().slice(0,250));});
+const frames=async(start)=>page.evaluate(start=>{
+ if(!start){cancelAnimationFrame(window.qaTabRAF);return window.qaTabFrames;}
+ window.qaTabFrames=[];
+ const sample=()=>{
+  const point=id=>{const e=document.querySelector(`[data-testid="${id}"]`);if(!e)return null;const s=getComputedStyle(e),r=e.getBoundingClientRect();return {x:new DOMMatrixReadOnly(s.transform==='none'?undefined:s.transform).m41,y:r.y,width:r.width,opacity:Number(s.opacity),hidden:e.getAttribute('aria-hidden')};};
+  window.qaTabFrames.push({at:performance.now(),indicator:point('product-tab-indicator'),bar:point('product-tab-bar'),viewport:point('product-tab-viewport'),scenes:['home','reflection','settings'].map(k=>point(`product-tab-scene-${k}`))});
+  window.qaTabRAF=requestAnimationFrame(sample);
+ };sample();
+},start);
+const select=async index=>page.getByRole('tab',{name:names[index],exact:true}).click();
+const report={kind:'synthetic-web-shared-tab-motion',physicalDevice:false,osRestrictionsVerified:false,browser:await browser.version(),transitions:[],errors};
+const raw={};
+const assert=(v,msg)=>{if(!v)throw new Error(msg);};
+try{
+ await page.goto('http://127.0.0.1:8161/',{waitUntil:'networkidle'});
+ await page.getByRole('heading',{name:'いとま',exact:true}).waitFor();
+ for(const [from,to] of [[0,1],[1,2],[2,0],[0,2],[2,1],[1,0]]){
+  await select(from);await page.waitForTimeout(320);
+  await frames(true);await select(to);await page.waitForTimeout(330);const data=await frames(false);raw[`${keys[from]}-${keys[to]}`]=data;
+  const direction=Math.sign(to-from),width=data.at(-1).viewport.width;
+  const startX=data[0].indicator.x,endX=data.at(-1).indicator.x;
+  const observed=data.filter(f=>f.indicator&&f.scenes[to]&&Math.abs(f.scenes[to].x)>0.5&&Math.abs(f.scenes[to].x)<width-0.5&&f.scenes[to].opacity>0);
+  const result={from:keys[from],to:keys[to],intermediateFrames:observed.length,directionCorrect:observed.every(f=>Math.sign(f.scenes[to].x)===direction&&Math.sign(f.scenes[from].x)===-direction),maxProgressDifference:0,footerYStable:data.every(f=>Math.abs(f.bar.y-data[0].bar.y)<0.1),skippedSceneHidden:true};
+  for(const f of observed){const p=(f.indicator.x-startX)/(endX-startX),q=1-Math.abs(f.scenes[to].x)/width;result.maxProgressDifference=Math.max(result.maxProgressDifference,Math.abs(p-q));}
+  if(Math.abs(to-from)===2)result.skippedSceneHidden=data.every(f=>!f.scenes[1]||f.scenes[1].opacity===0);
+  assert(observed.length>=2&&result.directionCorrect&&result.maxProgressDifference<0.025&&result.footerYStable&&result.skippedSceneHidden,JSON.stringify(result));
+  assert(await page.getByRole('tab',{name:names[to],exact:true}).getAttribute('aria-selected')==='true','wrong selected tab');
+  report.transitions.push(result);console.log(result);
+ }
+ // Same tab leaves scene/indicator stationary and does not re-read the reflection source.
+ await select(1);await page.waitForTimeout(340);const reads=await page.evaluate(()=>window.qaReflectionReads);
+ await frames(true);await select(1);await page.waitForTimeout(300);const same=await frames(false);raw.sameTab=same;
+ report.sameTabIsNoOp=same.every(f=>Math.abs(f.scenes[1].x)<0.1)&&await page.evaluate(n=>window.qaReflectionReads===n,reads);assert(report.sameTabIsNoOp,'same tab mutated content');
+ // Keep a DOM node and scroll position across tab switches.
+ await page.getByRole('button',{name:'月次',exact:true}).click();await page.getByRole('heading',{name:'2026年11月',exact:true}).waitFor();
+ await page.getByRole('button',{name:'次の期間',exact:true}).click();await page.getByRole('heading',{name:'2026年12月',exact:true}).waitFor();
+ await page.evaluate(()=>{window.qaReflectionNode=document.querySelector('[data-testid="reflection-total"]');});
+ await select(0);await page.waitForTimeout(350);await select(1);await page.waitForTimeout(350);
+ report.reflectionMonthAndNodeRetained=await page.getByRole('heading',{name:'2026年12月',exact:true}).isVisible()&&await page.evaluate(()=>window.qaReflectionNode===document.querySelector('[data-testid="reflection-total"]'));assert(report.reflectionMonthAndNodeRetained,'reflection state lost');
+ // Rapid changes reverse a running jump. Use DOM clicks to avoid Playwright waiting for motion to finish.
+ await select(0);await page.waitForTimeout(330);await frames(true);
+ await page.evaluate(async()=>{const click=name=>[...document.querySelectorAll('[role="tab"]')].find(e=>e.textContent.includes(name)).click();click('設定');await new Promise(r=>setTimeout(r,65));click('ホーム');await new Promise(r=>setTimeout(r,45));click('振り返り');await new Promise(r=>setTimeout(r,40));click('設定');});
+ await page.waitForTimeout(350);const rapid=await frames(false);raw.rapid=rapid;
+ report.rapidLastSelectionWins=await page.getByRole('tab',{name:'設定',exact:true}).getAttribute('aria-selected')==='true'&&Math.abs(rapid.at(-1).scenes[2].x)<0.1;
+ report.rapidViewportCovered=rapid.every(f=>{const intervals=f.scenes.filter(s=>s?.opacity>0).map(s=>[Math.max(0,s.x),Math.min(f.viewport.width,s.x+s.width)]).filter(s=>s[1]>=s[0]).sort((a,b)=>a[0]-b[0]);let end=0;for(const [lo,hi]of intervals){if(lo>end+1)return false;end=Math.max(end,hi);}return end>=f.viewport.width-1;});
+ assert(report.rapidLastSelectionWins&&report.rapidViewportCovered,'rapid slide failed');
+ // Dynamic Reduce Motion settles an in-flight movement and future switches are immediate.
+ await select(0);await page.waitForTimeout(330);await frames(true);
+ await page.evaluate(()=>[...document.querySelectorAll('[role="tab"]')].find(e=>e.textContent.includes('設定')).click());await page.waitForTimeout(55);await page.emulateMedia({reducedMotion:'reduce'});await page.waitForTimeout(100);const reduced=await frames(false);raw.reducedDuring=reduced;
+ report.dynamicReducedMotionSettles=Math.abs(reduced.at(-1).scenes[2].x)<0.1;
+ await frames(true);await select(1);await page.waitForTimeout(150);const reducedNext=await frames(false);raw.reducedNext=reducedNext;
+ report.reducedMotionNoIntermediateScene=reducedNext.every(f=>f.scenes.every(s=>!s||s.opacity===0||Math.abs(s.x)<0.1));assert(report.dynamicReducedMotionSettles&&report.reducedMotionNoIntermediateScene,'Reduce Motion failed');
+ report.singlePersistentFooter=await page.getByTestId('product-tab-bar').count()===1&&await page.getByRole('tab').count()===3;
+ report.inactiveSceneNotAccessible=await page.getByRole('heading',{name:'ルールと設定',exact:true}).count()===0;
+ assert(report.singlePersistentFooter&&report.inactiveSceneNotAccessible&&!errors.length,'accessibility/errors');
+ await page.screenshot({path:`${output}/tabs-reflection.png`});
+ console.log(report);
+}finally{
+ writeFileSync(`${output}/tab-motion-frames.json`,JSON.stringify(raw,null,2)+'\n');
+ const video=page.video();await context.close();
+ const encoded=spawnSync('ffmpeg',['-y','-i',await video.path(),'-c:v','libvpx-vp9','-b:v','0','-crf','40','-an',`${output}/tab-switch.webm`],{encoding:'utf8'});
+ if(encoded.status!==0)throw new Error('Video encoding failed');
+ report.videoEncoding='VP9 CRF40, original frame timing';
+ report.videoSHA256=createHash('sha256').update(readFileSync(`${output}/tab-switch.webm`)).digest('hex');
+ writeFileSync(`${output}/tab-motion-manifest.json`,JSON.stringify(report,null,2)+'\n');await browser.close();
+}

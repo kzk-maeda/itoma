@@ -1,0 +1,22 @@
+{
+  "kind": "synthetic-web-motion-observation",
+  "physicalDevice": false,
+  "readDelayMS": 350,
+  "errors": [],
+  "browser": "155.0.8059.79",
+  "weekReselectNoRead": true,
+  "oldWeekRetainedWhileReading": true,
+  "noLoadingInsertion": true,
+  "panelYStableWhileReading": true,
+  "selectorHasIntermediatePositions": true,
+  "periodHasIntermediatePositions": true,
+  "totalNodeRetained": true,
+  "monthReselectNoRead": true,
+  "oldMonthRetainedWhileReading": true,
+  "monthMovementHasIntermediatePositions": true,
+  "reduceMotionStopsSlides": true,
+  "recoveryActionInSettings": true,
+  "historyReturnsToSettings": true,
+  "homeHasNoMaintenanceMenus": true,
+  "videoSHA256": "0e857bba822bf716294b17e478e10278726f12e503da1ed1d720f376ecb4f2d9"
+}

@@ -1,0 +1,91 @@
+import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
+const require = createRequire(import.meta.url), { chromium } = require('playwright');
+const output = '/tmp/itoma-demo-aligned-ui/docs/qa/demo-aligned-ui';
+mkdirSync('/tmp/itoma-qa-followup-video', { recursive: true });
+const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
+const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'light', reducedMotion: 'no-preference',
+  recordVideo: { dir: '/tmp/itoma-qa-followup-video', size: { width: 390, height: 844 } } });
+await context.addInitScript(base => { Date.now = () => base + performance.now(); }, Date.parse('2026-11-09T21:30:00Z'));
+const page = await context.newPage(), errors = [];
+page.on('pageerror', e => errors.push(e.message));
+page.on('console', message => { if (message.type() === 'error') errors.push(message.text().slice(0, 250)); });
+const ready = async label => {
+  await page.getByRole('button', { name: label, exact: true }).waitFor();
+  await page.waitForFunction(name => ![...document.querySelectorAll('[role="button"]')].find(el => el.textContent === name)?.hasAttribute('disabled') && [...document.querySelectorAll('[role="button"]')].find(el => el.textContent === name)?.getAttribute('aria-disabled') !== 'true', label);
+  await page.waitForTimeout(50);
+};
+const startFrames = () => page.evaluate(() => {
+  window.qaFrames = [];
+  const sample = () => {
+    const point = id => {
+      const el = document.querySelector(`[data-testid="${id}"]`);
+      if (!el) return null;
+      const style = getComputedStyle(el), box = el.getBoundingClientRect();
+      return { x: new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform).m41, opacity: Number(style.opacity), y: box.y };
+    };
+    window.qaFrames.push({ at: performance.now(), indicator: point('reflection-period-indicator'), panel: point('reflection-period-panel') });
+    window.qaFrameID = requestAnimationFrame(sample);
+  };
+  sample();
+});
+const stopFrames = () => page.evaluate(() => { cancelAnimationFrame(window.qaFrameID); return window.qaFrames; });
+const report = { kind: 'synthetic-web-motion-observation', physicalDevice: false, readDelayMS: 350, errors, browser: await browser.version() };
+try {
+  await page.goto('http://127.0.0.1:8161/reflection', { waitUntil: 'networkidle' });
+  await ready('週次');
+  const reads = await page.evaluate(() => window.qaReflectionReads);
+  await page.getByRole('button', { name: '週次', exact: true }).click();
+  await page.waitForTimeout(100);
+  report.weekReselectNoRead = await page.evaluate(value => window.qaReflectionReads === value, reads);
+  await page.evaluate(() => { window.qaTotal = document.querySelector('[data-testid="reflection-total"]'); window.qaReadDelay = 350; });
+  const beforeY = await page.getByTestId('reflection-period-panel').evaluate(el => el.getBoundingClientRect().y);
+  await startFrames();
+  await page.getByRole('button', { name: '月次', exact: true }).click();
+  report.oldWeekRetainedWhileReading = await page.getByRole('heading', { name: '11月9日からの週', exact: true }).isVisible();
+  report.noLoadingInsertion = await page.getByText('記録を確認しています。', { exact: true }).count() === 0;
+  report.panelYStableWhileReading = Math.abs(await page.getByTestId('reflection-period-panel').evaluate(el => el.getBoundingClientRect().y) - beforeY) < 0.1;
+  await page.getByRole('heading', { name: '2026年11月', exact: true }).waitFor();
+  await ready('月次'); await page.waitForTimeout(250);
+  const first = await stopFrames();
+  report.selectorHasIntermediatePositions = first.some(frame => frame.indicator?.x > 1 && frame.indicator.x < 160);
+  report.periodHasIntermediatePositions = first.some(frame => frame.panel?.x > 0.1 && frame.panel.x < 15.9);
+  report.totalNodeRetained = await page.evaluate(() => window.qaTotal === document.querySelector('[data-testid="reflection-total"]'));
+  const monthReads = await page.evaluate(() => window.qaReflectionReads);
+  await page.getByRole('button', { name: '月次', exact: true }).click(); await page.waitForTimeout(100);
+  report.monthReselectNoRead = await page.evaluate(value => window.qaReflectionReads === value, monthReads);
+  await startFrames();
+  await page.getByRole('button', { name: '次の期間', exact: true }).click();
+  report.oldMonthRetainedWhileReading = await page.getByRole('heading', { name: '2026年11月', exact: true }).isVisible();
+  await page.getByRole('heading', { name: '2026年12月', exact: true }).waitFor(); await ready('月次'); await page.waitForTimeout(250);
+  const second = await stopFrames();
+  report.monthMovementHasIntermediatePositions = second.some(frame => frame.panel?.x > 0.1 && frame.panel.x < 15.9);
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await page.waitForTimeout(100);
+  await startFrames();
+  await page.getByRole('button', { name: '前の期間', exact: true }).click();
+  await page.getByRole('heading', { name: '2026年11月', exact: true }).waitFor(); await ready('月次'); await page.waitForTimeout(200);
+  const reduced = await stopFrames();
+  report.reduceMotionStopsSlides = reduced.every(frame => !frame.panel || Math.abs(frame.panel.x) < 0.01);
+  await page.getByRole('tab', { name: '設定', exact: true }).click();
+  await page.getByRole('heading', { name: 'ルールと設定', exact: true }).waitFor();
+  report.recoveryActionInSettings = await page.getByRole('button', { name: '現在の状態を確認する', exact: true }).count() === 1;
+  await page.getByRole('button', { name: '選択の記録を見る', exact: true }).scrollIntoViewIfNeeded();
+  await page.getByRole('button', { name: '選択の記録を見る', exact: true }).click();
+  await page.getByRole('heading', { name: 'あなたの選択の記録', exact: true }).waitFor();
+  await page.getByRole('button', { name: '‹ 戻る', exact: true }).click();
+  await page.getByRole('heading', { name: 'ルールと設定', exact: true }).waitFor();
+  report.historyReturnsToSettings = await page.getByRole('tab', { name: '設定', exact: true }).getAttribute('aria-selected') === 'true';
+  await page.getByRole('tab', { name: 'ホーム', exact: true }).click();
+  await page.getByRole('heading', { name: 'いとま', exact: true }).waitFor();
+  report.homeHasNoMaintenanceMenus = await page.getByRole('button', { name: /^(ルールと設定|選択の記録を見る|現在の状態を確認する)$/ }).count() === 0;
+  writeFileSync(`${output}/motion-frames.json`, JSON.stringify({ switch: first, nextMonth: second, reduceMotion: reduced }, null, 2) + '\n');
+  if (errors.length || Object.entries(report).some(([key, value]) => typeof value === 'boolean' && key !== 'physicalDevice' && !value)) throw new Error(JSON.stringify(report));
+} finally {
+  const video = page.video();
+  await context.close();
+  const path = await video.path(); copyFileSync(path, `${output}/period-switch.webm`);
+  report.videoSHA256 = createHash('sha256').update(readFileSync(`${output}/period-switch.webm`)).digest('hex');
+  writeFileSync(`${output}/motion-manifest.json`, JSON.stringify(report, null, 2) + '\n');
+  await browser.close();
+}

@@ -6,22 +6,24 @@ import { Alert, AppState, Pressable, Text, type AppStateStatus } from 'react-nat
 import { router } from 'expo-router';
 import { createReflectionClient } from '../modules/itoma-native/src/reflection';
 import type { ReflectionRequest, ReflectionSnapshot } from '../modules/itoma-native/src/reflection-model';
-import type { HistoryAction, HistoryRequest, HistoryResponse, ScreenTimeResponse } from '../modules/itoma-native';
+import type { HistoryAction, HistoryRequest, HistoryResponse, ScreenTimeAction, ScreenTimeResponse } from '../modules/itoma-native';
 import { ReflectionScreen } from '../src/components/flow/reflection';
+import { ProductHome } from '../src/components/flow/home';
+import { SettingsScreen } from '../src/components/flow/settings';
 import { HistoryScreen, HistoryReasonScreen } from '../src/components/flow/history';
 import { ScreenTimeProvider } from '../src/state/screen-time';
 import { HistoryProvider, useHistoryRecords } from '../src/state/history';
 import { ReflectionProvider } from '../src/state/reflection';
 
 jest.mock('../src/global.css', () => ({}));
-jest.mock('../src/qa/native-smoke', () => ({ completeNativeHistorySmoke: jest.fn(), completeNativeReflectionSmoke: jest.fn() }));
+jest.mock('../src/qa/native-smoke', () => ({ completeNativeHomeSmoke: jest.fn(), completeNativeHistorySmoke: jest.fn(), completeNativeReflectionSmoke: jest.fn() }));
 jest.mock('expo-router', () => ({
-  router: { navigate: jest.fn(), push: jest.fn(), back: jest.fn(), canGoBack: jest.fn(() => true), replace: jest.fn() },
+  router: { navigate: jest.fn(), push: jest.fn(), back: jest.fn(), canGoBack: jest.fn(() => true), replace: jest.fn(), dismissTo: jest.fn() },
   useFocusEffect: (callback: () => void) => require('react').useEffect(callback, [callback]),
 }));
 const fixtures = JSON.parse(readFileSync(path.join(__dirname, 'fixtures/reflection-records.json'), 'utf8')) as Record<string, { request: ReflectionRequest; response: ReflectionSnapshot }[]>;
 const commandID = '00000000-0000-0000-0000-000000000001';
-const controlClient = { run: jest.fn(async (): Promise<ScreenTimeResponse> => ({ status: 'ok', impacts: [] })) };
+const controlClient = { run: jest.fn(async (_action: ScreenTimeAction): Promise<ScreenTimeResponse> => ({ status: 'ok', impacts: [] })) };
 const wrap = (snapshot: ReflectionSnapshot) => JSON.stringify({ status: 'ok', storage: 'ready', transfer: 'current', sharedIncomplete: false, snapshot });
 
 function backend() {
@@ -63,10 +65,11 @@ function Pages() {
     const navigate = (name: string) => setStack(previous => previous.includes(name) ? previous.slice(0, previous.indexOf(name) + 1) : [...previous, name]);
     jest.mocked(router.navigate).mockImplementation(navigate as never);
     jest.mocked(router.push).mockImplementation(navigate as never);
+    jest.mocked(router.dismissTo).mockImplementation(navigate as never);
     jest.mocked(router.back).mockImplementation(() => setStack(previous => previous.slice(0, -1)));
   }, []);
   const current = stack.at(-1);
-  return <>{current === '/history' ? <HistoryScreen /> : current === '/history-reason' ? <HistoryReasonScreen /> : <ReflectionScreen />}</>;
+  return <>{current === '/' ? <ProductHome /> : current === '/settings' ? <SettingsScreen /> : current === '/history' ? <HistoryScreen /> : current === '/history-reason' ? <HistoryReasonScreen /> : <ReflectionScreen />}</>;
 }
 async function mount(b: ReturnType<typeof backend>) {
   return render(<ScreenTimeProvider client={controlClient}><HistoryProvider client={b.historyClient}>
@@ -100,11 +103,32 @@ test('normal route uses product DTOs, preserves fixed total/token and remembers 
   expect(jest.mocked(router.navigate).mock.calls.every(call => call[0] === '/history')).toBe(true);
   await press('‹ 戻る'); await screen.findByText('11月30日からの週');
   await press('月次'); await screen.findByText('2026年12月');
-  await press('週次'); await screen.findByText('月内の週の記録：—');
+  await press('週次'); await screen.findByLabelText('月内の週の記録：—');
   expect(JSON.parse(b.native.mock.calls.at(-1)![1]).clippedTo).toBeDefined();
   await press('月次'); await screen.findByText('2026年12月');
   expect(screen.getByTestId('reflection-total').props.children).toBe('—');
   expect(b.native.mock.calls.filter(call => call[0] === 'read').some(call => JSON.parse(call[1]).expectedToken)).toBe(true);
+});
+
+test('home/reflection tabs retain the selected month across remounts without issuing control mutations', async () => {
+  const b = backend(); await mount(b); await observed();
+  await press('月次'); await screen.findByText('2026年11月');
+  await press('次の期間'); await screen.findByText('2026年12月');
+  expect(screen.getByRole('tab', { name: '振り返り' })).toBeSelected();
+  const initialReads = b.native.mock.calls.length;
+  await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
+  expect(b.native.mock.calls).toHaveLength(initialReads);
+  for (let n = 0; n < 10; n += 1) {
+    await fireEvent.press(screen.getByRole('tab', { name: 'ホーム' }));
+    expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'ホーム' })).toBeSelected();
+    await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
+    await screen.findByText('2026年12月');
+    expect(screen.getByRole('button', { name: '月次' })).toBeSelected();
+    expect(screen.getByTestId('reflection-total').props.children).toBe('—');
+  }
+  expect(controlClient.run.mock.calls.every(call => call[0] === 'snapshot')).toBe(true);
+  expect(b.native.mock.calls.every(call => call[0] === 'read')).toBe(true);
 });
 
 test('all-record deletion is separately confirmed, serializes repeated approval and clears held private reason', async () => {
@@ -168,4 +192,20 @@ test('shared gap is visible even when the private snapshot and outbox-empty samp
   await mount(b); await observed();
   expect(screen.getByText(/新しい状態の記録に欠落の可能性/)).toBeTruthy();
   expect(screen.getByTestId('reflection-total').props.children).toBe('—');
+});
+
+test('settings/history are reachable through the tab while the selected reflection month survives', async () => {
+  const b = backend(); await mount(b); await observed();
+  await press('月次'); await screen.findByText('2026年11月');
+  await press('次の期間'); await screen.findByText('2026年12月');
+  await fireEvent.press(screen.getByRole('tab', { name: 'ホーム' }));
+  expect(screen.queryByRole('button', { name: '選択の記録を見る' })).toBeNull();
+  await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
+  expect(screen.getByRole('header', { name: 'ルールと設定' })).toBeTruthy();
+  await press('選択の記録を見る'); await screen.findByText('あなたの選択の記録');
+  await press('‹ 戻る');
+  expect(screen.getByRole('tab', { name: '設定' })).toBeSelected();
+  await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
+  await screen.findByText('2026年12月');
+  expect(b.native.mock.calls.every(call => call[0] === 'read')).toBe(true);
 });
