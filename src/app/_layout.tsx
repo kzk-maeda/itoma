@@ -16,7 +16,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <View style={{ flex: 1 }} onLayout={() => { void SplashScreen.hideAsync(); }}>
-        <ScreenTimeProvider><HistoryProvider><ReflectionProvider><Stack screenOptions={{ headerShown: false }} /></ReflectionProvider></HistoryProvider></ScreenTimeProvider>
+        <ScreenTimeProvider><HistoryProvider><ReflectionProvider><Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(main)" options={{ animation: 'none' }} />
+        </Stack></ReflectionProvider></HistoryProvider></ScreenTimeProvider>
       </View>
     </ThemeProvider>
   );

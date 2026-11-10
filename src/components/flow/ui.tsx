@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GraphiteColors, HomeLayout } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useScreenTime } from '@/state/screen-time';
+import { useProductTabs } from '@/state/product-tabs';
 import type { ScreenTimeCode } from '../../../modules/itoma-native';
 import { OpenCircle } from '../home/open-circle';
 import { ProductNavigation, type ProductTab } from './product-navigation';
@@ -63,8 +64,8 @@ export const errorText: Record<ScreenTimeCode, string> = {
   'retry-required': '前の要求は完了していません。内容を確認して、明示的に再試行できます。',
 };
 export function FlowScreen({ title, children, onBack, footer, tab, eyebrow }: { title: string; children: ReactNode; onBack?: () => void; footer?: ReactNode; tab?: ProductTab; eyebrow?: string }) {
-  const theme = useFlowTheme(), state = useScreenTime();
-  return <SafeAreaView style={[styles.screen, { backgroundColor: tab ? theme.surface : theme.background }]}>
+  const theme = useFlowTheme(), state = useScreenTime(), hosted = useProductTabs();
+  return <SafeAreaView edges={hosted ? [] : undefined} style={[styles.screen, { backgroundColor: tab ? theme.surface : theme.background }]}>
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView testID="flow-scroll" style={styles.screen} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, tab && styles.productContent]}>
         {(!tab || onBack) && <View style={styles.top}>
@@ -78,7 +79,7 @@ export function FlowScreen({ title, children, onBack, footer, tab, eyebrow }: { 
         {state.busy && <Body muted>操作の結果を確認しています。画面を離れても、受け付けた処理は続きます。</Body>}
         {children}{footer}
       </ScrollView>
-      {tab && <ProductNavigation current={tab} theme={theme} />}
+      {tab && !hosted && <ProductNavigation current={tab} theme={theme} />}
     </KeyboardAvoidingView>
   </SafeAreaView>;
 }

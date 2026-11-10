@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useVisibleClock } from '@/hooks/use-visible-clock';
 import { useScreenTime } from '@/state/screen-time';
@@ -17,7 +17,7 @@ export function ProductHome() {
   const s = state.snapshot;
   const { refresh } = state;
   const boundary = useRef('');
-  useEffect(() => { completeNativeHomeSmoke(); }, []);
+  useFocusEffect(useCallback(() => { completeNativeHomeSmoke(); }, []));
   useEffect(() => {
     if (!s) return;
     const times = [s.validUntil, ...s.periods.map((p) => p.endsAt), ...s.targets.map((t) => t.grantEndsAt)].filter((n): n is number => n !== undefined);

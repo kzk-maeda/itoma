@@ -1,0 +1,36 @@
+import {createRequire} from 'node:module';
+import {writeFileSync} from 'node:fs';
+const {chromium}=createRequire(import.meta.url)('playwright');
+const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+const c=await b.newContext({viewport:{width:390,height:844},reducedMotion:'no-preference'});
+await c.addInitScript(base=>{Date.now=()=>base+performance.now();},Date.parse('2026-11-09T21:30:00Z'));
+const p=await c.newPage(),errors=[],r={kind:'synthetic-web-tab-stack-return',physicalDevice:false,errors};p.on('pageerror',e=>errors.push(e.message));
+const assert=(v,m)=>{if(!v)throw new Error(m);};
+try{
+ await p.goto('http://127.0.0.1:8161/?scenario=grant',{waitUntil:'networkidle'});
+ await p.getByRole('button',{name:'解除の状況を見る',exact:true}).click();
+ await p.getByRole('button',{name:'ホームへ戻る',exact:true}).waitFor();
+ r.grantRouteHidesTabs=await p.getByRole('tab').count()===0;
+ await p.getByRole('button',{name:'ホームへ戻る',exact:true}).click();
+ await p.getByRole('heading',{name:'いとま',exact:true}).waitFor();
+ r.grantReturnsToHome=await p.getByRole('tab',{name:'ホーム',exact:true}).getAttribute('aria-selected')==='true';
+ r.grantDeadlinePreserved=await p.getByText(/一時解除の残り .*21:33まで/).count()===1;
+ await p.getByRole('tab',{name:'設定',exact:true}).click();await p.waitForTimeout(330);
+ await p.getByRole('button',{name:'時間帯 1を編集',exact:true}).click();
+ await p.getByRole('heading',{name:'時間のルールを編集',exact:true}).waitFor();
+ r.ruleRouteHidesTabs=await p.getByRole('tab').count()===0;
+ await p.getByRole('button',{name:'‹ 戻る',exact:true}).click();
+ await p.getByRole('heading',{name:'ルールと設定',exact:true}).waitFor();
+ r.ruleReturnsToSettings=await p.getByRole('tab',{name:'設定',exact:true}).getAttribute('aria-selected')==='true';
+ await p.getByRole('button',{name:'選択の記録を見る',exact:true}).click();
+ await p.getByRole('heading',{name:'あなたの選択の記録',exact:true}).waitFor();
+ r.historyRouteHidesTabs=await p.getByRole('tab').count()===0;
+ await p.getByRole('button',{name:'‹ 戻る',exact:true}).click();await p.getByRole('heading',{name:'ルールと設定',exact:true}).waitFor();
+ r.historyReturnsToSettings=await p.getByRole('tab',{name:'設定',exact:true}).getAttribute('aria-selected')==='true';
+ await p.getByRole('tab',{name:'ホーム',exact:true}).click();await p.waitForTimeout(330);
+ await p.evaluate(()=>[...document.querySelectorAll('[role="tab"]')].find(e=>e.textContent.includes('設定')).click());
+ await p.waitForTimeout(65);await p.screenshot({path:'/tmp/itoma-demo-aligned-ui/docs/qa/demo-aligned-ui/tab-transition.png'});await p.waitForTimeout(330);
+ for(const [k,v]of Object.entries(r))if(typeof v==='boolean'&&k!=='physicalDevice')assert(v,k);
+ assert(!errors.length,'browser errors');
+ console.log(r);
+}finally{writeFileSync('/tmp/itoma-demo-aligned-ui/docs/qa/demo-aligned-ui/tab-stack-manifest.json',JSON.stringify(r,null,2)+'\n');await b.close();}

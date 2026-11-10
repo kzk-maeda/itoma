@@ -30,9 +30,9 @@ function Trend({ buckets }: { buckets: ReflectionBucket[] }) {
 
 export type ReflectionMemory = { request: ReflectionRequest; positions: Record<ReflectionPeriod, ReflectionRequest> };
 /** Shared presentation. Production always selects the product parser and rejects fixture proof. */
-export function ReflectionContent({ source, initialAnchor = '', onDay, prototype = false, embedded = false, initialMemory, onMemory, onRead, controls, disabled = false }: {
+export function ReflectionContent({ source, initialAnchor = '', onDay, prototype = false, embedded = false, initialMemory, onMemory, onRead, controls, disabled = false, visible = true }: {
   source: ReflectionSource; initialAnchor?: string; onDay?: (day: string, snapshot: ReflectionSnapshot) => void;
-  prototype?: boolean; embedded?: boolean; disabled?: boolean; initialMemory?: ReflectionMemory; onMemory?: (value: ReflectionMemory) => void;
+  prototype?: boolean; embedded?: boolean; disabled?: boolean; visible?: boolean; initialMemory?: ReflectionMemory; onMemory?: (value: ReflectionMemory) => void;
   onRead?: (state: 'ready' | 'not-created' | 'error') => void; controls?: ReactNode;
 }) {
   const theme = useFlowTheme(), { fontScale } = useWindowDimensions();
@@ -48,6 +48,7 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
   const displayedRequest = snapshot ? owned!.request : request;
   useEffect(() => { onMemory?.({ request, positions }); }, [onMemory, request, positions]);
   useEffect(() => {
+    if (!visible) return;
     let active = true;
     const pinned = latest.current?.source === source && latest.current.prototype === prototype ? latest.current.value.token : undefined;
     queueMicrotask(() => { if (active) { setBusy(true); setError(undefined); } });
@@ -70,7 +71,7 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
       setError({ source, changed, empty });
     }).finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
-  }, [source, request, retry, prototype, onRead]);
+  }, [source, request, retry, prototype, onRead, visible]);
   const ask = (next: ReflectionRequest, slide: -1 | 1 = 1) => {
     if (next.period === request.period && next.day === request.day
       && next.clippedTo?.from === request.clippedTo?.from && next.clippedTo?.until === request.clippedTo?.until) return;

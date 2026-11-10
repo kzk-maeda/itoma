@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | ホーム | いとま→時間帯見出し/固定OPEN CIRCLE→細い時間リング→対象アプリのフラットな行→共通一時解除（管理メニューは設定タブへ） | native snapshot・ルール別の終了時刻・アプリ別解除期限・認可/停止/失敗/不明を表示。大きな文字や320pt以下では小さい円と円の外の数値へ切替 |
 | 振り返り | 見出し→累計/推移カード→週/月のセグメント→前後移動→期間合計→横棒の行 | 上部の対象は期間移動で変えない。月内clip週→日別操作履歴→戻ると期間の選択を保持。削除/取込の操作は下部の副導線 |
-| 下部ナビゲーション | ホーム/振り返り/設定の3択。スクロールと別の領域に配置 | 既存Stackの `/` / `/reflection` / `/settings` を使い、root Providerの選択位置を保持。選択中のタブは画面を追加しない |
+| 下部ナビゲーション | ホーム/振り返り/設定の3択。スクロールと別の領域に配置 | Expo Routerの `(main)` タブへ集約し、公開URL `/` / `/reflection` / `/settings` を維持。各画面の位置を保持し、選択中タブは無操作 |
 
 原則1/3/4/5、U01/U02/U04/U05/U07/U08、UI01〜UI04/UI14〜UI26/UI28/UI33〜UI36、RF01/RF05〜RF11に対応する変更。全条件の合格宣言ではない。
 
@@ -29,6 +29,16 @@
 
 [motion-manifest.json](motion-manifest.json) / [フレーム記録](motion-frames.json) / [切替動画](period-switch.webm)に、合成Webでの確認を保存。350msの読取遅延を注入して旧期間/累計node/表示位置の保持、再選択時の読取回数不変、選択面と期間内容の途中位置、月の前後移動、Reduce Motion変更、設定/履歴往復を確認した。[motion capture script](motion-capture.mjs.txt)を使用する。録画時だけ表示時計を固定基準時刻＋performance.nowで進め、JSアニメーションを計測する。実機のフレームレート・ちらつき解消やOS制限の保証ではない。
 
+## タブと画面の左右移動
+
+Stackのpush/popに依存していた方向を、タブ順「ホーム→振り返り→設定」から決める。Expo Router SDK58のheadless tabsを使い、下部の選択面と画面本体を同じAnimated.Value・240ms/ease-outで動かす。右のタブは右から入り左へ流れ、左のタブは逆。ホーム↔設定は中間の振り返り画面を見せず1画面分を移動する。下部ナビゲーションとSafe Areaは共通領域へ残す。
+
+各画面は初回表示後に保持し、振り返りの月/週・スクロール位置を維持する。非選択画面は操作/読み上げから外す。ホームの表示時計はfocusに従って停止/再開し、非表示の振り返りは記録を読み直さない。ルール編集・履歴・解除状況は従来のStack配下に残す。
+
+[タブ切替動画](tab-switch.webm) / [途中の画像](tab-transition.png) / [計測結果](tab-motion-manifest.json) / [全フレーム](tab-motion-frames.json) / [capture script](tab-motion-capture.mjs.txt)を保存。6方向すべてで13〜14の途中フレームを観測し、選択面と画面の正規化した進行率の差は最大0.000007未満、下部ナビゲーションのY位置は一定。中間画面の非表示、再選択時の読取回数不変、月/累計node保持、連続タップで最新選択に到達し空白が出ないこと、Reduce Motionの動的変更を確認した。これは合成Webのtransform計測で、iOS描画性能の証明ではない。
+
+[Stackとの往復](tab-stack-manifest.json)は解除状況→ホーム（21:33の固定期限維持）、ルール編集→設定、操作履歴→設定を確認し、詳細画面ではタブが隠れることを確かめる。[script](tab-stack-capture.mjs.txt)を使用。Jestでは全6方向/連続反転の幾何、古い完了通知の無視、背景移行/画面離脱/Reduce Motionでの停止、復帰時に再演しないことと購読cleanupを検証する。UI25/UI29/UI30/UI32に対応する。
+
 ## Webの画面・操作確認
 
 [manifest.json](manifest.json)に17ケースのPNG digest・条件・エラー・操作結果を保存。
@@ -46,7 +56,7 @@
 
 画像は固定viewportで取得し、ScrollViewのclipを外していない。全ケースで横overflowなし・page/console errorなし・操作高さ44 CSS px以上、末尾の操作へスクロールで到達し下部タブに隠れないことを計測する。目視でも円・数値・対象・期間切替・下部タブを確認する。
 
-通常URLからホーム/振り返りを100回往復し、選択中の2026年12月・3つのタブ・browser historyの長さ3を維持。月→月内clip週→日別履歴→戻るも操作した。理由全文のブラウザ操作・実機memory/購読/OS処理はこの計測に含めない。コンポーネント検証では解除理由の保持/破棄、固定期限、削除競合、月/週/日/理由の復帰とprovider購読のcleanupを確認する。
+通常URLからホーム/振り返りを100回往復し、選択中の2026年12月・3つのタブ・browser historyの長さ2を維持。月→月内clip週→日別履歴→戻るも操作した。理由全文のブラウザ操作・実機memory/購読/OS処理はこの計測に含めない。コンポーネント検証では解除理由の保持/破棄、固定期限、削除競合、月/週/日/理由の復帰とprovider購読のcleanupを確認する。
 
 ## 再現・sourceの照合
 
@@ -56,10 +66,10 @@
 
 新しい検証コピーで `npm ci --ignore-scripts` を行い、SDK58の `expo export --platform web --clear --output-dir dist`、`expo serve dist --port 8161` と [capture script](capture.mjs.txt) を使う。環境値は `EXPO_PUBLIC_NATIVE_SMOKE=0 ITOMA_SCREEN_TIME=0 ITOMA_DEMO_BUILD=1 EXPO_OFFLINE=1 CI=1`。出力/URL/Chromiumのパスは環境に合わせる。Playwrightは検証環境の既存依存を使い、製品へ追加していない。
 
-共有node_modulesのsymlinkを使った初回exportは別のrouter rootを解決したため証跡から除外。独立した依存を導入し、cacheを消して通常15 routesのexportを再生成したものだけを使用する。
+共有node_modulesのsymlinkを使った初回exportは別のrouter rootを解決したため証跡から除外。独立した依存を導入し、通常routeのexportを再生成したものだけを使用する。今回のタブgroup追加後は18 static routes（group aliasを含む）で、公開URLを維持する。
 
 ## 検証範囲
 
-- 型チェック・Lint・Jest 16 suites/121件、demo 20件、iOS tools 18件が成功。expo-doctorは直接接続で外部2チェックが失敗した後、環境のproxyを利用して20/20成功。
+- 型チェック・Lint・Jest 18 suites/131件、demo 20件、iOS tools 18件が成功。expo-doctorは直接接続で外部2チェックが失敗した後、Nodeの環境proxy対応を利用して20/20成功。
 - 新しい同headの署名無しSimulator検証はPRへ結果を記録する。Web/JestをSimulatorのUI操作やScreen Time成功へ転用しない。
 - iPhone実機でのnativeアプリ名の折返し、最大Dynamic Type、VoiceOver結果通知/復帰focus、Reduce Motion、Safe Area、戻るgesture、Screen Time/Extensionは #131/#135 に残す。新しいJSを含むbuildで確認する。既存の署名無しbuild/PR124を今回の画面変更の成功証拠へ付け替えない。

@@ -1,0 +1,12 @@
+{
+  "kind": "synthetic-web-tab-stack-return",
+  "physicalDevice": false,
+  "errors": [],
+  "grantRouteHidesTabs": true,
+  "grantReturnsToHome": true,
+  "grantDeadlinePreserved": true,
+  "ruleRouteHidesTabs": true,
+  "ruleReturnsToSettings": true,
+  "historyRouteHidesTabs": true,
+  "historyReturnsToSettings": true
+}

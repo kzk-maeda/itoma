@@ -124,7 +124,7 @@
       "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "a648cc182626303f74c7e5140adf1e1959ec22f32f0a8b0063c7e0c17cead501"
+      "sha256": "aacf3248166d480b549ba0dfc047ff6919be59f20a71875ffa1db3bf2b6e210e"
     },
     {
       "name": "reflection-dark",
@@ -139,7 +139,7 @@
       "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "2e30c10d291e94ac4705becd537c4cccc50167ec8bb3655bd40886d772295572"
+      "sha256": "356886ff5cb64445b83198c4f1d87edd370b25353f5a97f051c95b388e2c135c"
     },
     {
       "name": "reflection-se",
@@ -154,7 +154,7 @@
       "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "231eee2d0034b1b38c39c4940a620838361be96f935c544a9553f4de2f0e118e"
+      "sha256": "b38504c9a98ad280918417a0377dd9a518b1d698847e1d8d174c27b69ad4ba60"
     },
     {
       "name": "reflection-320-large",
@@ -169,7 +169,7 @@
       "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "fb93bc7eb57e28c21803dde654f05a59510dd64f498b76049a40ad3be6d555a0"
+      "sha256": "a47a2e0eb6767bdf27c8636eae60abf12fa2b9145be8a112a08eac77cc4e8f34"
     },
     {
       "name": "reflection-deleted",
@@ -184,7 +184,7 @@
       "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "2a30fd3fb15d976130f249b15b31f3ab6d33c54f8ee93f5c02b1c6d076eeec86"
+      "sha256": "72653e3cf5dbb6843143a87563484b29370740856f6ceaa5ed73ba98fc87d0b6"
     },
     {
       "name": "reflection-unrecorded",
@@ -199,7 +199,7 @@
       "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "51b848d86fb613f3f2d1c2d1502959b8306c9215795f083ed0d96a4fd375e0aa"
+      "sha256": "65c53ce2020f44001978e401c8ef1416e8851de60fffbf2dca361fa0823d80ba"
     },
     {
       "name": "reflection-error",
@@ -214,7 +214,7 @@
       "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "a4f00ee8f3d53e656c7219be99857580804d7cf96502f4bf57e7a0033520be61"
+      "sha256": "2af3d8a2fdc57c3a6913a392362b32d17e80151c25265044e935650d7671cbdd"
     },
     {
       "name": "settings-light",
@@ -229,7 +229,7 @@
       "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "21f967905794b1308c3b368d37e590fe30ceda12242c0e9b7343b377025b751b"
+      "sha256": "bdc919845d2a886f61ee98e415754ad4892f2b7cf2ae53c220899f58035c3eca"
     },
     {
       "name": "settings-dark",
@@ -244,7 +244,7 @@
       "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "9c4f0f36b977d252f193270eaab2c1c334bc98ba04b0bd67aa5d0cca7d42f5f9"
+      "sha256": "1815e404fe7283951476122ba4725abccd5a6c70b9ed74c9179f8a6185946c0f"
     },
     {
       "name": "settings-320-large",
@@ -259,14 +259,14 @@
       "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "344e8de4ff2c3fa77803e1f74a1bafb7f1862461be6a2e63a05cf76ebb0d107f"
+      "sha256": "c4ce63bd536fa8335baa5a55563a381791e95cfc7a764a6b0b9d6efd753a2e9a"
     }
   ],
   "navigation": {
     "roundTrips": 100,
     "rememberedMonth": "2026-12",
-    "initialHistoryLength": 3,
-    "finalHistoryLength": 3,
+    "initialHistoryLength": 2,
+    "finalHistoryLength": 2,
     "tabs": 3
   },
   "drilldown": {
