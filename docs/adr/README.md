@@ -20,3 +20,4 @@ ADR 0002はPR #31のmainマージ（2026-11-04 JST）、0003〜0006はPR #36のm
 | [0004: 日跨ぎと本人が選ぶ優先順](0004-rule-precedence.md) | Accepted（2026-11-06 JST、#36） | [#23](https://github.com/kzk-maeda/itoma/issues/23) |
 | [0005: 小さいMVVMと共通Swift Domain](0005-native-domain-and-mvvm.md) | Accepted（2026-11-06 JST、#36） | [#24](https://github.com/kzk-maeda/itoma/issues/24) |
 | [0006: controlと本文・履歴のSQLite分離](0006-local-storage-and-history.md) | Accepted（2026-11-06 JST、#36） | [#25](https://github.com/kzk-maeda/itoma/issues/25) |
+| [0007: 一時解除を除いた制限時間を振り返る案](0007-recorded-setting-time-reflection.md) | Proposed（本人指定の計上方針を反映、詳細レビュー中） | [#96](https://github.com/kzk-maeda/itoma/issues/96) |
