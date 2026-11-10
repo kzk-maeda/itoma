@@ -1,0 +1,4292 @@
+{
+  "deleted" : [
+    {
+      "request" : {
+        "day" : "2026-11-09",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-09",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "deleted",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "until" : 1794268800
+          },
+          {
+            "coverage" : "deleted",
+            "day" : "2026-11-10",
+            "from" : 1794268800,
+            "until" : 1794355200
+          },
+          {
+            "coverage" : "deleted",
+            "day" : "2026-11-11",
+            "from" : 1794355200,
+            "until" : 1794441600
+          },
+          {
+            "coverage" : "deleted",
+            "day" : "2026-11-12",
+            "from" : 1794441600,
+            "until" : 1794528000
+          },
+          {
+            "coverage" : "deleted",
+            "day" : "2026-11-13",
+            "from" : 1794528000,
+            "until" : 1794614400
+          },
+          {
+            "coverage" : "deleted",
+            "day" : "2026-11-14",
+            "from" : 1794614400,
+            "until" : 1794700800
+          },
+          {
+            "coverage" : "deleted",
+            "day" : "2026-11-15",
+            "from" : 1794700800,
+            "until" : 1794787200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-16",
+        "period" : "week",
+        "previousAnchor" : "2026-11-02",
+        "proofScope" : "pointObservations",
+        "selected" : {
+          "coverage" : "deleted",
+          "day" : "2026-11-09",
+          "from" : 1794182400,
+          "until" : 1794787200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:5:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "deleted",
+          "day" : "",
+          "from" : 1794268800,
+          "until" : 1794268800
+        },
+        "trend" : [
+
+        ],
+        "version" : 1
+      }
+    }
+  ],
+  "notRecorded" : [
+    {
+      "request" : {
+        "day" : "2026-11-09",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-09",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "until" : 1794268800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-10",
+            "from" : 1794268800,
+            "until" : 1794355200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-11",
+            "from" : 1794355200,
+            "until" : 1794441600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-12",
+            "from" : 1794441600,
+            "until" : 1794528000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-13",
+            "from" : 1794528000,
+            "until" : 1794614400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-14",
+            "from" : 1794614400,
+            "until" : 1794700800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-15",
+            "from" : 1794700800,
+            "until" : 1794787200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-16",
+        "period" : "week",
+        "previousAnchor" : "2026-11-02",
+        "proofScope" : "pointObservations",
+        "selected" : {
+          "coverage" : "notRecorded",
+          "day" : "2026-11-09",
+          "from" : 1794182400,
+          "until" : 1794787200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:4:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "notRecorded",
+          "day" : "",
+          "from" : 1794268800,
+          "until" : 1794268800
+        },
+        "trend" : [
+
+        ],
+        "version" : 1
+      }
+    }
+  ],
+  "observed" : [
+    {
+      "request" : {
+        "day" : "2026-11-09",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-09",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "until" : 1794268800
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-10",
+            "from" : 1794268800,
+            "until" : 1794355200
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-11",
+            "from" : 1794355200,
+            "until" : 1794441600
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-12",
+            "from" : 1794441600,
+            "until" : 1794528000
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-13",
+            "from" : 1794528000,
+            "until" : 1794614400
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-14",
+            "from" : 1794614400,
+            "until" : 1794700800
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-15",
+            "from" : 1794700800,
+            "until" : 1794787200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-16",
+        "period" : "week",
+        "previousAnchor" : "2026-11-02",
+        "proofScope" : "pointObservations",
+        "selected" : {
+          "coverage" : "partial",
+          "day" : "2026-11-09",
+          "from" : 1794182400,
+          "until" : 1794787200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:3:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "partial",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "partial",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    }
+  ],
+  "partial" : [
+    {
+      "request" : {
+        "day" : "2026-11-09",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-09",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-10",
+            "from" : 1794268800,
+            "until" : 1794355200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-11",
+            "from" : 1794355200,
+            "until" : 1794441600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-12",
+            "from" : 1794441600,
+            "until" : 1794528000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-13",
+            "from" : 1794528000,
+            "until" : 1794614400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-14",
+            "from" : 1794614400,
+            "until" : 1794700800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-15",
+            "from" : 1794700800,
+            "until" : 1794787200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-16",
+        "period" : "week",
+        "previousAnchor" : "2026-11-02",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "partial",
+          "day" : "2026-11-09",
+          "from" : 1794182400,
+          "knownSeconds" : 6900,
+          "until" : 1794787200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:2:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "partial",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 105000,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "partial",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 4500,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    }
+  ],
+  "recorded" : [
+    {
+      "request" : {
+        "day" : "2026-10-01",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-09-28",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-09-28",
+            "from" : 1790553600,
+            "until" : 1790640000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-09-29",
+            "from" : 1790640000,
+            "until" : 1790726400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-09-30",
+            "from" : 1790726400,
+            "until" : 1790812800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-10-01",
+            "from" : 1790812800,
+            "until" : 1790899200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-10-02",
+            "from" : 1790899200,
+            "until" : 1790985600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-10-03",
+            "from" : 1790985600,
+            "until" : 1791072000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-10-04",
+            "from" : 1791072000,
+            "until" : 1791158400
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-10-05",
+        "period" : "week",
+        "previousAnchor" : "2026-09-21",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "notRecorded",
+          "day" : "2026-09-28",
+          "from" : 1790553600,
+          "until" : 1791158400
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-10-26",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-10-26",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-02",
+        "period" : "week",
+        "previousAnchor" : "2026-10-19",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 50400,
+          "until" : 1793577600
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-11-01",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-10-26",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-02",
+        "period" : "week",
+        "previousAnchor" : "2026-10-19",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 50400,
+          "until" : 1793577600
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-11-02",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-02",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-09",
+        "period" : "week",
+        "previousAnchor" : "2026-10-26",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "recorded",
+          "day" : "2026-11-02",
+          "from" : 1793577600,
+          "knownSeconds" : 50400,
+          "until" : 1794182400
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-11-09",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-09",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-10",
+            "from" : 1794268800,
+            "until" : 1794355200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-11",
+            "from" : 1794355200,
+            "until" : 1794441600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-12",
+            "from" : 1794441600,
+            "until" : 1794528000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-13",
+            "from" : 1794528000,
+            "until" : 1794614400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-14",
+            "from" : 1794614400,
+            "until" : 1794700800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-15",
+            "from" : 1794700800,
+            "until" : 1794787200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-16",
+        "period" : "week",
+        "previousAnchor" : "2026-11-02",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "partial",
+          "day" : "2026-11-09",
+          "from" : 1794182400,
+          "knownSeconds" : 6900,
+          "until" : 1794787200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-11-16",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-16",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-16",
+            "from" : 1794787200,
+            "until" : 1794873600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-17",
+            "from" : 1794873600,
+            "until" : 1794960000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-18",
+            "from" : 1794960000,
+            "until" : 1795046400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-19",
+            "from" : 1795046400,
+            "until" : 1795132800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-20",
+            "from" : 1795132800,
+            "until" : 1795219200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-21",
+            "from" : 1795219200,
+            "until" : 1795305600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-22",
+            "from" : 1795305600,
+            "until" : 1795392000
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-23",
+        "period" : "week",
+        "previousAnchor" : "2026-11-09",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "notRecorded",
+          "day" : "2026-11-16",
+          "from" : 1794787200,
+          "until" : 1795392000
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-12-01",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-30",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-30",
+            "from" : 1795996800,
+            "until" : 1796083200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-12-01",
+            "from" : 1796083200,
+            "until" : 1796169600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-12-02",
+            "from" : 1796169600,
+            "until" : 1796256000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-12-03",
+            "from" : 1796256000,
+            "until" : 1796342400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-12-04",
+            "from" : 1796342400,
+            "until" : 1796428800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-12-05",
+            "from" : 1796428800,
+            "until" : 1796515200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-12-06",
+            "from" : 1796515200,
+            "until" : 1796601600
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-12-07",
+        "period" : "week",
+        "previousAnchor" : "2026-11-23",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "notRecorded",
+          "day" : "2026-11-30",
+          "from" : 1795996800,
+          "until" : 1796601600
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-10-01",
+        "period" : "month"
+      },
+      "response" : {
+        "anchor" : "2026-10-01",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-10-01",
+            "from" : 1790812800,
+            "until" : 1791158400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-10-05",
+            "from" : 1791158400,
+            "until" : 1791763200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-10-12",
+            "from" : 1791763200,
+            "until" : 1792368000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-10-19",
+            "from" : 1792368000,
+            "until" : 1792972800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 43200,
+            "until" : 1793491200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-01",
+        "period" : "month",
+        "previousAnchor" : "2026-09-01",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "partial",
+          "day" : "2026-10-01",
+          "from" : 1790812800,
+          "knownSeconds" : 43200,
+          "until" : 1793491200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-10-26",
+        "period" : "month"
+      },
+      "response" : {
+        "anchor" : "2026-10-01",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-10-01",
+            "from" : 1790812800,
+            "until" : 1791158400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-10-05",
+            "from" : 1791158400,
+            "until" : 1791763200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-10-12",
+            "from" : 1791763200,
+            "until" : 1792368000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-10-19",
+            "from" : 1792368000,
+            "until" : 1792972800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 43200,
+            "until" : 1793491200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-01",
+        "period" : "month",
+        "previousAnchor" : "2026-09-01",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "partial",
+          "day" : "2026-10-01",
+          "from" : 1790812800,
+          "knownSeconds" : 43200,
+          "until" : 1793491200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-11-01",
+        "period" : "month"
+      },
+      "response" : {
+        "anchor" : "2026-11-01",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 50400,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794787200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-16",
+            "from" : 1794787200,
+            "until" : 1795392000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-23",
+            "from" : 1795392000,
+            "until" : 1795996800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-30",
+            "from" : 1795996800,
+            "until" : 1796083200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-12-01",
+        "period" : "month",
+        "previousAnchor" : "2026-10-01",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "partial",
+          "day" : "2026-11-01",
+          "from" : 1793491200,
+          "knownSeconds" : 64500,
+          "until" : 1796083200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-11-02",
+        "period" : "month"
+      },
+      "response" : {
+        "anchor" : "2026-11-01",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 50400,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794787200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-16",
+            "from" : 1794787200,
+            "until" : 1795392000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-23",
+            "from" : 1795392000,
+            "until" : 1795996800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-30",
+            "from" : 1795996800,
+            "until" : 1796083200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-12-01",
+        "period" : "month",
+        "previousAnchor" : "2026-10-01",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "partial",
+          "day" : "2026-11-01",
+          "from" : 1793491200,
+          "knownSeconds" : 64500,
+          "until" : 1796083200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-11-09",
+        "period" : "month"
+      },
+      "response" : {
+        "anchor" : "2026-11-01",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 50400,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794787200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-16",
+            "from" : 1794787200,
+            "until" : 1795392000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-23",
+            "from" : 1795392000,
+            "until" : 1795996800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-30",
+            "from" : 1795996800,
+            "until" : 1796083200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-12-01",
+        "period" : "month",
+        "previousAnchor" : "2026-10-01",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "partial",
+          "day" : "2026-11-01",
+          "from" : 1793491200,
+          "knownSeconds" : 64500,
+          "until" : 1796083200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-11-16",
+        "period" : "month"
+      },
+      "response" : {
+        "anchor" : "2026-11-01",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 50400,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "partial",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794787200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-16",
+            "from" : 1794787200,
+            "until" : 1795392000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-23",
+            "from" : 1795392000,
+            "until" : 1795996800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-30",
+            "from" : 1795996800,
+            "until" : 1796083200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-12-01",
+        "period" : "month",
+        "previousAnchor" : "2026-10-01",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "partial",
+          "day" : "2026-11-01",
+          "from" : 1793491200,
+          "knownSeconds" : 64500,
+          "until" : 1796083200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "day" : "2026-12-01",
+        "period" : "month"
+      },
+      "response" : {
+        "anchor" : "2026-12-01",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-12-01",
+            "from" : 1796083200,
+            "until" : 1796601600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-12-07",
+            "from" : 1796601600,
+            "until" : 1797206400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-12-14",
+            "from" : 1797206400,
+            "until" : 1797811200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-12-21",
+            "from" : 1797811200,
+            "until" : 1798416000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-12-28",
+            "from" : 1798416000,
+            "until" : 1798761600
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2027-01-01",
+        "period" : "month",
+        "previousAnchor" : "2026-11-01",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "notRecorded",
+          "day" : "2026-12-01",
+          "from" : 1796083200,
+          "until" : 1798761600
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "clippedTo" : {
+          "from" : 1793491200,
+          "until" : 1793577600
+        },
+        "day" : "2026-11-01",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-10-26",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-02",
+        "period" : "week",
+        "previousAnchor" : "2026-10-19",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "recorded",
+          "day" : "2026-11-01",
+          "from" : 1793491200,
+          "knownSeconds" : 7200,
+          "until" : 1793577600
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "clippedTo" : {
+          "from" : 1793577600,
+          "until" : 1794182400
+        },
+        "day" : "2026-11-02",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-02",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-09",
+        "period" : "week",
+        "previousAnchor" : "2026-10-26",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "recorded",
+          "day" : "2026-11-02",
+          "from" : 1793577600,
+          "knownSeconds" : 50400,
+          "until" : 1794182400
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "clippedTo" : {
+          "from" : 1794182400,
+          "until" : 1794787200
+        },
+        "day" : "2026-11-09",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-09",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-10",
+            "from" : 1794268800,
+            "until" : 1794355200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-11",
+            "from" : 1794355200,
+            "until" : 1794441600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-12",
+            "from" : 1794441600,
+            "until" : 1794528000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-13",
+            "from" : 1794528000,
+            "until" : 1794614400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-14",
+            "from" : 1794614400,
+            "until" : 1794700800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-15",
+            "from" : 1794700800,
+            "until" : 1794787200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-16",
+        "period" : "week",
+        "previousAnchor" : "2026-11-02",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "partial",
+          "day" : "2026-11-09",
+          "from" : 1794182400,
+          "knownSeconds" : 6900,
+          "until" : 1794787200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "clippedTo" : {
+          "from" : 1794787200,
+          "until" : 1795392000
+        },
+        "day" : "2026-11-16",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-16",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-16",
+            "from" : 1794787200,
+            "until" : 1794873600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-17",
+            "from" : 1794873600,
+            "until" : 1794960000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-18",
+            "from" : 1794960000,
+            "until" : 1795046400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-19",
+            "from" : 1795046400,
+            "until" : 1795132800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-20",
+            "from" : 1795132800,
+            "until" : 1795219200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-21",
+            "from" : 1795219200,
+            "until" : 1795305600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-22",
+            "from" : 1795305600,
+            "until" : 1795392000
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-23",
+        "period" : "week",
+        "previousAnchor" : "2026-11-09",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "notRecorded",
+          "day" : "2026-11-16",
+          "from" : 1794787200,
+          "until" : 1795392000
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "clippedTo" : {
+          "from" : 1795392000,
+          "until" : 1795996800
+        },
+        "day" : "2026-11-23",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-23",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-23",
+            "from" : 1795392000,
+            "until" : 1795478400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-24",
+            "from" : 1795478400,
+            "until" : 1795564800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-25",
+            "from" : 1795564800,
+            "until" : 1795651200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-26",
+            "from" : 1795651200,
+            "until" : 1795737600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-27",
+            "from" : 1795737600,
+            "until" : 1795824000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-28",
+            "from" : 1795824000,
+            "until" : 1795910400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-29",
+            "from" : 1795910400,
+            "until" : 1795996800
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-30",
+        "period" : "week",
+        "previousAnchor" : "2026-11-16",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "notRecorded",
+          "day" : "2026-11-23",
+          "from" : 1795392000,
+          "until" : 1795996800
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    },
+    {
+      "request" : {
+        "clippedTo" : {
+          "from" : 1795996800,
+          "until" : 1796083200
+        },
+        "day" : "2026-11-30",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-30",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-30",
+            "from" : 1795996800,
+            "until" : 1796083200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-12-07",
+        "period" : "week",
+        "previousAnchor" : "2026-11-23",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "notRecorded",
+          "day" : "2026-11-30",
+          "from" : 1795996800,
+          "until" : 1796083200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:1:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 107700,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 7200,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 7200,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 7200,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 7200,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 7200,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 7200,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 7200,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 7200,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 7200,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 7200,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 7200,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 7200,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 7200,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 7200,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 6900,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    }
+  ],
+  "zero" : [
+    {
+      "request" : {
+        "day" : "2026-11-09",
+        "period" : "week"
+      },
+      "response" : {
+        "anchor" : "2026-11-09",
+        "asOf" : 1794268800,
+        "buckets" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 0,
+            "until" : 1794268800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-10",
+            "from" : 1794268800,
+            "until" : 1794355200
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-11",
+            "from" : 1794355200,
+            "until" : 1794441600
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-12",
+            "from" : 1794441600,
+            "until" : 1794528000
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-13",
+            "from" : 1794528000,
+            "until" : 1794614400
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-14",
+            "from" : 1794614400,
+            "until" : 1794700800
+          },
+          {
+            "coverage" : "notRecorded",
+            "day" : "2026-11-15",
+            "from" : 1794700800,
+            "until" : 1794787200
+          }
+        ],
+        "metricVersion" : "restricted-excluding-unlocks-prototype-v1",
+        "nextAnchor" : "2026-11-16",
+        "period" : "week",
+        "previousAnchor" : "2026-11-02",
+        "proofScope" : "syntheticFixture",
+        "selected" : {
+          "coverage" : "partial",
+          "day" : "2026-11-09",
+          "from" : 1794182400,
+          "knownSeconds" : 0,
+          "until" : 1794787200
+        },
+        "timeZone" : "UTC",
+        "token" : "prototype-v1:00000000-0000-0000-0000-000000000136:6:4745312516798676992:UTC",
+        "total" : {
+          "coverage" : "recorded",
+          "day" : "2026-10-26",
+          "from" : 1792972800,
+          "knownSeconds" : 0,
+          "until" : 1794268800
+        },
+        "trend" : [
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-26",
+            "from" : 1792972800,
+            "knownSeconds" : 0,
+            "until" : 1793059200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-27",
+            "from" : 1793059200,
+            "knownSeconds" : 0,
+            "until" : 1793145600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-28",
+            "from" : 1793145600,
+            "knownSeconds" : 0,
+            "until" : 1793232000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-29",
+            "from" : 1793232000,
+            "knownSeconds" : 0,
+            "until" : 1793318400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-30",
+            "from" : 1793318400,
+            "knownSeconds" : 0,
+            "until" : 1793404800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-10-31",
+            "from" : 1793404800,
+            "knownSeconds" : 0,
+            "until" : 1793491200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-01",
+            "from" : 1793491200,
+            "knownSeconds" : 0,
+            "until" : 1793577600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-02",
+            "from" : 1793577600,
+            "knownSeconds" : 0,
+            "until" : 1793664000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-03",
+            "from" : 1793664000,
+            "knownSeconds" : 0,
+            "until" : 1793750400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-04",
+            "from" : 1793750400,
+            "knownSeconds" : 0,
+            "until" : 1793836800
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-05",
+            "from" : 1793836800,
+            "knownSeconds" : 0,
+            "until" : 1793923200
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-06",
+            "from" : 1793923200,
+            "knownSeconds" : 0,
+            "until" : 1794009600
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-07",
+            "from" : 1794009600,
+            "knownSeconds" : 0,
+            "until" : 1794096000
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-08",
+            "from" : 1794096000,
+            "knownSeconds" : 0,
+            "until" : 1794182400
+          },
+          {
+            "coverage" : "recorded",
+            "day" : "2026-11-09",
+            "from" : 1794182400,
+            "knownSeconds" : 0,
+            "until" : 1794268800
+          }
+        ],
+        "version" : 1
+      }
+    }
+  ]
+}
