@@ -1,0 +1,55 @@
+import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
+import path from 'node:path';
+const require = createRequire(import.meta.url);
+const { chromium } = require('/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const output = '/tmp/itoma-reflection-product/docs/qa/reflection-records';
+mkdirSync(output, { recursive: true });
+const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', args: ['--no-sandbox'] });
+const proof = { sourceCommit: '91bdc3eba7aaebb2837758928227a2dd0b3d185a', localSourceCommit: '72843e66da8774da92b51afcb0510912eb7696a3', sourceTree: '15d2aa7744bae89d147c5f7ee799e919fd4e8b8e',
+  kind: 'synthetic Swift-generated DTO / RN Web full-scroll export', physicalDevice: 'unverified', browser: await browser.version(),
+  fixtureSha256: 'c0ab20b54c3c80f745bfb813821aef6d9d7e9ec95f7584babc0d095dde08f1ae', fixtureTimeZone: 'UTC', scope: 'real product view/client/providers with temporary read-only fake native port; no iOS or OS-time proof', cases: [] };
+const cases = [
+  ['week-light', 'observed', 'light', 390, false, false],
+  ['month-dark', 'observed', 'dark', 390, true, false],
+  ['incomplete-narrow', 'incomplete', 'light', 320, false, false],
+  ['deleted-dark', 'deleted', 'dark', 390, false, false],
+  ['not-recorded-light', 'notRecorded', 'light', 320, false, false],
+  ['not-created-dark', 'not-created', 'dark', 320, false, false],
+  ['error-light', 'error', 'light', 390, false, false],
+  ['month-large-dark', 'observed', 'dark', 320, true, true],
+  ['shared-gap-light', 'shared-gap', 'light', 390, false, false],
+];
+try {
+  for (const [name, scenario, colorScheme, width, month, large] of cases) {
+    const context = await browser.newContext({ viewport: { width, height: 844 }, colorScheme, reducedMotion: 'reduce', timezoneId: 'UTC' });
+    const page = await context.newPage(), errors = [];
+    page.on('pageerror', e => errors.push(String(e.message)));
+    page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+    await page.goto(`http://127.0.0.1:8151/reflection-records-proof?scenario=${scenario}`, { waitUntil: 'networkidle' });
+    await page.getByText('時間の集計は準備中です', { exact: true }).waitFor();
+    await page.getByText('検証画面を準備しています。', { exact: true }).waitFor({ state: 'hidden' });
+    await page.getByText('記録を確認しています。', { exact: true }).waitFor({ state: 'hidden' });
+    if (month) { await page.getByRole('button', { name: '月次', exact: true }).click(); await page.getByText('2026年11月', { exact: true }).waitFor(); }
+    await page.evaluate(async () => { await document.fonts.ready; });
+    if (large) await page.evaluate(() => {
+      const elements = [...document.querySelectorAll('[dir="auto"]')].map(el => [el, parseFloat(getComputedStyle(el).fontSize), parseFloat(getComputedStyle(el).lineHeight)]);
+      for (const [el, font, line] of elements) { el.style.fontSize = `${font * 1.5}px`; if (Number.isFinite(line)) el.style.lineHeight = `${line * 1.5}px`; }
+    });
+    await page.getByTestId('flow-scroll').evaluate(el => { for (let n = el; n; n = n.parentElement) Object.assign(n.style, { height: 'auto', minHeight: '0', maxHeight: 'none', flexGrow: '0', flexBasis: 'auto', position: 'relative', overflow: 'visible' }); });
+    const dimensions = await page.evaluate(() => ({ viewport: innerWidth, scroll: document.documentElement.scrollWidth, contentHeight: document.documentElement.scrollHeight }));
+    const buttons = await page.getByRole('button').evaluateAll(items => items.map(el => ({ text: el.textContent, height: el.getBoundingClientRect().height })));
+    const total = await page.getByTestId('reflection-total').allTextContents();
+    if (total.some(x => x !== '—')) throw new Error('point-only numeric total');
+    await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true });
+    proof.cases.push({ name, scenario, colorScheme, width, textScale: large ? 1.5 : 1, dimensions, horizontalOverflow: dimensions.scroll > width + 1, total, errors, buttons,
+      sha256: createHash('sha256').update(readFileSync(path.join(output, `${name}.png`))).digest('hex') });
+    console.log(`${name}: ${dimensions.scroll}/${width}px, errors=${errors.length}`);
+    await context.close();
+  }
+} finally { await browser.close(); }
+const jsRoot = '/tmp/itoma-reflection-product-proof-dist/client/_expo/static/js/web';
+proof.bundles = readdirSync(jsRoot).filter(x => x.endsWith('.js')).map(name => ({ name, sha256: createHash('sha256').update(readFileSync(path.join(jsRoot, name))).digest('hex') }));
+writeFileSync(path.join(output, 'manifest.json'), JSON.stringify(proof, null, 2) + '\n');
+if (proof.cases.some(x => x.horizontalOverflow || x.errors.length || x.buttons.some(b => b.height < 44))) process.exitCode = 1;

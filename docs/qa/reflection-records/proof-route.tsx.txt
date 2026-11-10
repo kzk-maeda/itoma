@@ -1,0 +1,34 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Text, View } from 'react-native';
+import { ReflectionScreen } from '@/components/flow/reflection';
+import { ScreenTimeProvider } from '@/state/screen-time';
+import { HistoryProvider } from '@/state/history';
+import { ReflectionProvider } from '@/state/reflection';
+import { createReflectionClient } from '../../modules/itoma-native/src/reflection';
+import type { ReflectionRequest } from '../../modules/itoma-native/src/reflection-model';
+import data from '../../tests/fixtures/reflection-records.json';
+
+const controlClient = { run: async () => ({ status: 'ok' as const, impacts: [] }) };
+export default function Proof() {
+  const [scenario, setScenario] = useState<string>();
+  useEffect(() => { setScenario(new URLSearchParams(window.location.search).get('scenario') ?? 'observed'); }, []);
+  const client = useMemo(() => createReflectionClient('ios', () => ({ apiVersion: 1, reflectionVersion: 1,
+    reflection: async (action, payload) => {
+      if (action !== 'read') throw new Error('proof is read-only');
+      if (scenario === 'error') return JSON.stringify({ status: 'error', storage: 'unknown', transfer: 'unavailable', code: 'storage-failed' });
+      if (scenario === 'not-created') return JSON.stringify({ status: 'ok', storage: 'not-created', transfer: 'current' });
+      const request = JSON.parse(payload) as Partial<ReflectionRequest>;
+      const rows = (data as Record<string, { request: ReflectionRequest; response: unknown }[]>)[scenario === 'shared-gap' ? 'observed' : scenario ?? 'observed'];
+      const row = rows.find(x => x.request.period === (request.period ?? 'week') && (!request.day || x.request.day === request.day)
+        && JSON.stringify(x.request.clippedTo) === JSON.stringify(request.clippedTo));
+      if (!row) throw new Error('query not exported by Swift');
+      return JSON.stringify({ status: 'ok', storage: 'ready', transfer: 'current', sharedIncomplete: scenario === 'shared-gap', snapshot: row.response });
+    },
+  })), [scenario]);
+  if (!scenario) return <Text>検証画面を準備しています。</Text>;
+  return <View style={{ flex: 1 }}><Text style={{ backgroundColor: '#ffffff', color: '#111111', padding: 12, fontSize: 14 }}>検証用：合成SQLite記録・Web表示（実機の時間ではありません）</Text>
+    <ScreenTimeProvider client={controlClient}><HistoryProvider><ReflectionProvider client={client}>
+      <ReflectionScreen />
+    </ReflectionProvider></HistoryProvider></ScreenTimeProvider>
+  </View>;
+}

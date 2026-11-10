@@ -1,5 +1,10 @@
 # ItomaHistory（本体private保存）
 
+## 振り返り記録の統合（schema4）
+
+本人採用のADR0007に従い、private History4へreflection専用tablesを追加する。既存schema1〜3を保持して移行し、reason/操作/reflection payloadを同じ容量とwriterで扱う。全削除はshared両streamの同一read境界を捕捉し、privateでcutoffとpayloadを原子的に消す。理由/操作のみの既存削除はreflectionを保持する。pointの時間は0も返さず、製品接続の詳細は docs/system/reflection-records.md。以下は旧版の実装履歴。
+
+
 [#79](https://github.com/kzk-maeda/itoma/issues/79) / 親[#46](https://github.com/kzk-maeda/itoma/issues/46)。PR #36 / ADR 0006の理由本文を本体private DBへ保存する部分。`ItomaHistory`は本体だけがimportするproductであり、Extensionが使う`ItomaStorage`は依存しない。両者はSQL接続/bind/短いtransactionだけを扱う技術target `ItomaSQLite`を利用する。CoreにSQLite依存はない。
 
 ## 契約

@@ -11,7 +11,7 @@ import Glibc
 /// iOS protection/backup attributes to the DB and sidecars; this portable layer cannot verify them.
 /// Non-Sendable, synchronous, and locally serialized. No public callback can hold its writer open.
 public final class HistoryRepository {
-    static let schemaVersion: Int64 = 3
+    static let schemaVersion: Int64 = 4
     static let applicationID: Int64 = 0x49544849
     let database: SQLiteDatabase
     let capacityPolicy: HistoryCapacityPolicy
@@ -51,6 +51,7 @@ public final class HistoryRepository {
                     """)
                 try repository.createPrivateHistoryTables()
                 try repository.createReadIndex()
+                try repository.createReflectionTables()
                 try repository.database.execute("PRAGMA application_id=0x49544849")
                 try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
             }
@@ -70,6 +71,7 @@ public final class HistoryRepository {
                       try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw HistoryError.corrupt }
                 try repository.validateReasons()
                 try repository.validatePrivateHistory()
+                try repository.validateReflectionPayloads()
             }
             return repository
         }
@@ -198,13 +200,20 @@ public final class HistoryRepository {
                 try database.execute("SELECT singleton,revision FROM history_read_state LIMIT 0")
             } catch SQLiteFailure.failure { throw HistoryError.corrupt }
         }
+        if expected >= 4 {
+            do {
+                try database.execute("SELECT singleton,dataset_id,revision,deleted FROM reflection_state LIMIT 0")
+                try database.execute("SELECT source_id,high_water,imported_through,deleted_through,incomplete FROM reflection_sources LIMIT 0")
+                try database.execute("SELECT cursor,event_id,source_id,sequence,committed_at,record,payload_bytes FROM reflection_facts LIMIT 0")
+            } catch SQLiteFailure.failure { throw HistoryError.corrupt }
+        }
     }
 
     func logicalBytes() throws -> Int64 {
         // Do not load every body for each new reason or capacity refresh. Validate lengths in SQL;
         // individual reads and open() validate UTF-8 and the Core input contract as well.
         var total: Int64 = 0
-        for (table, column) in [("reasons", "body"), ("dummy_selections", "payload"), ("history_events", "record")] {
+        for (table, column) in [("reasons", "body"), ("dummy_selections", "payload"), ("history_events", "record"), ("reflection_facts", "record")] {
             let invalid = try database.rows("SELECT 1 FROM \(table) WHERE payload_bytes<0 OR (\(column) IS NULL AND payload_bytes!=0) OR (\(column) IS NOT NULL AND (typeof(\(column))!='blob' OR length(\(column))!=payload_bytes)) LIMIT 1")
             guard invalid.isEmpty, case let .integer(bytes) = try database.rows("SELECT coalesce(sum(payload_bytes),0) FROM \(table)").first?.first,
                   bytes >= 0 else { throw HistoryError.corrupt }

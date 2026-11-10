@@ -1,0 +1,763 @@
+{
+  "sourceCommit": "91bdc3eba7aaebb2837758928227a2dd0b3d185a",
+  "localSourceCommit": "72843e66da8774da92b51afcb0510912eb7696a3",
+  "sourceTree": "15d2aa7744bae89d147c5f7ee799e919fd4e8b8e",
+  "kind": "synthetic Swift-generated DTO / RN Web full-scroll export",
+  "physicalDevice": "unverified",
+  "browser": "155.0.8059.79",
+  "fixtureSha256": "c0ab20b54c3c80f745bfb813821aef6d9d7e9ec95f7584babc0d095dde08f1ae",
+  "fixtureTimeZone": "UTC",
+  "scope": "real product view/client/providers with temporary read-only fake native port; no iOS or OS-time proof",
+  "cases": [
+    {
+      "name": "week-light",
+      "scenario": "observed",
+      "colorScheme": "light",
+      "width": 390,
+      "textScale": 1,
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390,
+        "contentHeight": 2267
+      },
+      "horizontalOverflow": false,
+      "total": [
+        "—"
+      ],
+      "errors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 週次",
+          "height": 52
+        },
+        {
+          "text": "月次",
+          "height": 52
+        },
+        {
+          "text": "前の期間",
+          "height": 52
+        },
+        {
+          "text": "次の期間",
+          "height": 52
+        },
+        {
+          "text": "11月9日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月10日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月11日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月12日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月13日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月14日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月15日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "選択の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "全記録と累計を削除する",
+          "height": 52
+        }
+      ],
+      "sha256": "80dae24627256d563f0cd094a33249a00db1cf21a7be79023a6e9fb5305af07e"
+    },
+    {
+      "name": "month-dark",
+      "scenario": "observed",
+      "colorScheme": "dark",
+      "width": 390,
+      "textScale": 1,
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390,
+        "contentHeight": 2148
+      },
+      "horizontalOverflow": false,
+      "total": [
+        "—"
+      ],
+      "errors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "週次",
+          "height": 52
+        },
+        {
+          "text": "✓ 月次",
+          "height": 52
+        },
+        {
+          "text": "前の期間",
+          "height": 52
+        },
+        {
+          "text": "次の期間",
+          "height": 52
+        },
+        {
+          "text": "11月1日から— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月2日から— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月9日から— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月16日から— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月23日から— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月30日から— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "選択の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "全記録と累計を削除する",
+          "height": 52
+        }
+      ],
+      "sha256": "f20a5a043aa4fd2890dc6b8ea2f8c617dca723180e254ce55ae82b644e904e40"
+    },
+    {
+      "name": "incomplete-narrow",
+      "scenario": "incomplete",
+      "colorScheme": "light",
+      "width": 320,
+      "textScale": 1,
+      "dimensions": {
+        "viewport": 320,
+        "scroll": 320,
+        "contentHeight": 2383
+      },
+      "horizontalOverflow": false,
+      "total": [
+        "—"
+      ],
+      "errors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 週次",
+          "height": 52
+        },
+        {
+          "text": "月次",
+          "height": 52
+        },
+        {
+          "text": "前の期間",
+          "height": 52
+        },
+        {
+          "text": "次の期間",
+          "height": 52
+        },
+        {
+          "text": "11月9日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月10日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月11日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月12日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月13日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月14日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月15日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "選択の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "全記録と累計を削除する",
+          "height": 52
+        }
+      ],
+      "sha256": "6eebbebf80700669067a3545d2486e44efe33eedf6b21d3186731109f6b8ef99"
+    },
+    {
+      "name": "deleted-dark",
+      "scenario": "deleted",
+      "colorScheme": "dark",
+      "width": 390,
+      "textScale": 1,
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390,
+        "contentHeight": 2215
+      },
+      "horizontalOverflow": false,
+      "total": [
+        "—"
+      ],
+      "errors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 週次",
+          "height": 52
+        },
+        {
+          "text": "月次",
+          "height": 52
+        },
+        {
+          "text": "前の期間",
+          "height": 52
+        },
+        {
+          "text": "次の期間",
+          "height": 52
+        },
+        {
+          "text": "11月9日—",
+          "height": 99
+        },
+        {
+          "text": "11月10日—",
+          "height": 99
+        },
+        {
+          "text": "11月11日—",
+          "height": 99
+        },
+        {
+          "text": "11月12日—",
+          "height": 99
+        },
+        {
+          "text": "11月13日—",
+          "height": 99
+        },
+        {
+          "text": "11月14日—",
+          "height": 99
+        },
+        {
+          "text": "11月15日—",
+          "height": 99
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "選択の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "全記録と累計を削除する",
+          "height": 52
+        }
+      ],
+      "sha256": "2b718e25772a2c7e1569b33e23389854b66db25a7d68184be905a7432fe9f146"
+    },
+    {
+      "name": "not-recorded-light",
+      "scenario": "notRecorded",
+      "colorScheme": "light",
+      "width": 320,
+      "textScale": 1,
+      "dimensions": {
+        "viewport": 320,
+        "scroll": 320,
+        "contentHeight": 2319
+      },
+      "horizontalOverflow": false,
+      "total": [
+        "—"
+      ],
+      "errors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 週次",
+          "height": 52
+        },
+        {
+          "text": "月次",
+          "height": 52
+        },
+        {
+          "text": "前の期間",
+          "height": 52
+        },
+        {
+          "text": "次の期間",
+          "height": 52
+        },
+        {
+          "text": "11月9日—",
+          "height": 99
+        },
+        {
+          "text": "11月10日—",
+          "height": 99
+        },
+        {
+          "text": "11月11日—",
+          "height": 99
+        },
+        {
+          "text": "11月12日—",
+          "height": 99
+        },
+        {
+          "text": "11月13日—",
+          "height": 99
+        },
+        {
+          "text": "11月14日—",
+          "height": 99
+        },
+        {
+          "text": "11月15日—",
+          "height": 99
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "選択の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "全記録と累計を削除する",
+          "height": 52
+        }
+      ],
+      "sha256": "79f2df17d373099ae83cfff5556cead01b2b4b8ba91299341a0604d98a7c01d5"
+    },
+    {
+      "name": "not-created-dark",
+      "scenario": "not-created",
+      "colorScheme": "dark",
+      "width": 320,
+      "textScale": 1,
+      "dimensions": {
+        "viewport": 320,
+        "scroll": 320,
+        "contentHeight": 1156
+      },
+      "horizontalOverflow": false,
+      "total": [
+        "—"
+      ],
+      "errors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 週次",
+          "height": 52
+        },
+        {
+          "text": "月次",
+          "height": 52
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "選択の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "全記録と累計を削除する",
+          "height": 52
+        }
+      ],
+      "sha256": "808e65c887117f180848b0dd8eda64b9c185dcf093a826592c8dfa761afc6cec"
+    },
+    {
+      "name": "error-light",
+      "scenario": "error",
+      "colorScheme": "light",
+      "width": 390,
+      "textScale": 1,
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390,
+        "contentHeight": 1104
+      },
+      "horizontalOverflow": false,
+      "total": [
+        "—"
+      ],
+      "errors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 週次",
+          "height": 52
+        },
+        {
+          "text": "月次",
+          "height": 52
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "選択の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "全記録と累計を削除する",
+          "height": 52
+        }
+      ],
+      "sha256": "392cf565acaea9b0137f653be955c881add4ed6771991b0e746e7a331510260a"
+    },
+    {
+      "name": "month-large-dark",
+      "scenario": "observed",
+      "colorScheme": "dark",
+      "width": 320,
+      "textScale": 1.5,
+      "dimensions": {
+        "viewport": 320,
+        "scroll": 320,
+        "contentHeight": 3128
+      },
+      "horizontalOverflow": false,
+      "total": [
+        "—"
+      ],
+      "errors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 65
+        },
+        {
+          "text": "週次",
+          "height": 65
+        },
+        {
+          "text": "✓ 月次",
+          "height": 65
+        },
+        {
+          "text": "前の期間",
+          "height": 65
+        },
+        {
+          "text": "次の期間",
+          "height": 65
+        },
+        {
+          "text": "11月1日から— · 一部の記録",
+          "height": 125
+        },
+        {
+          "text": "11月2日から— · 一部の記録",
+          "height": 125
+        },
+        {
+          "text": "11月9日から— · 一部の記録",
+          "height": 125
+        },
+        {
+          "text": "11月16日から— · 一部の記録",
+          "height": 125
+        },
+        {
+          "text": "11月23日から— · 一部の記録",
+          "height": 125
+        },
+        {
+          "text": "11月30日から— · 一部の記録",
+          "height": 125
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 104
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 104
+        },
+        {
+          "text": "選択の記録を見る",
+          "height": 65
+        },
+        {
+          "text": "全記録と累計を削除する",
+          "height": 104
+        }
+      ],
+      "sha256": "1a912dc3ac1ef8e1b7cfa966a82715828632bcc112e2ba4216656b20bdff4e1e"
+    },
+    {
+      "name": "shared-gap-light",
+      "scenario": "shared-gap",
+      "colorScheme": "light",
+      "width": 390,
+      "textScale": 1,
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390,
+        "contentHeight": 2357
+      },
+      "horizontalOverflow": false,
+      "total": [
+        "—"
+      ],
+      "errors": [],
+      "buttons": [
+        {
+          "text": "‹ 戻る",
+          "height": 52
+        },
+        {
+          "text": "✓ 週次",
+          "height": 52
+        },
+        {
+          "text": "月次",
+          "height": 52
+        },
+        {
+          "text": "前の期間",
+          "height": 52
+        },
+        {
+          "text": "次の期間",
+          "height": 52
+        },
+        {
+          "text": "11月9日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月10日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月11日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月12日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月13日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月14日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "11月15日— · 一部の記録",
+          "height": 99
+        },
+        {
+          "text": "最新の記録を確認する",
+          "height": 52
+        },
+        {
+          "text": "新しい記録を取り込む",
+          "height": 52
+        },
+        {
+          "text": "選択の記録を見る",
+          "height": 52
+        },
+        {
+          "text": "全記録と累計を削除する",
+          "height": 52
+        }
+      ],
+      "sha256": "d7b4bbfb8dca2c8e9aba51309a666ebb7e401e062e926b0681a7433ca8b939cb"
+    }
+  ],
+  "bundles": [
+    {
+      "name": "__common-b79b481af3116638f4cc2f4db25ef7e9.js",
+      "sha256": "f7e2e1106ea23e6c5e02379afe2830c359e759632327c3abb952349b0afe4da3"
+    },
+    {
+      "name": "__expo-metro-runtime-ed4c1cfa6193d76fc294130e42bd1916.js",
+      "sha256": "05f8ad2270b1fcf20739f7f5bb9d66f1d158ac32923ceae243df78864e47b745"
+    },
+    {
+      "name": "_layout-997e509f2c68b47ea33261b5c493ea11.js",
+      "sha256": "8b9027ef657ecb6d8f4ab34d8dc730dab7d5a11eca802d88a2ba7309ae86f78d"
+    },
+    {
+      "name": "entry-460cfbb47cb8d5de259ddc7efc5b9b56.js",
+      "sha256": "71dbf78da8ccc05e6f05007b15563a4c4ad7ccb797231b8ada412bca0fca0472"
+    },
+    {
+      "name": "explore-f3bdd2b33a2e3c194c34d65075059a8c.js",
+      "sha256": "2cea40b5abe15b45ede6f9e96157a0a00b62b52c98bb06a53d0a1db29dc390a7"
+    },
+    {
+      "name": "grant-26d873ddb9809a816b4be680942637d5.js",
+      "sha256": "0a0ff31a0cbb531d0b8a5dffd174e0ba37461e0af8dcfbb51176b87833573b2d"
+    },
+    {
+      "name": "history-d7a534eb625f3baddc27efb6fc1372ed.js",
+      "sha256": "c23ed84a9409d18fb12b525cd4551b0fcf3eb3b03d2a48e31aafe6e6afaff605"
+    },
+    {
+      "name": "history-reason-a566874c58608370b3d8b87f71b3f9fb.js",
+      "sha256": "2a1fcd828637be3c5ef4f9922b06a1a0d40c582c29b02df1f647b2acaaa178ff"
+    },
+    {
+      "name": "index-b356c1cb06da85c6230661a25475d432.js",
+      "sha256": "bf655479d81831b17bd204a07359213f1fba3fcf86665f3d6ff13aa10ebd4db8"
+    },
+    {
+      "name": "native-poc-c2424621c1dc8495136598baaa48150d.js",
+      "sha256": "40b556a550cf3d6f92b541ef5e2ca368e835c40e86b223deeb22ef85fa92bc2f"
+    },
+    {
+      "name": "onboarding-fa500e2addbe35efc4dbeb5d5fd1c8bd.js",
+      "sha256": "d5309cb6ca4c9fcb632de71499a01c771d3602b85f176c610932f3e5252f2f94"
+    },
+    {
+      "name": "reflection-0343b75afa152f2fd1ee50a8ae9b9b5e.js",
+      "sha256": "ffad16123ff7a46523a2066051e870a24f73ec957809fbf3957ca845ec9616da"
+    },
+    {
+      "name": "reflection-records-proof-a022e023e5c0f32b92f3284390e4b434.js",
+      "sha256": "08b70be5b0dd88d71f12d4e264b5647f7cff9fcd0cf6e61a75ab4c4466031017"
+    },
+    {
+      "name": "rule-confirm-9f433520c7466b73d2765b81f737d955.js",
+      "sha256": "5fe51203ba6f70b8a8b73105bb970e4e4a0875d022f6fbd29cd586909fe9218b"
+    },
+    {
+      "name": "rule-ed6604ec7bb2a0408754fa6c5092b343.js",
+      "sha256": "1e1af2a859bf20fd68e92c51b5c2459b3c75b7e92a279395b2af1901311b448e"
+    },
+    {
+      "name": "settings-0dbb9104fe11cbbb5baf240043f4cecb.js",
+      "sha256": "7550075e0954aa776688cb87c885db19d979e2c71c012777563335cddf92feec"
+    },
+    {
+      "name": "unlock-confirm-85a69ab4da8145507b438ac6aed8239e.js",
+      "sha256": "33d7eef625997a107ccfec1166a10fd9bf1191815df909344112ef8f7720b565"
+    },
+    {
+      "name": "unlock-e4c70829f69159ddd117c00e964ac8fc.js",
+      "sha256": "aa5c5c638e45695eeb82f25ddd0f8647b47c2b28a49c5921f956c5d3e6f74ce1"
+    }
+  ]
+}

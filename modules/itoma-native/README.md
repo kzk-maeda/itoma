@@ -1,5 +1,10 @@
 # ITOMA local Expo bridge
 
+## 振り返りAPI（reflectionVersion 1）
+
+新しいnative buildにreflectionVersion=1とreflection(read/import/deleteAll,payload)を追加する。製品metricはrestricted-excluding-unlocks-v1、pointObservationsの時間値はnil。古いbuild/未対応platformを空の成功にしない。ProductHistoryControllerがprivate History4と両streamを所有し、採用契約に沿って同token読取/明示全削除を行う。readはOS操作もstore作成もしない。Native smokeは新routeの未作成readを確認し、ready DTO/全削除/実機の証拠にはしない。詳細: docs/system/reflection-records.md / docs/qa/reflection-records.md。
+
+
 ローカルSwift packageと本体を接続するiOSのtyped Expo Module。#94のCore検証port、明示的な手動PoC、#127の通常製品port、#132のprivate履歴portを区別する。ビルド/bridgeの存在と実機のOS成功は別である。
 
 | port | version / 責務 |

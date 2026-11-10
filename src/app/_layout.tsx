@@ -6,6 +6,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { runNativeSmoke } from '@/qa/native-smoke';
 import { ScreenTimeProvider } from '@/state/screen-time';
 import { HistoryProvider } from '@/state/history';
+import { ReflectionProvider } from '@/state/reflection';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -15,7 +16,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <View style={{ flex: 1 }} onLayout={() => { void SplashScreen.hideAsync(); }}>
-        <ScreenTimeProvider><HistoryProvider><Stack screenOptions={{ headerShown: false }} /></HistoryProvider></ScreenTimeProvider>
+        <ScreenTimeProvider><HistoryProvider><ReflectionProvider><Stack screenOptions={{ headerShown: false }} /></ReflectionProvider></HistoryProvider></ScreenTimeProvider>
       </View>
     </ThemeProvider>
   );

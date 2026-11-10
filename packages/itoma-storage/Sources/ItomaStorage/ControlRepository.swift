@@ -143,7 +143,9 @@ public final class ControlRepository {
     public func setActivation(_ activation: Activation, expectedSequence: SnapshotSequence) throws -> ControlSnapshot {
         try serialized {
             try database.transaction(writer: true) {
-                try updateActivation(activation, expectedSequence: expectedSequence)
+                let result = try updateActivation(activation, expectedSequence: expectedSequence)
+                try captureReflection(before: expectedSequence)
+                return result
             }
         }
     }
@@ -162,6 +164,7 @@ public final class ControlRepository {
                         .integer(try current.snapshotSequence.next().rawValue)
                     ])
                 }
+                try captureReflection(before: current.snapshotSequence)
                 return try loadSnapshot()
             }
         }

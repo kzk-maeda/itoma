@@ -1,0 +1,14 @@
+{
+  "local": "72843e66da8774da92b51afcb0510912eb7696a3",
+  "remote": "91bdc3eba7aaebb2837758928227a2dd0b3d185a",
+  "tree": "15d2aa7744bae89d147c5f7ee799e919fd4e8b8e",
+  "parent": "0833c664925b74312fba1742fbe31e4af4e3a1da",
+  "files": 48,
+  "trackedFiles": 345,
+  "fixtureSha256": "c0ab20b54c3c80f745bfb813821aef6d9d7e9ec95f7584babc0d095dde08f1ae",
+  "additionalFiles": [
+    "src/app/reflection-records-proof.tsx",
+    "node_modules symlink"
+  ],
+  "verified": "all tracked files byte-identical before export"
+}

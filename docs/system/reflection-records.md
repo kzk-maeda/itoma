@@ -1,0 +1,63 @@
+# 振り返りの製品接続
+
+対象 #138、Refs #97/#98/#99/#100。[ADR0007](../adr/0007-recorded-setting-time-reflection.md) / [時間の契約](time-reflection-contract.md)は、本人がPR134を採用してmainへマージした。設計採用と、実装・正値qualification・実機合格を分ける。
+
+## 本版の指標と境界
+
+製品metricVersionは restricted-excluding-unlocks-v1。制限を続けた記録時間から、一時解除・停止・未適用・失敗・不明を除外する。設定予定の経過だけを成果へ足さない。
+
+この実装のproducerは点の制御factであり、proofScopeは pointObservations。連続した実遮断区間を確認する方法はまだ成立していない。**製品の時間値は0も含めて返さない**。画面にも集計が準備中であることを示す。own-store readback・予定期限・手動で見た二つの端点から、間の実遮断時間を生成しない。正値のqualificationは #98/#131 に残る。
+
+通常ホームの副導線→振り返り→月の行→月内の週→日→既存の操作履歴/理由を接続する。上部の全記録累計と推移は、下部の期間移動から独立する。全期間タブ・累積切替・持越しカードは追加しない。デモの時間・アプリ名・理由は製品へ固定しない。
+
+## Shared Control6とoptional auxiliary schema1
+
+Controlのmain user_versionは6のまま。新Extensionがhost更新後の初回起動より先にcallbackを受けても、既存Control6を開いて制御できる。新しい観測streamのauxiliary tablesはhostが明示installし、Extensionは作成しない。aux未作成・未知version・部分schemaは記録不能として扱い、既存control/停止を禁止しない。
+
+installはProductHistoryControllerのhost maintenanceまたは明示取込で行う。通常のreconcileがOS/control処理を終えた後に準備し、ScreenTimeRuntimeのopenや最初のstopの前提にはしない。初回index作成にはDDL writerが必要で、別callbackと競合する可能性がある。最大履歴での初回時間・実機latencyの合格を意味しない。
+
+各domain writerの前後のsnapshotSequenceを比べ、変更時だけ同じcommitにfactを保存する。明示baselineも保存できる。取込/ackやaux自身のmetadata更新から新factを作らない。auxの存在は接続ごとに永久cacheせず、既存Extension connectionもhostのinstall後から確認する。
+
+factはcommitted policy、Activation、現policyが参照するselection/targetの不透明ref、未reconciledのgrant/target/ruleVersion/occurrence・期限・状態、latest evaluation/own-store結果の点の記録。過去のPicker registry全体、candidate policy、reason本文・reasonRef、opaque token、実アプリ名、目的文は複製しない。記録時刻と元のevaluation/observation時刻を区別し、scheduledValidUntilを継続遮断の証明へ読み替えない。
+
+grant候補はreserved集合と、compact GrantDTOの明示reconciledを除くpartial indexから各101件まで取得する。SQLite JSON1には依存しない。文字列predicateは保守的なprefilterだけで、型付きdecodeを再検証する。不明形式・100件超・64KiB超は成功factにせずdurable gapにする。index作成の全grant走査と、その後の有界候補取得を分ける。
+
+streamはsourceID・単調sequence・acknowledgedThrough・incomplete・最後のcaptured snapshotSequenceを持つ。旧writerが未捕捉のdomain更新を行った場合、現在snapshotとのずれをreadでも欠落として示し、次の新writerでdurable gapにする。HWMは観測sequenceの最大値であり、実時間のconfirmedThroughではない。
+
+historyとreflectionのpending件数は、既存の明示ITOMAPendingEventLimitを合算して制限する。旧Control6 writerのoptional-history savepoint経路にもSQL triggerで同じ上限を適用する。容量停止やpayload失敗では高水位/lossを残し、安全なcontrol操作を維持する。savepoint rollback自体が失敗した場合はouter writerを失敗させ、成功へ変換しない。
+
+## Private History4
+
+理由・操作履歴と同じprivate History DBへreflection_state/sources/factsを追加する。既存schema1〜3からのhost移行は一つのwriterで行い、元の理由・操作・tombstone・日付indexを保持する。未知schema/破損/読取不能を空DBへ再作成しない。独立PoCのReflectionObservationLedger schema1は製品containerへ移植しない。
+
+shared readを閉じる→private batchを一括commit→shared ackの順。各batchは最大100件。eventIDとsource/sequence/payloadの再送は冪等で、競合はrollback。private容量不足やcommit失敗ではackしない。取込遅延を、そのまま不可逆の欠落にしない。sourceのdurable lossとは別に扱う。
+
+理由・操作・reflection payloadを同じprivate writerのlogicalBytesへ含め、既存の明示warning/maximum bytesを共用する。予算を別DBへ倍増しない。source/cutoff/ID等metadata、DB/WAL/SHM全体はlogical payloadの上限とは別。File Protection completeとbackup除外は既存のProductHistoryStoreと同じadapterを使い、実端末での成立は #135。
+
+## 読取とUI
+
+一つのprivate read transactionでledgerRevision/historyRevision/as-of/displayTimeZoneをpinする。tokenはprivate dataset IDと両revision・as-of・zoneの不透明な値。週/月/clipの移動は同じtokenを使用する。取込・削除・時計逆行・zone変更等で一致しなければchangedを返し、累計と下部を一緒に再取得する。
+
+Gregorian/月曜開始・DST・月端clipはItomaCoreの既存calendar helperを再利用する。製品readではpointObservationsの入力しか作らず、syntheticの区間算術を実データへ配線しない。週7/月6bucket・推移64まで。TSへ全factを送らず、TSでは表示丸め・文言・図形だけを扱う。
+
+readは破損を空にしないためpayloadを100件batchで検証し、SQL aggregateでcount/first/lastを求める。メモリとDTOは有界だが、毎回O(全保存量)の検証がある。最大容量での往復・処理時間・memoryは別計測が必要で、空DBのNative smokeから合格としない。
+
+sharedのpending/lag/incompleteはprivate snapshotとは別時点のsampleとして返す。outbox-emptyでも検出済みのshared欠落を消さず、sharedIncompleteをUIへ伝える。private tokenと同一時点だったとは称さない。
+
+製品parserはprototype metric/tokenとsyntheticFixtureを拒否し、pointの数値はtotal/selected/buckets/trendの全てで0も拒否する。正常な未作成・未記録・削除と、失敗・容量・changedを区別する。fixture entryは通常routeから到達できない。
+
+ReflectionProviderはquery/週月の位置と一つの有界な応答だけを保持する。単一のlifetime AppState subscriptionを解除し、前景でsource identityを更新する。source変更時は古いsnapshotを同期に隠し、古いpromiseを棄却する。秒timerは作らない。
+
+月→clip週→日のday/referenceはRAMで既存HistoryProviderへ渡す。理由/target/dataset tokenをURLへ置かない。日別操作APIは別の取得時点なので、revision/as-of/zoneが違えば説明する。戻り位置とclipを保持し、root query stateから復帰する。
+
+## 削除
+
+既存の理由のみ/操作履歴と理由の削除は、reflection payload/累計を消さない。新しい「全記録と累計を削除する」だけが両方を対象とし、ルール/現在のgrantが変わらないことと元に戻せないことを確認する。
+
+history/reflectionのHWMを一つのshared read transactionで捕捉し、writerを閉じてからprivateの一つのwriterで全削除とcutoff/cache invalidationをcommitする。現在sourceは捕捉HWM、他known sourceは既知HWMまで。捕捉後に別private connectionへ取り込まれた新factは残す。初回取込前・private未作成でもcutoffを作る。古いoutbox・遅い応答から削除した記録を復活させない。
+
+commit後のbaselineは現在policyとactive/ended未reconciled grant・再制限未確認状態の点を記録するだけ。OS制限やgrantを変更しない。baselineが書けなければ削除後/不明のままで、過去のpolicyから埋めない。将来の正値にも同じqualificationが必要。SQLite/WAL/backupからの法科学的消去は保証しない。
+
+全削除・取込の開始と終了で両providerのepochを失効し、private reasonも隠す。History自身のmutationは自分の新応答を保持し、外部の削除はticketを破棄して読み直す。native intentは画面の寿命を越えて続き、画面の破棄をOS操作の取消にしない。
+
+検証層・画像・再現方法は [QA記録](../qa/reflection-records.md)、対象head/CI/build/config/JS digestは対応PRへ記録する。

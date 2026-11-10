@@ -62,14 +62,14 @@ actor ProductHistoryController {
     static let shared = ProductHistoryController()
     private var privateStore: (HistoryRepository, URL)?
     private var controlStore: ControlRepository?
-    private func controlRepository() throws -> ControlRepository {
+    func controlRepository() throws -> ControlRepository {
         if let controlStore { return controlStore }
         let url = try ScreenTimeFiles.sharedDirectory().appendingPathComponent("control.sqlite")
         let repository = try ControlRepository.open(at: url)
         controlStore = repository
         return repository
     }
-    private func withHistory<T>(createIfMissing: Bool, _ body: (HistoryRepository) throws -> T) throws -> T {
+    func withHistory<T>(createIfMissing: Bool, _ body: (HistoryRepository) throws -> T) throws -> T {
         if privateStore == nil { privateStore = try ProductHistoryStore.open(createIfMissing: createIfMissing) }
         guard let (history, url) = privateStore else { throw HistoryError.unavailable }
         try ScreenTimeFiles.protectDatabase(url, protection: .complete)
@@ -87,8 +87,19 @@ actor ProductHistoryController {
         try withHistory(createIfMissing: true) { try $0.recordCancellation(eventID: eventID, at: at) }
     }
     func deleteReasonsForSettings() throws { try withHistory(createIfMissing: false) { try $0.deleteReasons() } }
+    func prepareReflectionCapture(in control: ControlRepository) throws {
+        guard let limit = Bundle.main.object(forInfoDictionaryKey: "ITOMAPendingEventLimit") as? Int else { throw HistoryError.invalidCapacity }
+        try control.installReflectionCapture(capacity: HistoryOutboxCapacity(maximumPendingEvents: limit))
+    }
     func importForMaintenance() throws {
-        try withHistory(createIfMissing: true) { _ = try controlRepository().transferHistory(to: $0, limit: 500) }
+        let control = try controlRepository()
+        // Host maintenance follows control reconciliation. Optional index setup is not a
+        // prerequisite for opening the runtime or issuing its first stop/reblock.
+        try? prepareReflectionCapture(in: control)
+        try withHistory(createIfMissing: true) {
+            _ = try control.transferHistory(to: $0, limit: 100)
+            try control.transferReflection(to: $0, limit: 100)
+        }
     }
     /// No authorization prompt, picker, monitor registration, or restriction mutation is performed.
     func performHistory(_ action: String, request: ProductHistoryRequest) -> ProductHistoryResponse {
@@ -129,7 +140,11 @@ actor ProductHistoryController {
                 case "page": break
                 case "deleteReasons": try history.deleteReasons()
                 case "deleteHistory": try history.deleteHistory(from: controlRepository())
-                case "import": _ = try controlRepository().transferHistory(to: history, limit: 500)
+                case "import":
+                    let control = try controlRepository()
+                    try? prepareReflectionCapture(in: control)
+                    _ = try control.transferHistory(to: history, limit: 100)
+                    try control.transferReflection(to: history, limit: 100)
                 default: throw HistoryError.invalidPage
                 }
                 // Snapshot is private-DB consistent. Shared pending/gap is a separate bounded sample.
@@ -211,7 +226,7 @@ enum ProductHistoryStore {
         let history: HistoryRepository
         if FileManager.default.fileExists(atPath: url.path) {
             do { history = try HistoryRepository.open(at: url, capacity: capacity) }
-            catch HistoryError.unsupportedSchema(let version) where version == 1 || version == 2 {
+            catch HistoryError.unsupportedSchema(let version) where (1...3).contains(version) {
                 history = try HistoryRepository.migrate(at: url, capacity: capacity)
             }
         } else { history = try HistoryRepository.create(at: url, capacity: capacity) }
