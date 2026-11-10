@@ -23,6 +23,9 @@ type State = {
 const Context = createContext<State | undefined>(undefined);
 const time = (minute: number) => `${Math.floor(minute / 60).toString().padStart(2, '0')}:${(minute % 60).toString().padStart(2, '0')}`;
 const newer = (a: string, b: string) => a.length > b.length || (a.length === b.length && a >= b);
+// Application labels depend on saved identities/authorization, not countdowns or OS observation times.
+const labelIdentity = (s: ScreenTimeSnapshot) => JSON.stringify([s.availability, s.storage, s.authorization, s.needsSelectionReview,
+  s.selections.map(value => `${value.ref}:${value.count}`).sort(), s.targets.map(value => `${value.ref}:${value.selectionRef}`).sort()]);
 
 /** View drafts live only in RAM; accepted commands live in native storage, beyond view lifetime. */
 export function ScreenTimeProvider({ children, client = screenTime }: { children: ReactNode; client?: Client }) {
@@ -58,8 +61,11 @@ export function ScreenTimeProvider({ children, client = screenTime }: { children
           const incoming = result.snapshot;
           const previous = latest.current;
           const chosen = !previous || incoming.storage !== 'ready' || newer(incoming.sequence, previous.sequence) ? incoming : previous;
-          latest.current = chosen; setSnapshot(chosen);
-          setRefreshKey((value) => value + 1);
+          const same = chosen === previous || (previous && JSON.stringify(chosen) === JSON.stringify(previous));
+          latest.current = same ? previous : chosen;
+          if (!same) setSnapshot(chosen);
+          const explicitLabelRefresh = result.status === 'ok' && (action === 'authorize' || action === 'pickApplications' || action === 'reconcile');
+          if (!previous || labelIdentity(previous) !== labelIdentity(chosen) || explicitLabelRefresh) setRefreshKey(value => value + 1);
         }
         if (result.legacyActive !== undefined) setLegacyActive(result.legacyActive);
         if (result.status === 'error' && !(result.snapshot && result.snapshot.availability !== 'device')) setError(result.code ?? 'unavailable');

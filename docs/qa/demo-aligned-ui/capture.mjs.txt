@@ -20,6 +20,9 @@ const cases = [
   ['reflection-deleted', '/reflection', 'deleted', 'light', 390, 844, false],
   ['reflection-unrecorded', '/reflection', 'notRecorded', 'light', 390, 844, false],
   ['reflection-error', '/reflection', 'error', 'light', 390, 844, false],
+  ['settings-light', '/settings', 'observed', 'light', 390, 844, false],
+  ['settings-dark', '/settings', 'observed', 'dark', 390, 844, false],
+  ['settings-320-large', '/settings', 'observed', 'light', 320, 800, true],
 ];
 const results = { kind: 'synthetic-native-ports-web-product-routes', physicalDevice: false, osRestrictionsVerified: false,
   browser: await browser.version(), fixedClock: '2026-11-09T21:30:00Z', reducedMotion: 'reduce', cases: [] };
@@ -34,10 +37,10 @@ try {
     page.on('pageerror', e => errors.push(e.message.slice(0, 200)));
     page.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 200)); });
     await page.goto(`http://127.0.0.1:8161${route}?scenario=${scenario}`, { waitUntil: 'networkidle' });
-    await page.getByRole('heading', { name: route === '/' ? 'いとま' : '時間の積み上げ', exact: true }).waitFor();
+    await page.getByRole('heading', { name: route === '/' ? 'いとま' : route === '/settings' ? 'ルールと設定' : '時間の積み上げ', exact: true }).waitFor();
     if (route === '/') {
       if (scenario !== 'empty') await page.getByTestId('period-ring').waitFor();
-    } else {
+    } else if (route === '/reflection') {
       await page.getByText('時間の集計は準備中です', { exact: true }).waitFor();
       if (scenario !== 'error') {
         await page.getByRole('button', { name: '月次', exact: true }).click();
@@ -55,15 +58,16 @@ try {
       tabCount: document.querySelectorAll('[role="tab"]').length,
     }));
     await page.screenshot({ path: `${output}/${name}.png` });
-    const lastAction = page.getByRole('button', { name: route === '/' ? '現在の状態を確認する' : '全記録と累計を削除する', exact: true });
+    const lastAction = page.getByRole('button', { name: route === '/' ? scenario === 'empty' ? 'ルールをつくる' : '一時解除する' : route === '/settings' ? '保存した理由の削除を確認' : '全記録と累計を削除する', exact: true });
     await lastAction.scrollIntoViewIfNeeded();
     const box = await lastAction.boundingBox();
-    const reachable = !!box && box.y >= 0 && box.y + box.height <= height - 65;
+    const tabBox = await page.getByRole('tab').first().boundingBox();
+    const reachable = !!box && !!tabBox && box.y >= 0 && box.y + box.height <= tabBox.y - 8;
     const entry = { name, route, scenario, colorScheme, width, height, artificialTextScale: large ? 1.5 : 1, ...measurement,
       lastActionReachableAboveTabs: reachable, errors,
       sha256: createHash('sha256').update(readFileSync(`${output}/${name}.png`)).digest('hex') };
     results.cases.push(entry);
-    if (measurement.horizontalOverflow || measurement.minActionHeight < 44 || measurement.tabCount !== 2 || !reachable || errors.length) throw new Error(JSON.stringify(entry));
+    if (measurement.horizontalOverflow || measurement.minActionHeight < 44 || measurement.tabCount !== 3 || !reachable || errors.length) throw new Error(JSON.stringify(entry));
     await context.close();
   }
   const context = await makeContext(390, 844, 'light'), page = await context.newPage();
@@ -79,11 +83,11 @@ try {
     await page.getByRole('heading', { name: 'いとま', exact: true }).waitFor();
     await page.getByRole('tab', { name: '振り返り', exact: true }).click();
     await page.getByRole('heading', { name: '2026年12月', exact: true }).waitFor();
-    if (await page.getByRole('tab').count() !== 2) throw new Error('Duplicate visible navigation');
+    if (await page.getByRole('tab').count() !== 3) throw new Error('Duplicate visible navigation');
   }
   const finalHistoryLength = await page.evaluate(() => history.length);
   if (finalHistoryLength > initialHistoryLength + 1) throw new Error(`History grew: ${initialHistoryLength} -> ${finalHistoryLength}`);
-  results.navigation = { roundTrips: 100, rememberedMonth: '2026-12', initialHistoryLength, finalHistoryLength, tabs: 2 };
+  results.navigation = { roundTrips: 100, rememberedMonth: '2026-12', initialHistoryLength, finalHistoryLength, tabs: 3 };
   await page.getByRole('button', { name: /^12月1日、/ }).click();
   await page.getByRole('heading', { name: '11月30日からの週', exact: true }).waitFor();
   await page.getByRole('button', { name: /^12月2日、/ }).click();

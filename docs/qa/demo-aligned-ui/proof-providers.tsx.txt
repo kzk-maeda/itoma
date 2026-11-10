@@ -27,6 +27,9 @@ export function ProofProviders({ children }: { children: ReactNode }) {
   const control = useMemo(() => ({ run: async (): Promise<ScreenTimeResponse> => ({ status: 'ok', impacts: [], snapshot: snapshot(mode ?? '') }) }), [mode]);
   const reflection = useMemo(() => ({ run: async (action: string, request: Partial<ReflectionRequest> = {}) => {
     if (action !== 'read') throw new Error('visual proof is read only');
+    const qa = window as unknown as { qaReflectionReads?: number; qaReadDelay?: number };
+    qa.qaReflectionReads = (qa.qaReflectionReads ?? 0) + 1;
+    if (qa.qaReadDelay) await new Promise(resolve => setTimeout(resolve, qa.qaReadDelay));
     if (mode === 'error') return { status: 'error' as const, code: 'storage-failed' as const, storage: 'unknown' as const, transfer: 'unavailable' as const };
     const samples = (data as Record<string, { request: ReflectionRequest; response: ReflectionSnapshot }[]>)[['deleted','notRecorded','incomplete'].includes(mode ?? '') ? mode! : 'observed'];
     const row = samples.find(x => x.request.period === (request.period ?? 'week') && (!request.day || x.request.day === request.day) && JSON.stringify(x.request.clippedTo) === JSON.stringify(request.clippedTo));

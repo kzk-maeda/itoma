@@ -46,10 +46,10 @@ export function ProductHome() {
     {state.legacyActive && <Button label="手動検証の制限を確認して停止" secondary disabled={!!state.busy} onPress={stopLegacy} />}
     {device && s.authorization !== 'approved' && <Notice title="スクリーンタイムの許可が必要です">設定を残したまま、許可を確認できます。再開前に対象アプリと保存したルールを確認できます。</Notice>}
     {device && s.authorization !== 'approved' && <Button label="許可を確認する" onPress={() => router.push('/onboarding')} />}
-    {s?.activation === 'paused' && <Notice title="ルールの停止を保存しています">ルールは保存されています。再開にはご自身の操作が必要です。停止の反映は、現在の状態の確認から取得できます。</Notice>}
+    {s?.activation === 'paused' && <Notice title="ルールの停止を保存しています">ルールは保存されています。再開にはご自身の操作が必要です。設定タブから現在の状態を確認できます。</Notice>}
     {s?.activation === 'awaitingReauthorizationConfirmation' && <Notice title="再開前に対象を確認してください">ルールの対象アプリを選び直してから、設定画面で明示的に再開できます。</Notice>}
     {device && !!s.rules.length && s.activation === 'enabled' && (!s.schedulesReady || !observed) && <Notice title="制限の状態を確認してください">
-      {s.schedulesReady ? '反映を確認できていません。以下の時間帯は保存した設定です。' : '自動切替の予定を確認できていません。現在の制限と今後の予定を確認できます。'}
+      {s.schedulesReady ? '反映を確認できていません。以下の時間帯は保存した設定です。設定タブから現在の状態を確認できます。' : '自動切替の予定を確認できていません。設定タブから現在の状態を確認できます。'}
     </Notice>}
     {current.map((p) => { const presentation = presentPeriod(p.startsAt * 1000, p.endsAt * 1000, now);
       const rule = s?.rules.find(r => r.id === p.ruleID);
@@ -92,11 +92,6 @@ export function ProductHome() {
     </View>}
     {device && s.authorization === 'approved' && s.activation === 'enabled' && s.schedulesReady && s.targets.some((t) => t.unlockable)
       && <Button label="一時解除する" testID="home-unlock-entry" disabled={!!state.busy} onPress={unlock} />}
-    <View>
-      <LinkRow label="ルールと設定" onPress={() => router.navigate('/settings')} />
-      <LinkRow label="選択の記録を見る" onPress={() => router.navigate('/history')} />
-      {device && <LinkRow label="現在の状態を確認する" disabled={!!state.busy} onPress={() => { void state.run('reconcile'); }} />}
-    </View>
     {!device && <PoCRecoveryEntry />}
   </FlowScreen>;
 }

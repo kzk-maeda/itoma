@@ -3,6 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 import Svg, { Path } from 'react-native-svg';
 import { Body, Heading, LinkRow, Notice, useFlowTheme } from '@/components/flow/ui';
 import { HomeLayout } from '@/constants/theme';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
+import { PeriodSelector, PeriodTransition } from './period-transition';
 import { parseReflectionSnapshot, parseReflectionPrototypeSnapshot, reflectionDuration, ReflectionReadError, type ReflectionBucket, type ReflectionPeriod, type ReflectionSource, type ReflectionRequest, type ReflectionSnapshot } from '../../../modules/itoma-native/src/reflection-model';
 
 const shortDay = (day: string) => day ? `${Number(day.slice(5, 7))}月${Number(day.slice(8, 10))}日` : '';
@@ -34,13 +36,16 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
   onRead?: (state: 'ready' | 'not-created' | 'error') => void; controls?: ReactNode;
 }) {
   const theme = useFlowTheme(), { fontScale } = useWindowDimensions();
+  const reduced = useReducedMotion();
+  const [direction, setDirection] = useState<-1 | 1>(1);
   const [request, setRequest] = useState<ReflectionRequest>(initialMemory?.request ?? { period: 'week', day: initialAnchor });
   const [positions, setPositions] = useState<ReflectionMemory['positions']>(initialMemory?.positions ?? { week: { period: 'week', day: initialAnchor }, month: { period: 'month', day: initialAnchor } });
-  const [owned, setOwned] = useState<{ source: ReflectionSource; prototype: boolean; value: ReflectionSnapshot }>();
+  const [owned, setOwned] = useState<{ source: ReflectionSource; prototype: boolean; value: ReflectionSnapshot; request: ReflectionRequest }>();
   const [error, setError] = useState<{ source: ReflectionSource; changed: boolean; empty?: boolean }>();
   const [busy, setBusy] = useState(true), [retry, setRetry] = useState(0);
   const latest = useRef<{ source: ReflectionSource; prototype: boolean; value: ReflectionSnapshot } | undefined>(undefined);
   const snapshot = owned?.source === source && owned.prototype === prototype ? owned.value : undefined;
+  const displayedRequest = snapshot ? owned!.request : request;
   useEffect(() => { onMemory?.({ request, positions }); }, [onMemory, request, positions]);
   useEffect(() => {
     let active = true;
@@ -53,7 +58,7 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
       }
       if (value.period !== request.period) throw new Error('mismatched period');
       onRead?.('ready');
-      latest.current = { source, prototype, value }; setOwned({ source, prototype, value });
+      latest.current = { source, prototype, value }; setOwned({ source, prototype, value, request });
       setPositions(p => ({ ...p, [value.period]: { ...request, day: request.day || value.anchor } }));
       if (!request.day) setRequest(current => current.day ? current : { ...current, day: value.anchor });
     }).catch(reason => {
@@ -66,8 +71,15 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
     }).finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
   }, [source, request, retry, prototype, onRead]);
-  const ask = (next: ReflectionRequest) => { setBusy(true); setRequest(next); };
-  const choose = (period: ReflectionPeriod) => ask(positions[period]);
+  const ask = (next: ReflectionRequest, slide: -1 | 1 = 1) => {
+    if (next.period === request.period && next.day === request.day
+      && next.clippedTo?.from === request.clippedTo?.from && next.clippedTo?.until === request.clippedTo?.until) return;
+    setDirection(slide); setBusy(true); setRequest(next);
+  };
+  const choose = (period: ReflectionPeriod) => {
+    if (period === (snapshot?.period ?? request.period)) return;
+    ask(positions[period], period === 'month' ? 1 : -1);
+  };
   const visibleError = error?.source === source ? error : undefined;
   const blocked = busy || disabled;
   const describe = (bucket: ReflectionBucket) => !prototype && bucket.coverage === 'partial' && bucket.knownSeconds === undefined
@@ -97,29 +109,21 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
     {visibleError && !visibleError.empty && <Notice title={visibleError.changed ? '記録が更新されました' : '記録を読み取れませんでした'}>
       {visibleError.changed ? '累計と期間の記録を、同じ時点で再確認できます。' : '空の記録とは扱っていません。もう一度確認できます。'}
     </Notice>}
-    {busy && <Body muted>記録を確認しています。</Body>}
+    {busy && !snapshot && <Body muted>記録を確認しています。</Body>}
     <Text accessibilityRole="header" style={[styles.sectionTitle, { color: theme.text }]}>期間ごとに見る</Text>
-    <View style={[styles.segments, { backgroundColor: theme.background }]}>
-      {(['week', 'month'] as const).map(period => {
-        const selected = (snapshot?.period ?? request.period) === period;
-        return <Pressable key={period} accessibilityRole="button" accessibilityState={{ selected, disabled: blocked }} disabled={blocked}
-          onPress={() => choose(period)} style={({ pressed }) => [styles.segment, { backgroundColor: selected ? theme.surface : 'transparent', borderColor: selected ? theme.accent : 'transparent', opacity: pressed ? 0.75 : 1 }]}>
-          <Text style={[styles.segmentText, { color: theme.text, fontWeight: selected ? '600' : '400' }]}>{period === 'week' ? '週次' : '月次'}</Text>
-        </Pressable>;
-      })}
-    </View>
-    {snapshot && <>
+    <PeriodSelector selected={snapshot?.period ?? request.period} onSelect={choose} disabled={blocked} reduced={reduced} theme={theme} />
+    {snapshot && <PeriodTransition transitionKey={`${snapshot.period}:${snapshot.anchor}:${displayedRequest.clippedTo?.from ?? ''}:${displayedRequest.clippedTo?.until ?? ''}`} direction={direction} reduced={reduced} busy={busy}>
       <View style={styles.periodNavigation}>
         <Pressable accessibilityRole="button" accessibilityLabel="前の期間" accessibilityState={{ disabled: blocked || !snapshot.previousAnchor }}
-          disabled={blocked || !snapshot.previousAnchor} onPress={() => { if (snapshot.previousAnchor) ask({ period: snapshot.period, day: snapshot.previousAnchor }); }}
+          disabled={blocked || !snapshot.previousAnchor} onPress={() => { if (snapshot.previousAnchor) ask({ period: snapshot.period, day: snapshot.previousAnchor }, -1); }}
           style={[styles.round, { borderColor: theme.muted }]}><Text style={{ color: theme.muted, fontSize: 24 }}>‹</Text></Pressable>
         <Text accessibilityRole="header" style={[styles.periodTitle, { color: theme.text }]}>{snapshot.period === 'month' ? `${snapshot.anchor.slice(0, 4)}年${Number(snapshot.anchor.slice(5, 7))}月` : `${shortDay(snapshot.anchor)}からの週`}</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="次の期間" accessibilityState={{ disabled: blocked || !snapshot.nextAnchor }}
           disabled={blocked || !snapshot.nextAnchor} onPress={() => { if (snapshot.nextAnchor) ask({ period: snapshot.period, day: snapshot.nextAnchor }); }}
           style={[styles.round, { borderColor: theme.muted }]}><Text style={{ color: theme.muted, fontSize: 24 }}>›</Text></Pressable>
       </View>
-      <View accessible accessibilityLabel={`${snapshot.period === 'month' ? 'この月' : request.clippedTo ? '月内の週' : 'この週'}の記録：${reflectionDuration(snapshot.selected.knownSeconds)}`} style={styles.periodTotal}>
-        <Text style={[styles.caption, { color: theme.muted }]}>{snapshot.period === 'month' ? 'この月' : request.clippedTo ? '月内の週' : 'この週'}の記録</Text>
+      <View accessible accessibilityLabel={`${snapshot.period === 'month' ? 'この月' : displayedRequest.clippedTo ? '月内の週' : 'この週'}の記録：${reflectionDuration(snapshot.selected.knownSeconds)}`} style={styles.periodTotal}>
+        <Text style={[styles.caption, { color: theme.muted }]}>{snapshot.period === 'month' ? 'この月' : displayedRequest.clippedTo ? '月内の週' : 'この週'}の記録</Text>
         <Text testID="reflection-period-total" style={[styles.periodNumber, { color: theme.text }]}>{reflectionDuration(snapshot.selected.knownSeconds)}</Text>
       </View>
       <Text style={[styles.caption, { color: theme.muted }]}>{describe(snapshot.selected)} · {snapshot.timeZone}</Text>
@@ -136,7 +140,7 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
           <Text style={[styles.barValue, fontScale > 1.2 && styles.expandedBarText, { color: theme.muted }]}>{reflectionDuration(bucket.knownSeconds)}{bucket.coverage === 'partial' ? ' · 一部不明' : ''}</Text>
         </View>
       </Pressable>)}</View>
-    </>}
+    </PeriodTransition>}
     {!prototype && <View style={styles.metadata}>
       <Text style={[styles.caption, { color: theme.muted }]}>制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。</Text>
       {snapshot && <Text style={[styles.caption, { color: theme.muted }]}>保存した状態の記録：{snapshot.observationCount}件。確認できない時間は加算していません。</Text>}
@@ -153,9 +157,6 @@ const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center', paddingHorizontal: HomeLayout.gutter, paddingTop: 24, paddingBottom: 44, gap: 20 },
   totalCard: { padding: 18, borderRadius: 18, gap: 8 }, total: { fontSize: 36, lineHeight: 52, fontWeight: '400', fontVariant: ['tabular-nums'], flexShrink: 1 },
   metadata: { gap: 4 }, caption: { fontSize: 13, lineHeight: 21 }, sectionTitle: { fontSize: 15, lineHeight: 24, fontWeight: '600', marginTop: 4 },
-  segments: { flexDirection: 'row', padding: 4, borderRadius: 13, gap: 4 },
-  segment: { flex: 1, minHeight: 46, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 10, borderBottomWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  segmentText: { fontSize: 14, lineHeight: 22 },
   periodNavigation: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   round: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   periodTitle: { fontSize: 16, lineHeight: 26, fontWeight: '600', textAlign: 'center', flex: 1 },

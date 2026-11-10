@@ -1,5 +1,5 @@
 import { requireNativeViewManager } from 'expo-modules-core';
-import { type ComponentType, useState } from 'react';
+import { type ComponentType, memo, useState } from 'react';
 import { type ViewProps, Pressable, Text } from 'react-native';
 import { useFlowTheme } from './ui';
 
@@ -7,7 +7,7 @@ type Props = ViewProps & { selectionRef: string; targetRef: string; source: 'pro
   selectable: boolean; selected: boolean; onSelect?: () => void; onContentSize: (event: { nativeEvent: { height: number } }) => void };
 let native: ComponentType<Props> | undefined;
 /** Apple provides both the visible app identity and its accessible button name. Events are bools. */
-export function Applications({ selectionRef, targetRef = '', count = 1, refreshKey, selected = false, onSelect }: {
+export const Applications = memo(function Applications({ selectionRef, targetRef = '', count = 1, refreshKey, selected = false, onSelect }: {
   selectionRef: string; targetRef?: string; count?: number; refreshKey: number; selected?: boolean; onSelect?: () => void;
 }) {
   const theme = useFlowTheme();
@@ -20,4 +20,4 @@ export function Applications({ selectionRef, targetRef = '', count = 1, refreshK
   return <Native source="product" selectionRef={selectionRef} targetRef={targetRef} refreshKey={refreshKey}
     selectable={!!onSelect && !!targetRef} selected={selected} onSelect={onSelect} style={{ width: '100%', height }}
     onContentSize={({ nativeEvent }) => { if (Number.isFinite(nativeEvent.height) && nativeEvent.height > 0 && nativeEvent.height <= 30000) setHeight(Math.ceil(nativeEvent.height)); }} />;
-}
+});

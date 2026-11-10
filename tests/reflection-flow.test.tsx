@@ -9,6 +9,7 @@ import type { ReflectionRequest, ReflectionSnapshot } from '../modules/itoma-nat
 import type { HistoryAction, HistoryRequest, HistoryResponse, ScreenTimeAction, ScreenTimeResponse } from '../modules/itoma-native';
 import { ReflectionScreen } from '../src/components/flow/reflection';
 import { ProductHome } from '../src/components/flow/home';
+import { SettingsScreen } from '../src/components/flow/settings';
 import { HistoryScreen, HistoryReasonScreen } from '../src/components/flow/history';
 import { ScreenTimeProvider } from '../src/state/screen-time';
 import { HistoryProvider, useHistoryRecords } from '../src/state/history';
@@ -68,7 +69,7 @@ function Pages() {
     jest.mocked(router.back).mockImplementation(() => setStack(previous => previous.slice(0, -1)));
   }, []);
   const current = stack.at(-1);
-  return <>{current === '/' ? <ProductHome /> : current === '/history' ? <HistoryScreen /> : current === '/history-reason' ? <HistoryReasonScreen /> : <ReflectionScreen />}</>;
+  return <>{current === '/' ? <ProductHome /> : current === '/settings' ? <SettingsScreen /> : current === '/history' ? <HistoryScreen /> : current === '/history-reason' ? <HistoryReasonScreen /> : <ReflectionScreen />}</>;
 }
 async function mount(b: ReturnType<typeof backend>) {
   return render(<ScreenTimeProvider client={controlClient}><HistoryProvider client={b.historyClient}>
@@ -191,4 +192,20 @@ test('shared gap is visible even when the private snapshot and outbox-empty samp
   await mount(b); await observed();
   expect(screen.getByText(/新しい状態の記録に欠落の可能性/)).toBeTruthy();
   expect(screen.getByTestId('reflection-total').props.children).toBe('—');
+});
+
+test('settings/history are reachable through the tab while the selected reflection month survives', async () => {
+  const b = backend(); await mount(b); await observed();
+  await press('月次'); await screen.findByText('2026年11月');
+  await press('次の期間'); await screen.findByText('2026年12月');
+  await fireEvent.press(screen.getByRole('tab', { name: 'ホーム' }));
+  expect(screen.queryByRole('button', { name: '選択の記録を見る' })).toBeNull();
+  await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
+  expect(screen.getByRole('header', { name: 'ルールと設定' })).toBeTruthy();
+  await press('選択の記録を見る'); await screen.findByText('あなたの選択の記録');
+  await press('‹ 戻る');
+  expect(screen.getByRole('tab', { name: '設定' })).toBeSelected();
+  await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
+  await screen.findByText('2026年12月');
+  expect(b.native.mock.calls.every(call => call[0] === 'read')).toBe(true);
 });

@@ -109,3 +109,40 @@ test('source replacement hides old cumulative immediately and ignores a delayed 
   await act(() => { resolve?.(json()); });
   expect(screen.getByTestId('reflection-total').props.children).toBe('—');
 });
+
+test('reselecting the visible week or month neither rereads nor inserts loading content', async () => {
+  const client = source(); await render(<ReflectionPrototypePreview source={client} initialAnchor="2026-11-09" />);
+  await screen.findByLabelText('この週の記録：1時間55分');
+  await waitFor(() => expect(screen.getByRole('button', { name: '週次' })).toBeEnabled());
+  const weekReads = client.read.mock.calls.length;
+  await press('週次'); await press('週次');
+  expect(client.read).toHaveBeenCalledTimes(weekReads);
+  expect(screen.queryByText('記録を確認しています。')).toBeNull();
+  await press('月次'); await screen.findByText('2026年11月');
+  await waitFor(() => expect(screen.getByRole('button', { name: '月次' })).toBeEnabled());
+  const monthReads = client.read.mock.calls.length;
+  await press('月次'); await press('月次');
+  expect(client.read).toHaveBeenCalledTimes(monthReads);
+  expect(screen.queryByText('記録を確認しています。')).toBeNull();
+});
+
+test.each(['週月切替', '月の前後移動'])('%s keeps the accepted period and cumulative mounted until the next read completes', async mode => {
+  let hold = false, finish!: (value: string) => void;
+  const client = { read: jest.fn((request: ReflectionRequest) => hold ? new Promise<string>(resolve => { finish = resolve; }) : Promise.resolve(json('recorded', request))) };
+  await render(<ReflectionPrototypePreview source={client} initialAnchor="2026-11-09" />);
+  await screen.findByLabelText('この週の記録：1時間55分');
+  if (mode === '月の前後移動') { await press('月次'); await screen.findByText('2026年11月'); }
+  await waitFor(() => expect(screen.getByRole('button', { name: '月次' })).toBeEnabled());
+  const total = screen.getByTestId('reflection-total');
+  hold = true;
+  await press(mode === '週月切替' ? '月次' : '前の期間');
+  expect(screen.getByTestId('reflection-total')).toBe(total);
+  expect(screen.getByTestId('reflection-period-panel')).toHaveProp('accessibilityState', { busy: true });
+  expect(screen.queryByText('記録を確認しています。')).toBeNull();
+  expect(mode === '週月切替' ? screen.getByLabelText('この週の記録：1時間55分') : screen.getByText('2026年11月')).toBeTruthy();
+  const request = client.read.mock.calls.at(-1)![0];
+  await act(async () => { finish(json('recorded', request)); });
+  await screen.findByText(mode === '週月切替' ? '2026年11月' : '2026年10月');
+  expect(screen.getByTestId('reflection-total')).toBe(total);
+  expect(screen.getByTestId('reflection-period-panel')).toHaveProp('accessibilityState', { busy: false });
+});

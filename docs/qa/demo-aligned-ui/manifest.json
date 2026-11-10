@@ -16,10 +16,10 @@
       "artificialTextScale": 1,
       "horizontalOverflow": false,
       "minActionHeight": 52,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "ca413a45355a4edf112a6f5cceeb19878a42e2d8623d839806e273808d29830c"
+      "sha256": "ec7985b75b14ab2f68ee855cccf825c9a96fe9b00180a8fc7d9255f2760cc967"
     },
     {
       "name": "home-dark",
@@ -31,10 +31,10 @@
       "artificialTextScale": 1,
       "horizontalOverflow": false,
       "minActionHeight": 52,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "36eeefb56cb2cf62d8c56829cb1a283dc51ecfa10aa64406f665c7df8d400525"
+      "sha256": "4a02a3b547dcc192508c76946346ef7dcbc7a3c3b4717d8b6960530aa2f12c54"
     },
     {
       "name": "home-se",
@@ -46,10 +46,10 @@
       "artificialTextScale": 1,
       "horizontalOverflow": false,
       "minActionHeight": 52,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "6421d0d969bc164c609efc3f846c4367abfa3fa6ce0cda002e5b82eb3c416255"
+      "sha256": "c9b392e14be2459d02b2f5f778c4d53ed4cf0bcad0c67d4de83ff57d39e0360d"
     },
     {
       "name": "home-320-large",
@@ -60,11 +60,11 @@
       "height": 800,
       "artificialTextScale": 1.5,
       "horizontalOverflow": false,
-      "minActionHeight": 59.5,
-      "tabCount": 2,
+      "minActionHeight": 65,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "6f00a218b3c4bb8f06dbf42c84cab91d3f73f5dac8dbb1d80e948adec833899c"
+      "sha256": "e8d4adada3ca94ca3ecd91052ca731a6bfc4d7594cb253f424f7fb8245f38dc7"
     },
     {
       "name": "home-empty",
@@ -76,10 +76,10 @@
       "artificialTextScale": 1,
       "horizontalOverflow": false,
       "minActionHeight": 52,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "55d097367cd37f2ad2e0b28ced2c3afcaf2e25c958b290e1f62f112772b733a3"
+      "sha256": "0496969b97d13d22b48dcd1ff81c89fcf59d047c77c1c8adb74de6ff4fc660c4"
     },
     {
       "name": "home-uncertain",
@@ -91,10 +91,10 @@
       "artificialTextScale": 1,
       "horizontalOverflow": false,
       "minActionHeight": 52,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "f7b2c49b42959a3b10f05433d56d307edf067293a29f740e4696132eba533649"
+      "sha256": "a6e161a02b0e973ae53c529741fc23bc6b14b483e2f999d2734e9f6eee04a415"
     },
     {
       "name": "home-grant",
@@ -106,10 +106,10 @@
       "artificialTextScale": 1,
       "horizontalOverflow": false,
       "minActionHeight": 52,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "27eca2b4a4fd76bf89b9bf6713c321901386b1cbe9fa9e1c25a4ab35b7adfca9"
+      "sha256": "7f817cd9fa8dc7dc518d27afa93da8bd3def1edfca1d8fba9406aef7b55843ce"
     },
     {
       "name": "reflection-light",
@@ -121,10 +121,10 @@
       "artificialTextScale": 1,
       "horizontalOverflow": false,
       "minActionHeight": 44,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "aa27f7d5845201df726715c226281d4f7f453bda071b3eac6b3d609ffa5e59ee"
+      "sha256": "a648cc182626303f74c7e5140adf1e1959ec22f32f0a8b0063c7e0c17cead501"
     },
     {
       "name": "reflection-dark",
@@ -136,10 +136,10 @@
       "artificialTextScale": 1,
       "horizontalOverflow": false,
       "minActionHeight": 44,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "a3f2d1d6b9277ddf52cc6b6fdabce7190d0750534dde609e4363675443ee0712"
+      "sha256": "2e30c10d291e94ac4705becd537c4cccc50167ec8bb3655bd40886d772295572"
     },
     {
       "name": "reflection-se",
@@ -151,10 +151,10 @@
       "artificialTextScale": 1,
       "horizontalOverflow": false,
       "minActionHeight": 44,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "dcd85615e509f52a4d3debe6910c1a7b2752a2fb4752216bcbe07079e6d6a090"
+      "sha256": "231eee2d0034b1b38c39c4940a620838361be96f935c544a9553f4de2f0e118e"
     },
     {
       "name": "reflection-320-large",
@@ -166,10 +166,10 @@
       "artificialTextScale": 1.5,
       "horizontalOverflow": false,
       "minActionHeight": 44,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "b6d003821f26ff9f19703dd19ef8b323d3b2f61818dc688127c59f236fcf5d30"
+      "sha256": "fb93bc7eb57e28c21803dde654f05a59510dd64f498b76049a40ad3be6d555a0"
     },
     {
       "name": "reflection-deleted",
@@ -181,10 +181,10 @@
       "artificialTextScale": 1,
       "horizontalOverflow": false,
       "minActionHeight": 44,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "32feabef3e90acb99dbbd1608e4a5677de7a97953868013b88473d1043ea2f33"
+      "sha256": "2a30fd3fb15d976130f249b15b31f3ab6d33c54f8ee93f5c02b1c6d076eeec86"
     },
     {
       "name": "reflection-unrecorded",
@@ -196,10 +196,10 @@
       "artificialTextScale": 1,
       "horizontalOverflow": false,
       "minActionHeight": 44,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "cba8026ea7e78da4c757f7df9bc56b7e8e695ca27ab043089b5d7a0ccdffd383"
+      "sha256": "51b848d86fb613f3f2d1c2d1502959b8306c9215795f083ed0d96a4fd375e0aa"
     },
     {
       "name": "reflection-error",
@@ -211,10 +211,55 @@
       "artificialTextScale": 1,
       "horizontalOverflow": false,
       "minActionHeight": 46,
-      "tabCount": 2,
+      "tabCount": 3,
       "lastActionReachableAboveTabs": true,
       "errors": [],
-      "sha256": "d5c8f01705a10997530cc62677e5fd73003793d76a334bc3d1823b6f2639d9eb"
+      "sha256": "a4f00ee8f3d53e656c7219be99857580804d7cf96502f4bf57e7a0033520be61"
+    },
+    {
+      "name": "settings-light",
+      "route": "/settings",
+      "scenario": "observed",
+      "colorScheme": "light",
+      "width": 390,
+      "height": 844,
+      "artificialTextScale": 1,
+      "horizontalOverflow": false,
+      "minActionHeight": 52,
+      "tabCount": 3,
+      "lastActionReachableAboveTabs": true,
+      "errors": [],
+      "sha256": "21f967905794b1308c3b368d37e590fe30ceda12242c0e9b7343b377025b751b"
+    },
+    {
+      "name": "settings-dark",
+      "route": "/settings",
+      "scenario": "observed",
+      "colorScheme": "dark",
+      "width": 390,
+      "height": 844,
+      "artificialTextScale": 1,
+      "horizontalOverflow": false,
+      "minActionHeight": 52,
+      "tabCount": 3,
+      "lastActionReachableAboveTabs": true,
+      "errors": [],
+      "sha256": "9c4f0f36b977d252f193270eaab2c1c334bc98ba04b0bd67aa5d0cca7d42f5f9"
+    },
+    {
+      "name": "settings-320-large",
+      "route": "/settings",
+      "scenario": "observed",
+      "colorScheme": "light",
+      "width": 320,
+      "height": 800,
+      "artificialTextScale": 1.5,
+      "horizontalOverflow": false,
+      "minActionHeight": 65,
+      "tabCount": 3,
+      "lastActionReachableAboveTabs": true,
+      "errors": [],
+      "sha256": "344e8de4ff2c3fa77803e1f74a1bafb7f1862461be6a2e63a05cf76ebb0d107f"
     }
   ],
   "navigation": {
@@ -222,7 +267,7 @@
     "rememberedMonth": "2026-12",
     "initialHistoryLength": 3,
     "finalHistoryLength": 3,
-    "tabs": 2
+    "tabs": 3
   },
   "drilldown": {
     "monthToClippedWeekToDayHistoryAndBack": true,

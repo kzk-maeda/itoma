@@ -1,17 +1,21 @@
 {
-  "baseCommit": "5d521f5862acf9d1305e226fc7a88d7d5636c49c",
+  "baseCommit": "590080c782bda83a5bcb57a57f9538fd0af92bcd",
   "scope": "product application inputs; docs and QA images excluded",
   "substitutedFiles": [
     "src/app/_layout.tsx",
     "src/components/flow/applications.tsx"
   ],
   "extraFile": "src/qa/layout-proof.tsx",
-  "checkedFileCount": 182,
+  "checkedFileCount": 184,
   "allBytesMatch": true,
   "files": [
     {
-      "path": "src/components/flow/product-navigation.tsx",
-      "sha256": "74d480e2e57e965833a5497f72aaaa0aa73ef54a27f4617c726ca872359f2b94"
+      "path": "src/components/flow/period-transition.tsx",
+      "sha256": "d1c9a792c1478b431744823b9a40251d6753276860b6b79f617036bb22626b9f"
+    },
+    {
+      "path": "src/hooks/use-reduced-motion.ts",
+      "sha256": "2801e8accdb65ccb2ef9f2abdf391d969aa4489dc96b36c5e430b1d526ad84f9"
     },
     {
       "path": "app.config.ts",
@@ -595,7 +599,7 @@
     },
     {
       "path": "src/components/flow/home.tsx",
-      "sha256": "404e56bf98ca7b1cb2224b1416e0461901bd4c3dd74a4c09beed4d379b49a94c"
+      "sha256": "adce856c62de3b0f7b2149d6a8808a270fd0a91129e77de4a925ccc563be8244"
     },
     {
       "path": "src/components/flow/navigation.ts",
@@ -610,8 +614,12 @@
       "sha256": "5ae4362bf1f1b6cb9a2c630d93b54227068a7303a506be5873e8bc411cda8e74"
     },
     {
+      "path": "src/components/flow/product-navigation.tsx",
+      "sha256": "7fa46bca9ac4b2fc4ec5e169bb9e73440b54273acc8c6c62ae6a0f4346ac4964"
+    },
+    {
       "path": "src/components/flow/reflection-content.tsx",
-      "sha256": "32aaa98af7f742b607f16ff97422b23478bf235f38a46328db42b815838c2858"
+      "sha256": "6e91c93a39b6e10e51c8eec646ff1b29098fe91e4a482254dd335477e4cff583"
     },
     {
       "path": "src/components/flow/reflection.tsx",
@@ -623,7 +631,7 @@
     },
     {
       "path": "src/components/flow/settings.tsx",
-      "sha256": "060fc18a4a603f59fb5ebbd0a5e91b65150f614a8102fc5b68ab83c6d19ae71c"
+      "sha256": "8b5d49ec96a3208dc49f0ad28c5d74aaa42a4ec134cd820316eab08ffa39dba2"
     },
     {
       "path": "src/components/flow/ui.tsx",
@@ -687,7 +695,7 @@
     },
     {
       "path": "src/constants/theme.ts",
-      "sha256": "bb0618e6422276a56e253e744427452c4673f0626b2d62f19e09f8fdf64451ce"
+      "sha256": "bb2d4907f8f2b4913701c10a146bccd34a2bac1148212d521aa27701f02cf8f5"
     },
     {
       "path": "src/experiments/reflection/model.ts",
@@ -731,7 +739,7 @@
     },
     {
       "path": "src/state/screen-time.tsx",
-      "sha256": "cec703013b48b1a6323470e95f146db2afe3a82709e3d453b5d4c6d8b8bef726"
+      "sha256": "77dbd59c9b193bd2076a6f3d6766fc7ed4c05254f5402bf6ea7a7b6796e8a27c"
     },
     {
       "path": "src/types/expo.d.ts",
