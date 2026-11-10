@@ -253,12 +253,68 @@ private func reflectionReason(_ history: HistoryRepository) throws -> CommandID 
 @Test func reflectionCorruptPayloadAfterOpenIsAnErrorRatherThanEmptyOrZero() throws {
     let f = try ReflectionFixture(); defer { f.remove() }; try f.install()
     try f.control.transferReflection(to: f.history)
+    #expect(try f.read().observationCount == 1) // Warm validation before an unversioned external edit.
     try reflectionSQL(f.historyURL, "UPDATE reflection_facts SET record=x'7b',payload_bytes=1")
     #expect(throws: HistoryError.corrupt) { try f.read() }
     try f.history.close()
     #expect(throws: HistoryError.corrupt) {
         try HistoryRepository.open(at: f.historyURL, capacity: HistoryCapacityPolicy(warningBytes: 1_000, maximumBytes: 10_000))
     }
+}
+
+@Test func reflectionOwnWriterInvalidatesWarmValidationDespiteUnchangedDataVersion() throws {
+    let f = try ReflectionFixture(); defer { f.remove() }; try f.install()
+    try f.control.transferReflection(to: f.history)
+    let first = try f.read()
+    let before = try f.history.database.rows("PRAGMA main.data_version")
+    try f.history.transaction(writer: true) {
+        try f.history.database.execute("UPDATE reflection_facts SET record=x'7b',payload_bytes=1")
+    }
+    #expect(try f.history.database.rows("PRAGMA main.data_version") == before)
+    #expect(throws: HistoryError.corrupt) { try f.read(first.token, period: .month) }
+    #expect(throws: HistoryError.corrupt) { try f.read() }
+}
+
+@Test func reflectionWriterCannotReuseValidationOfItsOwnEarlierStateAndFailureRollsBack() throws {
+    let f = try ReflectionFixture(); defer { f.remove() }; try f.install()
+    try f.control.transferReflection(to: f.history)
+    let first = try f.read()
+    #expect(throws: HistoryError.corrupt) {
+        try f.history.transaction(writer: true) {
+            try f.history.validateReflectionPayloads()
+            try f.history.database.execute("UPDATE reflection_facts SET record=x'7b',payload_bytes=1")
+            try f.history.validateReflectionPayloads()
+        }
+    }
+    let after = try f.read(first.token, period: .month)
+    #expect(after.observationCount == 1 && after.token == first.token && after.total.knownSeconds == nil)
+}
+
+@Test func reflectionValidationPinsDataVersionToItsSnapshotDuringExternalCommit() throws {
+    let f = try ReflectionFixture(); defer { f.remove() }; try f.install()
+    try f.control.transferReflection(to: f.history)
+    _ = try f.read()
+    try f.history.transaction(writer: false) {
+        let before = try f.history.database.rows("PRAGMA main.data_version")
+        let record = try f.history.database.rows("SELECT record FROM reflection_facts")
+        try reflectionSQL(f.historyURL, "UPDATE reflection_facts SET record=x'7b',payload_bytes=1")
+        #expect(try f.history.database.rows("PRAGMA main.data_version") == before)
+        #expect(try f.history.database.rows("SELECT record FROM reflection_facts") == record)
+        try f.history.validateReflectionPayloads() // Valid only for this pinned old snapshot.
+    }
+    #expect(throws: HistoryError.corrupt) { try f.read() } // Next snapshot sees the foreign commit.
+}
+
+@Test func reflectionWarmValidationDoesNotHideExternalCutoffOrSchemaCorruption() throws {
+    let f = try ReflectionFixture(); defer { f.remove() }; try f.install()
+    try f.control.transferReflection(to: f.history)
+    _ = try f.read()
+    try reflectionSQL(f.historyURL, "UPDATE reflection_sources SET deleted_through=high_water")
+    #expect(throws: HistoryError.corrupt) { try f.read() }
+    try reflectionSQL(f.historyURL, "UPDATE reflection_sources SET deleted_through=0")
+    #expect(try f.read().observationCount == 1)
+    try reflectionSQL(f.historyURL, "DROP TABLE reflection_facts")
+    #expect(throws: HistoryError.corrupt) { try f.read() }
 }
 
 @Test func reflectionImportAfterCapturedDeletionBoundarySurvivesAcrossConnections() throws {

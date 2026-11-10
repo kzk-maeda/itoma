@@ -17,6 +17,10 @@ public final class HistoryRepository {
     let capacityPolicy: HistoryCapacityPolicy
     let url: URL
     private let lock = NSLock()
+    // A connection-local proof of validation, never a cached ledger or DTO. Only reusable
+    // inside a pinned read transaction. SQLite data_version excludes our own commits.
+    var reflectionValidationDataVersion: Int64?
+    var reflectionReadValidationAllowed = false
 
     public static func create(
         at url: URL, capacity: HistoryCapacityPolicy, busyTimeoutMilliseconds: Int32 = 100
@@ -92,6 +96,7 @@ public final class HistoryRepository {
 
     public func close() throws {
         lock.lock(); defer { lock.unlock() }
+        reflectionValidationDataVersion = nil
         try HistoryError.translating { try database.close() }
     }
 
@@ -172,12 +177,24 @@ public final class HistoryRepository {
     }
 
     func transaction<T>(writer: Bool, _ body: () throws -> T) throws -> T {
-        lock.lock(); defer { lock.unlock() }
-        return try HistoryError.translating {
-            try database.transaction(writer: writer) {
-                try validateSchema()
-                return try body()
+        lock.lock()
+        reflectionReadValidationAllowed = !writer
+        if writer { reflectionValidationDataVersion = nil }
+        defer {
+            reflectionReadValidationAllowed = false
+            if writer { reflectionValidationDataVersion = nil }
+            lock.unlock()
+        }
+        do {
+            return try HistoryError.translating {
+                try database.transaction(writer: writer) {
+                    try validateSchema() // Pins the SQLite snapshot before data_version is read.
+                    return try body()
+                }
             }
+        } catch {
+            reflectionValidationDataVersion = nil
+            throw error
         }
     }
 

@@ -194,6 +194,14 @@ extension HistoryRepository: ReflectionFactSink {
             """).isEmpty else { throw HistoryError.corrupt }
     }
     func validateReflectionPayloads() throws {
+        let dataVersion: Int64?
+        if reflectionReadValidationAllowed && database.hasActiveTransaction {
+            guard case let .integer(version) = try database.rows("PRAGMA main.data_version").first?.first,
+                  version >= 0 else { throw HistoryError.corrupt }
+            if reflectionValidationDataVersion == version { return }
+            dataVersion = version
+        } else { dataVersion = nil } // Writers and migration always validate their current data.
+        reflectionValidationDataVersion = nil
         try validateReflectionRelations()
         var cursor: Int64 = 0
         while true {
@@ -212,6 +220,8 @@ extension HistoryRepository: ReflectionFactSink {
             }
         }
         _ = try logicalBytes()
+        // Publish only after every payload/relation/capacity check succeeded in this snapshot.
+        if let dataVersion { reflectionValidationDataVersion = dataVersion }
     }
     private func decodeReflectionFact(_ data: Data) throws -> ReflectionControlFact {
         guard data.count <= 65_536 else { throw HistoryError.corrupt }

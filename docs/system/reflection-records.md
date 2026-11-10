@@ -40,7 +40,11 @@ shared readを閉じる→private batchを一括commit→shared ackの順。各b
 
 Gregorian/月曜開始・DST・月端clipはItomaCoreの既存calendar helperを再利用する。製品readではpointObservationsの入力しか作らず、syntheticの区間算術を実データへ配線しない。週7/月6bucket・推移64まで。TSへ全factを送らず、TSでは表示丸め・文言・図形だけを扱う。
 
-readは破損を空にしないためpayloadを100件batchで検証し、SQL aggregateでcount/first/lastを求める。メモリとDTOは有界だが、毎回O(全保存量)の検証がある。最大容量での往復・処理時間・memoryは別計測が必要で、空DBのNative smokeから合格としない。
+初回とDB変更後のreadは、破損を空にしないためpayloadを100件batchで検証し、SQL aggregateでcount/first/lastを求める。同一connectionの検証成功後は、同じread snapshotの `PRAGMA main.data_version` が一致する間だけ、全payloadの再decodeを省略する。cacheは接続内の整数1個で、ledger/DTOや時間値を保存しない。
+
+schema検証がread snapshotをpinした後にdata_versionを比較する。外部connectionのcommitは次snapshotのdata_versionで検出する。自分のconnectionのcommitではこの値が変わらないため、writer開始/終了と全transaction失敗・closeで失効し、writer/migrate中は再利用・設定しない。cacheにかかわらず毎回同transactionでrevision/as-of/zone/tokenとSQL aggregateを取得する。[SQLite公式の接続ごとの仕様](https://www.sqlite.org/pragma.html#pragma_data_version)に従い、別connection間で数値を比較しない。
+
+初回/変更後の全検証とSQL aggregateにはO(全保存量)の処理が残る。DTO/検証batchは有界だが、最大容量の初回時間・書込み後/実機での応答速度・memoryを空DBのNative smokeから合格にしない。#140の診断は最小合成factによる接続内の反復readで、通常producer/import・cold I/O・iOS/RNの成立とは別に記録する。
 
 sharedのpending/lag/incompleteはprivate snapshotとは別時点のsampleとして返す。outbox-emptyでも検出済みのshared欠落を消さず、sharedIncompleteをUIへ伝える。private tokenと同一時点だったとは称さない。
 
