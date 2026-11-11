@@ -73,7 +73,7 @@ export function FlowScreen({ title, children, onBack, footer, tab, eyebrow }: { 
         </View>}
         <View style={{ gap: 6 }}>
           {eyebrow && <Text style={[styles.caption, { color: theme.muted }]}>{eyebrow}</Text>}
-          <Text accessibilityRole="header" style={[styles.title, tab && styles.productTitle, tab === 'home' && styles.homeTitle, { color: theme.text }]}>{title}</Text>
+          <View style={tab === 'home' ? styles.brand : undefined}>{tab === 'home' && <OpenCircle color={theme.accent} size={28} />}<Text accessibilityRole="header" style={[styles.title, tab && styles.productTitle, tab === 'home' && styles.homeTitle, { color: theme.text }]}>{title}</Text></View>
         </View>
         {state.error && <View accessibilityLiveRegion="polite"><Notice title="状態を確認してください">{errorText[state.error]}</Notice></View>}
         {state.busy && <Body muted>操作の結果を確認しています。画面を離れても、受け付けた処理は続きます。</Body>}

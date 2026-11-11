@@ -1,0 +1,144 @@
+{
+  "kind": "synthetic-native-ports-web",
+  "physicalDevice": false,
+  "osRestrictionsVerified": false,
+  "browser": "155.0.8059.79",
+  "cases": [
+    {
+      "name": "home-light",
+      "route": "/",
+      "scheme": "light",
+      "width": 390,
+      "height": 844,
+      "artificialTextScale": 1,
+      "overflow": false,
+      "minActionHeight": 52,
+      "sha256": "f0bc783f2ad112f6dce764164d647272fe5d5b19337a6ffec947daa2bdb737ca"
+    },
+    {
+      "name": "home-dark",
+      "route": "/",
+      "scheme": "dark",
+      "width": 390,
+      "height": 844,
+      "artificialTextScale": 1,
+      "overflow": false,
+      "minActionHeight": 52,
+      "sha256": "1c8455c3e0f18d7566df48a5c3e19bce0039545e7c4a011b7d550393879c9a31"
+    },
+    {
+      "name": "home-unregistered",
+      "route": "/",
+      "scheme": "light",
+      "width": 390,
+      "height": 844,
+      "artificialTextScale": 1,
+      "overflow": false,
+      "minActionHeight": 52,
+      "sha256": "4d122c678cc0cbeb572b91ecfe6ce2aed0139a2d0c72eefaa79cd77df367d279"
+    },
+    {
+      "name": "home-320-large",
+      "route": "/",
+      "scheme": "dark",
+      "width": 320,
+      "height": 800,
+      "artificialTextScale": 1.5,
+      "overflow": false,
+      "minActionHeight": 65,
+      "sha256": "dc502c48bad21265384871370b8b6f75a8260e8e0f98bc5906af30e5201cd7ba"
+    },
+    {
+      "name": "reflection-light",
+      "route": "/reflection",
+      "scheme": "light",
+      "width": 390,
+      "height": 844,
+      "artificialTextScale": 1,
+      "overflow": false,
+      "minActionHeight": 44,
+      "sha256": "fd2781b6b011a3dd18f0cfab2cb528f7350bd6fea0789f8c806ff9c81e86704a"
+    },
+    {
+      "name": "reflection-dark",
+      "route": "/reflection",
+      "scheme": "dark",
+      "width": 390,
+      "height": 844,
+      "artificialTextScale": 1,
+      "overflow": false,
+      "minActionHeight": 44,
+      "sha256": "adfdae86e964c696938c06e980aa4c2524b82045ed9b29936fdd4c20cab008d2"
+    },
+    {
+      "name": "settings-light",
+      "route": "/settings",
+      "scheme": "light",
+      "width": 390,
+      "height": 844,
+      "artificialTextScale": 1,
+      "overflow": false,
+      "minActionHeight": 52,
+      "sha256": "e8e63e506f9a1515e78a700835d066a1b8419b32975266e6a6ab1da7395432f2"
+    },
+    {
+      "name": "settings-dark",
+      "route": "/settings",
+      "scheme": "dark",
+      "width": 390,
+      "height": 844,
+      "artificialTextScale": 1,
+      "overflow": false,
+      "minActionHeight": 52,
+      "sha256": "d0e2722e3414c204fa41ac8fc4ac811330bb60159db5aee632ba7120ab551d6b"
+    },
+    {
+      "name": "details-light",
+      "route": "/rule-details",
+      "scheme": "light",
+      "width": 390,
+      "height": 844,
+      "artificialTextScale": 1,
+      "overflow": false,
+      "minActionHeight": 52,
+      "sha256": "3bec180f774b019566ef80edcb4cb84bbce0253d5c9bdfaddf7fba8fd0bdd901"
+    },
+    {
+      "name": "details-dark",
+      "route": "/rule-details",
+      "scheme": "dark",
+      "width": 390,
+      "height": 844,
+      "artificialTextScale": 1,
+      "overflow": false,
+      "minActionHeight": 52,
+      "sha256": "158378f0cc7af58f8f4672289e543dc8b509d9959435cf4949ecfde6d8979425"
+    },
+    {
+      "name": "details-320-large",
+      "route": "/rule-details",
+      "scheme": "light",
+      "width": 320,
+      "height": 800,
+      "artificialTextScale": 1.5,
+      "overflow": false,
+      "minActionHeight": 65,
+      "sha256": "264da1021a564e62ee6320ee101490492204458f7df3946a7bca8f4e018c0060"
+    }
+  ],
+  "interaction": {
+    "failedSaveRetainsDraft": true,
+    "savedTextOnHome": true,
+    "syntheticStoreSurvivesReload": true,
+    "noPolicyOrGrantAction": true
+  },
+  "errors": [],
+  "homeLogoBeforeName": true,
+  "emptyGoalOmitted": true,
+  "reflectionHasNoManagement": true,
+  "settingsHasManagement": true,
+  "interactionScreenshots": {
+    "error": "dcc8234298b46efe50baa0e0db3c1417b65f631770eedf0dcd7997497de365d6",
+    "saved": "9f50022d5eb4c1cf9febb7081fbc75061c622099d8f1ffebd1c9fb7ab842262d"
+  }
+}

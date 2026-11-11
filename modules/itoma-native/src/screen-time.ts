@@ -1,9 +1,9 @@
-export type ScreenTimeAction = 'snapshot' | 'initialize' | 'authorize' | 'pickApplications' | 'previewRule' | 'commitRule' | 'reviewCandidate' | 'retryRule' | 'cancelCandidate' | 'previewUnlock' | 'unlock' | 'cancelUnlock' | 'retryGrant' | 'stop' | 'endGrant' | 'resume' | 'reconcile' | 'deleteReasons' | 'stopLegacy';
+export type ScreenTimeAction = 'snapshot' | 'initialize' | 'authorize' | 'pickApplications' | 'previewRule' | 'commitRule' | 'reviewCandidate' | 'retryRule' | 'cancelCandidate' | 'previewUnlock' | 'unlock' | 'cancelUnlock' | 'retryGrant' | 'stop' | 'endGrant' | 'resume' | 'reconcile' | 'deleteReasons' | 'stopLegacy' | 'saveRuleDetails';
 export type ScreenTimeCode = 'unavailable' | 'busy' | 'invalid-input' | 'changed' | 'authorization-required' | 'selection-required' | 'schedule-failed' | 'storage-failed' | 'reason-storage-full' | 'reason-required' | 'application-uncertain' | 'legacy-active' | 'retry-required';
 export interface ScreenTimeRule {
-  id: string; selectionRef: string; weekdays: number[]; startMinute: number; endMinute: number; nextDay: boolean; enabled: boolean;
+  id: string; selectionRef: string; weekdays: number[]; startMinute: number; endMinute: number; nextDay: boolean; enabled: boolean; title?: string; goal?: string;
 }
-export interface RuleInput extends Omit<ScreenTimeRule, 'id'> { id?: string; expectedRevision: string; remove?: boolean }
+export interface RuleInput extends Omit<ScreenTimeRule, 'id' | 'title' | 'goal'> { id?: string; expectedRevision: string; remove?: boolean }
 export interface ScreenTimeTarget { ref: string; selectionRef: string; restricted: boolean; unlockable: boolean; grantEndsAt?: number; grantCommandID?: string; ruleID?: string; grantStatus?: 'pending' | 'scheduling' | 'applying' | 'active' | 'expired' | 'invalidated' | 'reblockPending' | 'reconciled' | 'uncertain' | 'failed' }
 export interface ScreenTimePeriod { ruleID: string; startsAt: number; endsAt: number }
 export interface ScreenTimeSnapshot {
@@ -13,19 +13,22 @@ export interface ScreenTimeSnapshot {
   rules: ScreenTimeRule[]; selections: { ref: string; count: number }[]; targets: ScreenTimeTarget[];
   period?: ScreenTimePeriod; periods: ScreenTimePeriod[]; nextPeriod?: ScreenTimePeriod; observation: 'unknown' | 'applying' | 'applied' | 'failed' | 'uncertain';
   validUntil?: number; evaluatedAt?: number; schedulesReady: boolean; needsSelectionReview: boolean; defaultMinutes: number; historyIncomplete: boolean;
+  ruleDetailsStatus?: 'ready' | 'unavailable'; ruleDetailsRevision?: string;
 }
 export interface ScreenTimeResponse {
   status: 'ok' | 'error' | 'cancelled' | 'confirmation-required'; code?: ScreenTimeCode; ref?: string;
   impacts: { kind: 'shorten' | 'invalidate' | 'expire' | 'uncertain'; endsAt?: number }[]; minutes?: number; previewEndsAt?: number; shortened?: boolean;
   snapshot?: ScreenTimeSnapshot; legacyActive?: boolean; retryable?: boolean;
 }
-export interface ScreenTimeRequest { rule?: RuleInput; ref?: string; targetRef?: string; reason?: string; minutes?: number }
+export interface ScreenTimeRequest { rule?: RuleInput; ref?: string; targetRef?: string; reason?: string; minutes?: number;
+  details?: { ruleID: string; title: string; goal: string; expectedRevision: string; expectedPolicyRevision: string } }
 interface NativePort { readonly apiVersion?: number; readonly screenTimeVersion?: number; screenTime?: (action: string, payload: string) => Promise<string> }
 
 const codes: ScreenTimeCode[] = ['unavailable', 'busy', 'invalid-input', 'changed', 'authorization-required', 'selection-required', 'schedule-failed', 'storage-failed', 'reason-storage-full', 'reason-required', 'application-uncertain', 'legacy-active', 'retry-required'];
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const object = (v: unknown): Record<string, unknown> => { if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error(); return v as Record<string, unknown>; };
 const text = (v: unknown): string => { if (typeof v !== 'string') throw new Error(); return v; };
+const personalText = (v: unknown, maximum: number) => { const s = text(v); if (s.length > maximum || s.includes('\0')) throw new Error(); return s; };
 const id = (v: unknown): string => { const s = text(v); if (!uuid.test(s)) throw new Error(); return s.toLowerCase(); };
 const numeric = (v: unknown): number => { if (typeof v !== 'number' || !Number.isFinite(v)) throw new Error(); return v; };
 const integer = (v: unknown, min: number, max: number): number => { const n = numeric(v); if (!Number.isInteger(n) || n < min || n > max) throw new Error(); return n; };
@@ -38,12 +41,14 @@ const period = (v: unknown): ScreenTimePeriod => { const p = object(v); const st
 
 function snapshot(v: unknown): ScreenTimeSnapshot {
   const s = object(v);
+  if (s.ruleDetailsStatus === 'ready' && s.ruleDetailsRevision == null) throw new Error();
   return {
     availability: choice(s.availability, ['device', 'simulator', 'unsupported-os', 'unconfigured', 'native-missing', 'unsupported-platform']),
     storage: choice(s.storage, ['ready', 'not-created']), authorization: choice(s.authorization, ['unknown', 'denied', 'approved']),
     activation: choice(s.activation, ['enabled', 'paused', 'awaitingReauthorizationConfirmation']), revision: counter(s.revision), sequence: counter(s.sequence),
     rules: list(s.rules, (v) => { const r = object(v); return { id: id(r.id), selectionRef: id(r.selectionRef),
-      weekdays: list(r.weekdays, (day) => integer(day, 1, 7)), startMinute: integer(r.startMinute, 0, 1439), endMinute: integer(r.endMinute, 0, 1439), nextDay: bool(r.nextDay), enabled: bool(r.enabled) }; }),
+      weekdays: list(r.weekdays, (day) => integer(day, 1, 7)), startMinute: integer(r.startMinute, 0, 1439), endMinute: integer(r.endMinute, 0, 1439), nextDay: bool(r.nextDay), enabled: bool(r.enabled),
+      title: s.ruleDetailsStatus === 'ready' ? optional(r.title, v => personalText(v, 80)) : undefined, goal: s.ruleDetailsStatus === 'ready' ? optional(r.goal, v => personalText(v, 1000)) : undefined }; }),
     selections: list(s.selections, (v) => { const r = object(v); return { ref: id(r.ref), count: integer(r.count, 1, 50) }; }),
     targets: list(s.targets, (v) => { const r = object(v); return { ref: id(r.ref), selectionRef: id(r.selectionRef), restricted: bool(r.restricted),
       unlockable: bool(r.unlockable), grantEndsAt: optional(r.grantEndsAt, numeric), grantCommandID: optional(r.grantCommandID, id), ruleID: optional(r.ruleID, id),
@@ -51,6 +56,7 @@ function snapshot(v: unknown): ScreenTimeSnapshot {
     period: optional(s.period, period), periods: list(s.periods, period), nextPeriod: optional(s.nextPeriod, period),
     observation: choice(s.observation, ['unknown', 'applying', 'applied', 'failed', 'uncertain']), validUntil: optional(s.validUntil, numeric), evaluatedAt: optional(s.evaluatedAt, numeric),
     schedulesReady: bool(s.schedulesReady), needsSelectionReview: bool(s.needsSelectionReview), defaultMinutes: integer(s.defaultMinutes, 1, 30), historyIncomplete: bool(s.historyIncomplete),
+    ruleDetailsStatus: optional(s.ruleDetailsStatus, v => choice(v, ['ready', 'unavailable'])), ruleDetailsRevision: optional(s.ruleDetailsRevision, counter),
   };
 }
 

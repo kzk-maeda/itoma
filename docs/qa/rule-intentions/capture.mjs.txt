@@ -1,0 +1,53 @@
+import {createRequire} from 'node:module';
+import {writeFileSync,readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+const {chromium}=createRequire(import.meta.url)('playwright');
+const out='/tmp/itoma-rule-intentions/docs/qa/rule-intentions';
+const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+const report={kind:'synthetic-native-ports-web',physicalDevice:false,osRestrictionsVerified:false,browser:await b.version(),cases:[],interaction:{},errors:[]};
+const id='dddddddd-dddd-dddd-dddd-dddddddddddd';
+const context=async(width=390,height=844,colorScheme='light')=>{const c=await b.newContext({viewport:{width,height},colorScheme,reducedMotion:'reduce'});await c.addInitScript(base=>{Date.now=()=>base+performance.now();},Date.parse('2026-11-09T21:30:00Z'));return c;};
+const watch=p=>{p.on('pageerror',e=>report.errors.push(e.message));p.on('console',m=>{if(m.type()==='error')report.errors.push(m.text().slice(0,200));});};
+const shot=async(p,name)=>{await p.screenshot({path:`${out}/${name}.png`});return createHash('sha256').update(readFileSync(`${out}/${name}.png`)).digest('hex');};
+const heading=async(p,route)=>p.getByRole('heading',{name:route==='/'?'いとま':route==='/reflection'?'時間の積み上げ':route==='/settings'?'ルールと設定':'ルール名と行動目標',exact:true}).waitFor();
+const check=(v,m)=>{if(!v)throw Error(m);};
+try{
+ for(const [name,route,scheme,width,height,large,scenario]of [
+  ['home-light','/','light',390,844,false,'observed'],['home-dark','/','dark',390,844,false,'observed'],
+  ['home-unregistered','/','light',390,844,false,'unregistered'],['home-320-large','/','dark',320,800,true,'observed'],
+  ['reflection-light','/reflection','light',390,844,false,'observed'],['reflection-dark','/reflection','dark',390,844,false,'observed'],
+  ['settings-light','/settings','light',390,844,false,'observed'],['settings-dark','/settings','dark',390,844,false,'observed'],
+  ['details-light','/rule-details','light',390,844,false,'observed'],['details-dark','/rule-details','dark',390,844,false,'observed'],['details-320-large','/rule-details','light',320,800,true,'observed']]){
+  const c=await context(width,height,scheme),p=await c.newPage();watch(p);
+  await p.goto(`http://127.0.0.1:8163${route}?scenario=${scenario}&ruleID=${id}`,{waitUntil:'networkidle'});await heading(p,route);
+  if(route==='/rule-details')await p.getByLabel('ルール名（任意）',{exact:true}).waitFor();
+  if(route==='/reflection')await p.getByText('時間の集計は準備中です',{exact:true}).waitFor();
+  if(route==='/')await p.getByTestId('period-ring').waitFor();
+  if(large)await p.evaluate(()=>{for(const e of document.querySelectorAll('[dir="auto"],input,textarea')){const s=getComputedStyle(e),font=parseFloat(s.fontSize),line=parseFloat(s.lineHeight);e.style.fontSize=`${font*1.5}px`;if(Number.isFinite(line))e.style.lineHeight=`${line*1.5}px`;}});
+  const measurement=await p.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth,minActionHeight:Math.min(...[...document.querySelectorAll('[role="button"],[role="tab"]')].map(e=>e.getBoundingClientRect().height))}));
+  check(!measurement.overflow&&measurement.minActionHeight>=44,JSON.stringify({name,...measurement}));
+  if(route==='/'){
+   const placed=await p.getByRole('heading',{name:'いとま',exact:true}).evaluate(e=>{const svg=e.parentElement.querySelector('svg');return !!svg&&svg.getBoundingClientRect().right<=e.getBoundingClientRect().left;});
+   check(placed,'logo placement');report.homeLogoBeforeName=true;
+   if(scenario==='unregistered'){check(await p.getByTestId('rule-goal').count()===0,'invented goal');check(await p.getByText('時間帯 1',{exact:true}).count()===1,'fallback title');report.emptyGoalOmitted=true;}
+  }
+  if(route==='/reflection'){for(const label of ['選択の記録を見る','新しい記録を取り込む','全記録と累計を削除する'])check(await p.getByRole('button',{name:label,exact:true}).count()===0,'management left on reflection');report.reflectionHasNoManagement=true;}
+  const sha256=await shot(p,name);report.cases.push({name,route,scheme,width,height,artificialTextScale:large?1.5:1,...measurement,sha256});
+  await c.close();
+ }
+ const c=await context(),p=await c.newPage();watch(p);await p.goto('http://127.0.0.1:8163/settings',{waitUntil:'networkidle'});await heading(p,'/settings');
+ for(const label of ['選択の記録を見る','新しい記録を取り込む','全記録と累計を削除する'])check(await p.getByRole('button',{name:label,exact:true}).count()===1,'management lost');report.settingsHasManagement=true;
+ await p.getByRole('button',{name:'合成のルール名の名前と行動目標を編集',exact:true}).click();await heading(p,'/rule-details');
+ await p.getByLabel('ルール名（任意）',{exact:true}).fill('変更した合成名');await p.getByLabel('行動目標（任意）',{exact:true}).fill('変更した合成目標\n自分で選んだ時間を過ごす');
+ check(!p.url().includes('変更'),'private text in URL');
+ await p.evaluate(()=>{window.qaSaveFailure=true;});await p.getByRole('button',{name:'保存する',exact:true}).click();
+ check(await p.getByLabel('ルール名（任意）',{exact:true}).inputValue()==='変更した合成名','draft lost');report.interaction.failedSaveRetainsDraft=true;
+ report.interactionScreenshots ??= {};report.interactionScreenshots.error=await shot(p,'details-save-error');await p.evaluate(()=>{window.qaSaveFailure=false;});await p.getByRole('button',{name:'保存する',exact:true}).click();await heading(p,'/settings');
+ await p.getByRole('tab',{name:'ホーム',exact:true}).click();await heading(p,'/');
+ const home=p.getByTestId('product-tab-scene-home');check(await home.getByText('変更した合成名',{exact:true}).count()===1,'saved name absent');check(await home.getByText('変更した合成目標\n自分で選んだ時間を過ごす',{exact:true}).count()===1,'saved goal absent');
+ report.interaction.savedTextOnHome=true;report.interactionScreenshots.saved=await shot(p,'home-saved');
+ await p.reload({waitUntil:'networkidle'});await heading(p,'/');check(await p.getByText('変更した合成名',{exact:true}).count()===1,'reload lost metadata');report.interaction.syntheticStoreSurvivesReload=true;
+ const actions=await p.evaluate(()=>window.qaActions);check(actions.every(a=>['snapshot','saveRuleDetails'].includes(a)),'unexpected OS action');report.interaction.noPolicyOrGrantAction=true;
+ await c.close();check(!report.errors.length,JSON.stringify(report.errors));
+}finally{writeFileSync(`${out}/manifest.json`,JSON.stringify(report,null,2)+'\n');await b.close();}
+console.log(JSON.stringify({cases:report.cases.length,interaction:report.interaction,errors:report.errors}));

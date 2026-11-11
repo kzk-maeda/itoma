@@ -1,10 +1,12 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
-import { useScreenTime, type RuleDraft } from '@/state/screen-time';
+import { ruleInput, useScreenTime, type RuleDraft } from '@/state/screen-time';
 import type { ScreenTimeRule } from '../../../modules/itoma-native';
 import { Applications } from './applications';
 import { clockText, ruleText } from './presentation';
+import { RuleGoal, ruleTitle } from './rule-identity';
+import { ReflectionManagement } from './reflection-management';
 import { Body, Button, FlowScreen, Heading, Notice, Panel } from './ui';
 
 export function SettingsScreen() {
@@ -25,7 +27,7 @@ export function SettingsScreen() {
     state.beginRule(rule);
     const draft: RuleDraft = { ...rule, start: clockText(rule.startMinute), end: clockText(rule.endMinute), dirty: true, remove: true };
     state.setRuleDraft(draft);
-    const response = await state.run('previewRule', { rule: { ...rule, expectedRevision: s!.revision, remove: true } });
+    const response = await state.run('previewRule', { rule: ruleInput(draft, s!.revision) });
     if (response.status === 'confirmation-required') { state.setRuleReview(response); router.push('/rule-confirm'); }
   };
   const stop = () => Alert.alert('すべてのルールを停止しますか', '時間帯の制限を停止し、進行中の一時解除も終了します。保存したルールは残り、ご自身で再開できます。', [
@@ -45,21 +47,23 @@ export function SettingsScreen() {
     </Panel>
     <Body muted>ここで確認できるのはITOMAが指定した制限の設定です。ほかの制限が重なると、一時解除後も対象アプリを使えない場合があります。</Body>
     {s?.needsSelectionReview && <Notice title="対象を選び直してください">各ルールの編集画面で、対象アプリを選び直して保存できます。確認後、ご自身で再開できます。</Notice>}
-    {s?.rules.map((rule, index) => <Panel key={rule.id}><Heading>時間帯 {index + 1}</Heading><Body>{ruleText(rule)}</Body><Body muted>{rule.enabled ? '有効なルール' : '無効なルール'}</Body>
+    {s?.rules.map((rule, index) => <Panel key={rule.id}><Heading>{ruleTitle(rule, index)}</Heading><RuleGoal goal={rule.goal} /><Body>{ruleText(rule)}</Body><Body muted>{rule.enabled ? '有効なルール' : '無効なルール'}</Body>
       {s.authorization === 'approved' && <Applications selectionRef={rule.selectionRef} count={s.selections.find((selection) => selection.ref === rule.selectionRef)?.count ?? 1} refreshKey={state.refreshKey} />}
-      <Button label={`時間帯 ${index + 1}を編集`} secondary disabled={!!state.busy} onPress={() => edit(rule)} />
-      <Button label={`時間帯 ${index + 1}を削除する内容を確認`} secondary disabled={!!state.busy} onPress={() => withDraftChoice(() => { void prepareRemoval(rule); })} />
+      <Button label={`${ruleTitle(rule, index)}の名前と行動目標を編集`} secondary disabled={!!state.busy || s.ruleDetailsStatus !== 'ready'} onPress={() => router.push({ pathname: '/rule-details', params: { ruleID: rule.id } })} />
+      <Button label={`${ruleTitle(rule, index)}を編集`} secondary disabled={!!state.busy} onPress={() => edit(rule)} />
+      <Button label={`${ruleTitle(rule, index)}を削除する内容を確認`} secondary disabled={!!state.busy} onPress={() => withDraftChoice(() => { void prepareRemoval(rule); })} />
     </Panel>)}
+    {!!s?.rules.length && s.ruleDetailsStatus !== 'ready' && <Body muted>{s.ruleDetailsStatus === 'unavailable' ? 'ルール名と行動目標を読み取れませんでした。現在の状態を確認すると読み直せます。' : '名前と行動目標を編集するには、アプリの更新が必要です。'}</Body>}
     {!s?.rules.length && <Body muted>保存したルールはありません。</Body>}
     <Button label="ルールを追加する" disabled={!device || !!state.busy} onPress={() => edit()} />
     {s?.authorization !== 'approved' && device && <Button label="スクリーンタイムの許可を確認" secondary onPress={() => router.push('/onboarding')} />}
     {!!s?.rules.length && (s.activation === 'enabled' ? <Button label="すべてのルールの停止を確認" secondary disabled={!device || !!state.busy} onPress={stop} />
       : <Button label="保存したルールの再開を確認" disabled={!device || !!state.busy || !!s.needsSelectionReview || s.authorization !== 'approved'} onPress={resume} />)}
     <Panel><Heading>理由の保存と削除</Heading><Body>確定した理由はこの端末内に保存します。削除しても制限の設定は変わりません。</Body>
-      <Button label="選択の記録を見る" secondary onPress={() => router.navigate('/history')} />
       {deleted && <Body>保存した理由を削除しました。</Body>}
       <Button label="保存した理由の削除を確認" secondary disabled={!device || !!state.busy} onPress={deleteReasons} />
     </Panel>
+    <Panel><Heading>記録と振り返りの管理</Heading><Button label="選択の記録を見る" secondary onPress={() => router.navigate('/history')} /><ReflectionManagement /></Panel>
     {s?.historyIncomplete && <Notice title="操作記録の一部を保存できませんでした">現在の制限の状態は、上の確認操作で取得できます。</Notice>}
     {state.error === 'storage-failed' && <Body muted>停止を確認できない場合は、iOSの設定でITOMAへのスクリーンタイムの許可を取り消せます。</Body>}
   </FlowScreen>;

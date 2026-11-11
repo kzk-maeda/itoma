@@ -88,6 +88,7 @@ beforeEach(() => jest.clearAllMocks());
 test('normal route uses product DTOs, preserves fixed total/token and remembers month/clip through day history', async () => {
   const b = backend(); await mount(b); await observed();
   expect(screen.queryByText('検証用プレビュー')).toBeNull();
+  for (const name of ['新しい記録を取り込む', '全記録と累計を削除する', '選択の記録を見る']) expect(screen.queryByRole('button', { name })).toBeNull();
   expect(screen.getByTestId('reflection-total').props.children).toBe('—');
   await press('月次'); await screen.findByText('2026年11月');
   await press('次の期間'); await screen.findByText('2026年12月');
@@ -135,11 +136,13 @@ test('all-record deletion is separately confirmed, serializes repeated approval 
   const b = backend(), alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   await mount(b); await observed();
   await press('read a private detail'); await screen.findByText('fixture-private-body');
+  await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
   await press('全記録と累計を削除する');
   expect(alert).toHaveBeenCalledWith('全記録と累計を削除しますか', expect.stringContaining('ルールと現在の一時解除は変わりません'), expect.any(Array));
   expect(b.native.mock.calls.filter(call => call[0] === 'deleteAll')).toHaveLength(0);
   const approve = deletionButton(alert).onPress!;
   await act(async () => { approve(); approve(); });
+  await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
   await waitFor(() => expect(screen.getAllByText('記録は削除されています').length).toBeGreaterThan(0));
   expect(b.native.mock.calls.filter(call => call[0] === 'deleteAll')).toHaveLength(1);
   expect(screen.queryByText('fixture-private-body')).toBeNull();
@@ -154,8 +157,10 @@ test('a delayed pre-deletion read cannot restore the old dataset or observation 
   b.native.mockReturnValueOnce(new Promise<string>(resolve => { finish = resolve; }));
   await mount(b);
   await waitFor(() => expect(b.native).toHaveBeenCalled());
+  await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
   await press('全記録と累計を削除する');
   await act(async () => deletionButton(alert).onPress!());
+  await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
   await waitFor(() => expect(screen.getAllByText('記録は削除されています').length).toBeGreaterThan(0));
   await act(async () => finish(wrap(fixtures.observed[0].response)));
   expect(screen.queryByText(/保存した状態の記録：1件/)).toBeNull();
@@ -171,11 +176,13 @@ test('navigation and foreground refresh retain one lifetime subscription per pro
     return { remove: () => { listeners.delete(listener); } };
   });
   const b = backend(), mounted = await mount(b); await observed();
+  await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
   const initial = listeners.size;
   for (let n = 0; n < 10; n += 1) {
     await press('選択の記録を見る'); await screen.findByText('あなたの選択の記録');
-    await press('‹ 戻る'); await observed();
+    await press('‹ 戻る'); await screen.findByText('ルールと設定');
   }
+  await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
   await act(async () => { listeners.forEach(listener => listener('background')); });
   await act(async () => { listeners.forEach(listener => listener('active')); });
   await observed();

@@ -92,3 +92,7 @@ managed cloudのdaemon/proxy/CAはruntime手順に従う。必要ならビルド
 採用設計はPR #36 / ADR 0006、[data.md](../../docs/system/data.md)。実装前に[SQLite公式のC API仕様ソース](https://github.com/sqlite/sqlite/blob/master/src/sqlite.h.in)を確認（2026-11-07）。open flags、busy timeout、prepared statementのbind/lifetimeを確認し、導入したネイティブライブラリでコンパイル/実行する。
 
 テストは一時DBで保存/再open、CAS、別接続のwriter競合、破損したpayload/欠落参照、未対応schema、別DB、空既存ファイル、閉じた接続を扱う。iOSリンク、App Groups、File Protection、WAL/SHMの保護/バックアップ除外、実プロセスkill/再起動は未検証。#49で本体/Extensionと実機の証跡を残す。失敗したDBを自動で消す復旧UIは追加しない。
+
+## ルール名・行動目標（#147）
+
+本人の文章をhost-onlyの独立`RuleDetailsRepository` / `rule-details.sqlite`へ保存する。共有Ruleや既存control/history schemaは変更せず、名前/目標だけの保存でOS予定やgrant期限を変えない。native `saveRuleDetails`とsnapshotの`ruleDetailsStatus`/`ruleDetailsRevision`を使用し、旧nativeでは編集を有効化しない。詳細は [保存契約](../../docs/system/rule-details.md) を参照。新しいnative buildでのiOSリンク/Complete保護/端末UIは別に確認する。

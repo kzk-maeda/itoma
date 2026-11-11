@@ -37,3 +37,7 @@ SDK58の根拠:
 ## 保存対象のnative表示と再確認（#119）
 
 `screenTimePoCUIVersion=2`ではSavedApplicationsViewがAppleのLabelを描画し、JSへはSelectionRefと高さだけを渡す。`review-and-apply`は保存対象を初期表示したnative Pickerで本人が「制限を開始」を押してから保存/適用する。認可変更を観測した場合は初期選択を空にし、新規選択が必要。プロセス停止中の取消の完全検知や旧tokenの有効性は保証しない。[PoC提案](../../docs/system/poc-saved-targets.md)を参照。Swiftと新native viewを含むビルドが必須で、古いバイナリを検証に使わない。
+
+## ルール名・行動目標（#147）
+
+本人の文章をhost-onlyの独立`RuleDetailsRepository` / `rule-details.sqlite`へ保存する。共有Ruleや既存control/history schemaは変更せず、名前/目標だけの保存でOS予定やgrant期限を変えない。native `saveRuleDetails`とsnapshotの`ruleDetailsStatus`/`ruleDetailsRevision`を使用し、旧nativeでは編集を有効化しない。詳細は [保存契約](../../docs/system/rule-details.md) を参照。新しいnative buildでのiOSリンク/Complete保護/端末UIは別に確認する。
