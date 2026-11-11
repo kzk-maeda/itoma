@@ -7,9 +7,9 @@ public enum OnboardingStep: String, Codable, Sendable { case purpose, schedule, 
 /// A reference to ONE durable control command. Personal text never enters that command.
 public struct OnboardingBinding: Codable, Equatable, Sendable {
     public let commandID: UUID
-    public let policyRevision: UInt64
+    public let policyRevision: Int64
     public var submitted: Bool
-    public init(commandID: UUID, policyRevision: UInt64, submitted: Bool = false) {
+    public init(commandID: UUID, policyRevision: Int64, submitted: Bool = false) {
         self.commandID = commandID; self.policyRevision = policyRevision; self.submitted = submitted
     }
 }
@@ -32,7 +32,7 @@ public struct OnboardingDraft: Codable, Equatable, Sendable {
         _ = try RuleDetails(title: title, goal: goal)
         guard start.utf16.count <= 16, end.utf16.count <= 16, !start.utf8.contains(0), !end.utf8.contains(0),
               Set(weekdays).count == weekdays.count, weekdays.allSatisfy({ (1...7).contains($0) }) else { throw RuleDetailsError.invalidInput }
-        if binding != nil { _ = try schedule(); guard selectionRef != nil else { throw RuleDetailsError.invalidInput } }
+        if let binding { _ = try schedule(); guard selectionRef != nil, binding.policyRevision >= 0 else { throw RuleDetailsError.invalidInput } }
     }
     /// The same domain validation as ordinary rules, including the 1...1440 minute range.
     public func schedule() throws -> WeeklySchedule {

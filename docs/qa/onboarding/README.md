@@ -8,9 +8,9 @@ PR #148を本人の指示でマージしたmain `0c22b4b43b0781a854e003de649b038
 
 [具体的な保存/再開契約](../../system/onboarding.md)。private draftと初回完了、現在の認可、プロセス内の選択再確認、受理済みcommand、OS反映を別に扱う。許可/Picker/candidate準備だけでは開始しない。bindingの安定IDを先に保存し、確定を保存してから既存CommandServiceを実行する。policy commit後のprivate完了失敗は、同じbindingの照合とprivate完了だけで復旧する。
 
-- 型/Lint、Jest 23 suites/154件（追加14件）、demoテスト、expo-doctor 20/20。
+- 型/Lint、Jest 23 suites/155件（追加15件）、demoテスト、expo-doctor 20/20。
 - Swift Storage 138件（追加7件）。旧schema互換、再open、CAS、破棄後の古い保存拒否、1行上書き、名前/目標と完了の一括rollback、後から編集/空保存した個人文を復旧時に上書きしないこと、未知補助schemaを初期化しないこと。1分/24時間を含む既存domain検証。Linux SQLiteでありiOS File Protectionの検証ではない。
-- componentは任意目的、時間を先に決める順序、許可拒否、Picker取消、後回し/新provider復元、準備済みdraftの再確認、最終確定前の未開始、明示retry、既存利用者の移行、初回だけの導入、Simulator除外を確認。
+- componentは任意目的、時間を先に決める順序、許可拒否、Picker取消、後回し/新provider復元、準備済みdraftの再確認、最終確定前の未開始、明示retry、既存利用者の移行、初回だけの導入、Simulator除外を確認。受理済み処理中にホームへ戻った場合も、処理中表示・二重開始不可・画面離脱後の正常完了を確認。
 - providerは遅い保存中の入力を最新1件へ集約、古い応答による入力巻戻し防止、commit後に応答が失われた保存の復旧、破棄後に遅延autosaveが復活しないことを確認。
 
 ## 合成Webの操作と画像

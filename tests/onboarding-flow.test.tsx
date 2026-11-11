@@ -90,6 +90,22 @@ test('a failed application keeps its command and requires an explicit recheck an
   b.failCommit(false); await press('最新の内容を確認する'); await press('この内容で登録を再試行する');
   expect(b.snapshot().rules).toHaveLength(1); expect(b.setupActions.filter(a => a === 'onboardingCommit')).toHaveLength(2);
 });
+test('an accepted operation outlives its screen and the home shows processing instead of offering a duplicate start', async () => {
+  const b = onboardingFixture(); let release!: () => void;
+  const setup = { run: async (...args: Parameters<typeof b.setup.run>) => {
+    if (args[0] === 'onboardingCommit') await new Promise<void>(resolve => { release = resolve; });
+    return b.setup.run(...args);
+  } };
+  const root = (home: boolean) => <ScreenTimeProvider client={b.control}><OnboardingProvider client={setup}>{home ? <ProductHome /> : <OnboardingScreen />}</OnboardingProvider></ScreenTimeProvider>;
+  const view = await render(root(false)); await start(); await schedule(); await apps(); await press('この内容で、はじめる');
+  await view.rerender(root(true));
+  expect(screen.getByText('初回設定の結果を確認しています')).toBeTruthy();
+  expect(screen.queryByText('初回設定は途中です')).toBeNull();
+  expect(screen.getByRole('button', { name: '初回設定の結果を確認する' })).toBeDisabled();
+  await act(async () => release()); await screen.findByText('次の時間まで');
+  expect(b.snapshot().rules).toHaveLength(1); expect(b.setupActions.filter(a => a === 'onboardingCommit')).toHaveLength(1);
+  expect(screen.queryByText('初回設定の結果を確認しています')).toBeNull();
+});
 test('existing installations adopt initial completion without being sent through the introduction', async () => {
   const b = onboardingFixture(); b.replace({ rules: [{ id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', selectionRef: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', weekdays: [1], startMinute: 0, endMinute: 1, nextDay: false, enabled: true }] });
   await mount(b, true); await screen.findByText('対象のアプリ');

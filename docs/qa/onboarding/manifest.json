@@ -51,7 +51,7 @@
       "overflow": false,
       "minActionHeight": 52,
       "artificialTextScale": 1,
-      "sha256": "0bac7d648ad9b15bfd283a2eeec6a1d98c345cb377eed5043dbfdc15c9d9082c"
+      "sha256": "85760b79a152514484c4fd4361e20a31eae0b901fefe34fb48c9104172b25e0c"
     },
     {
       "name": "application-failed",
@@ -86,14 +86,14 @@
       "overflow": false,
       "minActionHeight": 65,
       "artificialTextScale": 1.5,
-      "sha256": "28d59f04692d4ee3c877c697786cf083e6129b633bd86f05a2102dac2106963e"
+      "sha256": "6fc008cc24786275a3d2829a0fe89640b93dfd14725425340a3d888f78cd0706"
     },
     {
       "name": "home-pending-dark-320",
       "overflow": false,
       "minActionHeight": 65,
       "artificialTextScale": 1,
-      "sha256": "11c7e9a5b824bcbdc5fd557b9977ad59ab98a2de2024798a06a644e784fc6f30"
+      "sha256": "93a29faba536e2efaf8adce75f67da5a752216c4bb00d4822521ffb261765221"
     },
     {
       "name": "schedule-dark-320-large",

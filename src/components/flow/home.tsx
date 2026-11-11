@@ -53,6 +53,7 @@ export function ProductHome() {
   return <FlowScreen title="いとま" tab="home">
     {s?.ruleDetailsStatus === 'unavailable' && <Notice title="ルール名と行動目標を確認できません">制限の設定は引き続き確認できます。設定タブからもう一度読み直せます。</Notice>}
     {state.loading && <Body muted>現在の設定を確認しています。</Body>}
+    {device && setup?.draft && setup.busy && <Notice title="初回設定の結果を確認しています">受け付けた操作は、画面を離れても続きます。同じ操作を重ねず、処理結果を確認してください。</Notice>}
     {!state.loading && !device && <Notice title="iPhoneのITOMAで設定できます">
       {s?.availability === 'simulator' ? 'この環境ではスクリーンタイムの認可や実際の制限は行いません。対応するiPhone版で設定できます。'
         : 'この環境では制限機能を利用できません。対応するiPhone版をご利用ください。'}
@@ -85,12 +86,14 @@ export function ProductHome() {
       <Body>{s.nextPeriod ? `${endTime(s.nextPeriod.startsAt, now)}から予定しています。` : '有効な次の時間帯はありません。ルールを確認できます。'}</Body>
     </Panel>}
     {!s?.rules.length && <Heading>自分の時間を、ここから。</Heading>}
-    {!s?.rules.length && !!setup?.draft && <Notice title="初回設定は途中です">目的・曜日・時間の入力を残しています。許可と対象を確認し、最後に確定するまで制限は始まりません。</Notice>}
+    {!s?.rules.length && setup?.draft && !setup.busy && <Notice title={setup.draft.submitted ? '初回設定の反映を確認してください' : '初回設定は途中です'}>{setup.draft.submitted
+      ? '前の要求は完了を確認できていません。入力は残っています。設定を続けて、結果と再試行する内容を確認できます。'
+      : '目的・曜日・時間の入力を残しています。許可と対象を確認し、最後に確定するまで制限は始まりません。'}</Notice>}
     {!s?.rules.length && <Panel><Heading>離れたいアプリと、時間を決める</Heading>
       <Body>いつ、どのアプリから離れたいか。あなたのペースで決めていきましょう。</Body>
       <Body muted>必要なときは、自分の言葉で理由を書いて一時解除できます。</Body>
     </Panel>}
-    {!s?.rules.length && <Button label={firstRun ? setup.draft ? '初回設定を続ける' : '初回設定を始める' : 'ルールをつくる'} disabled={!device || !!state.busy || !!setup?.busy || !!setup?.loading} onPress={create} />}
+    {!s?.rules.length && <Button label={firstRun ? setup.draft ? setup.busy || setup.draft.submitted ? '初回設定の結果を確認する' : '初回設定を続ける' : '初回設定を始める' : 'ルールをつくる'} disabled={!device || !!state.busy || !!setup?.busy || !!setup?.loading} onPress={create} />}
     {device && !!s?.rules.length && !!setup?.draft && <Button label="初回設定の結果を確認する" secondary onPress={() => router.navigate('/onboarding')} />}
     {!!s?.rules.length && state.ruleDraft?.dirty && <Button label="編集中のルールに戻る" secondary onPress={() => router.navigate('/rule')} />}
     {!!s?.rules.length && <View style={styles.targets}><Heading>対象のアプリ</Heading>

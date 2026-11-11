@@ -74,6 +74,8 @@ struct OnboardingRepositoryTests {
         try raw.close(); try store.close()
     }
     @Test func optionalPurposeAndDomainScheduleDoNotAdoptDemoLimits() throws {
+        let revision = try PolicyRevision(42)
+        #expect(OnboardingBinding(commandID: UUID(), policyRevision: revision.rawValue).policyRevision == revision.rawValue)
         var p = progress(); p.draft!.title = ""; p.draft!.goal = ""; p.draft!.start = "23:59"; p.draft!.end = "00:00"
         try p.validate(); _ = try p.draft!.schedule() // One minute across midnight is valid.
         p.draft!.end = "23:59"; _ = try p.draft!.schedule() // Exactly 24 hours.
@@ -82,6 +84,8 @@ struct OnboardingRepositoryTests {
         p.draft!.start = "bad"; try p.validate() // A partial form is a valid durable draft.
         p.draft!.binding = OnboardingBinding(commandID: UUID(), policyRevision: 0)
         #expect(throws: (any Error).self) { try p.validate() }
+        p = progress(bound: true); p.draft!.binding = OnboardingBinding(commandID: UUID(), policyRevision: -1)
+        #expect(throws: RuleDetailsError.self) { try p.validate() }
         p = progress(); p.draft!.goal = String(repeating: "🌙", count: 501)
         #expect(throws: RuleDetailsError.self) { try p.validate() }
     }
