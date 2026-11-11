@@ -69,7 +69,10 @@ public final class RuleDetailsRepository {
     public func close() throws { lock.lock(); defer { lock.unlock() }; try database.close() }
     public func read() throws -> RuleDetailsSnapshot {
         lock.lock(); defer { lock.unlock() }
-        return try database.transaction(writer: false) { try load() }
+        return try database.transaction(writer: false) {
+            let saved = try load()
+            return RuleDetailsSnapshot(revision: saved.revision, rules: saved.rules.filter { !$0.value.title.isEmpty || !$0.value.goal.isEmpty })
+        }
     }
     public func save(ruleID: UUID, details: RuleDetails, expectedRevision: UInt64, activeRuleIDs: Set<UUID>) throws {
         lock.lock(); defer { lock.unlock() }
@@ -77,12 +80,10 @@ public final class RuleDetailsRepository {
             let before = try load()
             guard before.revision == expectedRevision, activeRuleIDs.contains(ruleID), before.revision < UInt64.max else { throw RuleDetailsError.changed }
             try removeInactive(before, keeping: activeRuleIDs)
-            if details.title.isEmpty && details.goal.isEmpty {
-                try database.execute("DELETE FROM rule_details WHERE rule_id=?", [.text(ruleID.uuidString)])
-            } else {
-                try database.execute("INSERT INTO rule_details VALUES (?,?,?) ON CONFLICT(rule_id) DO UPDATE SET title=excluded.title,goal=excluded.goal",
-                    [.text(ruleID.uuidString), .text(details.title), .text(details.goal)])
-            }
+            // An empty current row records an explicit clear without retaining personal text.
+            // Completion recovery can distinguish it from a rule that has never been edited.
+            try database.execute("INSERT INTO rule_details VALUES (?,?,?) ON CONFLICT(rule_id) DO UPDATE SET title=excluded.title,goal=excluded.goal",
+                [.text(ruleID.uuidString), .text(details.title), .text(details.goal)])
             try database.execute("UPDATE metadata SET revision=? WHERE id=1", [.text(String(before.revision + 1))])
         }
     }

@@ -85,6 +85,21 @@ struct OnboardingRepositoryTests {
         p = progress(); p.draft!.goal = String(repeating: "🌙", count: 501)
         #expect(throws: RuleDetailsError.self) { try p.validate() }
     }
+    @Test func completionRecoveryDoesNotResurrectPurposeAfterAnExplicitClear() throws {
+        let url = try path(); defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let store = try RuleDetailsRepository.create(at: url), p = progress(bound: true), id = p.draft!.id
+        _ = try store.saveOnboarding(p, expectedRevision: 0)
+        try store.save(ruleID: id, details: RuleDetails(title: "", goal: ""), expectedRevision: 0, activeRuleIDs: [id])
+        _ = try store.finishOnboarding(expectedRevision: 1, activeRuleIDs: [id])
+        #expect(try store.read().rules.isEmpty); #expect(try store.read().revision == 1)
+        try store.close()
+        let reopened = try RuleDetailsRepository.open(at: url)
+        #expect(try reopened.readOnboarding().progress.completed); #expect(try reopened.read().rules.isEmpty)
+        try reopened.prune(activeRuleIDs: [])
+        let raw = try SQLiteDatabase(path: url.path, busyTimeoutMilliseconds: 100)
+        #expect(try raw.rows("SELECT COUNT(*) FROM rule_details") == [[.integer(0)]])
+        try raw.close(); try reopened.close()
+    }
     @Test func corruptOrFutureAuxiliarySchemaIsNotResetAndExistingDetailsStayReadable() throws {
         let url = try path(); defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
         let store = try RuleDetailsRepository.create(at: url)

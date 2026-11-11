@@ -26,7 +26,7 @@ Complete File Protection、バックアップ除外、ホストのみの保存�
 1. 許可と対象を確認する。端末再起動/プロセス再作成/認可取消後は以前のselectionRefをそのまま確認済み扱いせず、Pickerで再確認する。raw tokenはJSへ出さない。
 2. 最終確認の準備時、command IDと基準revisionを**privateへ先に**保存。そのIDで既存candidateを受理し、影響をpreviewする。途中で落ちても同じIDを復元し、有効policyはまだ変えない。
 3. 最終確定ではprivateに`submitted=true`を**先に**保存。失敗すればOS適用を要求しない。成功後、既存CommandServiceの実行/明示retry、予定準備、再検証、適用を使う。
-4. bindingのcandidateが実際にactivatedになり、そのRule IDが有効policyに存在するときだけ、privateで名前/目標の保存と`completed=true`・draft消去を**同一transaction**で行う。後から本人が編集済みの個人文を上書きしない。
+4. bindingのcandidateが実際にactivatedになり、そのRule IDが有効policyに存在するときだけ、privateで名前/目標の保存と`completed=true`・draft消去を**同一transaction**で行う。後から本人が編集済みの個人文を上書きしない。明示的な空保存も本文なしの現在行として区別し、古い目的を復活させない。
 5. policy commit後にprivate完了応答が失敗しても、次のreadは同じbindingの事実を照合し、privateの完了処理だけを再試行する。OS commandを再実行したり別Rule IDを作ったりしない。既に本人がruleを削除した場合も復活させない。
 
 privateとshared DBの全体を1 transactionにはできないため、4は復旧可能な完了手続き。`completed`は初回導入を終えた事実だけであり、制限反映成功の証明ではない。結果画面/ホームは現在native snapshotの認可・Activation・予定・観測期限を別に確認する。保存済み/反映失敗・不明/次の予定/制限設定反映を区別する。
