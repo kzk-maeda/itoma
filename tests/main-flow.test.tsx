@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { ScreenTimeProvider } from '../src/state/screen-time';
+import { OnboardingProvider } from '../src/state/onboarding';
 import { ProductHome } from '../src/components/flow/home';
 import { OnboardingScreen } from '../src/components/flow/onboarding';
 import { RuleEditorScreen, RuleConfirmationScreen } from '../src/components/flow/rule';
@@ -48,9 +49,13 @@ jest.mock('../src/components/flow/applications', () => ({ Applications: ({ targe
   return onSelect ? React.createElement(RN.Pressable, { accessibilityRole: 'button', accessibilityLabel: label, accessibilityState: { selected }, onPress: onSelect }, React.createElement(RN.Text, null, label)) : React.createElement(RN.Text, null, label);
 } }));
 
+const completedSetup = { run: async () => ({ status: 'ok' as const, impacts: [], onboarding: { revision: '1', seenIntro: true, completed: true, selectionReady: false, canEdit: true } }) };
 function Pages() {
   const [route, setRoute] = useState('/');
   useEffect(() => { mockNavigate = setRoute; return () => { mockNavigate = () => {}; }; }, []);
+  return <OnboardingProvider client={completedSetup}><Page route={route} /></OnboardingProvider>;
+}
+function Page({ route }: { route: string }) {
   switch (route) {
     case '/onboarding': return <OnboardingScreen />;
     case '/rule': return <RuleEditorScreen />;
@@ -104,7 +109,7 @@ afterEach(() => jest.restoreAllMocks());
 const press = async (name: string) => { await fireEvent.press(screen.getByRole('button', { name })); };
 const openSettings = async () => fireEvent.press(screen.getByRole('tab', { name: '設定' }));
 
-test('onboarding → native selection → weekdays/time review → saved rule on the home, without PoC navigation', async () => {
+test('normal rule creation after initial setup → explicit permission → native selection → review → saved home, without PoC navigation', async () => {
   const b = backend(false);
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
   await press('ルールをつくる');

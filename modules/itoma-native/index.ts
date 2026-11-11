@@ -6,6 +6,7 @@ import { createScreenTimePoCClient } from './src/screen-time-poc';
 import { createScreenTimeClient } from './src/screen-time';
 import { createHistoryClient } from './src/history';
 import { createReflectionClient } from './src/reflection';
+import { createOnboardingClient } from './src/onboarding';
 
 interface ItomaNativePort extends NativeModule {
   readonly apiVersion: number;
@@ -13,6 +14,7 @@ interface ItomaNativePort extends NativeModule {
   readonly screenTimeVersion?: number;
   readonly historyVersion?: number;
   readonly reflectionVersion?: number;
+  readonly onboardingVersion?: number;
   reflection?(action: string, payload: string): Promise<string>;
   history?(action: string, payload: string): Promise<string>;
   screenTime?(action: string, payload: string): Promise<string>;
@@ -27,6 +29,8 @@ export const screenTimePoC = createScreenTimePoCClient(Platform.OS, load);
 export const screenTime = createScreenTimeClient(Platform.OS, load);
 export const historyRecords = createHistoryClient(Platform.OS, load);
 export const reflectionRecords = createReflectionClient(Platform.OS, load);
+export const onboardingRecords = createOnboardingClient(Platform.OS, load);
+export type { OnboardingStep, OnboardingDraft, OnboardingProgress, OnboardingAction, OnboardingRequest, OnboardingResponse } from './src/onboarding';
 export type { ReflectionAction, ReflectionResponse } from './src/reflection';
 export type { ReflectionSnapshot, ReflectionRequest, ReflectionPeriod } from './src/reflection-model';
 export type { HistoryAction, HistoryKind, HistoryCode, HistoryCursor, HistoryRow, HistoryPage, HistoryReason, HistoryRequest, HistoryResponse } from './src/history';

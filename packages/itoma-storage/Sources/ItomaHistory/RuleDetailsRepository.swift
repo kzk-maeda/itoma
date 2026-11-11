@@ -27,8 +27,8 @@ public struct RuleDetailsSnapshot: Sendable {
 
 /// Small independent SQLite DB. Host-only writer, CAS updates, no history/OS side effects.
 public final class RuleDetailsRepository {
-    private let database: SQLiteDatabase
-    private let lock = NSLock()
+    let database: SQLiteDatabase
+    let lock = NSLock()
     private static let applicationID: Int64 = 0x49545244
     private init(at url: URL) throws { database = try SQLiteDatabase(path: url.path, busyTimeoutMilliseconds: 100) }
     public static func create(at url: URL) throws -> RuleDetailsRepository {
@@ -100,7 +100,7 @@ public final class RuleDetailsRepository {
     private func removeInactive(_ snapshot: RuleDetailsSnapshot, keeping ids: Set<UUID>) throws {
         for id in snapshot.rules.keys where !ids.contains(id) { try database.execute("DELETE FROM rule_details WHERE rule_id=?", [.text(id.uuidString)]) }
     }
-    private func load() throws -> RuleDetailsSnapshot {
+    func load() throws -> RuleDetailsSnapshot {
         let rows = try database.rows("SELECT revision FROM metadata WHERE id=1")
         guard rows.count == 1, rows[0].count == 1, case let .text(text) = rows[0][0],
               let revision = UInt64(text), String(revision) == text else { throw RuleDetailsError.corrupt }

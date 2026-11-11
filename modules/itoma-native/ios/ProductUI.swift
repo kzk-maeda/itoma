@@ -28,8 +28,8 @@ import ItomaCore
         unavailable("simulator", complete); return
         #endif
         guard Bundle.main.object(forInfoDictionaryKey: "ITOMAScreenTime") as? Bool == true else { unavailable("unconfigured", complete); return }
-        guard !busy || action == "snapshot" || action == "stop" else { complete(ProductResponse(status: "error", code: "busy").json()); return }
-        if ["commitRule", "retryRule", "unlock", "retryGrant", "resume"].contains(action), legacyActive {
+        guard !busy || action == "snapshot" || action == "stop" || action == "onboardingRead" else { complete(ProductResponse(status: "error", code: "busy").json()); return }
+        if ["commitRule", "retryRule", "onboardingCommit", "unlock", "retryGrant", "resume"].contains(action), legacyActive {
             finish(ProductResponse(status: "error", code: "legacy-active"), complete); return
         }
         let request: ProductRequest
@@ -73,7 +73,7 @@ import ItomaCore
             }
             return
         }
-        let mutates = action != "snapshot" && action != "stop"
+        let mutates = action != "snapshot" && action != "stop" && action != "onboardingRead"
         if mutates { busy = true }
         Task { @MainActor in
             defer { if mutates { self.busy = false } }

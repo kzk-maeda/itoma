@@ -46,4 +46,25 @@ enum ProductRuleDetailsStore {
         } catch let error as RuleDetailsError { throw error }
         catch { throw RuleDetailsError.unavailable }
     }
+    static func readOnboarding() throws -> OnboardingSnapshot {
+        try withOnboardingStore(create: false) { try $0.readOnboarding() } ?? OnboardingSnapshot()
+    }
+    static func saveOnboarding(_ progress: OnboardingProgress, expectedRevision: UInt64) throws -> OnboardingSnapshot {
+        guard let saved = try withOnboardingStore(create: true, body: { try $0.saveOnboarding(progress, expectedRevision: expectedRevision) }) else { throw RuleDetailsError.unavailable }
+        return saved
+    }
+    static func finishOnboarding(expectedRevision: UInt64, activeRuleIDs: Set<UUID>) throws -> OnboardingSnapshot {
+        guard let saved = try withOnboardingStore(create: false, body: { try $0.finishOnboarding(expectedRevision: expectedRevision, activeRuleIDs: activeRuleIDs) }) else { throw RuleDetailsError.unavailable }
+        return saved
+    }
+    private static func withOnboardingStore<T>(create: Bool, body: (RuleDetailsRepository) throws -> T) throws -> T? {
+        do {
+            guard let (store, url) = try open(create: create) else { return nil }
+            defer { try? store.close() }
+            let value = try body(store)
+            try ScreenTimeFiles.protectDatabase(url, protection: .complete)
+            return value
+        } catch let error as RuleDetailsError { throw error }
+        catch { throw RuleDetailsError.unavailable }
+    }
 }

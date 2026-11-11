@@ -1,0 +1,68 @@
+import { createRequire } from 'node:module';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+const { chromium } = createRequire('/opt/codex/runtimes/codex-primary-runtime/dependencies/node/package.json')('playwright');
+const out = '/tmp/itoma-onboarding/docs/qa/onboarding'; mkdirSync(out, { recursive: true });
+const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', args: ['--no-sandbox'] });
+const report = { kind: 'synthetic-native-ports-web', physicalDevice: false, osRestrictionsVerified: false, browser: await browser.version(), cases: [], checks: {}, errors: [] };
+const assert = (ok, message) => { if (!ok) throw Error(message); };
+const context = async (width = 390, scheme = 'light') => {
+  const c = await browser.newContext({ viewport: { width, height: 844 }, colorScheme: scheme, reducedMotion: 'reduce' });
+  await c.addInitScript(base => { Date.now = () => base + performance.now(); }, Date.parse('2026-11-09T21:30:00Z'));
+  return c;
+};
+const watch = p => { p.on('pageerror', e => report.errors.push(e.message)); p.on('console', m => { if (m.type() === 'error') report.errors.push(m.text().slice(0, 200)); }); };
+const press = (p, name) => p.getByRole('button', { name, exact: true }).click();
+const heading = (p, name) => p.getByRole('heading', { name, exact: true }).waitFor();
+const shot = async (p, name, scale = 1) => {
+  if (scale !== 1) await p.evaluate(scale => { for (const e of document.querySelectorAll('[dir="auto"],input,textarea')) { const s = getComputedStyle(e); e.style.fontSize = `${parseFloat(s.fontSize) * scale}px`; const h = parseFloat(s.lineHeight); if (Number.isFinite(h)) e.style.lineHeight = `${h * scale}px`; } }, scale);
+  const measured = await p.evaluate(() => ({ overflow: document.documentElement.scrollWidth > innerWidth, minActionHeight: Math.min(...[...document.querySelectorAll('[role="button"],[role="checkbox"],[role="switch"],[role="tab"]')].map(e => e.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0).map(r => r.height)) }));
+  assert(!measured.overflow && measured.minActionHeight >= 44, JSON.stringify({ name, ...measured }));
+  await p.screenshot({ path: `${out}/${name}.png`, fullPage: true });
+  report.cases.push({ name, ...measured, artificialTextScale: scale, sha256: createHash('sha256').update(readFileSync(`${out}/${name}.png`)).digest('hex') });
+};
+const enter = async p => { await p.goto('http://127.0.0.1:8173/', { waitUntil: 'networkidle' }); await heading(p, '自分の時間に、余白を。'); };
+const schedule = async p => {
+  await press(p, '曜日と時間を決める'); await heading(p, '自分の時間を、決める');
+  await p.getByRole('checkbox', { name: '月曜日', exact: true }).click();
+  await p.getByLabel('開始時刻（24時間 HH:MM）', { exact: true }).fill('23:30');
+  await p.getByLabel('終了時刻（24時間 HH:MM）', { exact: true }).fill('00:30');
+  await p.getByRole('checkbox', { name: '翌日に終了する', exact: true }).click();
+};
+try {
+  const c = await context(), p = await c.newPage(); watch(p); await enter(p); await shot(p, 'welcome-light');
+  await press(p, '自分の時間をつくる'); await heading(p, 'どんな時間にしたいですか');
+  await p.getByLabel('この時間の名前（任意）', { exact: true }).fill('合成の夜の余白');
+  await p.getByLabel('大切にしたいこと・行動目標（任意）', { exact: true }).fill('合成の行動目標\n自分で選んだ時間を過ごす'); await shot(p, 'purpose-light');
+  await schedule(p); await shot(p, 'schedule-light');
+  assert(await p.evaluate(() => !window.qa.nativeActions.includes('authorize')), 'launch/schedule requested permission');
+  await press(p, '対象アプリへ'); await heading(p, '離れたいアプリを、選ぶ'); await shot(p, 'apps-before-permission');
+  await p.evaluate(() => window.qa.deny()); await press(p, 'スクリーンタイムを許可する'); await p.getByText('許可されていません', { exact: true }).waitFor(); await shot(p, 'permission-denied');
+  await p.evaluate(() => { window.qa.deny(false); window.qa.cancelPicker(); }); await press(p, 'スクリーンタイムを許可する'); await press(p, '対象アプリを選ぶ');
+  assert(await p.evaluate(() => !window.qa.progress().draft.selectionRef), 'picker cancel changed selection');
+  await p.evaluate(() => window.qa.cancelPicker(false)); await press(p, '対象アプリを選ぶ'); await shot(p, 'apps-selected');
+  await press(p, '内容を確認する'); await heading(p, 'この内容で、はじめますか'); await shot(p, 'review-light');
+  assert(await p.evaluate(() => window.qa.snapshot().rules.length === 0 && !window.qa.setupActions.includes('onboardingCommit')), 'started before final consent');
+  await press(p, '曜日・時間を見直す'); await heading(p, '自分の時間を、決める');
+  assert(await p.getByLabel('開始時刻（24時間 HH:MM）', { exact: true }).inputValue() === '23:30', 'review edit lost time');
+  await press(p, '対象アプリへ'); await press(p, '内容を確認する');
+  await p.evaluate(() => window.qa.failCommit()); await press(p, 'この内容で、はじめる'); await p.getByText('前の要求の結果を確認しています', { exact: true }).waitFor(); await shot(p, 'application-failed');
+  assert(await p.evaluate(() => window.qa.snapshot().rules.length === 0), 'failed apply became success');
+  await p.evaluate(() => window.qa.failCommit(false)); await press(p, '最新の内容を確認する'); await press(p, 'この内容で登録を再試行する'); await heading(p, '次の時間に向けて、準備できました'); await shot(p, 'complete-scheduled');
+  await press(p, 'ホームで現在の状態を見る'); await heading(p, 'いとま'); await shot(p, 'home-scheduled');
+  await p.reload({ waitUntil: 'networkidle' }); await heading(p, 'いとま'); assert(await p.getByRole('button', { name: '自分の時間をつくる', exact: true }).count() === 0, 'completion forced intro');
+  report.checks = { noLaunchPermission: true, cancellationKeepsDraft: true, noStartBeforeFinalConsent: true, reviewEditKeepsDraft: true, explicitFailureRetry: true, oneSavedRule: await p.evaluate(() => window.qa.snapshot().rules.length === 1), completedReloadReturnsHome: true };
+  assert(!p.url().includes('合成'), 'personal text in URL'); await c.close();
+  const d = await context(320, 'dark'), q = await d.newPage(); watch(q); await enter(q); await shot(q, 'welcome-dark-320');
+  await press(q, '自分の時間をつくる'); await q.getByLabel('大切にしたいこと・行動目標（任意）', { exact: true }).fill('合成の途中入力');
+  await shot(q, 'purpose-dark-320-large', 1.5); await press(q, '内容を残して、ホームへ'); await heading(q, 'いとま'); await shot(q, 'home-pending-dark-320');
+  assert(await q.getByRole('button', { name: '初回設定を続ける', exact: true }).count() === 1, 'duplicate resume entry');
+  assert(await q.getByRole('button', { name: '許可を確認する', exact: true }).count() === 0, 'duplicate permission entry');
+  await q.reload({ waitUntil: 'networkidle' }); await press(q, '初回設定を続ける'); await heading(q, 'どんな時間にしたいですか');
+  assert(await q.getByLabel('大切にしたいこと・行動目標（任意）', { exact: true }).inputValue() === '合成の途中入力', 'reload lost pending input');
+  await schedule(q); await shot(q, 'schedule-dark-320-large', 1.5);
+  report.checks.deferredReloadRestoresInput = true; report.checks.oneResumeEntry = true;
+  assert(await q.evaluate(() => window.qa.snapshot().rules.length === 0 && !window.qa.nativeActions.includes('authorize')), 'deferred route started restriction');
+  await d.close(); assert(report.errors.length === 0, JSON.stringify(report.errors));
+} finally { writeFileSync(`${out}/manifest.json`, JSON.stringify(report, null, 2) + '\n'); await browser.close(); }
+console.log(JSON.stringify({ cases: report.cases.length, checks: report.checks, errors: report.errors }));

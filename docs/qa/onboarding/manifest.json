@@ -1,0 +1,118 @@
+{
+  "kind": "synthetic-native-ports-web",
+  "physicalDevice": false,
+  "osRestrictionsVerified": false,
+  "browser": "155.0.8059.79",
+  "cases": [
+    {
+      "name": "welcome-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "c84ab01a741e9b75218f35e04b31d5f96e31c0faa4789a50960b0c86d679045e"
+    },
+    {
+      "name": "purpose-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "c82ea1574755d4d22023f9a8ce564d0ef6522245160cd2b4e6527d5873cc3938"
+    },
+    {
+      "name": "schedule-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "daa12a51e7428fc8fa70047d4bc8a00a573c55ea90f6b054227b8c45e497e861"
+    },
+    {
+      "name": "apps-before-permission",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "72b8fdf0bab1895d744d637648e53f802d6c5c559697fc1298b358b3bd0a5dc9"
+    },
+    {
+      "name": "permission-denied",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "ea49b277bd91b189ae27b9da72be57c0456163deced90e145b162d64475f4c9c"
+    },
+    {
+      "name": "apps-selected",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "e254e6c4595645e70f15fe0deca40f5211d8e61f51c1ef81016e63e7216dc3b8"
+    },
+    {
+      "name": "review-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "0bac7d648ad9b15bfd283a2eeec6a1d98c345cb377eed5043dbfdc15c9d9082c"
+    },
+    {
+      "name": "application-failed",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "b61df8ea3225643d13b5d3a15e743bb870dfff0393aa37b4891094125ab94c43"
+    },
+    {
+      "name": "complete-scheduled",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "098d0a37a45d565c7529a0ecaf718fc8efc288da0e75f9e58fa349ee7098294b"
+    },
+    {
+      "name": "home-scheduled",
+      "overflow": false,
+      "minActionHeight": 60,
+      "artificialTextScale": 1,
+      "sha256": "1c6a4b49bb40baf56c8bdcf961ee25ca44c5331ec9672d8342a113cc511f85c3"
+    },
+    {
+      "name": "welcome-dark-320",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "a624a8cc7d076a79e80d1b0935e748b3aee2314e7ab81d76d7e5415d119921cf"
+    },
+    {
+      "name": "purpose-dark-320-large",
+      "overflow": false,
+      "minActionHeight": 65,
+      "artificialTextScale": 1.5,
+      "sha256": "28d59f04692d4ee3c877c697786cf083e6129b633bd86f05a2102dac2106963e"
+    },
+    {
+      "name": "home-pending-dark-320",
+      "overflow": false,
+      "minActionHeight": 65,
+      "artificialTextScale": 1,
+      "sha256": "11c7e9a5b824bcbdc5fd557b9977ad59ab98a2de2024798a06a644e784fc6f30"
+    },
+    {
+      "name": "schedule-dark-320-large",
+      "overflow": false,
+      "minActionHeight": 65,
+      "artificialTextScale": 1.5,
+      "sha256": "ffafe97c4bb233eb2668b296f80150b69f9d1ccaba9eb6dba785f0c97ab8f05e"
+    }
+  ],
+  "checks": {
+    "noLaunchPermission": true,
+    "cancellationKeepsDraft": true,
+    "noStartBeforeFinalConsent": true,
+    "reviewEditKeepsDraft": true,
+    "explicitFailureRetry": true,
+    "oneSavedRule": true,
+    "completedReloadReturnsHome": true,
+    "deferredReloadRestoresInput": true,
+    "oneResumeEntry": true
+  },
+  "errors": []
+}
