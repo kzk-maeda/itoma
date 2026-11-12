@@ -7,6 +7,7 @@ import { OnboardingScreen } from '../src/components/flow/onboarding';
 import { ProductHome } from '../src/components/flow/home';
 import { onboardingResult, validOnboardingSchedule } from '../src/components/flow/onboarding-flow';
 import { onboardingFixture } from './fixtures/onboarding';
+import { selectTime } from './fixtures/time-picker';
 import { unavailableSnapshot } from '../modules/itoma-native/src/screen-time';
 
 jest.mock('../modules/itoma-native', () => ({ screenTime: { run: jest.fn() }, onboardingRecords: { run: jest.fn() } }));
@@ -24,9 +25,10 @@ const schedule = async () => {
   await press('曜日と時間を決める');
   expect(screen.getByRole('button', { name: '対象アプリへ' })).toBeDisabled();
   await fireEvent.press(screen.getByRole('checkbox', { name: '月曜日' }));
-  await fireEvent.changeText(screen.getByLabelText('開始時刻（24時間 HH:MM）'), '23:30');
-  await fireEvent.changeText(screen.getByLabelText('終了時刻（24時間 HH:MM）'), '00:30');
-  await fireEvent.press(screen.getByRole('checkbox', { name: '翌日に終了する' }));
+  await selectTime('開始時刻', '23:30');
+  await selectTime('終了時刻', '00:30');
+  expect(screen.queryByRole('checkbox', { name: '翌日に終了する' })).toBeNull();
+  expect(screen.getByText('設定する時間：23:30〜翌00:30')).toBeTruthy();
   await press('対象アプリへ'); await screen.findByText('離れたいアプリを、選ぶ');
 };
 const apps = async () => { await press('スクリーンタイムを許可する'); await press('対象アプリを選ぶ'); await press('内容を確認する'); await screen.findByText('この内容で、はじめますか'); };
@@ -55,7 +57,7 @@ test('defer and a fresh provider restore purpose/time; home has one resume entry
   const h = await mount(b, true); await screen.findByRole('button', { name: '初回設定を続ける' });
   expect(screen.queryByRole('button', { name: '許可を確認する' })).toBeNull(); expect(screen.queryByTestId('period-ring')).toBeNull();
   await h.unmount(); await mount(b); await screen.findByText('離れたいアプリを、選ぶ');
-  await press('‹ 戻る'); expect(screen.getByLabelText('開始時刻（24時間 HH:MM）')).toHaveDisplayValue('23:30');
+  await press('‹ 戻る'); expect(screen.getByRole('button', { name: '開始時刻' }).props.accessibilityValue.text).toBe('23:30');
   await press('‹ 戻る'); expect(screen.getByLabelText('大切にしたいこと・行動目標（任意）')).toHaveDisplayValue('合成の目標\n自分の時間を過ごす');
   expect(b.snapshot().rules).toHaveLength(0);
 });
@@ -91,17 +93,17 @@ test('editing purpose returns directly to review with existing answers and does 
   expect(b.setupActions).not.toContain('onboardingCommit');
   await press('この内容で、はじめる'); expect(b.snapshot().rules[0].goal).toBe('合成の見直した目標');
 });
-test('editing time returns directly to review; going back with an invalid time cannot start a rule', async () => {
+test('editing time infers both overnight and same-day endings before returning directly to review', async () => {
   const b = onboardingFixture(); await mount(b); await start(); await schedule(); await apps();
   await press('曜日・時間を変更');
-  expect(screen.getByLabelText('開始時刻（24時間 HH:MM）')).toHaveDisplayValue('23:30');
-  await fireEvent.changeText(screen.getByLabelText('開始時刻（24時間 HH:MM）'), 'bad');
-  expect(screen.getByRole('button', { name: '変更を確認する' })).toBeDisabled();
-  await press('‹ 戻る'); await screen.findByText('曜日と時間を確認してください');
-  expect(screen.getByRole('button', { name: '最新の内容を確認する' })).toBeDisabled();
-  expect(screen.queryByRole('button', { name: 'この内容で、はじめる' })).toBeNull();
-  await press('曜日・時間を変更'); await fireEvent.changeText(screen.getByLabelText('開始時刻（24時間 HH:MM）'), '23:00');
-  await press('変更を確認する'); await screen.findByText('月 23:00〜翌00:30');
+  expect(screen.getByRole('button', { name: '開始時刻' }).props.accessibilityValue.text).toBe('23:30');
+  await selectTime('終了時刻', '23:45');
+  expect(screen.getByText('設定する時間：23:30〜23:45')).toBeTruthy();
+  await press('変更を確認する'); await screen.findByText('月 23:30〜23:45');
+  expect(b.progress().draft?.nextDay).toBe(false);
+  await press('曜日・時間を変更'); await selectTime('終了時刻', '00:00');
+  await press('変更を確認する'); await screen.findByText('月 23:30〜翌00:00');
+  expect(b.progress().draft?.nextDay).toBe(true);
   expect(b.nativeActions.filter(a => a === 'pickApplications')).toHaveLength(1);
   expect(b.setupActions).not.toContain('onboardingCommit');
   expect(screen.getByRole('button', { name: 'この内容で、はじめる' })).toBeEnabled();
@@ -112,6 +114,16 @@ test('cancelling a picker from review preserves the confirmed selection, without
   await press('変更を確認する'); await screen.findByText('この内容で、はじめますか');
   expect(b.progress().draft?.selectionRef).toBe(selection); expect(b.progress().selectionReady).toBe(true);
   expect(screen.getByRole('button', { name: 'この内容で、はじめる' })).toBeEnabled(); expect(b.snapshot().rules).toHaveLength(0);
+});
+test('equal clock times explicitly show a 24-hour window before the final start', async () => {
+  const b = onboardingFixture(); await mount(b); await start(); await schedule();
+  await press('‹ 戻る'); await selectTime('終了時刻', '23:30');
+  expect(screen.getByText('設定する時間：23:30〜翌23:30（24時間）')).toBeTruthy();
+  await press('対象アプリへ'); await apps();
+  expect(screen.getByText('月 23:30〜翌23:30（24時間）')).toBeTruthy();
+  expect(b.setupActions).not.toContain('onboardingCommit');
+  await press('この内容で、はじめる');
+  expect(b.snapshot().rules[0]).toMatchObject({ startMinute: 1410, endMinute: 1410, nextDay: true });
 });
 test('review edit destination survives defer and relaunch; saving text never reconfirms apps', async () => {
   const b = onboardingFixture(), first = await mount(b); await start(); await schedule(); await apps();
@@ -179,9 +191,10 @@ test('the first device launch sees the introduction once, while a later launch a
   expect(simulator.setupActions).not.toContain('onboardingDefer'); expect(router.navigate).not.toHaveBeenCalled();
 });
 test('input guidance accepts 1 minute and 24 hours; result rejects stale, failed and unauthorized observations', () => {
-  expect(validOnboardingSchedule({ weekdays: [7], start: '23:59', end: '00:00', nextDay: true })).toBe(true);
-  expect(validOnboardingSchedule({ weekdays: [1], start: '01:00', end: '01:00', nextDay: true })).toBe(true);
-  expect(validOnboardingSchedule({ weekdays: [1], start: '01:00', end: '01:01', nextDay: true })).toBe(false);
+  expect(validOnboardingSchedule({ weekdays: [7], start: '23:59', end: '00:00' })).toBe(true);
+  expect(validOnboardingSchedule({ weekdays: [1], start: '01:00', end: '01:00' })).toBe(true);
+  expect(validOnboardingSchedule({ weekdays: [1], start: '01:00', end: '01:01' })).toBe(true);
+  expect(validOnboardingSchedule({ weekdays: [1], start: 'bad', end: '01:01' })).toBe(false);
   const s = { ...unavailableSnapshot('device'), authorization: 'approved' as const, schedulesReady: true, observation: 'applied' as const, validUntil: 100 };
   expect(onboardingResult(s, 100_001).title).toBe('反映を確認できていません');
   expect(onboardingResult({ ...s, authorization: 'denied' }, 0).title).toBe('再開前の確認が必要です');

@@ -3,9 +3,10 @@ import { useCallback, useState } from 'react';
 import { Platform, Pressable, Switch, Text, View } from 'react-native';
 import { ruleInput, useScreenTime } from '@/state/screen-time';
 import { Applications } from './applications';
+import { ScheduleFields } from './schedule-fields';
 import { back, home, useDraftGuard } from './navigation';
 import { weekdayNames, ruleText, endTime } from './presentation';
-import { Body, Button, Field, FlowScreen, Heading, Notice, Panel, flowStyles, useFlowTheme } from './ui';
+import { Body, Button, FlowScreen, Heading, Notice, Panel, flowStyles, useFlowTheme } from './ui';
 
 export function RuleEditorScreen() {
   const state = useScreenTime(), theme = useFlowTheme(), draft = state.ruleDraft;
@@ -41,10 +42,7 @@ export function RuleEditorScreen() {
       </Pressable>; })}
     </View></View>
     <View style={flowStyles.section}><Heading>3. 時間帯</Heading>
-      <Field label="開始時刻（24時間 HH:MM）" value={draft.start} onChangeText={(start) => update({ start })} keyboardType="numbers-and-punctuation" autoCapitalize="none" />
-      <Field label="終了時刻（24時間 HH:MM）" value={draft.end} onChangeText={(end) => update({ end })} keyboardType="numbers-and-punctuation" autoCapitalize="none" />
-      <View style={flowStyles.row}><Body>翌日に終了する</Body><Switch {...webSwitchColors} accessibilityLabel="翌日に終了する" value={draft.nextDay} onValueChange={(nextDay) => update({ nextDay })} trackColor={{ false: theme.muted, true: theme.accent }} thumbColor={theme.onAccent} hitSlop={8} /></View>
-      <Body muted>この端末の現地時刻に従います。日付をまたぐ場合は「翌日に終了」を選んでください。</Body>
+      <ScheduleFields start={draft.start} end={draft.end} disabled={!!state.busy} onChange={update} />
     </View>
     {!input && <Body muted>アプリ・曜日・正しい時刻を選ぶと、確認へ進めます。</Body>}
     <Button label="内容を確認する" disabled={!input || !!state.busy} onPress={() => { void preview(); }} />

@@ -12,15 +12,15 @@ import { home } from './navigation';
 import { weekdayNames, endTime } from './presentation';
 import { RuleGoal } from './rule-identity';
 import { ReviewAction, ReviewSection } from './onboarding-review';
+import { ScheduleFields } from './schedule-fields';
+import { timeRange } from '@/lib/schedule-time';
 import { Body, Button, Field, FlowScreen, Heading, Notice, Panel, errorText, flowStyles, useFlowTheme } from './ui';
 
 const steps: OnboardingStep[] = ['purpose', 'schedule', 'apps', 'review'];
 const titles = { purpose: 'どんな時間にしたいですか', schedule: '自分の時間を、決める', apps: '離れたいアプリを、選ぶ', review: 'この内容で、はじめますか' };
 /** Input guidance only. Native WeeklySchedule is the final authority. No demo defaults/minimum. */
-export function validOnboardingSchedule(d: Pick<OnboardingDraft, 'start' | 'end' | 'weekdays' | 'nextDay'>): boolean {
-  const minute = (s: string) => /^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(s) ? Number(s.slice(0, 2)) * 60 + Number(s.slice(3)) : NaN;
-  const duration = minute(d.end) - minute(d.start) + (d.nextDay ? 1440 : 0);
-  return d.weekdays.length > 0 && d.weekdays.every(v => Number.isInteger(v) && v >= 1 && v <= 7) && new Set(d.weekdays).size === d.weekdays.length && duration > 0 && duration <= 1440;
+export function validOnboardingSchedule(d: Pick<OnboardingDraft, 'start' | 'end' | 'weekdays'>): boolean {
+  return !!timeRange(d.start, d.end) && d.weekdays.length > 0 && d.weekdays.every(v => Number.isInteger(v) && v >= 1 && v <= 7) && new Set(d.weekdays).size === d.weekdays.length;
 }
 export function onboardingResult(s?: ScreenTimeSnapshot, now = Date.now()): { title: string; body: string } {
   if (!s) return { title: '現在の状態を確認してください', body: '保存と反映の結果を確認できていません。ホームで読み直せます。' };
@@ -47,6 +47,8 @@ export function FirstRunOnboarding() {
   };
   const next = async (step: OnboardingStep) => { setup.update({ step }); if (await setup.flush()) setReviewed(false); };
   const prepare = async () => {
+    const range = draft && timeRange(draft.start, draft.end);
+    if (draft && range && draft.nextDay !== range.nextDay) setup.update({ nextDay: range.nextDay });
     const result = await setup.run('onboardingPrepare');
     setReviewed(result.status === 'confirmation-required');
     setImpacts(result.impacts);
@@ -55,7 +57,7 @@ export function FirstRunOnboarding() {
   };
   const showReview = async () => {
     setReviewed(false);
-    setup.update({ step: 'review', returnToReview: true });
+    setup.update({ step: 'review', returnToReview: true, nextDay: draft ? timeRange(draft.start, draft.end)?.nextDay ?? false : false });
     if (!(await setup.flush())) return;
     if (draft && validOnboardingSchedule(draft) && setup.progress?.selectionReady && state.snapshot?.authorization === 'approved') await prepare();
   };
@@ -130,14 +132,8 @@ export function FirstRunOnboarding() {
           style={[styles.day, { backgroundColor: selected ? theme.soft : theme.surface, borderColor: theme.muted }]}>
           <Text style={{ color: theme.text, fontSize: 16, lineHeight: 24 }}>{day}</Text><Text accessible={false} style={{ color: theme.text, fontSize: 12, lineHeight: 14 }}>{selected ? '✓' : ' '}</Text></Pressable>;
       })}</View>
-      <Field label="開始時刻（24時間 HH:MM）" value={draft.start} onChangeText={start => setup.update({ start })} maxLength={5} placeholder="例 21:00" keyboardType="numbers-and-punctuation" autoCapitalize="none" editable={!disabled} />
-      <Field label="終了時刻（24時間 HH:MM）" value={draft.end} onChangeText={end => setup.update({ end })} maxLength={5} placeholder="例 23:00" keyboardType="numbers-and-punctuation" autoCapitalize="none" editable={!disabled} />
-      <Pressable accessibilityRole="checkbox" accessibilityLabel="翌日に終了する" accessibilityState={{ checked: draft.nextDay, disabled }} disabled={disabled}
-        onPress={() => setup.update({ nextDay: !draft.nextDay })} style={[styles.nextDay, { borderColor: theme.muted, backgroundColor: draft.nextDay ? theme.soft : theme.surface }]}>
-        <Text style={{ color: theme.text, fontSize: 16, lineHeight: 26 }}>{draft.nextDay ? '✓ ' : '□ '}翌日に終了する</Text>
-      </Pressable>
-      <Body muted>この端末の現地時刻に従います。曜日は開始する日を選び、日付をまたぐ場合は「翌日に終了」を選んでください。</Body>
-      {!validOnboardingSchedule(draft) && <Body muted>曜日と正しい開始・終了時刻を選んでください。時間帯は1分から24時間までです。</Body>}
+      <ScheduleFields start={draft.start} end={draft.end} disabled={disabled} onChange={value => setup.update(value)} />
+      {!scheduleValid && <Body muted>曜日と開始・終了時刻を選ぶと、次へ進めます。</Body>}
       <Button label={editingReview ? '変更を確認する' : '対象アプリへ'} disabled={disabled || !scheduleValid} onPress={() => { if (editingReview) void showReview(); else void next('apps'); }} />
     </View>}
     {draft.step === 'apps' && <View style={flowStyles.section}>
@@ -160,7 +156,7 @@ export function FirstRunOnboarding() {
           {draft.goal.trim() ? <RuleGoal goal={draft.goal} /> : <Body muted>行動目標：未設定（任意）</Body>}
         </ReviewSection>
         <ReviewSection title="曜日・時間" changeLabel="曜日・時間を変更" disabled={disabled} divider onChange={editable ? () => { void changeStep('schedule'); } : undefined}>
-          <Body>{draft.weekdays.map(v => weekdayNames[v - 1]).join('・')} {draft.start}〜{draft.nextDay ? '翌' : ''}{draft.end}</Body>
+          <Body>{draft.weekdays.map(v => weekdayNames[v - 1]).join('・')} {timeRange(draft.start, draft.end)?.label ?? '時刻を選んでください'}</Body>
         </ReviewSection>
         <ReviewSection title="許可と対象アプリ" changeLabel="許可と対象アプリを変更" disabled={disabled} divider onChange={editable ? () => { void changeStep('apps'); } : undefined}>
           {draft.selectionRef && count > 0 && state.snapshot?.authorization === 'approved' ? <Applications selectionRef={draft.selectionRef} count={count} refreshKey={state.refreshKey} /> : <Body>対象アプリ：確認が必要です</Body>}
@@ -188,5 +184,4 @@ const styles = StyleSheet.create({
   welcome: { gap: 32, paddingVertical: 24 }, symbol: { paddingVertical: 24 },
   saveStatus: { minHeight: 26 }, steps: { flexDirection: 'row', gap: 6 }, step: { flex: 1, height: 3, borderRadius: 2 },
   weekdays: { gap: 2 }, day: { minHeight: 52, minWidth: 44, padding: 6, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  nextDay: { minHeight: 50, padding: 12, borderWidth: 1, borderRadius: 12, justifyContent: 'center' },
 });
