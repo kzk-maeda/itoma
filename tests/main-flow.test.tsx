@@ -1,7 +1,9 @@
+import { selectTime } from './fixtures/time-picker';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { ScreenTimeProvider } from '../src/state/screen-time';
+import { OnboardingProvider } from '../src/state/onboarding';
 import { ProductHome } from '../src/components/flow/home';
 import { OnboardingScreen } from '../src/components/flow/onboarding';
 import { RuleEditorScreen, RuleConfirmationScreen } from '../src/components/flow/rule';
@@ -48,9 +50,13 @@ jest.mock('../src/components/flow/applications', () => ({ Applications: ({ targe
   return onSelect ? React.createElement(RN.Pressable, { accessibilityRole: 'button', accessibilityLabel: label, accessibilityState: { selected }, onPress: onSelect }, React.createElement(RN.Text, null, label)) : React.createElement(RN.Text, null, label);
 } }));
 
+const completedSetup = { run: async () => ({ status: 'ok' as const, impacts: [], onboarding: { revision: '1', seenIntro: true, completed: true, selectionReady: false, canEdit: true } }) };
 function Pages() {
   const [route, setRoute] = useState('/');
   useEffect(() => { mockNavigate = setRoute; return () => { mockNavigate = () => {}; }; }, []);
+  return <OnboardingProvider client={completedSetup}><Page route={route} /></OnboardingProvider>;
+}
+function Page({ route }: { route: string }) {
   switch (route) {
     case '/onboarding': return <OnboardingScreen />;
     case '/rule': return <RuleEditorScreen />;
@@ -104,17 +110,20 @@ afterEach(() => jest.restoreAllMocks());
 const press = async (name: string) => { await fireEvent.press(screen.getByRole('button', { name })); };
 const openSettings = async () => fireEvent.press(screen.getByRole('tab', { name: '設定' }));
 
-test('onboarding → native selection → weekdays/time review → saved rule on the home, without PoC navigation', async () => {
+test('normal rule creation after initial setup → explicit permission → native selection → review → saved home, without PoC navigation', async () => {
   const b = backend(false);
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
   await press('ルールをつくる');
   await press('スクリーンタイムを許可する');
   await press('対象アプリを選ぶ');
   expect(b.client.run.mock.calls.some(([action]) => action === 'commitRule')).toBe(false);
+  await selectTime('終了時刻', '02:00');
+  expect(screen.queryByRole('switch', { name: '翌日に終了する' })).toBeNull();
   await press('内容を確認する');
-  expect(screen.getByText(/月・火・水・木・金 21:00〜23:00/)).toBeTruthy();
+  expect(b.client.run).toHaveBeenCalledWith('previewRule', { rule: expect.objectContaining({ startMinute: 1260, endMinute: 120, nextDay: true }) });
+  expect(screen.getByText(/月・火・水・木・金 21:00〜翌02:00/)).toBeTruthy();
   await press('編集へ戻る');
-  expect(screen.getByLabelText('開始時刻（24時間 HH:MM）')).toHaveDisplayValue('21:00');
+  expect(screen.getByRole('button', { name: '開始時刻' }).props.accessibilityValue.text).toBe('21:00');
   await press('内容を確認する'); await press('この内容で保存する');
   expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
   expect(screen.queryByText('時間帯ルールは準備中です')).toBeNull();
@@ -212,14 +221,14 @@ test.each(['ルールを追加する', '時間帯 1を編集', '時間帯 1を�
   const b = backend(), alert = jest.spyOn(Alert, 'alert');
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
   await openSettings(); await press('時間帯 1を編集');
-  await fireEvent.changeText(screen.getByLabelText('開始時刻（24時間 HH:MM）'), '20:00');
+  await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('保存したルールを確認する');
   const before = b.client.run.mock.calls.length;
   await press(action);
   expect(alert.mock.calls.at(-1)?.[0]).toBe('編集中の入力があります');
   expect(b.client.run.mock.calls.slice(before).some(([name]) => name === 'previewRule' || name === 'commitRule')).toBe(false);
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[0].onPress?.(); });
-  expect(screen.getByLabelText('開始時刻（24時間 HH:MM）')).toHaveDisplayValue('20:00');
+  expect(screen.getByRole('button', { name: '開始時刻' }).props.accessibilityValue.text).toBe('20:00');
   expect(b.current().rules[0].startMinute).toBe(1260);
 });
 

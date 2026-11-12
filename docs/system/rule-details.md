@@ -10,6 +10,8 @@
 
 名前が空なら従来の「時間帯 N」を表示。行動目標は登録時のみ、ホームの各時間帯の円の後・対象アプリの前と設定に表示する。文字拡大/長文でもスクロールし、円の数値や状態表示を置き換えない。
 
+初回設定の完了復旧に対応し、両方を空にした明示保存は、本文が空の現在行として保持する。公開readはこの行を未登録として返すが、初回draftを移す内部処理は「本人が消した」と判別し、古い目的を戻さない。削除済みruleの整理では空行も削除する。行数は現在のrule数を上限とし、schema1の既存readerでも空の本文として読める。
+
 ## 保存・競合・制限からの独立
 
 - `ItomaHistory`のhost-only `RuleDetailsRepository`を使用する。新しい独立SQLite `Application Support/ITOMA-Private/rule-details.sqlite`、application ID `0x49545244` / schema1 / WAL / FULL。history.sqlite/control.sqliteのschemaを変更しない。

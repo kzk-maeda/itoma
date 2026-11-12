@@ -7,6 +7,7 @@ import { runNativeSmoke } from '@/qa/native-smoke';
 import { ScreenTimeProvider } from '@/state/screen-time';
 import { HistoryProvider } from '@/state/history';
 import { ReflectionProvider } from '@/state/reflection';
+import { OnboardingProvider } from '@/state/onboarding';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -16,9 +17,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <View style={{ flex: 1 }} onLayout={() => { void SplashScreen.hideAsync(); }}>
-        <ScreenTimeProvider><HistoryProvider><ReflectionProvider><Stack screenOptions={{ headerShown: false }}>
+        <ScreenTimeProvider><OnboardingProvider><HistoryProvider><ReflectionProvider><Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(main)" options={{ animation: 'none' }} />
-        </Stack></ReflectionProvider></HistoryProvider></ScreenTimeProvider>
+        </Stack></ReflectionProvider></HistoryProvider></OnboardingProvider></ScreenTimeProvider>
       </View>
     </ThemeProvider>
   );

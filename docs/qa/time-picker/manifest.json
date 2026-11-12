@@ -1,0 +1,272 @@
+{
+  "kind": "synthetic-native-ports-web",
+  "physicalDevice": false,
+  "osRestrictionsVerified": false,
+  "browser": "155.0.8059.79",
+  "cases": [
+    {
+      "name": "welcome-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "c84ab01a741e9b75218f35e04b31d5f96e31c0faa4789a50960b0c86d679045e"
+    },
+    {
+      "name": "purpose-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "c82ea1574755d4d22023f9a8ce564d0ef6522245160cd2b4e6527d5873cc3938"
+    },
+    {
+      "name": "picker-start-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "fcfdb0b69681416f8d019712407a120ff189cf9730588485a6f1fc0a79b91996"
+    },
+    {
+      "name": "schedule-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "17a7a3c0b126f4f98c44b5dc5f9939b75e9c965aedbb61f8c5e61c662548136e"
+    },
+    {
+      "name": "apps-before-permission",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "b4d2ec85172188bf25d92b1d5a025df33ffe0bda7d810a74c62c313416056f1f"
+    },
+    {
+      "name": "permission-denied",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "c7624ffec39598686800a6a0a507f566aa8f9b42cb1eae9b4ee573c4993f7c46"
+    },
+    {
+      "name": "apps-selected",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "973891ffb9b4230edb76dd43fcf3857cc9b3f5bed5548f67a76708c927d64d69"
+    },
+    {
+      "name": "review-light",
+      "overflow": false,
+      "minActionHeight": 44,
+      "artificialTextScale": 1,
+      "sha256": "4aca818deb2c16bf906772357be27c5ffb909718b7967c873ad2be93f58972d5"
+    },
+    {
+      "name": "review-light-footer",
+      "overflow": false,
+      "minActionHeight": 44,
+      "artificialTextScale": 1,
+      "sha256": "0ef2a0d6e776843da71996148181029e05a56d3663a3833b5a1f86490bb93236"
+    },
+    {
+      "name": "purpose-edit-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "ab98cca2a8405465c261e9d633d005e9344d739de361a67b359961e9c0dabe90"
+    },
+    {
+      "name": "review-edited-light",
+      "overflow": false,
+      "minActionHeight": 44,
+      "artificialTextScale": 1,
+      "sha256": "7a03cf170a1d8c7544f3a84f41a9fd24281e773e37a3b94035abef03ec88d3ec"
+    },
+    {
+      "name": "review-edited-light-footer",
+      "overflow": false,
+      "minActionHeight": 44,
+      "artificialTextScale": 1,
+      "sha256": "de9de5b1ae2f7957008774ca7f34fefccd11e377dc91a3279d16d226a56afe87"
+    },
+    {
+      "name": "schedule-same-day-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "5ec9af7a3baa48932ec7133dd177e11fd89182cebdc26607ba1eabba3a978f94"
+    },
+    {
+      "name": "schedule-24-hours-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "dd6c2751d041ec723ef61e05697a95eec2d62ca38751c33e23aa0417a89067bf"
+    },
+    {
+      "name": "review-24-hours-light",
+      "overflow": false,
+      "minActionHeight": 44,
+      "artificialTextScale": 1,
+      "sha256": "c6612cabf8dfac9ce2e4e2868e33e073d6693bd802065f80c226baa9a012f27d"
+    },
+    {
+      "name": "review-24-hours-light-footer",
+      "overflow": false,
+      "minActionHeight": 44,
+      "artificialTextScale": 1,
+      "sha256": "e79c0676af9720c0c1a5de7d3368d5af1f4a37f099b66cd962f9f96c53e18503"
+    },
+    {
+      "name": "application-failed",
+      "overflow": false,
+      "minActionHeight": 44,
+      "artificialTextScale": 1,
+      "sha256": "093b5a1948c45b11712d10825069e4664c265a7a5822131b0c3457a906b2fcc0"
+    },
+    {
+      "name": "complete-scheduled",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "098d0a37a45d565c7529a0ecaf718fc8efc288da0e75f9e58fa349ee7098294b"
+    },
+    {
+      "name": "home-scheduled",
+      "overflow": false,
+      "minActionHeight": 60,
+      "artificialTextScale": 1,
+      "sha256": "1c6a4b49bb40baf56c8bdcf961ee25ca44c5331ec9672d8342a113cc511f85c3"
+    },
+    {
+      "name": "rule-editor-overnight-light",
+      "overflow": false,
+      "minActionHeight": 50,
+      "existingWebEnabledSwitchVisualHeight": 20,
+      "artificialTextScale": 1,
+      "sha256": "16b231e6dabba9a43fb6b0f47ddd61e5851e8a64fa9422e2ed428c4daca3dc28"
+    },
+    {
+      "name": "rule-editor-overnight-light-footer",
+      "overflow": false,
+      "minActionHeight": 50,
+      "existingWebEnabledSwitchVisualHeight": 20,
+      "artificialTextScale": 1,
+      "sha256": "61082070b641f0a2cf6b5ce28cc7f471df6a7df2a9ca7f1fa1d71dbcd2db7099"
+    },
+    {
+      "name": "rule-editor-24-hours-light",
+      "overflow": false,
+      "minActionHeight": 50,
+      "existingWebEnabledSwitchVisualHeight": 20,
+      "artificialTextScale": 1,
+      "sha256": "7e4da3172067fd7609865bcfea66060150fe83672a5e84cf10bc5264233305d5"
+    },
+    {
+      "name": "rule-editor-24-hours-light-footer",
+      "overflow": false,
+      "minActionHeight": 50,
+      "existingWebEnabledSwitchVisualHeight": 20,
+      "artificialTextScale": 1,
+      "sha256": "7e4da3172067fd7609865bcfea66060150fe83672a5e84cf10bc5264233305d5"
+    },
+    {
+      "name": "welcome-dark-320",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "a624a8cc7d076a79e80d1b0935e748b3aee2314e7ab81d76d7e5415d119921cf"
+    },
+    {
+      "name": "purpose-dark-320-large",
+      "overflow": false,
+      "minActionHeight": 65,
+      "artificialTextScale": 1.5,
+      "sha256": "69670b6cdcbefb9144d6f3729a9bbafc3d9bccc03c47a9c06ecba4308821ef6d"
+    },
+    {
+      "name": "home-pending-dark-320",
+      "overflow": false,
+      "minActionHeight": 65,
+      "artificialTextScale": 1,
+      "sha256": "93a29faba536e2efaf8adce75f67da5a752216c4bb00d4822521ffb261765221"
+    },
+    {
+      "name": "schedule-dark-320-large",
+      "overflow": false,
+      "minActionHeight": 65,
+      "artificialTextScale": 1.5,
+      "sha256": "c22ecb209026724989b993a824b0a5f6a753c9e6c4414486dfcbc5b352c3dd3b"
+    },
+    {
+      "name": "picker-dark-320-large",
+      "overflow": false,
+      "minActionHeight": 61,
+      "artificialTextScale": 1.5,
+      "sha256": "7f8b970f4daa1220c591e1353138ea41e18b8c13a3d2116f3f84f5bddd535cc8"
+    },
+    {
+      "name": "review-dark-320-text-1.5",
+      "overflow": false,
+      "minActionHeight": 57,
+      "artificialTextScale": 1.5,
+      "sha256": "a29e23122baefba2c5f409bf7018263c69b93c9266141b8c5607ec331039f634"
+    },
+    {
+      "name": "review-dark-320-text-1.5-footer",
+      "overflow": false,
+      "minActionHeight": 57,
+      "artificialTextScale": 1.5,
+      "sha256": "0e226d08a37f1ccdca06dc676a4c80959b47fe8130b60a7d960aa2c6b8a85739"
+    },
+    {
+      "name": "review-dark-320-text-2",
+      "overflow": false,
+      "minActionHeight": 70,
+      "artificialTextScale": 2,
+      "sha256": "91ada3f0e41e5f3643f7caf5861f680416141a98e44bb4ca370674427934d35e"
+    },
+    {
+      "name": "review-dark-320-text-2-footer",
+      "overflow": false,
+      "minActionHeight": 70,
+      "artificialTextScale": 2,
+      "sha256": "45eab2b93686a017355f89ca40f2ac060be8c62a60274a5f3fea93ea2d33f306"
+    },
+    {
+      "name": "review-light-390-text-2",
+      "overflow": false,
+      "minActionHeight": 70,
+      "artificialTextScale": 2,
+      "sha256": "2e7193ad8593e41ba4377942e87df7a83ac2d12d8c5fabedda16750fbecec4d1"
+    },
+    {
+      "name": "review-light-390-text-2-footer",
+      "overflow": false,
+      "minActionHeight": 70,
+      "artificialTextScale": 2,
+      "sha256": "f751a6ccc014eb53564215980b3aa42a929dbfd19c897f88fee23f1dedafabb4"
+    }
+  ],
+  "checks": {
+    "noLaunchPermission": true,
+    "cancellationKeepsDraft": true,
+    "noStartBeforeFinalConsent": true,
+    "reviewEditKeepsDraft": true,
+    "purposeAndTimeReturnDirectly": true,
+    "noRepeatedPermissionForText": true,
+    "contextualEditActions": 3,
+    "pickerCancelDoesNotWrite": true,
+    "overnightInferred": true,
+    "sameDayInferred": true,
+    "equalTimeShows24Hours": true,
+    "explicitFailureRetry": true,
+    "oneSavedRule": true,
+    "completedReloadReturnsHome": true,
+    "normalRuleEditorUsesSamePicker": true,
+    "deferredReloadRestoresInput": true,
+    "oneResumeEntry": true,
+    "editRelaunchReturnsDirectly": true,
+    "autosaveDoesNotReconfirmApps": true
+  },
+  "errors": []
+}

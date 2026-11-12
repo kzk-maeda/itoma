@@ -1,9 +1,23 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
+import { useOnboarding } from '@/state/onboarding';
 import { useScreenTime } from '@/state/screen-time';
+import { FirstRunOnboarding } from './onboarding-flow';
 import { back } from './navigation';
 import { Body, Button, FlowScreen, Heading, Panel } from './ui';
 
 export function OnboardingScreen() {
+  const onboarding = useOnboarding(), state = useScreenTime();
+  if (onboarding.loading || state.loading) return <FlowScreen title="設定を確認しています"><Body>端末に保存した内容を読み込んでいます。</Body></FlowScreen>;
+  return <LoadedOnboarding recovery={!!onboarding.progress?.completed || (!onboarding.draft && (!!state.snapshot?.rules.length || !!state.ruleDraft))} />;
+}
+function LoadedOnboarding({ recovery }: { recovery: boolean }) {
+  const [permissionRecovery] = useState(recovery);
+  return permissionRecovery ? <PermissionRecovery /> : <FirstRunOnboarding />;
+}
+
+/** Existing rules retain the explicit reauthorization/selection/restart flow. */
+function PermissionRecovery() {
   const state = useScreenTime();
   const authorize = async () => {
     const permission = await state.run('authorize');
