@@ -73,7 +73,7 @@ export function ProductHome() {
       <Body>いつ、どのアプリから離れたいか。あなたのペースで決めていきましょう。</Body>
       <Body muted>必要なときは、自分の言葉で理由を書いて一時解除できます。</Body>
     </Panel>}
-    {!s?.rules.length && <Button label="ルールをつくる" disabled={!device || !!state.busy} onPress={create} />}
+    {!s?.rules.length && <Button label="ルールをつくる" testID="home-rule-create" disabled={!device || !!state.busy} onPress={create} />}
     {!!s?.rules.length && state.ruleDraft?.dirty && <Button label="編集中のルールに戻る" secondary onPress={() => router.navigate('/rule')} />}
     {!!s?.rules.length && <View style={styles.targets}><Heading>対象のアプリ</Heading>
       {s.authorization === 'approved' ? s.targets.map((target) => <View key={target.ref} style={[styles.target, { borderColor: theme.line }]}>

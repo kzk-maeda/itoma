@@ -15,7 +15,7 @@ export default function RootLayout() {
   useEffect(() => { runNativeSmoke(); }, []);
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <View style={{ flex: 1 }} onLayout={() => { void SplashScreen.hideAsync(); }}>
+      <View testID={`itoma-build-${process.env.EXPO_PUBLIC_BUILD_SHA ?? 'unknown'}`} collapsable={false} style={{ flex: 1 }} onLayout={() => { void SplashScreen.hideAsync(); }}>
         <ScreenTimeProvider><HistoryProvider><ReflectionProvider><Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(main)" options={{ animation: 'none' }} />
         </Stack></ReflectionProvider></HistoryProvider></ScreenTimeProvider>

@@ -1,0 +1,47 @@
+version: 0.1
+ios_test_host: macos_tahoe
+
+phases:
+  install:
+    commands:
+      - devicefarm-cli use node 24
+      - devicefarm-cli use xcode 27
+      - devicefarm-cli use appium 3
+      - node --version
+      - xcodebuild -version
+      - appium --version
+      - appium driver list --installed --json
+      - cd "$DEVICEFARM_TEST_PACKAGE_PATH"
+      # The tarball includes the lockfile-resolved JS dependencies, including transitive packages.
+      - npm install --offline --ignore-scripts --no-audit --no-fund ./itoma-device-farm-e2e-1.0.0.tgz
+  pre_test:
+    commands:
+      - |-
+        set -euo pipefail
+        driver_major=$(appium driver list --installed --json | jq -r '.xcuitest.version | split(".")[0]')
+        wda_variable="DEVICEFARM_APPIUM_WDA_DERIVED_DATA_PATH_V${driver_major}"
+        export ITOMA_WDA_PATH="${!wda_variable:-}"
+        test -n "$ITOMA_WDA_PATH"
+        test -d "$ITOMA_WDA_PATH"
+        appium --address 127.0.0.1 --port 4723 --base-path / \
+          --log-timestamp --log-no-colors > "$DEVICEFARM_LOG_DIR/appium.log" 2>&1 &
+        echo $! > "$DEVICEFARM_LOG_DIR/appium.pid"
+        for attempt in {1..60}; do
+          if curl --silent --fail http://127.0.0.1:4723/status > /dev/null; then exit 0; fi
+          sleep 1
+        done
+        echo "Appium startup timed out"
+        exit 1
+  test:
+    commands:
+      - cd "$DEVICEFARM_TEST_PACKAGE_PATH/node_modules/itoma-device-farm-e2e"
+      # No pipe or success fallback: all assertions, hooks and the four-test guard must pass.
+      - npm test
+  post_test:
+    commands:
+      - |-
+        if test -f "$DEVICEFARM_LOG_DIR/appium.pid"; then
+          kill "$(cat "$DEVICEFARM_LOG_DIR/appium.pid")" || true
+        fi
+artifacts:
+  - $DEVICEFARM_LOG_DIR

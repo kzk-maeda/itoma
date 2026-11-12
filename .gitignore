@@ -44,3 +44,10 @@ example
 # generated native folders
 /ios
 /android
+
+# Device Farm input and locally generated packages/evidence
+/e2e/target.json
+*.ipa
+*.tgz
+/device-farm-output/
+__pycache__/

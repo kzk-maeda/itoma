@@ -36,5 +36,6 @@ jobs:
       - run: npm run lint
       - run: npm test -- --ci --runInBand
       - run: npm run test:ios-tools
+      - run: npm run test:device-farm
       - run: npm run test:demo
       - run: npm run demo:package

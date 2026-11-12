@@ -1,0 +1,33 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RunAndInspectOnlyThisProject",
+      "Effect": "Allow",
+      "Action": [
+        "devicefarm:CreateUpload",
+        "devicefarm:GetUpload",
+        "devicefarm:DeleteUpload",
+        "devicefarm:GetDevicePool",
+        "devicefarm:GetDevicePoolCompatibility",
+        "devicefarm:ScheduleRun",
+        "devicefarm:ListRuns",
+        "devicefarm:GetRun",
+        "devicefarm:StopRun",
+        "devicefarm:ListJobs",
+        "devicefarm:ListSuites",
+        "devicefarm:ListTests",
+        "devicefarm:ListArtifacts"
+      ],
+      "Resource": [
+        "arn:aws:devicefarm:us-west-2:ACCOUNT_ID:project:PROJECT_ID",
+        "arn:aws:devicefarm:us-west-2:ACCOUNT_ID:devicepool:PROJECT_ID/POOL_ID",
+        "arn:aws:devicefarm:us-west-2:ACCOUNT_ID:upload:PROJECT_ID/*",
+        "arn:aws:devicefarm:us-west-2:ACCOUNT_ID:run:PROJECT_ID/*",
+        "arn:aws:devicefarm:us-west-2:ACCOUNT_ID:job:PROJECT_ID/*",
+        "arn:aws:devicefarm:us-west-2:ACCOUNT_ID:suite:PROJECT_ID/*",
+        "arn:aws:devicefarm:us-west-2:ACCOUNT_ID:test:PROJECT_ID/*"
+      ]
+    }
+  ]
+}

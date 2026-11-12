@@ -63,7 +63,7 @@ export function SettingsScreen() {
       {deleted && <Body>保存した理由を削除しました。</Body>}
       <Button label="保存した理由の削除を確認" secondary disabled={!device || !!state.busy} onPress={deleteReasons} />
     </Panel>
-    <Panel><Heading>記録と振り返りの管理</Heading><Button label="選択の記録を見る" secondary onPress={() => router.navigate('/history')} /><ReflectionManagement /></Panel>
+    <Panel><Heading>記録と振り返りの管理</Heading><Button label="選択の記録を見る" testID="settings-history" secondary onPress={() => router.navigate('/history')} /><ReflectionManagement /></Panel>
     {s?.historyIncomplete && <Notice title="操作記録の一部を保存できませんでした">現在の制限の状態は、上の確認操作で取得できます。</Notice>}
     {state.error === 'storage-failed' && <Body muted>停止を確認できない場合は、iOSの設定でITOMAへのスクリーンタイムの許可を取り消せます。</Body>}
   </FlowScreen>;

@@ -1,5 +1,7 @@
 # 署名不要のiOS Simulator QA
 
+Device Farm公開実機での手動E2Eは[別workflowと手順](device-farm-e2e.md)を参照。Simulatorのbridge検証、公開実機UIスモーク、署名済み端末でのScreen Time実効検証はそれぞれ結果を分ける。
+
 [#94](https://github.com/kzk-maeda/itoma/issues/94)、親[#9](https://github.com/kzk-maeda/itoma/issues/9)/[#10](https://github.com/kzk-maeda/itoma/issues/10)。Linuxの型/Swiftテストと、macOSのビルド・Simulator・実機を分けて記録する。
 
 ## 手動で起動する
