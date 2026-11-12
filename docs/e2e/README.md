@@ -7,7 +7,7 @@ E2Eの設計・実行・保守の入口。関連Issueは[#156](https://github.co
 | AWS/Secrets/IPAを準備し、手動実行して結果を読む | [実行手順](runbook.md) |
 | 機能・画面変更に合わせてシナリオを追加・更新する | [シナリオの保守手順](scenarios.md) |
 | 全体構成、Pythonの役割、合否判定と検証範囲を理解する | [構成と判断理由](architecture.md) |
-| 実行roleのIAM権限を設定する | [IAM policy例](device-farm-iam-policy.json) |
+| 常設リソース・state・OIDC/IAMを構築・更新する | [Terraform管理手順](infrastructure.md) |
 
 ## コードの場所
 
@@ -21,6 +21,7 @@ E2Eの設計・実行・保守の入口。関連Issueは[#156](https://github.co
 | [scripts/device_farm/prepare.py](../../scripts/device_farm/prepare.py) | IPA検査・テストパッケージ作成。AWSアクセスなし |
 | [scripts/device_farm/run.py](../../scripts/device_farm/run.py) | AWS upload/実行監視/停止/証跡回収/合否判定/cleanup |
 | [tests/device_farm/test_device_farm.py](../../tests/device_farm/test_device_farm.py) | AWSアクセスなしの基盤回帰。実機E2Eの代用ではない |
+| [infra/device-farm](../../infra/device-farm) / [infra/state-bootstrap](../../infra/state-bootstrap) | 常設のProject/Pool/OIDC/IAMとstate用S3のTerraform定義 |
 
 シナリオはこのrepoで保守する。AWSコンソール側で別のテストコードを編集する運用にはしない。画面・機能を変えるagentへの必須指示はルートの[AGENTS.md](../../AGENTS.md#e2e-maintenance)、作業手順は[開発フロー](../development-workflow.md)、レビュー時の記録欄は[PRテンプレート](../../.github/pull_request_template.md)にある。
 

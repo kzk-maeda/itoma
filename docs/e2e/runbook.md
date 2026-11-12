@@ -15,32 +15,24 @@ GitHub runnerでAWSの呼出しまで行う場合はPython3.12とboto3を使う�
 
 ## 1. 初回設定
 
-### AWS
+### AWS（Terraform）
 
-AWSコンソールのDevice FarmでProjectを作り、使用する公開端末のARNを確認する。PoolをCLIで作る場合は、次の`PROJECT_ARN`と`DEVICE_ARN`を実際の値へ置き換える。初期構成は1台に限定する。
+Project、端末ARNを固定したPool、GitHub OIDCと実行roleは[Terraform管理手順](infrastructure.md)で構築する。state保管先がない場合はS3のbootstrapから始め、既存資源は管理元を確認してreuse/importする。IAM権限の正本は[Terraform定義](../../infra/device-farm/main.tf)。
 
-```sh
-aws devicefarm create-device-pool --region us-west-2 \
-  --project-arn PROJECT_ARN --name itoma-ios-smoke --max-devices 1 \
-  --rules '[{"attribute":"ARN","operator":"IN","value":"[\"DEVICE_ARN\"]"}]'
-```
-
-`us-west-2`の**自分のProject配下のDevice Pool**を使う。最初は公開iPhone1台へ固定し、`maxDevices=1`を明示する。無制限pool/汎用curated poolはこのworkflowで使わない。IPAアップロード後、互換性・端末数・OS・公開fleetを確認してからScheduleRunする。確認済み端末ARNのfilterと台数をScheduleRunへ固定して渡し、実行中のpool編集による対象拡大を防ぐ。不適合端末や端末ゼロは失敗とする。
-
-GitHub Settings → Secrets and variables → Actionsへ次を設定する。
+構築後、Terraformの`project_arn`・`device_pool_arn`・`runtime_role_arn`を以下のGitHub Settings → Secrets and variables → Actionsへ登録する。具体的な登録コマンドは[Terraform出力の接続手順](infrastructure.md#3-terraform出力を既存actionsへ接続する)にある。
 
 | 種類 | 名前 | 内容 |
 | --- | --- | --- |
-| Variable | `DEVICE_FARM_PROJECT_ARN` | `arn:aws:devicefarm:us-west-2:ACCOUNT_ID:project:PROJECT_ID` |
-| Variable | `DEVICE_FARM_DEVICE_POOL_ARN` | `arn:aws:devicefarm:us-west-2:ACCOUNT_ID:devicepool:PROJECT_ID/POOL_ID` |
+| Variable | `DEVICE_FARM_PROJECT_ARN` | Terraform output `project_arn` |
+| Variable | `DEVICE_FARM_DEVICE_POOL_ARN` | Terraform output `device_pool_arn` |
 | Variable | `ITOMA_IOS_BUNDLE_ID` | IPAの実際のbundle identifier。例: `com.example.itoma` |
-| Secret（推奨） | `AWS_ROLE_ARN` | GitHub OIDCで引き受けるrole |
-| Secret（アクセスキー方式） | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | roleを使わない場合のキー2点 |
+| Secret（推奨） | `AWS_ROLE_ARN` | Terraform output `runtime_role_arn`。GitHub OIDCで引き受けるrole |
+| Secret（既存アクセスキー方式） | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | roleを使わない場合に別途管理するキー2点 |
 | Secret（任意） | `AWS_SESSION_TOKEN` | 一時アクセスキーを使う場合 |
 
-OIDCとアクセスキーの両方があればOIDCを優先する。OIDC providerのaudienceは`sts.amazonaws.com`、trust policyのsubjectは実行を許可するbranchへ限定する（mainなら`repo:kzk-maeda/itoma:ref:refs/heads/main`）。PR前の試験では対象作業branchだけを明示して許可し、任意のfork/PRへSecretsを渡さない。値をチャットやリポジトリへ書かない。
+OIDCとアクセスキーの両方があればOIDCを優先する。TerraformはIAMユーザーやアクセスキーを作成しない。roleのtrustは実行するrepo/branchへ完全一致で限定する。変数/roleの変更はTerraformでplan/applyし、ARNが変わった場合にGitHub登録も更新する。
 
-実行roleの権限例は[device-farm-iam-policy.json](device-farm-iam-policy.json)。`ACCOUNT_ID`/`PROJECT_ID`/`POOL_ID`を置き換える。Project/Pool作成権限、署名情報、課金設定変更権限はrunnerに不要。ScheduleRun自体のAWS SDK再試行を無効にし、通信応答不明時の二重有料実行を避ける。
+選定は公開iOS18+端末1〜3台。IPAアップロード後、runnerが互換性・端末数・OS・公開fleetを確認してからScheduleRunする。確認済み端末ARNと台数を固定して渡し、pool編集で対象が拡大しないようにする。不適合端末や端末ゼロは失敗とする。
 
 ### IPAを用意する
 

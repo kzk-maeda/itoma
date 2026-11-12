@@ -16,6 +16,8 @@ flowchart LR
 
 トリガーは`workflow_dispatch`のみ。同repo内の実行を直列化し、poolの`maxDevices`は1〜3、1jobは10分、upload/queueを含む待機は45分。完了は15秒間隔で確認する。AWSリージョンは`us-west-2`に固定する。互換性確認済み端末ARNをScheduleRunへ固定して渡し、pool編集による実行対象の拡大を防ぐ。
 
+常設のProject/PoolとGitHub OIDC/IAM、Terraform state用S3は[Terraform](infrastructure.md)で管理する。実行用roleはProject内のrun/upload管理に限定し、常設資源の作成やstateへのアクセスを許可しない。各テストのupload/runは引き続きrunnerが管理し、Terraform stateへ追加しない。
+
 テストコードと実行スクリプトは手動実行時に選んだworkflow refのSHAから取得する。IPA artifact内のスクリプトは実行しない。アプリのSHAとテスト/workflowのSHAを分けて記録する。初回は追加ID/ビルドmarkerを含むIPAが必要。
 
 ## Pythonスクリプトは何をするか

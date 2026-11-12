@@ -83,6 +83,7 @@ Report what was tested on Simulator and what was tested on a physical device sep
 - Executable interactions and assertions live in `e2e/tests/smoke.test.mjs`; scenario IDs/names are registered in `e2e/scenarios.json`. Preserve stable `testID`s. Register and implement new IDs together; do not remove assertions, skip tests, or drop registered scenarios merely to make a failure pass.
 - For E2E scenario or runner changes, run `npm run test:device-farm` and the normal required checks. This command checks orchestration/report contracts and Node syntax; it does not execute Appium on a device. Record Device Farm execution separately using `docs/e2e/runbook.md`.
 - Include affected IDs, added/updated coverage or the reason no update is needed, and actual execution results in the PR's E2E section. Missing AWS configuration/IPA means device E2E is not run, not passed. Keep public-device UI smoke separate from Screen Time enforcement QA; do not bypass authorization or invent native success for tests.
+- Persistent E2E infrastructure lives in `infra/device-farm` and `infra/state-bootstrap`; read `docs/e2e/infrastructure.md` before changing it. Validate with Terraform fmt/validate and mocked tests with backend disabled; do not run a real apply or billable Device Farm run as a validation command. Record real deployment separately, keep state/credentials out of Git, and retain the runtime role's separation from infrastructure/state administration.
 
 ## Navigation & Routing
 

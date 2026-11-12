@@ -21,3 +21,4 @@ ADR 0002はPR #31のmainマージ（2026-11-04 JST）、0003〜0006はPR #36のm
 | [0005: 小さいMVVMと共通Swift Domain](0005-native-domain-and-mvvm.md) | Accepted（2026-11-06 JST、#36） | [#24](https://github.com/kzk-maeda/itoma/issues/24) |
 | [0006: controlと本文・履歴のSQLite分離](0006-local-storage-and-history.md) | Accepted（2026-11-06 JST、#36） | [#25](https://github.com/kzk-maeda/itoma/issues/25) |
 | [0007: 一時解除を除いた制限時間を振り返る](0007-recorded-setting-time-reflection.md) | Accepted（本人がPR134を採用・マージ、実機未検証） | [#96](https://github.com/kzk-maeda/itoma/issues/96) |
+| [0008: E2Eの常設リソースをTerraformで管理する](0008-device-farm-terraform.md) | Proposed（Terraformは本人指定、具体構成レビュー・AWS apply未実施） | [#156](https://github.com/kzk-maeda/itoma/issues/156) |

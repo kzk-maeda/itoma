@@ -51,3 +51,14 @@ example
 *.tgz
 /device-farm-output/
 __pycache__/
+
+# Terraform: keep provider lockfiles; exclude deployment inputs, state and saved plans.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+**/backend.hcl
+**/backend_override.tf
+crash.log
