@@ -1,0 +1,5 @@
+// Temporary label substitute; real Screen Time application tokens never enter web evidence.
+import { Body } from './ui';
+export function Applications({ count = 0 }: { count?: number; selectionRef?: string; refreshKey?: number; targetRef?: string; selected?: boolean; onSelect?: () => void }) {
+  return <Body>画面QA用の対象アプリ（{count}件）</Body>;
+}

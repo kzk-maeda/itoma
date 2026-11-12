@@ -6,17 +6,7 @@ import ItomaControl
 import ItomaHistory
 import ItomaScreenTime
 
-struct ProductRuleInput: Decodable, Sendable {
-    let id: String?
-    let expectedRevision: String
-    let selectionRef: String
-    let weekdays: [Int]
-    let startMinute: Int
-    let endMinute: Int
-    let nextDay: Bool
-    let enabled: Bool
-    let remove: Bool?
-}
+typealias ProductRuleInput = RulePreviewInput
 struct ProductRequest: Decodable, Sendable {
     var rule: ProductRuleInput?
     var details: ProductRuleDetailsInput?
@@ -91,7 +81,9 @@ struct ProductResponse: Encodable, Sendable {
     private var confirmedSelections: Set<SelectionRef> = []
     private var denialEpoch = 0
     private var reviewGateActive = false
-    private var candidate: (PolicyCandidate, PolicyEditAssessment)?
+    private var candidate: (PolicyCandidate, PolicyEditAssessment?)?
+    private enum CandidateOwner { case rule, onboarding, recovery }
+    private var candidateOwner: CandidateOwner?
     private struct GrantPreview {
         let id: UUID; let request: GrantRequest; let reasonRef: ReasonRef; let reason: String; let expiresAt: Instant
     }
@@ -144,59 +136,72 @@ struct ProductResponse: Encodable, Sendable {
                 try ProductRuleDetailsStore.save(details, activeRuleIDs: Set(current.policy.rules.map { $0.id.rawValue }))
             case "previewRule":
                 guard let input = request.rule else { throw ScreenTimeRuntimeError.invalidSelection }
-                try cancelCandidate(r)
-                let before = try r.repository.readSnapshot()
-                guard input.expectedRevision == String(before.policy.revision.rawValue),
-                      let selectionUUID = UUID(uuidString: input.selectionRef),
-                      before.selections.contains(where: { $0.selection.ref.rawValue == selectionUUID }) else { throw StorageError.conflict }
-                let oldID = input.id.flatMap(UUID.init(uuidString:)).map(RuleID.init)
-                let old = before.policy.rules.first { $0.id == oldID }
-                if oldID != nil, old == nil { throw StorageError.conflict }
-                let id = old?.id ?? RuleID(UUID())
-                let weekdays = input.weekdays.compactMap(Weekday.init(rawValue:))
-                guard weekdays.count == input.weekdays.count else { throw ModelError.emptyWeekdays }
-                let rule = try Rule(id: id, version: old?.version.next() ?? RuleVersion(0), enabled: input.enabled,
-                    selectionRef: SelectionRef(selectionUUID), schedule: WeeklySchedule(weekdays: Set(weekdays),
-                        startMinute: input.startMinute, endMinute: input.endMinute, endDayOffset: input.nextDay ? .nextDay : .sameDay), unlockMode: .reason)
-                var rules = before.policy.rules
-                var order = before.policy.priorityOrder
-                if input.remove == true {
-                    rules.removeAll { $0.id == id }; order.removeAll { $0 == id }
-                } else if let index = rules.firstIndex(where: { $0.id == id }) { rules[index] = rule }
-                else { rules.append(rule); order.append(id) }
-                let proposed = try PolicySnapshot(revision: before.policy.revision.next(), rules: rules, priorityOrder: order,
-                    defaultUnlockDuration: before.policy.defaultUnlockDuration)
-                let selected = Set(rules.filter(\.enabled).flatMap { rule in before.selections.first { $0.selection.ref == rule.selectionRef }?.selection.targets ?? [] })
-                guard selected.count <= 50 else { throw ScreenTimeRuntimeError.invalidSelection }
-                let command = try Command(id: CommandID(UUID()), kind: .commitPolicy, status: .pending,
-                    expectedPolicyRevision: before.policy.revision, candidatePolicyRevision: proposed.revision, attempt: AttemptNumber(0))
-                let proposedCandidate = try PolicyCandidate(commandID: command.id, expectedRevision: before.policy.revision, proposedPolicy: proposed)
-                _ = try r.repository.write { try $0.acceptCandidate(command: command, candidate: proposedCandidate, expectedSequence: before.snapshotSequence) }
-                let assessment = try r.makeService(additionalPolicy: proposed).previewCandidate(commandID: command.id)
-                candidate = (proposedCandidate, assessment)
-                return ProductResponse(status: "confirmation-required", ref: command.id.rawValue.uuidString.lowercased(),
-                    impacts: assessment.impacts.filter { $0.kind != .unchanged }.map { ProductImpactDTO(kind: String(describing: $0.kind), endsAt: $0.proposedExpiresAt?.secondsSince1970) }, snapshot: try snapshot(r))
+                checkReviewGate(try r.repository.readSnapshot(), in: r)
+                let service = RulePreviewService(repository: r.repository, contexts: r.contexts)
+                // A completed cache can survive a failed response/read. It no longer owns a
+                // live operation and must not block a later flow that has no preview ref.
+                if request.ref == nil, candidateOwner != .onboarding, let cached = candidate?.0,
+                   try service.canReleaseOwnership(of: cached) { candidate = nil; candidateOwner = nil }
+                let owned = candidateOwner == .rule ? candidate?.0 : nil
+                let preview: RulePreviewResult
+                do {
+                    preview = try service.preview(input, confirmedSelections: confirmedSelections,
+                        previousCandidate: owned, previousRef: request.ref,
+                        anotherFlowOwnsCandidate: candidate != nil && (owned == nil || request.ref == nil)) { pending in
+                            try r.makeService(additionalPolicy: pending.proposedPolicy).previewCandidate(commandID: pending.commandID)
+                        }
+                } catch {
+                    if let accepted = service.acceptedCandidate {
+                        // Acceptance can succeed before a later read/assessment fails. Preserve
+                        // this flow's ownership without manufacturing a usable confirmation.
+                        candidate = (accepted, nil); candidateOwner = .rule
+                        return ProductResponse(status: "error", code: failureCode(error),
+                            ref: accepted.commandID.rawValue.uuidString.lowercased(), snapshot: try? snapshot(r))
+                    }
+                    throw error
+                }
+                switch preview {
+                case let .unchanged(selectionRef):
+                    // Equal immutable targets after an explicit fresh picker selection also prove
+                    // the retained old selection. Resume remains a separate explicit operation.
+                    if let uuid = UUID(uuidString: input.selectionRef), confirmedSelections.contains(SelectionRef(uuid)) {
+                        confirmedSelections.insert(selectionRef)
+                    }
+                    if request.ref != nil { candidate = nil; candidateOwner = nil }
+                    // The comparison/cancellation already completed. Projection failure cannot
+                    // turn it into an ambiguous error carrying the now-cancelled previous ref.
+                    return ProductResponse(snapshot: try? snapshot(r))
+                case let .confirmation(pending, assessment):
+                    candidate = (pending, assessment); candidateOwner = .rule
+                    return ProductResponse(status: "confirmation-required", ref: pending.commandID.rawValue.uuidString.lowercased(),
+                        impacts: assessment.impacts.filter { $0.kind != .unchanged }.map { ProductImpactDTO(kind: String(describing: $0.kind), endsAt: $0.proposedExpiresAt?.secondsSince1970) }, snapshot: try? snapshot(r))
+                }
             case "reviewCandidate":
                 guard let id = request.ref.flatMap(UUID.init(uuidString:)),
                       let pending = try r.repository.candidate(commandID: CommandID(id)) else { throw StorageError.conflict }
                 let assessment = try r.makeService(additionalPolicy: pending.proposedPolicy).previewCandidate(commandID: pending.commandID)
+                if candidate?.0.commandID != pending.commandID { candidateOwner = .recovery }
                 candidate = (pending, assessment)
                 let command = try r.repository.command(pending.commandID)
                 return ProductResponse(status: "confirmation-required", ref: pending.commandID.rawValue.uuidString.lowercased(),
                     impacts: assessment.impacts.filter { $0.kind != .unchanged }.map { ProductImpactDTO(kind: String(describing: $0.kind), endsAt: $0.proposedExpiresAt?.secondsSince1970) },
                     snapshot: try snapshot(r), retryable: command?.status == .failed || command?.status == .uncertain)
             case "commitRule", "retryRule":
-                guard let (pending, confirmation) = candidate, request.ref?.lowercased() == pending.commandID.rawValue.uuidString.lowercased() else { throw StorageError.conflict }
+                guard candidateOwner != .onboarding, let (pending, assessment) = candidate, let confirmation = assessment,
+                      request.ref?.lowercased() == pending.commandID.rawValue.uuidString.lowercased() else { throw StorageError.conflict }
                 _ = try r.monitors.prepare(pending.proposedPolicy)
                 let service = try r.makeService(additionalPolicy: pending.proposedPolicy)
                 let result: CommandRunResult
                 if action == "retryRule" { result = try await service.retryCandidate(commandID: pending.commandID, confirmation: confirmation) }
                 else { result = try await service.executeAcceptedCandidate(commandID: pending.commandID, confirmation: confirmation) }
                 let current = try r.repository.readSnapshot()
-                if current.policy == pending.proposedPolicy { candidate = nil }
+                let completed = try RulePreviewService(repository: r.repository, contexts: r.contexts).canReleaseOwnership(of: pending)
+                if completed {
+                    candidate = nil; candidateOwner = nil
+                }
                 if result.failure == nil, let ready = try r.monitors.readyPlan(for: current.policy) { try? r.monitors.cleanup(keeping: ready) }
                 return try commandResponse(result, in: r)
-            case "cancelCandidate": try cancelCandidate(r)
+            case "cancelCandidate": try cancelCandidate(r, ref: request.ref)
             case "previewUnlock":
                 guard let targetUUID = request.targetRef.flatMap(UUID.init(uuidString:)) else { throw ScreenTimeRuntimeError.invalidSelection }
                 let before = try r.repository.readSnapshot(), context = r.contexts.context(activation: before.activation)
@@ -303,12 +308,18 @@ struct ProductResponse: Encodable, Sendable {
             if current.policy.rules.contains(where: { $0.id.rawValue == draft.id }) {
                 saved = try ProductRuleDetailsStore.finishOnboarding(expectedRevision: saved.revision, activeRuleIDs: Set(current.policy.rules.map { $0.id.rawValue }))
                 progress = saved.progress
+                if candidateOwner == .onboarding, candidate?.0.commandID.rawValue == binding.commandID {
+                    candidate = nil; candidateOwner = nil
+                }
                 return try onboardingResponse(saved, in: control)
             }
             // The bound policy committed, and the user subsequently removed that rule. Do not
             // recreate it from a lingering private draft after a failed completion acknowledgement.
             progress.draft = nil; progress.seenIntro = true; progress.completed = true
             saved = try ProductRuleDetailsStore.saveOnboarding(progress, expectedRevision: saved.revision)
+            if candidateOwner == .onboarding, candidate?.0.commandID.rawValue == binding.commandID {
+                candidate = nil; candidateOwner = nil
+            }
             return try onboardingResponse(saved, in: control)
         }
         func persist() throws {
@@ -338,7 +349,7 @@ struct ProductResponse: Encodable, Sendable {
                         _ = try tx.recordCommand(cancelled, expected: command)
                     }
                 }
-                if candidate?.0.commandID.rawValue == binding.commandID { candidate = nil }
+                if candidate?.0.commandID.rawValue == binding.commandID { candidate = nil; candidateOwner = nil }
             }
             progress.seenIntro = true
             if action == "onboardingDiscard" { progress.draft = nil }
@@ -371,7 +382,7 @@ struct ProductResponse: Encodable, Sendable {
                 _ = try control.repository.write { try $0.acceptCandidate(command: command, candidate: pending, expectedSequence: before.snapshotSequence) }
             }
             let assessment = try control.makeService(additionalPolicy: pending.proposedPolicy).previewCandidate(commandID: pending.commandID)
-            candidate = (pending, assessment)
+            candidate = (pending, assessment); candidateOwner = .onboarding
             var response = try onboardingResponse(saved, in: control)
             response.status = "confirmation-required"; response.ref = binding.commandID.uuidString.lowercased()
             response.impacts = assessment.impacts.filter { $0.kind != .unchanged }.map { ProductImpactDTO(kind: String(describing: $0.kind), endsAt: $0.proposedExpiresAt?.secondsSince1970) }
@@ -380,7 +391,8 @@ struct ProductResponse: Encodable, Sendable {
             return response
         case "onboardingCommit":
             guard var draft = progress.draft, var binding = draft.binding, let control,
-                  let (pending, confirmation) = candidate, pending.commandID.rawValue == binding.commandID else { throw RuleDetailsError.changed }
+                  let (pending, assessment) = candidate, let confirmation = assessment,
+                  pending.commandID.rawValue == binding.commandID else { throw RuleDetailsError.changed }
             try requireOnboardingSelection(draft, in: control)
             binding.submitted = true; draft.binding = binding; progress.draft = draft; try persist()
             _ = try control.monitors.prepare(pending.proposedPolicy)
@@ -393,7 +405,7 @@ struct ProductResponse: Encodable, Sendable {
             if current.policy.rules.contains(where: { $0.id.rawValue == draft.id }),
                try control.repository.write({ try $0.activatedCandidateRevision(commandID: pending.commandID) }) != nil {
                 saved = try ProductRuleDetailsStore.finishOnboarding(expectedRevision: saved.revision, activeRuleIDs: Set(current.policy.rules.map { $0.id.rawValue }))
-                candidate = nil
+                candidate = nil; candidateOwner = nil
             }
             if result.failure == nil, let ready = try control.monitors.readyPlan(for: current.policy) { try? control.monitors.cleanup(keeping: ready) }
             var response = try commandResponse(result, in: control)
@@ -443,18 +455,15 @@ struct ProductResponse: Encodable, Sendable {
         try r.protectFiles()
     }
 
-    private func cancelCandidate(_ r: ScreenTimeRuntime) throws {
-        if let (pending, _) = candidate {
-            try r.repository.write { tx in
-                if let command = try tx.command(pending.commandID), command.status == .pending {
-                    let cancelled = try Command(id: command.id, kind: command.kind, status: .cancelled,
-                        expectedPolicyRevision: command.expectedPolicyRevision, candidatePolicyRevision: command.candidatePolicyRevision,
-                        attempt: command.attempt, reasonRef: command.reasonRef)
-                    _ = try tx.recordCommand(cancelled, expected: command)
-                }
-            }
-        }
-        candidate = nil
+    private func cancelCandidate(_ r: ScreenTimeRuntime, ref: String?) throws {
+        // An absent ref owns nothing. A regular editor cannot cancel onboarding/recovery or
+        // another flow merely because its accepted candidate is currently in this singleton.
+        guard let ref else { return }
+        guard candidateOwner == .rule, let (pending, _) = candidate else { throw StorageError.conflict }
+        guard UUID(uuidString: ref) == pending.commandID.rawValue else { throw StorageError.conflict }
+        let service = RulePreviewService(repository: r.repository, contexts: r.contexts)
+        if try !service.canReleaseOwnership(of: pending) { try service.cancel(pending, ref: ref) }
+        candidate = nil; candidateOwner = nil
     }
 
     private func snapshot(_ r: ScreenTimeRuntime) throws -> ProductSnapshotDTO {
@@ -552,7 +561,8 @@ struct ProductResponse: Encodable, Sendable {
         case CommandServiceError.authorizationRequired, GrantEvaluationError.authorizationRequired: return "authorization-required"
         case ScreenTimeRuntimeError.busy, StorageError.busy: return "busy"
         case ScreenTimeRuntimeError.scheduleUnavailable: return "schedule-failed"
-        case ScreenTimeRuntimeError.invalidSelection: return "selection-required"
+        case ScreenTimeRuntimeError.invalidSelection, RulePreviewError.invalidSelection: return "selection-required"
+        case RulePreviewError.invalidInput: return "invalid-input"
         case HistoryError.capacityExceeded: return "reason-storage-full"
         case HistoryError.invalidCapacity: return "unavailable"
         case GrantEvaluationError.emptyReason: return "reason-required"

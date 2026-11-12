@@ -1,7 +1,8 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
-import { ruleInput, useScreenTime, type RuleDraft } from '@/state/screen-time';
+import { ruleInput, useScreenTime } from '@/state/screen-time';
+import type { RulePreviewDraft } from './rule';
 import { useOptionalOnboarding } from '@/state/onboarding';
 import type { ScreenTimeRule } from '../../../modules/itoma-native';
 import { Applications } from './applications';
@@ -20,17 +21,22 @@ export function SettingsScreen() {
     if (!state.ruleDraft?.dirty) { proceed(); return; }
     Alert.alert('編集中の入力があります', '入力を続けるか、破棄して別の操作へ進むかを選べます。', [
       { text: '入力を続ける', style: 'cancel', onPress: () => router.navigate('/rule') },
-      { text: '破棄して進む', style: 'destructive', onPress: () => { void state.run('cancelCandidate').then((r) => { if (r.status === 'ok') { state.setRuleDraft(undefined); proceed(); } }); } },
+      { text: '破棄して進む', style: 'destructive', onPress: () => {
+        void state.run('cancelCandidate', { ref: state.rulePreviewRef ?? state.ruleReview?.ref }).then((r) => {
+          if (r.status === 'ok') { state.setRuleDraft(undefined); state.setRuleReview(undefined); state.setRulePreviewRef(undefined); proceed(); }
+        });
+      } },
     ]);
   };
   const firstRun = !!setup && !setup.progress?.completed && !s?.rules.length;
   const edit = (rule?: ScreenTimeRule) => withDraftChoice(() => { if (firstRun && !rule) { router.navigate('/onboarding'); return; } state.beginRule(rule); router.navigate(s?.authorization === 'approved' ? '/rule' : '/onboarding'); });
   const prepareRemoval = async (rule: ScreenTimeRule) => {
     state.beginRule(rule);
-    const draft: RuleDraft = { ...rule, start: clockText(rule.startMinute), end: clockText(rule.endMinute), dirty: true, remove: true };
+    const draft: RulePreviewDraft = { ...rule, start: clockText(rule.startMinute), end: clockText(rule.endMinute), dirty: true, remove: true, previewBaseRevision: s!.revision };
     state.setRuleDraft(draft);
     const response = await state.run('previewRule', { rule: ruleInput(draft, s!.revision) });
-    if (response.status === 'confirmation-required') { state.setRuleReview(response); router.push('/rule-confirm'); }
+    if (response.status === 'confirmation-required') { state.setRulePreviewRef(response.ref); state.setRuleReview(response); router.push('/rule-confirm'); }
+    else if (response.status === 'error' && response.ref) { state.setRulePreviewRef(response.ref); state.setRuleReview(undefined); }
   };
   const stop = () => Alert.alert('すべてのルールを停止しますか', '時間帯の制限を停止し、進行中の一時解除も終了します。保存したルールは残り、ご自身で再開できます。', [
     { text: '戻る', style: 'cancel' }, { text: 'すべて停止する', onPress: () => { void state.run('stop'); } },
