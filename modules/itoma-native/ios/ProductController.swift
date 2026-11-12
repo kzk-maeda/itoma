@@ -20,6 +20,7 @@ struct ProductRuleInput: Decodable, Sendable {
 struct ProductRequest: Decodable, Sendable {
     var rule: ProductRuleInput?
     var details: ProductRuleDetailsInput?
+    var onboarding: ProductOnboardingInput?
     var ref: String?
     var targetRef: String?
     var reason: String?
@@ -77,6 +78,7 @@ struct ProductResponse: Encodable, Sendable {
     var snapshot: ProductSnapshotDTO?
     var legacyActive: Bool?
     var retryable: Bool?
+    var onboarding: ProductOnboardingDTO?
     func json() -> String { (try? String(data: JSONEncoder().encode(self), encoding: .utf8)) ?? #"{"status":"error","code":"unavailable"}"# }
 }
 
@@ -121,11 +123,12 @@ struct ProductResponse: Encodable, Sendable {
     }
 
     func perform(_ action: String, request: ProductRequest, authorizationEpoch: Int = 0) async -> ProductResponse {
-        if busy, action != "snapshot", action != "stop" { return ProductResponse(status: "error", code: "busy") }
-        let mutates = action != "snapshot" && action != "stop"
+        if busy, action != "snapshot", action != "stop", action != "onboardingRead" { return ProductResponse(status: "error", code: "busy") }
+        let mutates = action != "snapshot" && action != "stop" && action != "onboardingRead"
         if mutates { busy = true }
         defer { if mutates { busy = false } }
         do {
+            if action.hasPrefix("onboarding") { return try await performOnboarding(action, request: request, authorizationEpoch: authorizationEpoch) }
             if action == "snapshot" {
                 do { let r = try open(); try observeEpoch(authorizationEpoch, in: r); if !busy { try await refresh(r) }; return ProductResponse(snapshot: try snapshot(r)) }
                 catch StorageError.missingDatabase { return ProductResponse(snapshot: ProductSnapshotDTO(authorization: authorization())) }
@@ -271,8 +274,158 @@ struct ProductResponse: Encodable, Sendable {
             return ProductResponse(snapshot: try snapshot(r))
         } catch {
             // Fixed codes only. Never stringify Error (SQL/token/path/reason may be embedded).
-            return ProductResponse(status: "error", code: failureCode(error), snapshot: runtime.flatMap { try? snapshot($0) })
+            var response = ProductResponse(status: "error", code: failureCode(error), snapshot: runtime.flatMap { try? snapshot($0) })
+            if action.hasPrefix("onboarding"), let saved = try? ProductRuleDetailsStore.readOnboarding() {
+                response.onboarding = try? onboardingResponse(saved, in: runtime).onboarding
+            }
+            return response
         }
+    }
+
+    /// Draft saves work before Screen Time/control storage exists. Bound IDs are durable BEFORE
+    /// candidate acceptance; final consent is durable BEFORE any OS application. Reads never
+    /// execute an unsubmitted candidate, and recovery never creates a second rule.
+    private func performOnboarding(_ action: String, request: ProductRequest, authorizationEpoch: Int) async throws -> ProductResponse {
+        var saved = try ProductRuleDetailsStore.readOnboarding()
+        var progress = saved.progress
+        if action != "onboardingRead" {
+            guard let input = request.onboarding, input.expectedRevision == String(saved.revision) else { throw RuleDetailsError.changed }
+        }
+        var control: ScreenTimeRuntime?
+        if ["onboardingPrepare", "onboardingCommit", "onboardingEdit", "onboardingDiscard", "onboardingAdopt"].contains(action) || progress.draft?.selectionRef != nil {
+            do { control = try open(); if let control { try observeEpoch(authorizationEpoch, in: control) } }
+            catch StorageError.missingDatabase { /* A draft can exist before permission/selection. */ }
+        }
+        // A crash after policy commit but before private completion needs only bookkeeping.
+        if !(action == "onboardingRead" && busy), let draft = progress.draft, let binding = draft.binding, binding.submitted, let control,
+           try control.repository.write({ try $0.activatedCandidateRevision(commandID: CommandID(binding.commandID)) }) != nil {
+            let current = try control.repository.readSnapshot()
+            if current.policy.rules.contains(where: { $0.id.rawValue == draft.id }) {
+                saved = try ProductRuleDetailsStore.finishOnboarding(expectedRevision: saved.revision, activeRuleIDs: Set(current.policy.rules.map { $0.id.rawValue }))
+                progress = saved.progress
+                return try onboardingResponse(saved, in: control)
+            }
+            // The bound policy committed, and the user subsequently removed that rule. Do not
+            // recreate it from a lingering private draft after a failed completion acknowledgement.
+            progress.draft = nil; progress.seenIntro = true; progress.completed = true
+            saved = try ProductRuleDetailsStore.saveOnboarding(progress, expectedRevision: saved.revision)
+            return try onboardingResponse(saved, in: control)
+        }
+        func persist() throws {
+            saved = try ProductRuleDetailsStore.saveOnboarding(progress, expectedRevision: saved.revision)
+        }
+        switch action {
+        case "onboardingRead": break
+        case "onboardingAdopt":
+            guard progress.draft == nil, let control, try !control.repository.readSnapshot().policy.rules.isEmpty else { throw RuleDetailsError.changed }
+            progress.seenIntro = true; progress.completed = true; try persist()
+        case "onboardingBegin":
+            guard !progress.completed, progress.draft == nil else { throw RuleDetailsError.changed }
+            progress.seenIntro = true; progress.draft = OnboardingDraft(); try persist()
+        case "onboardingDefer":
+            progress.seenIntro = true; try persist()
+        case "onboardingSave":
+            guard let draft = progress.draft, let input = request.onboarding?.draft else { throw RuleDetailsError.invalidInput }
+            progress.draft = try input.applying(to: draft); try persist()
+        case "onboardingEdit", "onboardingDiscard":
+            if let binding = progress.draft?.binding, let control {
+                guard try onboardingCanEdit(binding, ruleID: progress.draft!.id, in: control) else { throw RuleDetailsError.changed }
+                try control.repository.write { tx in
+                    if let command = try tx.command(CommandID(binding.commandID)), command.status == .pending {
+                        let cancelled = try Command(id: command.id, kind: command.kind, status: .cancelled,
+                            expectedPolicyRevision: command.expectedPolicyRevision, candidatePolicyRevision: command.candidatePolicyRevision,
+                            attempt: command.attempt, reasonRef: command.reasonRef)
+                        _ = try tx.recordCommand(cancelled, expected: command)
+                    }
+                }
+                if candidate?.0.commandID.rawValue == binding.commandID { candidate = nil }
+            }
+            progress.seenIntro = true
+            if action == "onboardingDiscard" { progress.draft = nil }
+            else { progress.draft?.binding = nil; progress.draft?.step = .apps }
+            try persist()
+        case "onboardingPrepare":
+            guard var draft = progress.draft, let control else { throw RuleDetailsError.invalidInput }
+            try requireOnboardingSelection(draft, in: control)
+            let before = try control.repository.readSnapshot()
+            if draft.binding == nil {
+                _ = try draft.schedule()
+                draft.binding = OnboardingBinding(commandID: UUID(), policyRevision: before.policy.revision.rawValue)
+                draft.step = .review; progress.draft = draft; try persist()
+            }
+            guard let binding = draft.binding, binding.policyRevision == before.policy.revision.rawValue else { throw RuleDetailsError.changed }
+            let commandID = CommandID(binding.commandID)
+            let pending: PolicyCandidate
+            if let existing = try control.repository.candidate(commandID: commandID) { pending = existing }
+            else {
+                guard !binding.submitted, !before.policy.rules.contains(where: { $0.id.rawValue == draft.id }), let ref = draft.selectionRef else { throw RuleDetailsError.changed }
+                let rule = try Rule(id: RuleID(draft.id), version: RuleVersion(0), enabled: true,
+                    selectionRef: SelectionRef(ref), schedule: draft.schedule(), unlockMode: .reason)
+                let proposed = try PolicySnapshot(revision: before.policy.revision.next(), rules: before.policy.rules + [rule],
+                    priorityOrder: before.policy.priorityOrder + [rule.id], defaultUnlockDuration: before.policy.defaultUnlockDuration)
+                let selected = Set(proposed.rules.filter(\.enabled).flatMap { rule in before.selections.first { $0.selection.ref == rule.selectionRef }?.selection.targets ?? [] })
+                guard selected.count <= 50 else { throw ScreenTimeRuntimeError.invalidSelection }
+                let command = try Command(id: commandID, kind: .commitPolicy, status: .pending,
+                    expectedPolicyRevision: before.policy.revision, candidatePolicyRevision: proposed.revision, attempt: AttemptNumber(0))
+                pending = try PolicyCandidate(commandID: commandID, expectedRevision: before.policy.revision, proposedPolicy: proposed)
+                _ = try control.repository.write { try $0.acceptCandidate(command: command, candidate: pending, expectedSequence: before.snapshotSequence) }
+            }
+            let assessment = try control.makeService(additionalPolicy: pending.proposedPolicy).previewCandidate(commandID: pending.commandID)
+            candidate = (pending, assessment)
+            var response = try onboardingResponse(saved, in: control)
+            response.status = "confirmation-required"; response.ref = binding.commandID.uuidString.lowercased()
+            response.impacts = assessment.impacts.filter { $0.kind != .unchanged }.map { ProductImpactDTO(kind: String(describing: $0.kind), endsAt: $0.proposedExpiresAt?.secondsSince1970) }
+            let status = try control.repository.command(commandID)?.status
+            response.retryable = status == .failed || status == .uncertain
+            return response
+        case "onboardingCommit":
+            guard var draft = progress.draft, var binding = draft.binding, let control,
+                  let (pending, confirmation) = candidate, pending.commandID.rawValue == binding.commandID else { throw RuleDetailsError.changed }
+            try requireOnboardingSelection(draft, in: control)
+            binding.submitted = true; draft.binding = binding; progress.draft = draft; try persist()
+            _ = try control.monitors.prepare(pending.proposedPolicy)
+            let service = try control.makeService(additionalPolicy: pending.proposedPolicy)
+            let status = try control.repository.command(pending.commandID)?.status
+            let result: CommandRunResult
+            if status == .failed || status == .uncertain { result = try await service.retryCandidate(commandID: pending.commandID, confirmation: confirmation) }
+            else { result = try await service.executeAcceptedCandidate(commandID: pending.commandID, confirmation: confirmation) }
+            let current = try control.repository.readSnapshot()
+            if current.policy.rules.contains(where: { $0.id.rawValue == draft.id }),
+               try control.repository.write({ try $0.activatedCandidateRevision(commandID: pending.commandID) }) != nil {
+                saved = try ProductRuleDetailsStore.finishOnboarding(expectedRevision: saved.revision, activeRuleIDs: Set(current.policy.rules.map { $0.id.rawValue }))
+                candidate = nil
+            }
+            if result.failure == nil, let ready = try control.monitors.readyPlan(for: current.policy) { try? control.monitors.cleanup(keeping: ready) }
+            var response = try commandResponse(result, in: control)
+            response.onboarding = try onboardingResponse(saved, in: control).onboarding
+            return response
+        default: throw RuleDetailsError.invalidInput
+        }
+        return try onboardingResponse(saved, in: control)
+    }
+
+    private func requireOnboardingSelection(_ draft: OnboardingDraft, in r: ScreenTimeRuntime) throws {
+        let current = try r.repository.readSnapshot(); checkReviewGate(current, in: r)
+        guard authorization() == "approved" else { throw CommandServiceError.authorizationRequired }
+        guard let ref = draft.selectionRef, confirmedSelections.contains(SelectionRef(ref)),
+              current.selections.contains(where: { $0.selection.ref.rawValue == ref }) else { throw ScreenTimeRuntimeError.invalidSelection }
+    }
+    private func onboardingCanEdit(_ binding: OnboardingBinding, ruleID: UUID, in r: ScreenTimeRuntime) throws -> Bool {
+        guard try !r.repository.readSnapshot().policy.rules.contains(where: { $0.id.rawValue == ruleID }),
+              try r.repository.write({ try $0.activatedCandidateRevision(commandID: CommandID(binding.commandID)) }) == nil else { return false }
+        let status = try r.repository.command(CommandID(binding.commandID))?.status
+        return status != .scheduling && status != .applying
+    }
+    private func onboardingResponse(_ saved: OnboardingSnapshot, in r: ScreenTimeRuntime?) throws -> ProductResponse {
+        try r?.protectFiles()
+        let draft = saved.progress.draft
+        let ready = draft?.selectionRef.map { authorization() == "approved" && confirmedSelections.contains(SelectionRef($0)) } ?? false
+        let binding = draft?.binding
+        let command = try binding.flatMap { binding in try r?.repository.command(CommandID(binding.commandID)) }
+        let editable = try binding.map { binding in try r.map { try onboardingCanEdit(binding, ruleID: draft!.id, in: $0) } ?? true } ?? true
+        return ProductResponse(snapshot: try r.map(snapshot), onboarding: ProductOnboardingDTO(revision: String(saved.revision),
+            seenIntro: saved.progress.seenIntro, completed: saved.progress.completed, draft: draft.map(ProductOnboardingDTO.Draft.init),
+            selectionReady: ready, commandState: command.map { $0.status.rawValue }, canEdit: editable))
     }
 
     private func refresh(_ r: ScreenTimeRuntime) async throws {

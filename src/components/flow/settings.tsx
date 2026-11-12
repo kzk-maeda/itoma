@@ -2,6 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import { ruleInput, useScreenTime, type RuleDraft } from '@/state/screen-time';
+import { useOptionalOnboarding } from '@/state/onboarding';
 import type { ScreenTimeRule } from '../../../modules/itoma-native';
 import { Applications } from './applications';
 import { clockText, ruleText } from './presentation';
@@ -10,7 +11,7 @@ import { ReflectionManagement } from './reflection-management';
 import { Body, Button, FlowScreen, Heading, Notice, Panel } from './ui';
 
 export function SettingsScreen() {
-  const state = useScreenTime(), s = state.snapshot;
+  const state = useScreenTime(), setup = useOptionalOnboarding(), s = state.snapshot;
   const { refresh } = state;
   useFocusEffect(useCallback(() => { void refresh(); }, [refresh]));
   const [deleted, setDeleted] = useState(false);
@@ -22,7 +23,8 @@ export function SettingsScreen() {
       { text: '破棄して進む', style: 'destructive', onPress: () => { void state.run('cancelCandidate').then((r) => { if (r.status === 'ok') { state.setRuleDraft(undefined); proceed(); } }); } },
     ]);
   };
-  const edit = (rule?: ScreenTimeRule) => withDraftChoice(() => { state.beginRule(rule); router.navigate(s?.authorization === 'approved' ? '/rule' : '/onboarding'); });
+  const firstRun = !!setup && !setup.progress?.completed && !s?.rules.length;
+  const edit = (rule?: ScreenTimeRule) => withDraftChoice(() => { if (firstRun && !rule) { router.navigate('/onboarding'); return; } state.beginRule(rule); router.navigate(s?.authorization === 'approved' ? '/rule' : '/onboarding'); });
   const prepareRemoval = async (rule: ScreenTimeRule) => {
     state.beginRule(rule);
     const draft: RuleDraft = { ...rule, start: clockText(rule.startMinute), end: clockText(rule.endMinute), dirty: true, remove: true };
@@ -55,8 +57,8 @@ export function SettingsScreen() {
     </Panel>)}
     {!!s?.rules.length && s.ruleDetailsStatus !== 'ready' && <Body muted>{s.ruleDetailsStatus === 'unavailable' ? 'ルール名と行動目標を読み取れませんでした。現在の状態を確認すると読み直せます。' : '名前と行動目標を編集するには、アプリの更新が必要です。'}</Body>}
     {!s?.rules.length && <Body muted>保存したルールはありません。</Body>}
-    <Button label="ルールを追加する" disabled={!device || !!state.busy} onPress={() => edit()} />
-    {s?.authorization !== 'approved' && device && <Button label="スクリーンタイムの許可を確認" secondary onPress={() => router.push('/onboarding')} />}
+    <Button label={firstRun ? setup.draft ? '初回設定を続ける' : '初回設定を始める' : 'ルールを追加する'} disabled={!device || !!state.busy || !!setup?.loading || !!setup?.busy} onPress={() => edit()} />
+    {s?.authorization !== 'approved' && device && !firstRun && <Button label="スクリーンタイムの許可を確認" secondary onPress={() => router.push('/onboarding')} />}
     {!!s?.rules.length && (s.activation === 'enabled' ? <Button label="すべてのルールの停止を確認" secondary disabled={!device || !!state.busy} onPress={stop} />
       : <Button label="保存したルールの再開を確認" disabled={!device || !!state.busy || !!s.needsSelectionReview || s.authorization !== 'approved'} onPress={resume} />)}
     <Panel><Heading>理由の保存と削除</Heading><Body>確定した理由はこの端末内に保存します。削除しても制限の設定は変わりません。</Body>

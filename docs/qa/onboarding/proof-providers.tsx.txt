@@ -1,0 +1,28 @@
+// Synthetic Web-only port, copied into a disposable checkout. Never imported by the product.
+import { type ReactNode, useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
+import { ScreenTimeProvider } from '@/state/screen-time';
+import { OnboardingProvider } from '@/state/onboarding';
+import { HistoryProvider } from '@/state/history';
+import { ReflectionProvider } from '@/state/reflection';
+import { onboardingFixture } from '../../tests/fixtures/onboarding';
+import { useFlowTheme } from '@/components/flow/ui';
+import type { OnboardingAction, OnboardingRequest, ScreenTimeAction, ScreenTimeRequest } from '../../modules/itoma-native';
+
+export function ProofProviders({ children }: { children: ReactNode }) {
+  const [ports, setPorts] = useState<{ control: ReturnType<typeof onboardingFixture>['control']; setup: ReturnType<typeof onboardingFixture>['setup'] }>();
+  const theme = useFlowTheme();
+  useEffect(() => {
+    const b = onboardingFixture(), saved = localStorage.getItem('qa-onboarding');
+    if (saved) { const { progress, snapshot } = JSON.parse(saved); b.restore(progress, snapshot); }
+    const qa = window as unknown as { qa: typeof b }; qa.qa = b;
+    const persist = () => localStorage.setItem('qa-onboarding', JSON.stringify({ progress: b.progress(), snapshot: b.snapshot() }));
+    const control = { run: async (action: ScreenTimeAction, request?: ScreenTimeRequest) => { const result = await b.control.run(action, request); persist(); return result; } };
+    const setup = { run: async (action: OnboardingAction, request?: OnboardingRequest) => { const result = await b.setup.run(action, request); persist(); return result; } };
+    setPorts({ control, setup });
+  }, []);
+  return <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <Text style={{ color: theme.text, backgroundColor: theme.soft, fontSize: 12, padding: 8 }}>合成データ · Web UI検証 · iOS / Screen Timeの実動作ではありません</Text>
+    {ports && <ScreenTimeProvider client={ports.control}><OnboardingProvider client={ports.setup}><HistoryProvider><ReflectionProvider>{children}</ReflectionProvider></HistoryProvider></OnboardingProvider></ScreenTimeProvider>}
+  </View>;
+}

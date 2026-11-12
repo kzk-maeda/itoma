@@ -16,6 +16,8 @@
 
 ## 資料と検討Issue
 
+- [初回設定・途中保存・再開](onboarding.md) — #118 / #149。本人の実装依頼に基づくレビュー対象。実機確認は別ゲート。
+
 - [MVPの利用シナリオ・範囲・解除体験を決定する](mvp.md) — https://github.com/kzk-maeda/itoma/issues/21
 - [制限・解除・認可のドメインモデルと状態遷移を決定する](domain-model.md) — https://github.com/kzk-maeda/itoma/issues/22
 - [時間帯・手動操作・一時解除の競合ルールを決定する](rules.md) — https://github.com/kzk-maeda/itoma/issues/23

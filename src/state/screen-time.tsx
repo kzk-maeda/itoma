@@ -1,6 +1,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { currentControlSnapshot } from './control-snapshot';
+import { timeRange } from '@/lib/schedule-time';
 
 import { screenTime, type RuleInput, type ScreenTimeAction, type ScreenTimeCode, type ScreenTimeRequest, type ScreenTimeResponse, type ScreenTimeRule, type ScreenTimeSnapshot } from '../../modules/itoma-native';
 
@@ -101,8 +102,7 @@ export function ScreenTimeProvider({ children, client = screenTime }: { children
 
 export function useScreenTime() { const value = useContext(Context); if (!value) throw new Error('ScreenTimeProvider missing'); return value; }
 export function ruleInput(draft: RuleDraft, revision: string): RuleInput | undefined {
-  const parse = (s: string) => /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(s) ? Number(s.slice(0, 2)) * 60 + Number(s.slice(3)) : undefined;
-  const startMinute = parse(draft.start), endMinute = parse(draft.end);
-  if (!draft.selectionRef || !draft.weekdays.length || startMinute === undefined || endMinute === undefined) return undefined;
-  return { id: draft.id, selectionRef: draft.selectionRef, weekdays: draft.weekdays, startMinute, endMinute, nextDay: draft.nextDay, enabled: draft.enabled, expectedRevision: revision, remove: draft.remove };
+  const range = timeRange(draft.start, draft.end);
+  if (!draft.selectionRef || !draft.weekdays.length || !range) return undefined;
+  return { id: draft.id, selectionRef: draft.selectionRef, weekdays: draft.weekdays, startMinute: range.startMinute, endMinute: range.endMinute, nextDay: range.nextDay, enabled: draft.enabled, expectedRevision: revision, remove: draft.remove };
 }

@@ -19,6 +19,7 @@ public final class ItomaNativeModule: Module {
         Constant("apiVersion") { 1 }
         Constant("screenTimePoCUIVersion") { 2 }
         Constant("screenTimeVersion") { 1 }
+        Constant("onboardingVersion") { 1 }
         Constant("historyVersion") { 1 }
         Constant("reflectionVersion") { 1 }
         View(SavedApplicationsView.self) {

@@ -1,0 +1,193 @@
+{
+  "kind": "synthetic-native-ports-web",
+  "physicalDevice": false,
+  "osRestrictionsVerified": false,
+  "browser": "155.0.8059.79",
+  "cases": [
+    {
+      "name": "welcome-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "c84ab01a741e9b75218f35e04b31d5f96e31c0faa4789a50960b0c86d679045e"
+    },
+    {
+      "name": "purpose-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "c82ea1574755d4d22023f9a8ce564d0ef6522245160cd2b4e6527d5873cc3938"
+    },
+    {
+      "name": "schedule-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "d9ae6bc5b430283a25cb078243159b9fc34ba48d89326ac0373e21c5af544417"
+    },
+    {
+      "name": "apps-before-permission",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "b4d2ec85172188bf25d92b1d5a025df33ffe0bda7d810a74c62c313416056f1f"
+    },
+    {
+      "name": "permission-denied",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "c7624ffec39598686800a6a0a507f566aa8f9b42cb1eae9b4ee573c4993f7c46"
+    },
+    {
+      "name": "apps-selected",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "973891ffb9b4230edb76dd43fcf3857cc9b3f5bed5548f67a76708c927d64d69"
+    },
+    {
+      "name": "review-light",
+      "overflow": false,
+      "minActionHeight": 44,
+      "artificialTextScale": 1,
+      "sha256": "4aca818deb2c16bf906772357be27c5ffb909718b7967c873ad2be93f58972d5"
+    },
+    {
+      "name": "review-light-footer",
+      "overflow": false,
+      "minActionHeight": 44,
+      "artificialTextScale": 1,
+      "sha256": "0ef2a0d6e776843da71996148181029e05a56d3663a3833b5a1f86490bb93236"
+    },
+    {
+      "name": "purpose-edit-light",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "ab98cca2a8405465c261e9d633d005e9344d739de361a67b359961e9c0dabe90"
+    },
+    {
+      "name": "review-edited-light",
+      "overflow": false,
+      "minActionHeight": 44,
+      "artificialTextScale": 1,
+      "sha256": "7a03cf170a1d8c7544f3a84f41a9fd24281e773e37a3b94035abef03ec88d3ec"
+    },
+    {
+      "name": "review-edited-light-footer",
+      "overflow": false,
+      "minActionHeight": 44,
+      "artificialTextScale": 1,
+      "sha256": "de9de5b1ae2f7957008774ca7f34fefccd11e377dc91a3279d16d226a56afe87"
+    },
+    {
+      "name": "application-failed",
+      "overflow": false,
+      "minActionHeight": 44,
+      "artificialTextScale": 1,
+      "sha256": "b035b708cb378a18a73259555f1cce7ffa0d210416ea91bc46b593af7b0cda11"
+    },
+    {
+      "name": "complete-scheduled",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "098d0a37a45d565c7529a0ecaf718fc8efc288da0e75f9e58fa349ee7098294b"
+    },
+    {
+      "name": "home-scheduled",
+      "overflow": false,
+      "minActionHeight": 60,
+      "artificialTextScale": 1,
+      "sha256": "1c6a4b49bb40baf56c8bdcf961ee25ca44c5331ec9672d8342a113cc511f85c3"
+    },
+    {
+      "name": "welcome-dark-320",
+      "overflow": false,
+      "minActionHeight": 52,
+      "artificialTextScale": 1,
+      "sha256": "a624a8cc7d076a79e80d1b0935e748b3aee2314e7ab81d76d7e5415d119921cf"
+    },
+    {
+      "name": "purpose-dark-320-large",
+      "overflow": false,
+      "minActionHeight": 65,
+      "artificialTextScale": 1.5,
+      "sha256": "b0102cd37229bbe069d88e933fde1de50ff3791c9c7b21727ba3c506e0bc5d3e"
+    },
+    {
+      "name": "home-pending-dark-320",
+      "overflow": false,
+      "minActionHeight": 65,
+      "artificialTextScale": 1,
+      "sha256": "93a29faba536e2efaf8adce75f67da5a752216c4bb00d4822521ffb261765221"
+    },
+    {
+      "name": "schedule-dark-320-large",
+      "overflow": false,
+      "minActionHeight": 65,
+      "artificialTextScale": 1.5,
+      "sha256": "cc1b75b8dc2dc239a3ad389ef08901d9beaae12de44b378e23c28e94de8cc235"
+    },
+    {
+      "name": "review-dark-320-text-1.5",
+      "overflow": false,
+      "minActionHeight": 57,
+      "artificialTextScale": 1.5,
+      "sha256": "a29e23122baefba2c5f409bf7018263c69b93c9266141b8c5607ec331039f634"
+    },
+    {
+      "name": "review-dark-320-text-1.5-footer",
+      "overflow": false,
+      "minActionHeight": 57,
+      "artificialTextScale": 1.5,
+      "sha256": "0e226d08a37f1ccdca06dc676a4c80959b47fe8130b60a7d960aa2c6b8a85739"
+    },
+    {
+      "name": "review-dark-320-text-2",
+      "overflow": false,
+      "minActionHeight": 70,
+      "artificialTextScale": 2,
+      "sha256": "91ada3f0e41e5f3643f7caf5861f680416141a98e44bb4ca370674427934d35e"
+    },
+    {
+      "name": "review-dark-320-text-2-footer",
+      "overflow": false,
+      "minActionHeight": 70,
+      "artificialTextScale": 2,
+      "sha256": "45eab2b93686a017355f89ca40f2ac060be8c62a60274a5f3fea93ea2d33f306"
+    },
+    {
+      "name": "review-light-390-text-2",
+      "overflow": false,
+      "minActionHeight": 70,
+      "artificialTextScale": 2,
+      "sha256": "2e7193ad8593e41ba4377942e87df7a83ac2d12d8c5fabedda16750fbecec4d1"
+    },
+    {
+      "name": "review-light-390-text-2-footer",
+      "overflow": false,
+      "minActionHeight": 70,
+      "artificialTextScale": 2,
+      "sha256": "f751a6ccc014eb53564215980b3aa42a929dbfd19c897f88fee23f1dedafabb4"
+    }
+  ],
+  "checks": {
+    "noLaunchPermission": true,
+    "cancellationKeepsDraft": true,
+    "noStartBeforeFinalConsent": true,
+    "reviewEditKeepsDraft": true,
+    "purposeAndTimeReturnDirectly": true,
+    "noRepeatedPermissionForText": true,
+    "contextualEditActions": 3,
+    "explicitFailureRetry": true,
+    "oneSavedRule": true,
+    "completedReloadReturnsHome": true,
+    "deferredReloadRestoresInput": true,
+    "oneResumeEntry": true,
+    "editRelaunchReturnsDirectly": true,
+    "autosaveDoesNotReconfirmApps": true
+  },
+  "errors": []
+}

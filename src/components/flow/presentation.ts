@@ -1,7 +1,7 @@
 import type { ScreenTimeRule } from '../../../modules/itoma-native';
 export const weekdayNames = ['月', '火', '水', '木', '金', '土', '日'];
 export const clockText = (minute: number) => `${Math.floor(minute / 60).toString().padStart(2, '0')}:${(minute % 60).toString().padStart(2, '0')}`;
-export const ruleText = (rule: ScreenTimeRule) => `${rule.weekdays.map((v) => weekdayNames[v - 1]).join('・')} ${clockText(rule.startMinute)}〜${rule.nextDay ? '翌' : ''}${clockText(rule.endMinute)}`;
+export const ruleText = (rule: ScreenTimeRule) => `${rule.weekdays.map((v) => weekdayNames[v - 1]).join('・')} ${clockText(rule.startMinute)}〜${rule.nextDay ? '翌' : ''}${clockText(rule.endMinute)}${rule.nextDay && rule.startMinute === rule.endMinute ? '（24時間）' : ''}`;
 export const localTime = (seconds: number) => new Date(seconds * 1000).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
 export function endTime(seconds: number, now: number) {
   const date = new Date(seconds * 1000), today = new Date(now);
