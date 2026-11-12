@@ -38,6 +38,9 @@ test('optional purpose, schedule first, real bridge actions only by taps; final 
   await apps();
   expect(b.nativeActions).toContain('authorize'); expect(b.nativeActions).toContain('pickApplications');
   expect(b.snapshot().rules).toHaveLength(0); expect(b.setupActions).not.toContain('onboardingCommit');
+  expect(screen.getByText('名前：未設定（任意）')).toBeTruthy(); expect(screen.getByText('行動目標：未設定（任意）')).toBeTruthy();
+  for (const name of ['名前と目的を変更', '曜日・時間を変更', '許可と対象アプリを変更']) expect(screen.getByRole('button', { name })).toBeEnabled();
+  for (const name of ['目的を見直す', '曜日・時間を見直す', '許可と対象アプリを見直す']) expect(screen.queryByRole('button', { name })).toBeNull();
   await press('この内容で、はじめる'); await screen.findByText('次の時間に向けて、準備できました');
   expect(b.snapshot().rules).toHaveLength(1); expect(b.snapshot().rules[0].goal).toBe('');
   expect(b.progress().completed).toBe(true); expect(b.progress().draft).toBeUndefined();
@@ -69,8 +72,61 @@ test('resuming a prepared draft requires selecting apps again and reviewing befo
   const b = onboardingFixture(), first = await mount(b); await start(); await schedule(); await apps();
   await first.unmount(); b.relaunch(); await mount(b); await screen.findByText('この内容で、はじめますか');
   expect(screen.queryByRole('button', { name: 'この内容で、はじめる' })).toBeNull();
-  await press('許可と対象アプリを見直す'); await press('対象アプリを選び直す'); await press('内容を確認する');
+  await press('許可と対象アプリを変更'); await press('対象アプリを選び直す'); await press('変更を確認する');
   await press('この内容で、はじめる'); expect(b.snapshot().rules).toHaveLength(1);
+});
+test('editing purpose returns directly to review with existing answers and does not repeat permission or the picker', async () => {
+  const b = onboardingFixture(); await mount(b); await start();
+  await fireEvent.changeText(screen.getByLabelText('この時間の名前（任意）'), '合成の時間');
+  await schedule(); await apps(); const actions = [...b.nativeActions];
+  await press('名前と目的を変更');
+  expect(screen.getByLabelText('この時間の名前（任意）')).toHaveDisplayValue('合成の時間');
+  expect(screen.getByText('設定内容の変更')).toBeTruthy();
+  await fireEvent.changeText(screen.getByLabelText('大切にしたいこと・行動目標（任意）'), '合成の見直した目標');
+  await press('変更を確認する'); await screen.findByText('この内容で、はじめますか');
+  expect(screen.getByText('合成の見直した目標')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: '対象アプリへ' })).toBeNull();
+  expect(b.nativeActions.slice(actions.length).every(a => a === 'snapshot')).toBe(true);
+  expect(b.progress().draft?.start).toBe('23:30'); expect(b.progress().selectionReady).toBe(true);
+  expect(b.setupActions).not.toContain('onboardingCommit');
+  await press('この内容で、はじめる'); expect(b.snapshot().rules[0].goal).toBe('合成の見直した目標');
+});
+test('editing time returns directly to review; going back with an invalid time cannot start a rule', async () => {
+  const b = onboardingFixture(); await mount(b); await start(); await schedule(); await apps();
+  await press('曜日・時間を変更');
+  expect(screen.getByLabelText('開始時刻（24時間 HH:MM）')).toHaveDisplayValue('23:30');
+  await fireEvent.changeText(screen.getByLabelText('開始時刻（24時間 HH:MM）'), 'bad');
+  expect(screen.getByRole('button', { name: '変更を確認する' })).toBeDisabled();
+  await press('‹ 戻る'); await screen.findByText('曜日と時間を確認してください');
+  expect(screen.getByRole('button', { name: '最新の内容を確認する' })).toBeDisabled();
+  expect(screen.queryByRole('button', { name: 'この内容で、はじめる' })).toBeNull();
+  await press('曜日・時間を変更'); await fireEvent.changeText(screen.getByLabelText('開始時刻（24時間 HH:MM）'), '23:00');
+  await press('変更を確認する'); await screen.findByText('月 23:00〜翌00:30');
+  expect(b.nativeActions.filter(a => a === 'pickApplications')).toHaveLength(1);
+  expect(b.setupActions).not.toContain('onboardingCommit');
+  expect(screen.getByRole('button', { name: 'この内容で、はじめる' })).toBeEnabled();
+});
+test('cancelling a picker from review preserves the confirmed selection, without applying the rule', async () => {
+  const b = onboardingFixture(); await mount(b); await start(); await schedule(); await apps(); const selection = b.progress().draft?.selectionRef;
+  await press('許可と対象アプリを変更'); b.cancelPicker(); await press('対象アプリを選び直す');
+  await press('変更を確認する'); await screen.findByText('この内容で、はじめますか');
+  expect(b.progress().draft?.selectionRef).toBe(selection); expect(b.progress().selectionReady).toBe(true);
+  expect(screen.getByRole('button', { name: 'この内容で、はじめる' })).toBeEnabled(); expect(b.snapshot().rules).toHaveLength(0);
+});
+test('review edit destination survives defer and relaunch; saving text never reconfirms apps', async () => {
+  const b = onboardingFixture(), first = await mount(b); await start(); await schedule(); await apps();
+  await press('名前と目的を変更');
+  await fireEvent.changeText(screen.getByLabelText('この時間の名前（任意）'), '合成の変更途中');
+  await press('内容を残して、ホームへ'); await first.unmount(); b.relaunch();
+  await mount(b); await screen.findByDisplayValue('合成の変更途中');
+  expect(b.progress().draft?.returnToReview).toBe(true);
+  await fireEvent.changeText(screen.getByLabelText('この時間の名前（任意）'), '合成の変更後');
+  await press('変更を確認する'); await screen.findByText('この内容で、はじめますか');
+  expect(screen.getByText('合成の変更後')).toBeTruthy(); expect(b.progress().selectionReady).toBe(false);
+  expect(screen.queryByRole('button', { name: 'この内容で、はじめる' })).toBeNull();
+  await press('許可と対象アプリを変更'); await press('対象アプリを選び直す'); await press('変更を確認する');
+  expect(screen.getByRole('button', { name: 'この内容で、はじめる' })).toBeEnabled();
+  expect(b.setupActions).not.toContain('onboardingCommit');
 });
 test('save failure keeps input; explicit discard asks before removal and does not start anything', async () => {
   const b = onboardingFixture(), alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});

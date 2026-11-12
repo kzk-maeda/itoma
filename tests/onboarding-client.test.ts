@@ -4,8 +4,10 @@ const response = { status: 'ok', onboarding: { revision: '18446744073709551615',
 test('bounded allowlist preserves the full counter and drops native extras', () => {
   const parsed = parseOnboardingResponse(JSON.stringify({ ...response, rawToken: 'synthetic', onboarding: { ...response.onboarding, path: '/synthetic', draft: { ...draft, token: 'synthetic' } } }));
   expect(parsed.onboarding?.revision).toBe('18446744073709551615'); expect(parsed.onboarding?.draft?.id).toBe(draft.id.toLowerCase());
+  expect(parsed.onboarding?.draft?.returnToReview).toBe(false);
   expect(JSON.stringify(parsed)).not.toContain('synthetic');
-  for (const change of [{ completed: true }, { revision: '18446744073709551616' }, { seenIntro: false }, { selectionReady: true }, { draft: { ...draft, goal: '🌙'.repeat(501) } }, { draft: { ...draft, weekdays: [1, 1] } }]) {
+  expect(parseOnboardingResponse(JSON.stringify({ ...response, onboarding: { ...response.onboarding, draft: { ...draft, returnToReview: true } } })).onboarding?.draft?.returnToReview).toBe(true);
+  for (const change of [{ completed: true }, { revision: '18446744073709551616' }, { seenIntro: false }, { selectionReady: true }, { draft: { ...draft, returnToReview: 'true' } }, { draft: { ...draft, goal: '🌙'.repeat(501) } }, { draft: { ...draft, weekdays: [1, 1] } }]) {
     expect(() => parseOnboardingResponse(JSON.stringify({ ...response, onboarding: { ...response.onboarding, ...change } }))).toThrow();
   }
 });

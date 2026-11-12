@@ -8,12 +8,15 @@
 
 起動時は認可を要求しない。許可・Picker保存・下書き保存・candidate準備では有効policyを変更しない。本人の最終確定だけで既存commandの実行を要求する。目的は任意、未登録ならホームの引用面を省き、サンプルを補わない。確定後の名前/目的は#148の設定画面で編集できる。
 
+確認画面は名前と目的／曜日・時間／許可と対象の要約に分け、各見出しのそばに控えめな「変更」を置く。修正時は入力済みの値を表示し、「変更を確認する」または上部の戻るで確認画面へ直接戻す。他の入力stepは繰り返さない。不正な時間帯のまま戻った場合は修正を案内し、準備・確定はできない。最終確定を主操作、後回し・破棄を副次操作とする。[調査根拠と検証](../qa/onboarding-review/README.md)を参照。
+
 ## 保存
 
 本体privateの`ITOMA-Private/rule-details.sqlite`に任意の補助表`onboarding_version(version=1)`と`onboarding_progress`（固定1行）を追加する。既存application IDと主schema version 1は維持し、旧readerの名前/目標保存を妨げない。未知/片方だけの補助schema、壊れたJSON、非正規counterは初期化せずエラー。旧storeのreadだけでは表を作らない。
 
 - `seenIntro`、`completed`、任意のdraft、独立したUInt64 revisionのCAS。
 - draft: 安定UUID、現在step、任意title/goal（#148と同じ80/1000 UTF-16単位、NUL禁止）、曜日、入力途中の時刻、翌日、任意のopaque selectionRef。
+- 任意の`returnToReview`は確認から修正した場合のUI上の戻り先だけを保存する。schema-1の旧draftで欠落していればfalse相当。後回し/再起動後も修正から確認へ直接戻れるが、認可・対象確認・commandの成否はこの値から推測しない。
 - 準備済みdraftのbinding: 安定command UUID、基準policy revision、本人が確定したか。Rule IDはdraft UUIDを使う。bindingがある間は入力を直接変更しない。
 - `selectionReady`、現在command状態、`canEdit`はnativeがその時点で返す値で、永続フラグから認可・OS成功を推測しない。
 

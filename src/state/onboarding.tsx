@@ -36,8 +36,8 @@ export function OnboardingProvider({ children, client = onboardingRecords }: { c
           const p = current.current, d = local.current, captured = version.current;
           if (!p || !d || d.commandID) return false;
           // Explicit projection excludes command/completion fields from editable input.
-          const { id, step, title, goal, weekdays, start, end, nextDay, selectionRef } = d;
-          const result = await client.run('onboardingSave', { expectedRevision: p.revision, draft: { id, step, title, goal, weekdays, start, end, nextDay, selectionRef } });
+          const { id, step, title, goal, weekdays, start, end, nextDay, selectionRef, returnToReview } = d;
+          const result = await client.run('onboardingSave', { expectedRevision: p.revision, draft: { id, step, title, goal, weekdays, start, end, nextDay, selectionRef, returnToReview } });
           if (result.status !== 'ok' || !result.onboarding) { setError(result.code ?? 'storage-failed'); return false; }
           const changed = version.current !== captured;
           accept(result.onboarding, changed);

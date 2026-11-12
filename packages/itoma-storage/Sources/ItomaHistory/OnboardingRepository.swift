@@ -23,6 +23,8 @@ public struct OnboardingDraft: Codable, Equatable, Sendable {
     public var end: String
     public var nextDay: Bool
     public var selectionRef: UUID?
+    /// UI return destination; optional for schema-1 drafts written by earlier builds.
+    public var returnToReview: Bool?
     public var binding: OnboardingBinding?
     public init(id: UUID = UUID()) {
         self.id = id; step = .purpose; title = ""; goal = ""; weekdays = []

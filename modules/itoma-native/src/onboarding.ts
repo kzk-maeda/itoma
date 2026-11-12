@@ -3,7 +3,7 @@ import { parseScreenTimeResponse, type ScreenTimeResponse } from './screen-time'
 export type OnboardingStep = 'purpose' | 'schedule' | 'apps' | 'review';
 export interface OnboardingDraft {
   id: string; step: OnboardingStep; title: string; goal: string; weekdays: number[];
-  start: string; end: string; nextDay: boolean; selectionRef?: string; commandID?: string; submitted: boolean;
+  start: string; end: string; nextDay: boolean; selectionRef?: string; commandID?: string; submitted: boolean; returnToReview?: boolean;
 }
 export interface OnboardingProgress {
   revision: string; seenIntro: boolean; completed: boolean; draft?: OnboardingDraft;
@@ -31,7 +31,8 @@ export function parseOnboardingResponse(json: string): OnboardingResponse {
     const d = obj(p.draft);
     if (!Array.isArray(d.weekdays) || d.weekdays.some(v => !Number.isInteger(v) || v < 1 || v > 7) || new Set(d.weekdays).size !== d.weekdays.length) throw new Error();
     draft = { id: id(d.id), step: choice(d.step, ['purpose', 'schedule', 'apps', 'review']), title: str(d.title, 80), goal: str(d.goal),
-      weekdays: d.weekdays, start: str(d.start, 16), end: str(d.end, 16), nextDay: bool(d.nextDay), selectionRef: optionalID(d.selectionRef), commandID: optionalID(d.commandID), submitted: bool(d.submitted) };
+      weekdays: d.weekdays, start: str(d.start, 16), end: str(d.end, 16), nextDay: bool(d.nextDay), selectionRef: optionalID(d.selectionRef), commandID: optionalID(d.commandID), submitted: bool(d.submitted),
+      returnToReview: d.returnToReview == null ? false : bool(d.returnToReview) };
     if (draft.submitted && !draft.commandID) throw new Error();
   }
   const progress: OnboardingProgress = { revision, seenIntro: bool(p.seenIntro), completed: bool(p.completed), draft, selectionReady: bool(p.selectionReady),

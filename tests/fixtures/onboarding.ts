@@ -6,7 +6,7 @@ export function onboardingFixture() {
   const ruleID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', selectionRef = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', commandID = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
   let progress: OnboardingProgress = { revision: '0', seenIntro: false, completed: false, selectionReady: false, canEdit: true };
   let snapshot: ScreenTimeSnapshot = unavailableSnapshot('device');
-  let deny = false, cancel = false, failSave = false, failCommit = false;
+  let deny = false, cancel = false, failSave = false, failCommit = false, selectionConfirmed = false;
   const nativeActions: ScreenTimeAction[] = [], setupActions: OnboardingAction[] = [];
   const advance = () => { progress = { ...progress, revision: String(Number(progress.revision) + 1) }; };
   const response = (): OnboardingResponse => ({ status: 'ok', impacts: [], onboarding: structuredClone(progress), snapshot: structuredClone(snapshot) });
@@ -17,7 +17,7 @@ export function onboardingFixture() {
       case 'onboardingBegin': progress = { ...progress, seenIntro: true, draft: { id: ruleID, step: 'purpose', title: '', goal: '', weekdays: [], start: '', end: '', nextDay: false, submitted: false } }; advance(); break;
       case 'onboardingSave':
         if (failSave) { failSave = false; return { status: 'error', code: 'storage-failed', impacts: [] }; }
-        progress = { ...progress, draft: { ...request!.draft!, submitted: false }, selectionReady: request?.draft?.selectionRef === selectionRef && snapshot.authorization === 'approved' }; advance(); break;
+        progress = { ...progress, draft: { ...request!.draft!, submitted: false }, selectionReady: selectionConfirmed && request?.draft?.selectionRef === selectionRef && snapshot.authorization === 'approved' }; advance(); break;
       case 'onboardingDefer': progress = { ...progress, seenIntro: true }; advance(); break;
       case 'onboardingDiscard': progress = { ...progress, draft: undefined, selectionReady: false, commandState: undefined }; advance(); break;
       case 'onboardingEdit': progress = { ...progress, draft: { ...progress.draft!, step: 'apps', commandID: undefined, submitted: false }, commandState: undefined }; advance(); break;
@@ -40,10 +40,11 @@ export function onboardingFixture() {
   } };
   const control = { async run(action: ScreenTimeAction, _request?: ScreenTimeRequest): Promise<ScreenTimeResponse> {
     nativeActions.push(action);
-    if (action === 'authorize') { snapshot = { ...snapshot, authorization: deny ? 'denied' : 'approved' }; if (deny) return { status: 'error', code: 'authorization-required', impacts: [], snapshot }; }
+    if (action === 'authorize') { snapshot = { ...snapshot, authorization: deny ? 'denied' : 'approved' }; if (deny) { selectionConfirmed = false; progress = { ...progress, selectionReady: false }; return { status: 'error', code: 'authorization-required', impacts: [], snapshot }; } }
     if (action === 'initialize') snapshot = { ...snapshot, storage: 'ready' };
     if (action === 'pickApplications') {
       if (cancel) return { status: 'cancelled', impacts: [] };
+      selectionConfirmed = true;
       snapshot = { ...snapshot, selections: [{ ref: selectionRef, count: 2 }] };
       return { status: 'ok', ref: selectionRef, impacts: [], snapshot };
     }
@@ -51,7 +52,7 @@ export function onboardingFixture() {
   } };
   return { setup, control, nativeActions, setupActions, progress: () => structuredClone(progress), snapshot: () => structuredClone(snapshot),
     deny: (value = true) => { deny = value; }, cancelPicker: (value = true) => { cancel = value; }, failSave: () => { failSave = true; }, failCommit: (value = true) => { failCommit = value; },
-    relaunch: () => { progress = { ...progress, selectionReady: false }; }, replace: (s: Partial<ScreenTimeSnapshot>) => { snapshot = { ...snapshot, ...s }; },
-    restore: (p: OnboardingProgress, s: ScreenTimeSnapshot) => { progress = { ...p, selectionReady: false }; snapshot = s; },
+    relaunch: () => { selectionConfirmed = false; progress = { ...progress, selectionReady: false }; }, replace: (s: Partial<ScreenTimeSnapshot>) => { snapshot = { ...snapshot, ...s }; },
+    restore: (p: OnboardingProgress, s: ScreenTimeSnapshot) => { selectionConfirmed = false; progress = { ...p, selectionReady: false }; snapshot = s; },
   };
 }

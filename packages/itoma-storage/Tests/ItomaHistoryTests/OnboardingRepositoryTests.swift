@@ -42,6 +42,24 @@ struct OnboardingRepositoryTests {
         #expect(try raw.rows("SELECT COUNT(*) FROM onboarding_progress") == [[.integer(1)]])
         try raw.close(); try a.close(); try b.close()
     }
+    @Test func reviewEditDestinationIsOptionalForOlderDraftsAndSurvivesReopening() throws {
+        let url = try path(); defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        var p = progress(bound: true)
+        // Synthesized Codable omits the nil key, as schema-1 drafts from earlier builds did.
+        let oldData = try JSONEncoder().encode(p)
+        #expect(!String(decoding: oldData, as: UTF8.self).contains("returnToReview"))
+        #expect(try JSONDecoder().decode(OnboardingProgress.self, from: oldData).draft?.returnToReview == nil)
+        let binding = p.draft!.binding
+        p.draft!.step = .purpose; p.draft!.returnToReview = true
+        let store = try RuleDetailsRepository.create(at: url)
+        _ = try store.saveOnboarding(p, expectedRevision: 0); try store.close()
+        let reopened = try RuleDetailsRepository.open(at: url)
+        let saved = try reopened.readOnboarding().progress
+        #expect(saved.draft?.returnToReview == true); #expect(saved.draft?.step == .purpose)
+        #expect(saved.draft?.binding == binding); #expect(saved.draft?.goal == p.draft?.goal)
+        #expect(try reopened.read().rules.isEmpty)
+        try reopened.close()
+    }
     @Test func finishingCopiesPurposeAndClearsDraftTogetherWithoutTouchingOtherRules() throws {
         let url = try path(); defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
         let store = try RuleDetailsRepository.create(at: url), p = progress(bound: true), other = UUID()

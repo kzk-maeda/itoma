@@ -11,6 +11,7 @@ import { Applications } from './applications';
 import { home } from './navigation';
 import { weekdayNames, endTime } from './presentation';
 import { RuleGoal } from './rule-identity';
+import { ReviewAction, ReviewSection } from './onboarding-review';
 import { Body, Button, Field, FlowScreen, Heading, Notice, Panel, errorText, flowStyles, useFlowTheme } from './ui';
 
 const steps: OnboardingStep[] = ['purpose', 'schedule', 'apps', 'review'];
@@ -42,7 +43,7 @@ export function FirstRunOnboarding() {
   const leave = async () => { const result = await setup.run('onboardingDefer'); if (result.status === 'ok') home(); };
   const changeStep = async (step: OnboardingStep) => {
     if (draft?.commandID) { const result = await setup.run('onboardingEdit'); if (result.status !== 'ok') return; }
-    setReviewed(false); setup.update({ step }); await setup.flush();
+    setReviewed(false); setup.update({ step, returnToReview: draft?.step === 'review' || draft?.returnToReview === true }); await setup.flush();
   };
   const next = async (step: OnboardingStep) => { setup.update({ step }); if (await setup.flush()) setReviewed(false); };
   const prepare = async () => {
@@ -51,6 +52,12 @@ export function FirstRunOnboarding() {
     setImpacts(result.impacts);
     if (result.snapshot) setResultSnapshot(result.snapshot);
     await state.refresh();
+  };
+  const showReview = async () => {
+    setReviewed(false);
+    setup.update({ step: 'review', returnToReview: true });
+    if (!(await setup.flush())) return;
+    if (draft && validOnboardingSchedule(draft) && setup.progress?.selectionReady && state.snapshot?.authorization === 'approved') await prepare();
   };
   const submit = async () => {
     setReviewed(false);
@@ -71,7 +78,11 @@ export function FirstRunOnboarding() {
     { text: '入力を続ける', style: 'cancel' },
     { text: '下書きを破棄', style: 'destructive', onPress: () => { void setup.run('onboardingDiscard').then(result => { if (result.status === 'ok') home(); }); } },
   ]);
-  const back = () => { const index = draft ? steps.indexOf(draft.step) : 0; if (index > 0 && progress?.canEdit) void changeStep(steps[index - 1]); else void leave(); };
+  const back = () => {
+    if (draft?.returnToReview && draft.step !== 'review') { void showReview(); return; }
+    const index = draft ? steps.indexOf(draft.step) : 0;
+    if (index > 0 && progress?.canEdit) void changeStep(steps[index - 1]); else void leave();
+  };
   const feedback = <>
     {setup.error && <View accessibilityLiveRegion="polite"><Notice title="初回設定を確認してください">{errorText[setup.error]}</Notice></View>}
     {setup.error && <Button label="保存した内容を読み直す" secondary disabled={disabled} onPress={() => { void setup.refresh(); }} />}
@@ -98,15 +109,17 @@ export function FirstRunOnboarding() {
   </FlowScreen>;
   const count = state.snapshot?.selections.find(s => s.ref === draft.selectionRef)?.count ?? 0;
   const editable = progress.canEdit, ready = progress.selectionReady && state.snapshot?.authorization === 'approved';
-  return <FlowScreen title={titles[draft.step]} eyebrow={`はじめの設定 · ${steps.indexOf(draft.step) + 1} / 4`} onBack={back}>
-    <View style={styles.steps} accessible={false}>{steps.map((step, index) => <View key={step} style={[styles.step, { backgroundColor: index <= steps.indexOf(draft.step) ? theme.accent : theme.line }]} />)}</View>
+  const editingReview = !!draft.returnToReview && draft.step !== 'review';
+  const scheduleValid = validOnboardingSchedule(draft);
+  return <FlowScreen key={draft.step} title={titles[draft.step]} eyebrow={editingReview ? '設定内容の変更' : `はじめの設定 · ${steps.indexOf(draft.step) + 1} / 4`} onBack={back}>
+    {!editingReview && <View style={styles.steps} accessible={false}>{steps.map((step, index) => <View key={step} style={[styles.step, { backgroundColor: index <= steps.indexOf(draft.step) ? theme.accent : theme.line }]} />)}</View>}
     {feedback}
     {draft.step === 'purpose' && <View style={flowStyles.section}>
       <Body>思い浮かぶことがあれば、あなたの言葉で。決まっていなくても、そのまま進めます。</Body>
       <Field label="この時間の名前（任意）" value={draft.title} maxLength={80} onChangeText={title => setup.update({ title })} placeholder="自分で決めた名前" editable={!disabled} />
       <Field label="大切にしたいこと・行動目標（任意）" value={draft.goal} maxLength={1000} onChangeText={goal => setup.update({ goal })} multiline placeholder="この時間を、どう過ごしたいですか" editable={!disabled} />
       <Body muted>入力した目的は端末内に保存し、ホームに表示します。未入力でも大丈夫です。</Body>
-      <Button label="曜日と時間を決める" disabled={disabled} onPress={() => { void next('schedule'); }} />
+      <Button label={editingReview ? '変更を確認する' : '曜日と時間を決める'} disabled={disabled} onPress={() => { if (editingReview) void showReview(); else void next('schedule'); }} />
     </View>}
     {draft.step === 'schedule' && <View style={flowStyles.section}>
       <Body>決めた曜日と時間だけ、選んだアプリを制限します。</Body>
@@ -125,7 +138,7 @@ export function FirstRunOnboarding() {
       </Pressable>
       <Body muted>この端末の現地時刻に従います。曜日は開始する日を選び、日付をまたぐ場合は「翌日に終了」を選んでください。</Body>
       {!validOnboardingSchedule(draft) && <Body muted>曜日と正しい開始・終了時刻を選んでください。時間帯は1分から24時間までです。</Body>}
-      <Button label="対象アプリへ" disabled={disabled || !validOnboardingSchedule(draft)} onPress={() => { void next('apps'); }} />
+      <Button label={editingReview ? '変更を確認する' : '対象アプリへ'} disabled={disabled || !scheduleValid} onPress={() => { if (editingReview) void showReview(); else void next('apps'); }} />
     </View>}
     {draft.step === 'apps' && <View style={flowStyles.section}>
       <Body>選んだアプリを、決めた時間だけ制限するために、iOSのスクリーンタイムの許可を使います。</Body>
@@ -138,31 +151,36 @@ export function FirstRunOnboarding() {
       {draft.selectionRef && count > 0 && state.snapshot?.authorization === 'approved' && <Panel><Applications selectionRef={draft.selectionRef} count={count} refreshKey={state.refreshKey} /><Body muted>{count}件を選択{!ready ? '・再確認が必要です' : ''}</Body></Panel>}
       {!!draft.selectionRef && !ready && <Body muted>再開時は、以前の対象をそのまま有効扱いしません。アプリを選び直して確認してください。</Body>}
       <Button label={draft.selectionRef ? '対象アプリを選び直す' : '対象アプリを選ぶ'} secondary disabled={disabled || state.snapshot?.authorization !== 'approved'} onPress={() => { void pick(); }} />
-      <Button label="内容を確認する" disabled={disabled} onPress={() => { if (ready) void prepare(); else void next('review'); }} />
+      <Button label={editingReview ? '変更を確認する' : '内容を確認する'} disabled={disabled} onPress={() => { void showReview(); }} />
     </View>}
     {draft.step === 'review' && <View style={flowStyles.section}>
-      <Panel><Heading>{draft.title.trim() || '名前未設定のルール'}</Heading>
-        <Body>{draft.weekdays.map(v => weekdayNames[v - 1]).join('・')} {draft.start}〜{draft.nextDay ? '翌' : ''}{draft.end}</Body>
-        {draft.goal.trim() ? <RuleGoal goal={draft.goal} /> : <Body muted>行動目標：あとで決める</Body>}
-        {draft.selectionRef && count > 0 && state.snapshot?.authorization === 'approved' ? <Applications selectionRef={draft.selectionRef} count={count} refreshKey={state.refreshKey} /> : <Body>対象アプリ：確認が必要です</Body>}
-        <Body>一時解除：自分の言葉で理由を入力</Body>
+      <Panel>
+        <ReviewSection title="名前と目的" changeLabel="名前と目的を変更" disabled={disabled} onChange={editable ? () => { void changeStep('purpose'); } : undefined}>
+          <Body>{draft.title.trim() || '名前：未設定（任意）'}</Body>
+          {draft.goal.trim() ? <RuleGoal goal={draft.goal} /> : <Body muted>行動目標：未設定（任意）</Body>}
+        </ReviewSection>
+        <ReviewSection title="曜日・時間" changeLabel="曜日・時間を変更" disabled={disabled} divider onChange={editable ? () => { void changeStep('schedule'); } : undefined}>
+          <Body>{draft.weekdays.map(v => weekdayNames[v - 1]).join('・')} {draft.start}〜{draft.nextDay ? '翌' : ''}{draft.end}</Body>
+        </ReviewSection>
+        <ReviewSection title="許可と対象アプリ" changeLabel="許可と対象アプリを変更" disabled={disabled} divider onChange={editable ? () => { void changeStep('apps'); } : undefined}>
+          {draft.selectionRef && count > 0 && state.snapshot?.authorization === 'approved' ? <Applications selectionRef={draft.selectionRef} count={count} refreshKey={state.refreshKey} /> : <Body>対象アプリ：確認が必要です</Body>}
+          <Body muted>スクリーンタイム：{state.snapshot?.authorization === 'approved' ? '許可済み' : '許可が必要です'}{!ready && draft.selectionRef ? '・アプリの再確認が必要です' : ''}</Body>
+        </ReviewSection>
+        <Body muted>一時解除：自分の言葉で理由を入力</Body>
       </Panel>
       {reviewed && impacts.length > 0 && <Notice title="一時解除への変更があります">{impacts.map(impact => impact.kind === 'shorten' && impact.endsAt
         ? `一時解除の終了が${endTime(impact.endsAt, now)}に早まります。` : '継続中の一時解除が終了、または状態の再確認が必要になります。').join('\n')}</Notice>}
       {draft.submitted && <Notice title="前の要求の結果を確認しています">{editable ? '前の要求は完了していません。入力は残っています。内容を確認し直してから再試行できます。' : '保存・反映の結果を確認できていません。新しいルールを重ねて作らず、現在の状態を確認してください。'}</Notice>}
       {!ready && <Notice title="初回設定は、まだ途中です">許可と対象アプリの確認後に、ご自身で確定すると開始します。今は制限を開始しません。</Notice>}
+      {!scheduleValid && <Notice title="曜日と時間を確認してください">入力は残っています。「曜日・時間」の変更から、正しい時間帯を設定できます。</Notice>}
       <Body muted>最後の確定でルールを保存し、反映を要求します。時間帯の外であれば、次の開始を予定します。</Body>
-      {ready && reviewed && <Button label={draft.submitted ? 'この内容で登録を再試行する' : 'この内容で、はじめる'} disabled={disabled} onPress={() => { void submit(); }} />}
-      {ready && !reviewed && editable && <Button label="最新の内容を確認する" disabled={disabled} onPress={() => { void prepare(); }} />}
+      {ready && reviewed && <Button label={draft.submitted ? 'この内容で登録を再試行する' : 'この内容で、はじめる'} disabled={disabled || !scheduleValid} onPress={() => { void submit(); }} />}
+      {ready && !reviewed && editable && <Button label="最新の内容を確認する" disabled={disabled || !scheduleValid} onPress={() => { void prepare(); }} />}
       {!editable && <Button label="保存・反映の結果を確認する" disabled={disabled} onPress={() => { void setup.refresh().then(result => { if (result.snapshot) setResultSnapshot(result.snapshot); void state.refresh(); }); }} />}
-      {editable && <>
-        <Button label="目的を見直す" secondary disabled={disabled} onPress={() => { void changeStep('purpose'); }} />
-        <Button label="曜日・時間を見直す" secondary disabled={disabled} onPress={() => { void changeStep('schedule'); }} />
-        <Button label="許可と対象アプリを見直す" secondary disabled={disabled} onPress={() => { void changeStep('apps'); }} />
-      </>}
     </View>}
-    <Button label="内容を残して、ホームへ" secondary disabled={disabled} onPress={() => { void leave(); }} />
-    {editable && <Button label="下書きを破棄する" secondary disabled={disabled} onPress={discard} />}
+    {draft.step === 'review' ? <ReviewAction label="内容を残して、ホームへ" disabled={disabled} onPress={() => { void leave(); }} />
+      : <Button label="内容を残して、ホームへ" secondary disabled={disabled} onPress={() => { void leave(); }} />}
+    {editable && (draft.step === 'review' ? <ReviewAction label="下書きを破棄する" disabled={disabled} onPress={discard} /> : <Button label="下書きを破棄する" secondary disabled={disabled} onPress={discard} />)}
     {!editable && <Button label="設定で現在の状態を確認する" secondary onPress={() => router.dismissTo('/settings')} />}
   </FlowScreen>;
 }
