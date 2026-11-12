@@ -5,7 +5,7 @@
   "type": "module",
   "engines": { "node": ">=24" },
   "scripts": { "test": "node run.mjs" },
-  "files": ["run.mjs", "tests", "target.json"],
+  "files": ["run.mjs", "scenarios.json", "tests", "target.json"],
   "dependencies": { "webdriverio": "10.2.0" },
   "bundleDependencies": ["webdriverio"]
 }

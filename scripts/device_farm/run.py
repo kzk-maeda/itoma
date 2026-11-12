@@ -282,7 +282,10 @@ class Runner:
 
 
 def verify_evidence(path, expected):
-    """Require per-device reports, four non-skipped scenarios and matching build metadata."""
+    """Require every registered scenario per device and matching build metadata."""
+    ids = expected["scenarioIds"]
+    if not ids or len(ids) != len(set(ids)):
+        raise ValueError("Scenario identifiers must be nonempty and unique")
     with zipfile.ZipFile(path) as archive:
         reports = [name for name in archive.namelist() if Path(name).name == "junit.xml"]
         sessions = [name for name in archive.namelist() if Path(name).name == "session.json"]
@@ -294,12 +297,12 @@ def verify_evidence(path, expected):
             raise ValueError("Unexpectedly large E2E report")
         root = ET.fromstring(archive.read(reports[0]))
         cases = root.findall(".//testcase")
-        if len(cases) != 4 or any(case.find(tag) is not None for case in cases for tag in ("skipped", "failure", "error")):
-            raise ValueError("Four passing E2E cases are required")
-        if {case.get("name", "").split(":")[0] for case in cases} != {"DF01", "DF02", "DF03", "DF04"}:
+        if len(cases) != len(ids) or any(case.find(tag) is not None for case in cases for tag in ("skipped", "failure", "error")):
+            raise ValueError("Every registered E2E scenario must pass")
+        if {case.get("name", "").split(":")[0] for case in cases} != set(ids):
             raise ValueError("Unexpected scenario set")
         session = json.loads(archive.read(sessions[0]))
-        keys = ("appCommit", "testCommit", "ipaSha256", "bundleId") + tuple(key for key in ("runArn", "deviceArn") if key in expected)
+        keys = ("appCommit", "testCommit", "ipaSha256", "bundleId", "scenarioIds") + tuple(key for key in ("runArn", "deviceArn") if key in expected)
         if any(session.get(key) != expected[key] for key in keys):
             raise ValueError("E2E evidence does not match the requested build")
         return True

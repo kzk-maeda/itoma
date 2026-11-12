@@ -22,6 +22,20 @@ def digest(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def scenario_ids(path):
+    scenarios = json.loads(Path(path).read_text())
+    if not isinstance(scenarios, list) or not scenarios:
+        raise ValueError("Register at least one E2E scenario")
+    if any(not isinstance(item, dict) or not isinstance(item.get("id"), str)
+           or not re.fullmatch(r"DF[0-9]+", item["id"]) or not isinstance(item.get("name"), str)
+           or not item["name"].strip() for item in scenarios):
+        raise ValueError("Each scenario requires a DF identifier and a name")
+    ids = [item["id"] for item in scenarios]
+    if len(ids) != len(set(ids)):
+        raise ValueError("Scenario identifiers must be unique")
+    return ids
+
+
 def write_json(path, value):
     # Atomic checkpoints also survive a signal between ScheduleRun and polling.
     path = Path(path)
@@ -61,10 +75,11 @@ def prepare(args):
     ipa, metadata = inspect_ipa(args.app_dir, args.ipa_sha256, args.bundle_id)
     output = Path(args.output_dir).resolve()
     output.mkdir(parents=True, exist_ok=False)
+    e2e = Path(__file__).resolve().parents[2] / "e2e"
     metadata.update(appCommit=args.app_commit, testCommit=args.test_commit,
                     sourceRunId=args.app_run_id, sourceArtifact=args.app_artifact,
+                    scenarioIds=scenario_ids(e2e / "scenarios.json"),
                     binarySourceProof="artifact-run metadata plus runtime JS build marker; native source not attested")
-    e2e = Path(__file__).resolve().parents[2] / "e2e"
     target = e2e / "target.json"
     if target.exists():
         raise ValueError("Refusing to overwrite an existing e2e/target.json")

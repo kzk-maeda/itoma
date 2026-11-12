@@ -35,7 +35,7 @@ phases:
   test:
     commands:
       - cd "$DEVICEFARM_TEST_PACKAGE_PATH/node_modules/itoma-device-farm-e2e"
-      # No pipe or success fallback: all assertions, hooks and the four-test guard must pass.
+      # No pipe or success fallback: all assertions, hooks and registered scenarios must pass.
       - npm test
   post_test:
     commands:

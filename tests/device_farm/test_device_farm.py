@@ -9,18 +9,23 @@ import unittest
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "device_farm"))
-from prepare import digest, inspect_ipa, require_hex, write_json
+from prepare import digest, inspect_ipa, require_hex, scenario_ids, write_json
 from run import Runner, pages, validate_arns, verify_evidence
 
 PROJECT = "arn:aws:devicefarm:us-west-2:123456789012:project:" + "a" * 36
 POOL = PROJECT.replace(":project:", ":devicepool:") + "/" + "b" * 36
 RUN = PROJECT.replace(":project:", ":run:") + "/" + "c" * 36
 DEVICE = {"arn": "device", "name": "iPhone", "platform": "IOS", "os": "27.0", "fleetType": "PUBLIC"}
-META = {"appCommit": "a" * 40, "testCommit": "b" * 40, "bundleId": "com.example.itoma", "ipaSha256": "c" * 64}
+SCENARIO_IDS = scenario_ids(Path(__file__).resolve().parents[2] / "e2e" / "scenarios.json")
+META = {"appCommit": "a" * 40, "testCommit": "b" * 40, "bundleId": "com.example.itoma", "ipaSha256": "c" * 64,
+        "scenarioIds": SCENARIO_IDS}
 
 
-def evidence(path, *, count=4, skipped=False, metadata=None):
-    cases = "".join(f'<testcase name="DF{i + 1:02d}: scenario">' + ('<skipped/>' if skipped else '') + '</testcase>' for i in range(count))
+def evidence(path, *, count=None, skipped=False, metadata=None):
+    registered = (metadata or META)["scenarioIds"]
+    count = len(registered) if count is None else count
+    ids = registered[:count] + ["DF999"] * max(0, count - len(registered))
+    cases = "".join(f'<testcase name="{identity}: scenario">' + ('<skipped/>' if skipped else '') + '</testcase>' for identity in ids)
     with zipfile.ZipFile(path, "w") as archive:
         archive.writestr("logs/junit.xml", f"<testsuites><testsuite>{cases}</testsuite></testsuites>")
         archive.writestr("logs/session.json", json.dumps(metadata or META))
@@ -103,13 +108,26 @@ class InputTests(unittest.TestCase):
             (root / "tests").mkdir()
             source = Path(__file__).resolve().parents[2] / "e2e" / "run.mjs"
             (root / "run.mjs").write_text(source.read_text())
-            for count in (4, 0, 3):
-                (root / "tests" / "smoke.test.mjs").write_text("import { test, before, beforeEach, afterEach, after } from 'node:test';\n" +
-                    "before(() => {}); beforeEach(() => {}); afterEach(() => {}); after(() => {});\n" +
-                    "\n".join(f"test('DF{i + 1:02d}: contract', () => {{}});" for i in range(count)))
-                result = subprocess.run(["node", "run.mjs"], cwd=root, env={**os.environ, "DEVICEFARM_LOG_DIR": str(root)},
-                                        capture_output=True, text=True)
-                self.assertEqual(result.returncode == 0, count == 4, result.stderr)
+            for ids in (SCENARIO_IDS, ["DF10", "DF20", "DF30", "DF40", "DF50"]):
+                write_json(root / "scenarios.json", [{"id": value, "name": "contract"} for value in ids])
+                for reported in (ids, [], ids[:-1], [ids[0]] * len(ids)):
+                    (root / "tests" / "smoke.test.mjs").write_text("import { test, before, beforeEach, afterEach, after } from 'node:test';\n" +
+                        "before(() => {}); beforeEach(() => {}); afterEach(() => {}); after(() => {});\n" +
+                        "\n".join(f"test('{identity}: contract', () => {{}});" for identity in reported))
+                    result = subprocess.run(["node", "run.mjs"], cwd=root, env={**os.environ, "DEVICEFARM_LOG_DIR": str(root)},
+                                            capture_output=True, text=True)
+                    self.assertEqual(result.returncode == 0, reported == ids, result.stderr)
+
+    def test_scenario_catalog_requires_valid_unique_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "scenarios.json"
+            for invalid in ([], [{"id": "DF01", "name": ""}], [{"id": "bad", "name": "case"}],
+                            [{"id": "DF01", "name": "case"}] * 2):
+                write_json(path, invalid)
+                with self.assertRaises(ValueError):
+                    scenario_ids(path)
+            write_json(path, [{"id": "DF10", "name": "new case"}])
+            self.assertEqual(scenario_ids(path), ["DF10"])
 
     def test_immutable_identifiers_and_pool_ownership(self):
         require_hex("a" * 40, 40, "SHA")
@@ -144,7 +162,7 @@ class InputTests(unittest.TestCase):
     def test_report_rejects_zero_partial_skipped_and_wrong_build(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "evidence.zip"
-            for count in (0, 3, 5):
+            for count in (0, len(SCENARIO_IDS) - 1, len(SCENARIO_IDS) + 1):
                 evidence(path, count=count)
                 with self.assertRaises(ValueError):
                     verify_evidence(path, META)
@@ -156,6 +174,11 @@ class InputTests(unittest.TestCase):
                 verify_evidence(path, META)
             evidence(path)
             self.assertTrue(verify_evidence(path, META))
+            expanded = {**META, "scenarioIds": ["DF10", "DF20", "DF30", "DF40", "DF50"]}
+            evidence(path, metadata=expanded)
+            self.assertTrue(verify_evidence(path, expanded))
+            with self.assertRaises(ValueError):
+                verify_evidence(path, {**expanded, "scenarioIds": ["DF10", "DF20", "DF30", "DF40", "DF60"]})
 
     def test_pagination_and_loop_guard(self):
         class Client:
@@ -186,7 +209,7 @@ class LifecycleTests(unittest.TestCase):
         if not upload:
             if self.client.failed_download:
                 raise OSError("https://signed.invalid/?secret=NEVER_PERSIST")
-            evidence(path, count=0 if self.client.bad_evidence else 4, metadata={**self.metadata, "runArn": RUN, "deviceArn": DEVICE["arn"]})
+            evidence(path, count=0 if self.client.bad_evidence else None, metadata={**self.metadata, "runArn": RUN, "deviceArn": DEVICE["arn"]})
         return Path(path).stat().st_size
 
     def start(self):

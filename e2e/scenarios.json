@@ -1,0 +1,6 @@
+[
+  { "id": "DF01", "name": "bundled build starts with no rules or temporary grants" },
+  { "id": "DF02", "name": "settings shows no rules and requires Screen Time permission" },
+  { "id": "DF03", "name": "reflection does not invent accumulated time" },
+  { "id": "DF04", "name": "history opens from settings and returns without enabling restrictions" }
+]

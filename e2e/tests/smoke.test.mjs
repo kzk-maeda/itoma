@@ -5,6 +5,12 @@ import { join } from 'node:path';
 import { remote } from 'webdriverio';
 
 const target = JSON.parse(readFileSync(new URL('../target.json', import.meta.url), 'utf8'));
+const scenarios = JSON.parse(readFileSync(new URL('../scenarios.json', import.meta.url), 'utf8'));
+const scenarioName = (id) => {
+  const scenario = scenarios.find(item => item.id === id);
+  assert.ok(scenario, `Register scenario ${id} in scenarios.json`);
+  return `${id}: ${scenario.name}`;
+};
 const output = process.env.DEVICEFARM_LOG_DIR;
 let driver;
 let shot = 0;
@@ -70,13 +76,13 @@ afterEach(async () => {
 }, { timeout: 30_000 });
 after(async () => { if (driver) await driver.deleteSession(); }, { timeout: 30_000 });
 
-test('DF01: bundled build starts with no rules or temporary grants', { timeout: 60_000 }, async () => {
+test(scenarioName('DF01'), { timeout: 60_000 }, async () => {
   await text('自分の時間を、ここから。');
   await element('home-rule-create');
   await noUnlock();
 });
 
-test('DF02: settings shows no rules and requires Screen Time permission', { timeout: 60_000 }, async () => {
+test(scenarioName('DF02'), { timeout: 60_000 }, async () => {
   await tab('settings');
   await text('保存したルールはありません。');
   await text('スクリーンタイム：許可の確認が必要です');
@@ -84,7 +90,7 @@ test('DF02: settings shows no rules and requires Screen Time permission', { time
   await noUnlock();
 });
 
-test('DF03: reflection does not invent accumulated time', { timeout: 90_000 }, async () => {
+test(scenarioName('DF03'), { timeout: 90_000 }, async () => {
   await tab('reflection');
   const total = await element('reflection-total');
   assert.equal(await total.getText(), '—');
@@ -101,7 +107,7 @@ test('DF03: reflection does not invent accumulated time', { timeout: 90_000 }, a
   await tab('home');
 });
 
-test('DF04: history opens from settings and returns without enabling restrictions', { timeout: 90_000 }, async () => {
+test(scenarioName('DF04'), { timeout: 90_000 }, async () => {
   await tab('settings');
   const history = await driver.$('~settings-history');
   if (!await history.isDisplayed()) {
