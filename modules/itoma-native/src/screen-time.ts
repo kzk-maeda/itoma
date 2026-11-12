@@ -1,3 +1,5 @@
+import { withControlSnapshots } from './control-snapshot';
+
 export type ScreenTimeAction = 'snapshot' | 'initialize' | 'authorize' | 'pickApplications' | 'previewRule' | 'commitRule' | 'reviewCandidate' | 'retryRule' | 'cancelCandidate' | 'previewUnlock' | 'unlock' | 'cancelUnlock' | 'retryGrant' | 'stop' | 'endGrant' | 'resume' | 'reconcile' | 'deleteReasons' | 'stopLegacy' | 'saveRuleDetails';
 export type ScreenTimeCode = 'unavailable' | 'busy' | 'invalid-input' | 'changed' | 'authorization-required' | 'selection-required' | 'schedule-failed' | 'storage-failed' | 'reason-storage-full' | 'reason-required' | 'application-uncertain' | 'legacy-active' | 'retry-required';
 export interface ScreenTimeRule {
@@ -74,7 +76,7 @@ export function unavailableSnapshot(availability: ScreenTimeSnapshot['availabili
 }
 
 export function createScreenTimeClient(platform: string, load: () => NativePort | null) {
-  return {
+  return withControlSnapshots({
     async run(action: ScreenTimeAction, request: ScreenTimeRequest = {}): Promise<ScreenTimeResponse> {
       if (platform !== 'ios') return { status: 'error', code: 'unavailable', impacts: [], snapshot: unavailableSnapshot('unsupported-platform') };
       try {
@@ -85,5 +87,5 @@ export function createScreenTimeClient(platform: string, load: () => NativePort 
         return parseScreenTimeResponse(await native.screenTime(action, JSON.stringify(request)));
       } catch { return { status: 'error', code: 'unavailable', impacts: [] }; }
     },
-  };
+  });
 }

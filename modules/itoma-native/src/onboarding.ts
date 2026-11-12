@@ -1,3 +1,4 @@
+import { withControlSnapshots } from './control-snapshot';
 import { parseScreenTimeResponse, type ScreenTimeResponse } from './screen-time';
 
 export type OnboardingStep = 'purpose' | 'schedule' | 'apps' | 'review';
@@ -41,12 +42,12 @@ export function parseOnboardingResponse(json: string): OnboardingResponse {
   return { ...response, onboarding: progress };
 }
 export function createOnboardingClient(platform: string, load: () => NativePort | null) {
-  return { async run(action: OnboardingAction, request?: OnboardingRequest): Promise<OnboardingResponse> {
+  return withControlSnapshots({ async run(action: OnboardingAction, request?: OnboardingRequest): Promise<OnboardingResponse> {
     if (platform !== 'ios') return { status: 'error', code: 'unavailable', impacts: [] };
     try {
       const native = load();
       if (native?.apiVersion !== 1 || native.onboardingVersion !== 1 || typeof native.screenTime !== 'function') return { status: 'error', code: 'unavailable', impacts: [] };
       return parseOnboardingResponse(await native.screenTime(action, JSON.stringify(request ? { onboarding: request } : {})));
     } catch { return { status: 'error', code: 'unavailable', impacts: [] }; }
-  } };
+  } });
 }

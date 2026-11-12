@@ -7,7 +7,9 @@ type Draft = { ruleID: string; title: string; goal: string; originalTitle: strin
 export function RuleDetailsScreen({ ruleID }: { ruleID?: string }) {
   const state = useScreenTime(), s = state.snapshot, rule = s?.rules.find(r => r.id === ruleID);
   const [draft, setDraft] = useState<Draft>();
-  const [reviewRequired, setReviewRequired] = useState(false), [latest, setLatest] = useState<{ title: string; goal: string }>();
+  const [reviewRequired, setReviewRequired] = useState(false), [reviewedLatest, setReviewedLatest] = useState(false);
+  // Saved text follows current private availability; editable RAM input stays separate.
+  const latest = reviewedLatest && s?.ruleDetailsStatus === 'ready' ? rule : undefined;
   const allowed = useRef(false), [exitAllowed, setExitAllowed] = useState(false);
   const mounted = useRef(true), pending = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -40,7 +42,7 @@ export function RuleDetailsScreen({ ruleID }: { ruleID?: string }) {
     const result = await state.refresh(), snapshot = result.snapshot, current = snapshot?.rules.find(r => r.id === ruleID);
     if (!mounted.current) return;
     if (result.status !== 'ok' || !current || snapshot?.ruleDetailsStatus !== 'ready' || snapshot.ruleDetailsRevision === undefined) return;
-    setLatest({ title: current.title ?? '', goal: current.goal ?? '' });
+    setReviewedLatest(true);
     setDraft(value => value && { ...value, revision: snapshot.ruleDetailsRevision!, policyRevision: snapshot.revision });
     setReviewRequired(false);
   };
