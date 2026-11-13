@@ -78,6 +78,9 @@ struct ProductResponse: Encodable, Sendable {
     static let shared = ProductController()
     private var runtime: ScreenTimeRuntime?
     private var busy = false
+    private var displayRefreshGate = DisplayRefreshGate()
+    private var displayRefreshInFlight = false
+    private var hostMutationGeneration = 0
     private var confirmedSelections: Set<SelectionRef> = []
     private var denialEpoch = 0
     private var reviewGateActive = false
@@ -114,15 +117,16 @@ struct ProductResponse: Encodable, Sendable {
         return try runtime.selectionData(ref: ref, target: target.flatMap(UUID.init(uuidString:)).map(TargetRef.init))
     }
 
-    func perform(_ action: String, request: ProductRequest, authorizationEpoch: Int = 0) async -> ProductResponse {
+    func perform(_ action: String, request: ProductRequest, authorizationEpoch: Int = 0, lifecycleGeneration: Int = 0) async -> ProductResponse {
         if busy, action != "snapshot", action != "stop", action != "onboardingRead" { return ProductResponse(status: "error", code: "busy") }
+        if action != "snapshot" && action != "onboardingRead" { hostMutationGeneration &+= 1 }
         let mutates = action != "snapshot" && action != "stop" && action != "onboardingRead"
         if mutates { busy = true }
         defer { if mutates { busy = false } }
         do {
             if action.hasPrefix("onboarding") { return try await performOnboarding(action, request: request, authorizationEpoch: authorizationEpoch) }
             if action == "snapshot" {
-                do { let r = try open(); try observeEpoch(authorizationEpoch, in: r); if !busy { try await refresh(r) }; return ProductResponse(snapshot: try snapshot(r)) }
+                do { let r = try open(); try observeEpoch(authorizationEpoch, in: r); if !busy { try await refreshForDisplay(r, authorizationEpoch: authorizationEpoch, lifecycleGeneration: lifecycleGeneration) }; return ProductResponse(snapshot: try snapshot(r)) }
                 catch StorageError.missingDatabase { return ProductResponse(snapshot: ProductSnapshotDTO(authorization: authorization())) }
             }
             let r = try open(create: action == "initialize")
@@ -445,19 +449,42 @@ struct ProductResponse: Encodable, Sendable {
             selectionReady: ready, commandState: command.map { $0.status.rawValue }, canEdit: editable))
     }
 
-    private func refresh(_ r: ScreenTimeRuntime) async throws {
+    private func refreshForDisplay(_ r: ScreenTimeRuntime, authorizationEpoch: Int, lifecycleGeneration: Int) async throws {
+        guard !displayRefreshInFlight else { return }
+        let current = try r.repository.readSnapshot(), context = r.contexts.context(activation: current.activation)
+        let schedulesReady = current.activation != .enabled || (try? r.monitors.readyPlan(for: current.policy)) != nil
+        if schedulesReady && displayRefreshGate.canReuse(current, context: context, authorizationEpoch: authorizationEpoch,
+                                       lifecycleGeneration: lifecycleGeneration, uptime: ProcessInfo.processInfo.systemUptime) {
+            // Preserve bounded backlog draining without producing another control observation.
+            try? await ProductHistoryController.shared.importForMaintenance()
+            return
+        }
+        let mutationGeneration = hostMutationGeneration
+        displayRefreshInFlight = true
+        defer { displayRefreshInFlight = false }
+        let completed = try await refresh(r)
+        guard completed, !busy, mutationGeneration == hostMutationGeneration else { return }
+        let after = try r.repository.readSnapshot(), afterContext = r.contexts.context(activation: after.activation)
+        guard after.activation != .enabled || (try? r.monitors.readyPlan(for: after.policy)) != nil else { return }
+        displayRefreshGate.remember(after, context: afterContext, authorizationEpoch: authorizationEpoch,
+                                    lifecycleGeneration: lifecycleGeneration, uptime: ProcessInfo.processInfo.systemUptime)
+    }
+
+    @discardableResult private func refresh(_ r: ScreenTimeRuntime) async throws -> Bool {
+        displayRefreshGate.invalidate()
         let before = try r.repository.readSnapshot(), context = r.contexts.context(activation: before.activation)
         if context.authorization.status == .approved, before.activation == .enabled {
             _ = try? r.monitors.prepare(before.policy)
         }
         // perform() skips refresh while any host command is in flight. At this serialized host
         // boundary, remaining Scheduling/Applying belongs to an operation that already ended.
-        _ = await (try r.makeService(stopping: before.activation == .paused)).reconcile(recoverInterruptedCommands: true)
+        let outcome = await (try r.makeService(stopping: before.activation == .paused)).reconcile(recoverInterruptedCommands: true)
         if let ready = try? r.monitors.readyPlan(for: r.repository.readSnapshot().policy) { try? r.monitors.cleanup(keeping: ready) }
         // Best-effort bounded import after OS/control reconciliation. Sink failure is persisted
         // as HistoryIncomplete by Storage; it never rolls back a restriction or confirmed reason.
         try? await ProductHistoryController.shared.importForMaintenance()
         try r.protectFiles()
+        return outcome.disposition == .committed && outcome.failure == nil
     }
 
     private func cancelCandidate(_ r: ScreenTimeRuntime, ref: String?) throws {

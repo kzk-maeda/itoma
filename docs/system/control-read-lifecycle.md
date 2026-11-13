@@ -123,3 +123,11 @@ pruneは次の**host所有の削除proof**を使う提案とする。
 | L5: 実機lifecycle/期限/保護/負荷の証拠 | L1〜L4を含むbuild、#49/#50/#52/#131と整合 | tested SHA/build/config/端末OS、clock停止/background/kill/取消/保護/最大データ/競合の時間と結果。Linux/Simulatorを実API成功へ数えない |
 
 #155は終端payload/整合検査/生存集合の全件依存を扱う別設計であり、本設計のread分離だけで全制御計算量が有界になったとはしない。#152のnative no-opは独立。rootがIssue/PRの依存と共通indexの追加を管理し、この変更はproduction source、共通index、CIを変更しない。
+
+## 同一有効contextの表示pollに対する限定的な増幅抑制（#177）
+
+完全なread切替とは別に、ホストの`DisplayRefreshGate`は直前に完了した通常refreshのApplied観測を、同じprocessでのみ再利用する。snapshot sequence・policy revision・Activation・evaluation ID・認可status/epoch・native lifecycle世代・zoneが一致し、観測と評価が未来でなく、元のvalidUntilより前の間だけ、表示pollの再反映を省く。観測時刻と期限は更新しない。wall clockとuptimeの差、逆行、foreground/有意な時刻変更/zone通知は再利用を失効させる。保護用monitorが現在も存在することも毎回確認する。
+
+startup・期限到達・control更新・明示reconcileは既存refreshを通す。Applying/失敗/不明や認可未確認は再利用しない。snapshot refresh同士の重複を防ぎ、await中に別のhost操作が開始した場合は再利用stampを確定しない。Extensionの同期callback・P1/P2・明示retry・grantの初期/実効期限は変更しない。
+
+再利用するpollでもprivateへの有界取込は継続する。open/認可epoch観測/保護属性/private維持には既存の副作用が残り、#160〜164の副作用なしread・job分離・実機ゲートを完了したことにはならない。未知/失敗の同一原因の再実行抑制もこの限定変更では行わない。既存の状態factは自動削除せず、本人の削除とcutoffを維持する。point observationから正の制限時間を合成しない。
