@@ -1,0 +1,50 @@
+const {chromium}=require('/tmp/itoma-ui-tools/node_modules/playwright');
+const fs=require('node:fs');
+(async()=>{
+ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+ const results=[];fs.mkdirSync('/tmp/itoma-settings-evidence',{recursive:true});
+ for(const colorScheme of ['light','dark'])for(const width of [320,390,768]){
+  const page=await browser.newPage({viewport:{width,height:844},colorScheme,reducedMotion:'reduce'});
+  const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+  await page.goto('http://127.0.0.1:8766/settings');
+  await page.getByRole('heading',{name:'設定',exact:true}).waitFor();
+  for(const label of ['スケジュール','スクリーンタイム','記録とプライバシー','使い方とこのアプリ']) {
+   const row=page.getByRole('button',{name:label,exact:true});const b=await row.boundingBox();
+   if(!b||b.height<44)throw Error('short tap area '+label);
+  }
+  const enlarge=async()=>{
+   if(width!==320)return;
+   await page.addStyleTag({content:'[data-ui-qa-font] {font-size:calc(var(--qa-base-font) * 2) !important;line-height:calc(var(--qa-base-line) * 2) !important}'});
+   await page.evaluate(()=>{
+    document.querySelectorAll('[data-ui-qa-font]').forEach(e=>e.removeAttribute('data-ui-qa-font'));
+    const nodes=Array.from(document.querySelectorAll('[dir="auto"]'));
+    const sizes=nodes.map(e=>{const c=getComputedStyle(e);return [e,c.fontSize,c.lineHeight]});
+    sizes.forEach(([e,size,line])=>{e.style.setProperty('--qa-base-font',size);e.style.setProperty('--qa-base-line',line==='normal'?size:line);e.setAttribute('data-ui-qa-font','2')});
+   });
+  };
+  await enlarge();
+  await page.screenshot({path:`/tmp/itoma-settings-evidence/overview-${colorScheme}-${width}.png`,fullPage:true});
+  await page.getByRole('button',{name:'記録とプライバシー',exact:true}).click();
+  await page.getByRole('heading',{name:'記録とプライバシー',exact:true}).waitFor();
+  await page.getByRole('button',{name:'保存状況と取込',exact:true}).click();
+  await page.getByRole('heading',{name:'保存状況と取込',exact:true}).waitFor();
+  await page.getByRole('button',{name:'保存状況を確認し直す',exact:true}).waitFor();
+  await enlarge();
+  await page.screenshot({path:`/tmp/itoma-settings-evidence/storage-${colorScheme}-${width}.png`,fullPage:true});
+  await page.getByRole('button',{name:'記録を削除する',exact:true}).click();
+  await page.getByRole('heading',{name:'記録を削除する',exact:true}).waitFor();
+  await page.getByRole('button',{name:'理由本文のみの削除を確認',exact:true}).waitFor();
+  await enlarge();
+  await page.screenshot({path:`/tmp/itoma-settings-evidence/delete-${colorScheme}-${width}.png`,fullPage:true});
+  for(const label of ['理由本文のみの削除を確認','操作履歴と理由の削除を確認','全記録と累計を削除する']) {
+   const target=page.getByRole('button',{name:label,exact:true});await target.scrollIntoViewIfNeeded();
+   const box=await target.boundingBox();if(!box||box.height<44||box.x<0||box.x+box.width>width+1)throw Error('delete target inaccessible '+label);
+  }
+  await page.screenshot({path:`/tmp/itoma-settings-evidence/delete-actions-${colorScheme}-${width}.png`,fullPage:true});
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
+  if(overflow||errors.length)throw Error(JSON.stringify({overflow,errors}));
+  results.push({width,colorScheme,textScale:width===320?2:1,overflow,errors});await page.close();
+ }
+ fs.writeFileSync('/tmp/itoma-settings-evidence/verification.json',JSON.stringify({runtime:'Linux Chromium',data:'unavailable web adapter; product UI, not simulated OS success',results},null,2));
+ console.log(JSON.stringify(results));await browser.close();
+})();
