@@ -1,0 +1,88 @@
+const { chromium } = require('playwright');
+const fs = require('fs');
+const out=process.env.ITOMA_SETTINGS_QA_OUTPUT||'/workspace/itoma/docs/screenshots/settings';fs.mkdirSync(out,{recursive:true});
+(async()=>{
+ const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+ const c=await b.newContext({viewport:{width:1200,height:1050},reducedMotion:'reduce'});
+ const p=await c.newPage();let errors=[];p.on('pageerror',e=>errors.push(e.message));
+ const click=async name=>p.getByRole('button',{name,exact:true}).click();
+ const link=async name=>p.getByRole('link',{name,exact:true}).click();
+ const has=async text=>p.getByText(text,{exact:false}).first().waitFor();
+ const heading=async name=>p.getByRole('heading',{name,exact:true}).waitFor();
+ const check=(ok,m)=>{if(!ok)throw Error(m);};
+ const shot=async name=>{await p.screenshot({path:`${out}/${name}.png`,fullPage:true});};
+ const scenario=async v=>{await p.selectOption('#scenario',v);if(await p.getByRole('dialog').isVisible())await click('初期化する');await heading('設定');};
+ try{
+ await p.goto(process.env.ITOMA_SETTINGS_QA_BASE||'http://127.0.0.1:8796/settings-study.html');await heading('設定');await shot('overview-light');
+ await p.getByRole('link',{name:/スケジュール 2件/}).click();await heading('スケジュール');
+ await p.getByRole('link',{name:/夜の余白 月/}).click();await heading('夜の余白');await shot('schedule-details');
+ await p.getByRole('link',{name:/名前と行動目標 制限/}).click();await heading('名前と行動目標');
+ await p.getByLabel('スケジュール名（任意）').fill('わたしの夜 <b>');
+ await p.getByRole('link',{name:'‹ 戻る',exact:true}).click();await p.getByRole('dialog').waitFor();await click('入力を続ける');
+ check(await p.getByLabel('スケジュール名（任意）').inputValue()==='わたしの夜 <b>','draft not retained');
+ await click('名前と行動目標を保存');await heading('わたしの夜 <b>');
+ check(await p.locator('#app b').filter({hasText:'わたしの夜'}).count()===0,'XSS');
+ await p.getByRole('link',{name:/曜日・時間・対象アプリ 保存/}).click();await heading('曜日・時間・対象');
+ await p.getByLabel('開始時刻',{exact:true}).fill('23:00');await p.getByLabel('終了時刻',{exact:true}).fill('02:00');await has('23:00〜翌02:00');
+ await click('変更内容を確認');await heading('変更内容の確認');await shot('schedule-review');
+ await p.getByRole('link',{name:'‹ 戻る',exact:true}).click();await heading('曜日・時間・対象');check(await p.getByLabel('終了時刻',{exact:true}).inputValue()==='02:00','confirm back lost draft');
+ await p.goBack(); // navigation history may stay in the edit flow
+ await p.getByRole('heading').last().waitFor();
+ // Use explicit navigation to test guarded browser back separately.
+ await scenario('normal');
+ if(await p.getByRole('dialog').count() && await p.getByRole('dialog').isVisible())await click('初期化する');
+ await heading('設定');
+ await p.getByRole('link',{name:/スケジュール 2件/}).click();await p.getByRole('link',{name:/夜の余白 月/}).click();
+ await p.getByRole('link',{name:/名前と行動目標 制限/}).click();await p.getByLabel('この時間にしたいこと（任意）').fill('ブラウザー戻る確認');
+ await p.goBack();await p.getByRole('dialog').waitFor();await click('入力を続ける');check(await p.getByLabel('この時間にしたいこと（任意）').inputValue()==='ブラウザー戻る確認','browser back lost draft');
+ await p.getByRole('link',{name:'‹ 戻る',exact:true}).click();await click('破棄して移動する');await heading('夜の余白');
+ await p.getByRole('link',{name:'‹ スケジュール',exact:true}).click();
+ await p.getByRole('link',{name:/すべてのスケジュールを停止 設定/}).click();await heading('すべて停止しますか？');await shot('stop-confirm');
+ await click('すべてのスケジュールを停止');await heading('スケジュール');await has('すべてのスケジュールを停止中');
+ await p.getByRole('link',{name:/すべてのスケジュールを再開 設定/}).click();await click('確認して再開');await heading('スケジュール');
+ await scenario('denied');await p.getByRole('link',{name:/スクリーンタイム 許可が必要/}).click();await heading('スクリーンタイム');await shot('permission-needed');
+ await click('スクリーンタイムを許可');await click('この内容で選ぶ');await has('対象の選び直しが必要');
+ for(const name of ['夜の余白','休日の朝']){
+ await p.getByRole('link',{name:new RegExp(`${name} 対象アプリの確認が必要`)}).click();await click('対象アプリを選び直す');await click('この内容で選ぶ');await heading('スクリーンタイム');
+ }
+ await has('停止の設定を保存済み');await p.getByRole('link',{name:'再開する内容を確認',exact:true}).click();await click('確認して再開');await heading('スケジュール');
+ await scenario('gap');await p.getByRole('link',{name:/記録とプライバシー 取込/}).click();await heading('記録とプライバシー');await shot('privacy');
+ await p.getByRole('link',{name:/保存状況と記録の取込 取込/}).click();await heading('保存状況と記録の取込');await click('新しい記録を取り込む');await has('このデモでは取込済み');
+ await p.getByRole('link',{name:'‹ 戻る',exact:true}).click();
+ await p.getByRole('link',{name:/記録を削除 理由/}).click();await heading('削除する記録を選ぶ');await shot('delete-scope');
+ await click('削除する内容を確認');await heading('理由の文章を削除？');await shot('delete-reasons-confirm');
+ await click('削除せず戻る');await heading('削除する記録を選ぶ');await click('削除する内容を確認');await click('理由の文章だけを削除');await heading('記録とプライバシー');await has('操作履歴と累計は残っています');
+ await p.getByRole('link',{name:/保存状況と記録の取込 端末/}).click();await has('0件');await has('24件');
+ await p.getByRole('link',{name:'‹ 戻る',exact:true}).click();await p.getByRole('link',{name:/記録を削除 理由/}).click();await p.getByRole('radio',{name:/すべての記録と累計/}).check();await click('削除する内容を確認');await heading('すべての記録を削除？');await shot('delete-all-confirm');
+ await click('すべての記録と累計を削除');await heading('記録とプライバシー');
+ await p.getByRole('link',{name:/選択の記録を見る 一時/}).click();await has('保存した操作記録はありません');
+ await scenario('normal');await p.getByRole('link',{name:/スケジュール 2件/}).click();await p.getByRole('link',{name:/夜の余白 月/}).click();await p.getByRole('link',{name:/名前と行動目標 制限/}).click();
+ await p.getByLabel('スケジュール名（任意）').fill('失敗でも残る');await p.selectOption('#outcome','error');await click('名前と行動目標を保存');await has('操作を完了できませんでした');check(await p.getByLabel('スケジュール名（任意）').inputValue()==='失敗でも残る','failure lost draft');await shot('save-failed');
+ await p.selectOption('#outcome','unknown');await click('名前と行動目標を保存');await has('操作の結果を確認できません');
+ await p.selectOption('#outcome','ok');await click('名前と行動目標を保存');await heading('失敗でも残る');
+ await scenario('many');await shot('overview-many');await p.getByRole('link',{name:/スケジュール 8件/}).click();await heading('スケジュール');check(await p.locator('.group .row[href^="#schedule/"]').count()===8,'not 8 schedules');await shot('schedules-eight');
+ await scenario('empty');await p.getByRole('link',{name:/スケジュール 0件/}).click();await click('スケジュールを追加');await heading('曜日・時間・対象');await p.getByLabel('開始時刻',{exact:true}).fill('');check(await p.getByRole('button',{name:'変更内容を確認',exact:true}).isDisabled(),'invalid time accepted');
+ await p.getByLabel('開始時刻',{exact:true}).fill('21:00');await click('変更内容を確認');await click('この内容で保存');await heading('スケジュール');
+ await scenario('unknown');await shot('unknown-overview');
+ await p.getByRole('link',{name:'ホーム',exact:true}).click();await heading('いとま');await p.getByRole('link',{name:'記録',exact:true}).click();await heading('記録');await p.getByRole('link',{name:'設定',exact:true}).click();await heading('設定');
+ await p.selectOption('#appearance','dark');await shot('overview-dark');await p.selectOption('#appearance','system');
+ for(const width of [320,390,768,1200]){
+  await p.setViewportSize({width,height:1000});await scenario('normal');
+  for(const scale of ['1','2']){
+   await p.selectOption('#text-size',scale);
+   check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'document overflow '+width+'/'+scale);
+   check(await p.locator('.screen').evaluate(el=>el.scrollWidth<=el.clientWidth),'screen overflow '+width+'/'+scale);
+   const min=await p.locator('#app a,#app button').evaluateAll(es=>Math.min(...es.filter(e=>e.getBoundingClientRect().height>0).map(e=>e.getBoundingClientRect().height)));
+   check(min>=44,'tap height '+min);
+   if(width===320&&scale==='2')await shot('overview-320-text200');
+  }
+ }
+ await p.setViewportSize({width:390,height:1000});await p.selectOption('#text-size','2');
+ await p.getByRole('link',{name:/記録とプライバシー 保存/}).click();await p.getByRole('link',{name:/記録を削除 理由/}).click();await p.getByRole('radio',{name:/すべての記録/}).check();await click('削除する内容を確認');await shot('delete-text200');
+ check(await p.locator('.screen').evaluate(el=>el.scrollWidth<=el.clientWidth),'delete overflow');
+ await p.getByRole('link',{name:'‹ 戻る',exact:true}).click();await p.goBack();
+ check(errors.length===0,JSON.stringify(errors));
+ console.log('PASS: edits, XSS, dirty cancel/browser back, overnight, stop/resume, reauthorization/reselection, import, scoped deletion, failure/unknown, 8 schedules, empty, tabs, 320/390/768/1200, dark, 200% text, 44px.');
+ fs.writeFileSync(`${out}/verification.json`,JSON.stringify({kind:'synthetic-web-settings-study',reviewBase:'46a905a',physicalDevice:false,osVerified:false,browser:await b.version(),errors,screenshots:fs.readdirSync(out).filter(n=>n.endsWith('.png'))},null,2)+'\n');
+ }finally{await b.close();}
+})();

@@ -94,6 +94,7 @@ test('design study cards open the study page, not the original Expo home', () =>
     ['demo/b-native-motion', 'design-motion.html'],
     ['demo/color-variations', 'design-colors.html'],
     ['demo/hourglass-experience', 'hourglass.html'],
+    ['demo/settings-experience', 'settings-study.html'],
   ];
   const environments = entries.map(([branch, page]) => ({ ...demoTarget(branch), title: page }));
   const html = renderIndex(environments, '2026-11-07');
