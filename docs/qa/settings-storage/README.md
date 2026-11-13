@@ -1,0 +1,24 @@
+# 設定の階層化と記録の容量表示（#176）
+
+本人の2026-11-13 JST依頼。参照は設定デモ PR175 `437ac64` の `docs/settings-study.md`。利用者のタスクは、スケジュールの確認・編集、許可と再開、保存した記録の閲覧・容量確認・削除を、それぞれの目的から探すこと。
+
+トップは4入口で固定し、スケジュールは一覧→1件の詳細→用途別編集へ分けた。全体停止は一覧に、個別削除は詳細に置く。名前/行動目標と曜日/時間/対象は既存の別保存を保つ。候補取消のACK・dirty入力・再許可後の本人再開・期限短縮/終了の確認を維持する。行は共通テーマ、16pt本文、補足とchevronで構成し、危険な操作はトップで実行しない。新しい設定間の移動にはRouterのnavigateを使い、保存状況と削除などの往復で既存画面へ戻る。タブの既存の左右遷移には変更を加えない。
+
+記録は閲覧／保存状況と取込／削除範囲の3入口。容量はprivate History DBが返す保存内容・警告値・構成済み上限と、DB/WAL/SHMの実測合計をMBで分ける。制限用DB等を含むアプリ全容量でもファイルサイズのhard capでもない。小さい正値は`< 0.01 MB`、未取得は確認不可として0と区別する。削除後すぐファイルが縮む保証はしない。取込は端末内の有界処理、欠損復元/OS反映成功とは区別する。
+
+振り返りの内部観測件数を削除し、時間未集計・一時解除除外・不明時間非加算・欠損表示は維持した。件数の元DTO/保存データは互換性のため維持。不要な生成そのものは別 PR178/#177 で抑える。
+
+原則1/3/4/5、U01/U06/U07/U08、UI20〜26/UI30/UI35〜38を参照。デモの固定件数・84時間・アプリ名は製品へコピーしていない。今回の実装依頼により階層を本体へ接続するが、OS成立や時間集計の資格をデモから推定しない。
+
+## 検証
+
+UI source `078344458c6d9092079d0e820efc34993dd56405`。後続はこの証跡の追加だけ。
+
+- PASS: tsc、Lint、Jest25 suites/204件、demo3ファイル20件、iOS tools、diff check。
+- PASS: Expo Doctor20/20。最初の実行はNode fetchのproxy未使用でAPI schema/Directory参照に失敗。環境のproxyを尊重する`NODE_USE_ENV_PROXY=1`で再実行して成功。依存変更なし。
+- PASS: production UIのWeb export（既存のstatic出力flagのみ使用）。Linux Chromium、320/390/768px、Light/Dark、Reduce Motion。320pxは各Textの計測したfont/line-heightを2倍にするWebの文字200%検査。4入口の44px以上、記録管理→保存状況→削除への移動、3削除確認ボタンまでのスクロール、横overflow/JS例外なし。
+- Jestでは初回・再許可・名前/目標/時間の編集、候補破棄失敗/保存済み応答失敗、削除前/後の遅延応答、容量の未観測値、明示取込、8件でもトップが伸びない構造、保存状況↔削除の12往復でstackが増えない呼出しを検査。
+
+画像は作業環境の `/tmp/itoma-settings-evidence/` に24枚。`verification.json`に各画像・実行JS bundleのSHA256、source、6条件の結果を保存する。`capture.cjs.txt`はローカルPlaywrightとChromiumによる再現script（URL/ツールパスは環境に合わせる）。画像の恒久公開は行っていない。
+
+Webは利用不可adapterを使う実製品UIで、実OS成功を模擬しない。設定済み/8件/削除等の状態遷移は合成native応答と実Provider/画面のJest検証。iPhone/Simulator・VoiceOver・iOS Dynamic Type・native戻るgesture・実OS/容量の実測は未検証。UIのみの変更でnative buildは作成していない。別PR178のnative検証結果と混同しない。
