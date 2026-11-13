@@ -9,6 +9,7 @@ import type { ReflectionRequest, ReflectionSnapshot } from '../modules/itoma-nat
 import type { HistoryAction, HistoryRequest, HistoryResponse, ScreenTimeAction, ScreenTimeResponse } from '../modules/itoma-native';
 import { ReflectionScreen } from '../src/components/flow/reflection';
 import { ProductHome } from '../src/components/flow/home';
+import { RecordSettingsScreen, RecordDeletionScreen, RecordStorageScreen } from '../src/components/flow/settings-records';
 import { SettingsScreen } from '../src/components/flow/settings';
 import { HistoryScreen, HistoryReasonScreen } from '../src/components/flow/history';
 import { ScreenTimeProvider } from '../src/state/screen-time';
@@ -69,7 +70,7 @@ function Pages() {
     jest.mocked(router.back).mockImplementation(() => setStack(previous => previous.slice(0, -1)));
   }, []);
   const current = stack.at(-1);
-  return <>{current === '/' ? <ProductHome /> : current === '/settings' ? <SettingsScreen /> : current === '/history' ? <HistoryScreen /> : current === '/history-reason' ? <HistoryReasonScreen /> : <ReflectionScreen />}</>;
+  return <>{current === '/' ? <ProductHome /> : current === '/settings' ? <SettingsScreen /> : current === '/settings-records' ? <RecordSettingsScreen /> : current === '/settings-delete' ? <RecordDeletionScreen /> : current === '/settings-storage' ? <RecordStorageScreen /> : current === '/history' ? <HistoryScreen /> : current === '/history-reason' ? <HistoryReasonScreen /> : <ReflectionScreen />}</>;
 }
 async function mount(b: ReturnType<typeof backend>) {
   return render(<ScreenTimeProvider client={controlClient}><HistoryProvider client={b.historyClient}>
@@ -77,7 +78,7 @@ async function mount(b: ReturnType<typeof backend>) {
   </HistoryProvider></ScreenTimeProvider>);
 }
 const press = async (label: string) => fireEvent.press(screen.getByRole('button', { name: label }));
-const observed = () => screen.findByText(/保存した状態の記録：1件/);
+const observed = () => screen.findByText('制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。');
 function deletionButton(alert: jest.SpyInstance) {
   const choices = alert.mock.calls.at(-1)![2] as { text: string; onPress?: () => void }[];
   return choices.find(choice => choice.text === '全記録と累計を削除する')!;
@@ -88,6 +89,7 @@ beforeEach(() => jest.clearAllMocks());
 test('normal route uses product DTOs, preserves fixed total/token and remembers month/clip through day history', async () => {
   const b = backend(); await mount(b); await observed();
   expect(screen.queryByText('検証用プレビュー')).toBeNull();
+  expect(screen.queryByText(/保存した状態の記録：/)).toBeNull();
   for (const name of ['新しい記録を取り込む', '全記録と累計を削除する', '選択の記録を見る']) expect(screen.queryByRole('button', { name })).toBeNull();
   expect(screen.getByTestId('reflection-total').props.children).toBe('—');
   await press('月次'); await screen.findByText('2026年11月');
@@ -137,11 +139,12 @@ test('all-record deletion is separately confirmed, serializes repeated approval 
   await mount(b); await observed();
   await press('read a private detail'); await screen.findByText('fixture-private-body');
   await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
-  await press('全記録と累計を削除する');
+  await press('記録とプライバシー'); await press('記録を削除する'); await press('全記録と累計を削除する');
   expect(alert).toHaveBeenCalledWith('全記録と累計を削除しますか', expect.stringContaining('ルールと現在の一時解除は変わりません'), expect.any(Array));
   expect(b.native.mock.calls.filter(call => call[0] === 'deleteAll')).toHaveLength(0);
   const approve = deletionButton(alert).onPress!;
   await act(async () => { approve(); approve(); });
+  await press('‹ 戻る'); await press('‹ 戻る');
   await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
   await waitFor(() => expect(screen.getAllByText('記録は削除されています').length).toBeGreaterThan(0));
   expect(b.native.mock.calls.filter(call => call[0] === 'deleteAll')).toHaveLength(1);
@@ -158,8 +161,9 @@ test('a delayed pre-deletion read cannot restore the old dataset or observation 
   await mount(b);
   await waitFor(() => expect(b.native).toHaveBeenCalled());
   await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
-  await press('全記録と累計を削除する');
+  await press('記録とプライバシー'); await press('記録を削除する'); await press('全記録と累計を削除する');
   await act(async () => deletionButton(alert).onPress!());
+  await press('‹ 戻る'); await press('‹ 戻る');
   await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
   await waitFor(() => expect(screen.getAllByText('記録は削除されています').length).toBeGreaterThan(0));
   await act(async () => finish(wrap(fixtures.observed[0].response)));
@@ -177,11 +181,13 @@ test('navigation and foreground refresh retain one lifetime subscription per pro
   });
   const b = backend(), mounted = await mount(b); await observed();
   await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
+  await press('記録とプライバシー');
   const initial = listeners.size;
   for (let n = 0; n < 10; n += 1) {
     await press('選択の記録を見る'); await screen.findByText('あなたの選択の記録');
-    await press('‹ 戻る'); await screen.findByText('ルールと設定');
+    await press('‹ 戻る'); await screen.findByText('記録とプライバシー');
   }
+  await press('‹ 戻る');
   await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
   await act(async () => { listeners.forEach(listener => listener('background')); });
   await act(async () => { listeners.forEach(listener => listener('active')); });
@@ -208,11 +214,24 @@ test('settings/history are reachable through the tab while the selected reflecti
   await fireEvent.press(screen.getByRole('tab', { name: 'ホーム' }));
   expect(screen.queryByRole('button', { name: '選択の記録を見る' })).toBeNull();
   await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
-  expect(screen.getByRole('header', { name: 'ルールと設定' })).toBeTruthy();
-  await press('選択の記録を見る'); await screen.findByText('あなたの選択の記録');
-  await press('‹ 戻る');
+  expect(screen.getByRole('header', { name: '設定' })).toBeTruthy();
+  await press('記録とプライバシー'); await press('選択の記録を見る'); await screen.findByText('あなたの選択の記録');
+  await press('‹ 戻る'); await press('‹ 戻る');
   expect(screen.getByRole('tab', { name: '設定' })).toBeSelected();
   await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
   await screen.findByText('2026年12月');
   expect(b.native.mock.calls.every(call => call[0] === 'read')).toBe(true);
+});
+
+
+test('settings storage shows measured MB, imports records explicitly and preserves unknown capacity', async () => {
+  const b = backend(); await mount(b); await observed();
+  await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
+  await press('記録とプライバシー'); await press('保存状況と取込');
+  expect(screen.getByText('保存内容：< 0.01 MB / 上限 < 0.01 MB')).toBeTruthy();
+  expect(screen.getByText('関連ファイル合計（観測値）：確認できません')).toBeTruthy();
+  expect(b.native.mock.calls.some(([action]) => action === 'import')).toBe(false);
+  await press('新しい記録を取り込む');
+  expect(b.native.mock.calls.filter(([action]) => action === 'import')).toHaveLength(1);
+  expect(controlClient.run.mock.calls.every(([action]) => action === 'snapshot')).toBe(true);
 });

@@ -144,7 +144,7 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
     </PeriodTransition>}
     {!prototype && <View style={styles.metadata}>
       <Text style={[styles.caption, { color: theme.muted }]}>制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。</Text>
-      {snapshot && <Text style={[styles.caption, { color: theme.muted }]}>保存した状態の記録：{snapshot.observationCount}件。確認できない時間は加算していません。</Text>}
+      <Text style={[styles.caption, { color: theme.muted }]}>一時解除中と、制限を確認できない時間は加算しません。</Text>
     </View>}
     <LinkRow label="最新の記録を確認する" disabled={blocked} onPress={() => {
       latest.current = undefined; setOwned(undefined); setBusy(true); setRetry(n => n + 1);

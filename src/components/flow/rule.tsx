@@ -82,7 +82,7 @@ export function RuleEditorScreen() {
     {unchanged && <Notice title="変更はありません">保存済みのルールと同じ内容です。一時解除の期限は変更していません。</Notice>}
     <Button label="内容を確認する" disabled={!input || !!state.busy} onPress={() => { void preview(); }} />
     {unchanged && <Button label="保存したルールに戻る" secondary onPress={() => {
-      state.setRuleExitAllowed(true); state.setRuleDraft(undefined); router.dismissTo('/settings');
+      state.setRuleExitAllowed(true); state.setRuleDraft(undefined); router.dismissTo('/settings-schedules');
     }} />}
   </FlowScreen>;
 }
@@ -133,6 +133,6 @@ export function RuleConfirmationScreen() {
     {!failed && <Button label={review?.retryable ? '変更を確認して登録を再試行' : draft?.remove ? 'このルールを削除する' : 'この内容で保存する'} disabled={!review?.ref || !!state.busy} onPress={() => { void submit(); }} />}
     {failed && <Button label="最新の変更内容を確認し直す" disabled={!!state.busy} onPress={() => { void recheck(); }} />}
     <Button label={draft?.remove ? '削除せず戻る' : '編集へ戻る'} secondary disabled={!!state.busy} onPress={goBack} />
-    <Button label="保存したルールを確認する" secondary onPress={() => { state.setRuleExitAllowed(true); router.dismissTo('/settings'); }} />
+    <Button label="保存したルールを確認する" secondary onPress={() => { state.setRuleExitAllowed(true); router.dismissTo('/settings-schedules'); }} />
   </FlowScreen>;
 }

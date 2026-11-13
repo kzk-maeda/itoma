@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import { useHistoryRecords } from '@/state/history';
 import { completeNativeHistorySmoke } from '@/qa/native-smoke';
 import type { HistoryCode, HistoryRow } from '../../../modules/itoma-native';
@@ -17,7 +17,7 @@ const when = (at: number, timeZone: string) => {
   try { return date.toLocaleString('ja-JP', { timeZone, year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
   catch { return date.toISOString(); }
 };
-function bytes(value: string) { const number = Number(value); return number >= 1_048_576 ? `${(number / 1_048_576).toFixed(2)} MiB` : `${value} B`; }
+
 
 export function HistoryScreen() {
   const state = useHistoryRecords(), [day, setDay] = useState(state.day);
@@ -28,12 +28,6 @@ export function HistoryScreen() {
     if (!state.busy && (state.storage === 'not-created' || state.error)) completeNativeHistorySmoke(state.storage === 'not-created' && !state.error);
   }, [state.busy, state.storage, state.error]);
   const page = state.page;
-  const confirmDelete = (all: boolean) => Alert.alert(all ? '保存した操作履歴と理由を削除しますか' : '保存した理由をすべて削除しますか',
-    all ? '保存済みの操作記録と理由本文を削除します。振り返りの記録と累計、ルールと現在の一時解除は変わりません。削除前の記録を再取込しても復活させません。この操作は元に戻せません。' : '理由本文を削除します。操作と振り返りの記録、累計、ルール、現在の一時解除は変わりません。この操作は元に戻せません。', [
-      { text: '戻る', style: 'cancel' }, { text: all ? '履歴と理由を削除する' : '理由をすべて削除する', style: 'destructive', onPress: () => state.mutate(all ? 'deleteHistory' : 'deleteReasons') },
-    ]);
-  const files = page && page.databaseBytes !== undefined && page.walBytes !== undefined && page.sharedMemoryBytes !== undefined
-    ? (BigInt(page.databaseBytes) + BigInt(page.walBytes) + BigInt(page.sharedMemoryBytes)).toString() : undefined;
   return <FlowScreen title="あなたの選択の記録" onBack={back}>
     <Body>保存した操作と、自分の言葉を確認できます。ここにあるのは操作時点の記録で、実際の利用時間や現在の制限を測定したものではありません。</Body>
     {state.error && <View accessibilityLiveRegion="polite"><Notice title="記録を確認してください">{errors[state.error]}</Notice></View>}
@@ -51,7 +45,6 @@ export function HistoryScreen() {
       <Body muted>取得時点：{when(page.asOf, page.timeZone)} · {page.timeZone}。表示は新しい記録から、最大40件ずつです。</Body>
       {state.reference && (state.reference.revision !== page.revision || state.reference.asOf !== page.asOf || state.reference.timeZone !== page.timeZone)
         && <Body muted>振り返りとは別の時点で取得した操作記録です。時間の集計と同じ時点の一覧とは限りません。</Body>}
-      <Button label="新しい記録を取り込む" secondary disabled={state.busy} onPress={() => state.mutate('import')} />
       <View style={flowStyles.row}>
         <Button label="新しい40件へ" secondary disabled={state.busy || !page.previous} onPress={() => { if (page.previous) state.move(page.previous, 'newer'); }} />
         <Button label="前の40件へ" secondary disabled={state.busy || !page.next} onPress={() => { if (page.next) state.move(page.next, 'older'); }} />
@@ -65,15 +58,7 @@ export function HistoryScreen() {
         {row.action === 'cancelled' && <Body muted>確定前に取り消した本文は保存していません。</Body>}
         {(row.action === 'reason' || row.action === 'requestTemporaryGrant') && row.commandID && !row.reasonDeleted && <Button label="この記録の理由を読む" secondary disabled={state.busy} onPress={() => { state.readReason(row.commandID!); router.push('/history-reason'); }} />}
       </Panel>)}
-      <Panel><Heading>記録の保存容量</Heading>
-        <Body>保存内容：{bytes(page.logicalBytes)} / 上限 {bytes(page.maximumBytes)}</Body>
-        <Body muted>警告の目安：{bytes(page.warningBytes)}</Body>
-        <Body>関連ファイル合計（観測値）：{files === undefined ? '確認できません' : bytes(files)}</Body>
-        <Body muted>保存内容の量とファイル使用量は別の値です。削除してもファイルの大きさがすぐ小さくなるとは限りません。</Body>
-        {(page.warningReached || page.limitReached) && <Notice title={page.limitReached ? '保存内容の上限です' : '保存内容が増えています'}>不要な理由や操作履歴をご自身で削除できます。上限では新しい内容の保存を停止します。過去の内容を自動削除しません。</Notice>}
-        <Button label="理由の全削除を確認" secondary disabled={state.busy} onPress={() => confirmDelete(false)} />
-        <Button label="操作履歴と理由の全削除を確認" secondary disabled={state.busy} onPress={() => confirmDelete(true)} />
-      </Panel>
+      <Button label="記録の保存状況を確認する" secondary onPress={() => router.navigate('/settings-storage')} />
     </>}
     <Button label="最新の記録を確認する" secondary disabled={state.busy} onPress={refresh} />
   </FlowScreen>;
