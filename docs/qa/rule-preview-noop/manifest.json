@@ -1,0 +1,150 @@
+{
+  "sourceCommit": "88901783872ab53f394640bcf802cce16e1f1fad",
+  "sourceFiles": {
+    "src/components/flow/rule.tsx": "c543ffe8d73619a6dfee9bde8e92db2175d198ad5299daf5cd77298ab9dd6ed1",
+    "src/components/flow/ui.tsx": "b4d88bfa704044c3de49e17fed0679711a8c7d22f70ecb7113f6cf80202b6fbb",
+    "src/components/flow/settings.tsx": "c739040e328642875c7a54ef887bf34655fbecda90bee5a5bd9ad4327812a54a",
+    "src/state/screen-time.tsx": "9c8c692480ee176248409e083325a3b7545a70f8050385a91ae3c64e096bf490",
+    "src/state/control-snapshot.ts": "647665858d5ac52278c1837ad21cecbcbdb208ca6826152dfb232a80fc557ca8",
+    "modules/itoma-native/src/control-snapshot.ts": "ccfc2a4b156885675db61541441f3bb341b72d9c32278900f4e8250644911057",
+    "src/constants/theme.ts": "4ac603b648bb90274a99fa4ebf2666f13d81dbeda143d18d82b11fbc0b747101"
+  },
+  "fixtureFiles": {
+    "src/app/_layout.tsx": "9b9706468c22e6963c25853a8781e02868586a9c018fd243e5f9b9243fac93d1",
+    "src/app/proof.tsx": "6262007863f2a08230d50787a2a943e36b3e491831308bfbdcf4709b6d0ef0a8",
+    "src/components/flow/applications.tsx": "7ed6988dd578ba8823eac6b35676b62f82fd17091eacaddb8a0972f53696d739"
+  },
+  "browser": "155.0.8059.79",
+  "platform": "Linux Chromium, synthetic web ports",
+  "fixedClock": "2026-11-09T21:30:00.000Z",
+  "nativeBuild": null,
+  "simulatorVerified": false,
+  "physicalDeviceVerified": false,
+  "screenTimeVerified": false,
+  "imagesPublished": false,
+  "cases": [
+    {
+      "name": "unchanged-light",
+      "colorScheme": "light",
+      "width": 390,
+      "height": 844,
+      "scale": 1,
+      "actualBannerBackground": "rgb(231, 232, 225)",
+      "imageKind": "full-scroll-content export; DOM font-scale emulation for large text",
+      "localImage": "/tmp/itoma-152-visual/unchanged-light.png",
+      "sha256": "8b91948bf70f3ceaa8922da4266544b73269aeaac1616319993a26acb91f5891",
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390,
+        "contentHeight": 1400
+      },
+      "horizontalOverflow": false,
+      "actions": [
+        "snapshot",
+        "previewRule"
+      ],
+      "pageErrors": [],
+      "hasCommitButton": 0,
+      "returnButtonEnabled": true,
+      "webBundles": [
+        {
+          "path": "/node_modules/expo-router/entry.bundle?platform=web&dev=true&hot=false&lazy=true&transform.asyncRoutes=true&transform.routerRoot=src%2Fapp&transform.reactCompiler=true",
+          "bytes": 4012048,
+          "sha256": "af59f65c07c783c224a35844b3f5583ae28fe21a81b559344852e86485cd65c1"
+        },
+        {
+          "path": "/src/app/_layout.bundle?platform=web&dev=true&hot=false&lazy=true&transform.asyncRoutes=true&transform.routerRoot=src%2Fapp&transform.reactCompiler=true&modulesOnly=true&runModule=false",
+          "bytes": 3784973,
+          "sha256": "fcd374ca15a2cd1e9076abf383b4ea998949a07806c8275917f4fdeaf47929c2"
+        },
+        {
+          "path": "/src/app/proof.bundle?platform=web&dev=true&hot=false&lazy=true&transform.asyncRoutes=true&transform.routerRoot=src%2Fapp&transform.reactCompiler=true&modulesOnly=true&runModule=false",
+          "bytes": 4116753,
+          "sha256": "2951f04f321c1a375e37acc03ff61c33494ae4e45002c4fed7c1b8c02b4ec09b"
+        }
+      ]
+    },
+    {
+      "name": "unchanged-dark",
+      "colorScheme": "dark",
+      "width": 390,
+      "height": 844,
+      "scale": 1,
+      "actualBannerBackground": "rgb(58, 62, 53)",
+      "imageKind": "full-scroll-content export; DOM font-scale emulation for large text",
+      "localImage": "/tmp/itoma-152-visual/unchanged-dark.png",
+      "sha256": "d2da19bc615a2fa87ae11567274db47b74efee4125b95c7800ab73efdf02f10b",
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390,
+        "contentHeight": 1400
+      },
+      "horizontalOverflow": false,
+      "actions": [
+        "snapshot",
+        "previewRule"
+      ],
+      "pageErrors": [],
+      "hasCommitButton": 0,
+      "returnButtonEnabled": true,
+      "webBundles": [
+        {
+          "path": "/node_modules/expo-router/entry.bundle?platform=web&dev=true&hot=false&lazy=true&transform.asyncRoutes=true&transform.routerRoot=src%2Fapp&transform.reactCompiler=true",
+          "bytes": 4012048,
+          "sha256": "af59f65c07c783c224a35844b3f5583ae28fe21a81b559344852e86485cd65c1"
+        },
+        {
+          "path": "/src/app/_layout.bundle?platform=web&dev=true&hot=false&lazy=true&transform.asyncRoutes=true&transform.routerRoot=src%2Fapp&transform.reactCompiler=true&modulesOnly=true&runModule=false",
+          "bytes": 3784973,
+          "sha256": "fcd374ca15a2cd1e9076abf383b4ea998949a07806c8275917f4fdeaf47929c2"
+        },
+        {
+          "path": "/src/app/proof.bundle?platform=web&dev=true&hot=false&lazy=true&transform.asyncRoutes=true&transform.routerRoot=src%2Fapp&transform.reactCompiler=true&modulesOnly=true&runModule=false",
+          "bytes": 4116753,
+          "sha256": "2951f04f321c1a375e37acc03ff61c33494ae4e45002c4fed7c1b8c02b4ec09b"
+        }
+      ]
+    },
+    {
+      "name": "unchanged-narrow-large",
+      "colorScheme": "light",
+      "width": 320,
+      "height": 800,
+      "scale": 1.5,
+      "actualBannerBackground": "rgb(231, 232, 225)",
+      "imageKind": "full-scroll-content export; DOM font-scale emulation for large text",
+      "localImage": "/tmp/itoma-152-visual/unchanged-narrow-large.png",
+      "sha256": "2f13708008fa630d8a487338fbbe488221489b191373b7d1004769c36957f0d5",
+      "dimensions": {
+        "viewport": 320,
+        "scroll": 320,
+        "contentHeight": 2243
+      },
+      "horizontalOverflow": false,
+      "actions": [
+        "snapshot",
+        "previewRule"
+      ],
+      "pageErrors": [],
+      "hasCommitButton": 0,
+      "returnButtonEnabled": true,
+      "webBundles": [
+        {
+          "path": "/node_modules/expo-router/entry.bundle?platform=web&dev=true&hot=false&lazy=true&transform.asyncRoutes=true&transform.routerRoot=src%2Fapp&transform.reactCompiler=true",
+          "bytes": 4012048,
+          "sha256": "af59f65c07c783c224a35844b3f5583ae28fe21a81b559344852e86485cd65c1"
+        },
+        {
+          "path": "/src/app/_layout.bundle?platform=web&dev=true&hot=false&lazy=true&transform.asyncRoutes=true&transform.routerRoot=src%2Fapp&transform.reactCompiler=true&modulesOnly=true&runModule=false",
+          "bytes": 3784973,
+          "sha256": "fcd374ca15a2cd1e9076abf383b4ea998949a07806c8275917f4fdeaf47929c2"
+        },
+        {
+          "path": "/src/app/proof.bundle?platform=web&dev=true&hot=false&lazy=true&transform.asyncRoutes=true&transform.routerRoot=src%2Fapp&transform.reactCompiler=true&modulesOnly=true&runModule=false",
+          "bytes": 4116753,
+          "sha256": "2951f04f321c1a375e37acc03ff61c33494ae4e45002c4fed7c1b8c02b4ec09b"
+        }
+      ]
+    }
+  ]
+}

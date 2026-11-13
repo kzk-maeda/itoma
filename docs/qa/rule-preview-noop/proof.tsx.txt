@@ -1,0 +1,33 @@
+// Temporary synthetic web evidence. This route is never part of the product.
+import { useEffect, useMemo, useRef } from 'react';
+import { Text, View } from 'react-native';
+import { RuleEditorScreen } from '@/components/flow/rule';
+import { useFlowTheme } from '@/components/flow/ui';
+import { ScreenTimeProvider, useScreenTime } from '@/state/screen-time';
+import { unavailableSnapshot } from '../../modules/itoma-native/src/screen-time';
+import type { ScreenTimeAction, ScreenTimeResponse, ScreenTimeSnapshot } from '../../modules/itoma-native';
+const now = Date.parse('2026-11-09T21:30:00Z') / 1000;
+const selection = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', ruleID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+const snapshot: ScreenTimeSnapshot = { ...unavailableSnapshot('device'), authorization: 'approved', storage: 'ready',
+  sequence: '5', revision: '1', schedulesReady: true, observation: 'applied', validUntil: now + 1800,
+  rules: [{ id: ruleID, selectionRef: selection, weekdays: [1, 2, 3, 4, 5], startMinute: 1260, endMinute: 1380, nextDay: false, enabled: true }],
+  selections: [{ ref: selection, count: 2 }], periods: [{ ruleID, startsAt: now - 1800, endsAt: now + 5400 }],
+  targets: [{ ref: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', ruleID, selectionRef: selection, restricted: false,
+    unlockable: false, grantStatus: 'active', grantEndsAt: now + 300, grantCommandID: 'ffffffff-ffff-ffff-ffff-ffffffffffff' }] };
+function Content() {
+  const state = useScreenTime(), theme = useFlowTheme(), seeded = useRef(false);
+  useEffect(() => { if (state.snapshot && !seeded.current) { seeded.current = true; state.beginRule(state.snapshot.rules[0]); } }, [state]);
+  if (!state.ruleDraft) return null;
+  return <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <Text testID="proof-banner" style={{ fontSize: 12, lineHeight: 18, padding: 8, color: theme.text, backgroundColor: theme.soft }}>合成データによる画面QA · Web表示 · 実機の制限は未検証</Text>
+    <RuleEditorScreen />
+  </View>;
+}
+export default function Proof() {
+  const client = useMemo(() => ({ run: async (action: ScreenTimeAction): Promise<ScreenTimeResponse> => {
+    const qa = window as unknown as { qaActions?: string[] };
+    qa.qaActions = [...(qa.qaActions ?? []), action];
+    return { status: 'ok', impacts: [], snapshot };
+  } }), []);
+  return <ScreenTimeProvider client={client}><Content /></ScreenTimeProvider>;
+}

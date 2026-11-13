@@ -69,7 +69,7 @@ function Page({ route }: { route: string }) {
   }
 }
 
-function backend(configured = true, failGrant = false) {
+function backend(configured = true, failGrant = false, nativeNoChange = false) {
   let snapshot: ScreenTimeSnapshot = { ...unavailableSnapshot('device'), storage: configured ? 'ready' : 'not-created',
     authorization: configured ? 'approved' : 'unknown', schedulesReady: true, observation: 'applied', validUntil: now / 1000 + 1800,
     rules: configured ? [{ id: ruleID, selectionRef: selection, weekdays: [1, 2, 3, 4, 5], startMinute: 1260, endMinute: 1380, nextDay: false, enabled: true }] : [],
@@ -85,7 +85,15 @@ function backend(configured = true, failGrant = false) {
       case 'authorize': snapshot = { ...snapshot, authorization: 'approved' }; break;
       case 'initialize': snapshot = { ...snapshot, storage: 'ready' }; break;
       case 'pickApplications': snapshot = { ...snapshot, selections: [{ ref: selection, count: 2 }] }; return response({ ref: selection });
-      case 'previewRule': proposed = request.rule; return response({ status: 'confirmation-required', ref: previewID });
+      case 'previewRule': {
+        proposed = request.rule;
+        const saved = snapshot.rules.find((rule) => rule.id === proposed?.id);
+        if (nativeNoChange && saved && proposed && !proposed.remove
+          && saved.selectionRef === proposed.selectionRef && saved.startMinute === proposed.startMinute && saved.endMinute === proposed.endMinute
+          && saved.nextDay === proposed.nextDay && saved.enabled === proposed.enabled
+          && [...saved.weekdays].sort().join() === [...proposed.weekdays].sort().join()) return response();
+        return response({ status: 'confirmation-required', ref: previewID });
+      }
       case 'commitRule':
         snapshot = { ...snapshot, revision: '1', sequence: '1', rules: [{ ...proposed!, id: ruleID }],
           targets: [{ ref: appA, selectionRef: selection, ruleID, restricted: true, unlockable: true }, { ref: appB, selectionRef: selection, ruleID, restricted: true, unlockable: true }],
@@ -129,6 +137,199 @@ test('normal rule creation after initial setup → explicit permission → nativ
   expect(screen.queryByText('時間帯ルールは準備中です')).toBeNull();
   expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
   expect(mockHistory).not.toContain('/native-poc');
+});
+
+test('native no-change ends review in the editor and preserves the visible fixed grant deadline', async () => {
+  const b = backend(true, false, true), expiry = now / 1000 + 300;
+  b.replace({ targets: b.current().targets.map((target) => target.ref === appA
+    ? { ...target, restricted: false, unlockable: false, grantStatus: 'active', grantEndsAt: expiry, grantCommandID: commandID } : target) });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('時間帯 1を編集'); await press('内容を確認する');
+  expect(screen.getByText('変更はありません')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'この内容で保存する' })).toBeNull();
+  expect(mockHistory).not.toContain('/rule-confirm');
+  expect(b.client.run.mock.calls.filter(([name]) => name === 'previewRule')).toHaveLength(1);
+  expect(b.client.run.mock.calls.some(([name]) => name === 'commitRule')).toBe(false);
+  expect(b.current().targets[0].grantEndsAt).toBe(expiry);
+  await press('保存したルールに戻る');
+  expect(screen.getByRole('header', { name: 'ルールと設定' })).toBeTruthy();
+});
+
+test('change then revert retains the owned preview ref across editor remount while clearing stale confirmation', async () => {
+  const b = backend(true, false, true);
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await press('内容を確認する'); await press('編集へ戻る');
+  await selectTime('開始時刻', '21:00');
+  // The prior accepted reference survives, but editing invalidates the old confirmation.
+  await act(async () => mockGo('/rule-confirm'));
+  expect(screen.getByRole('button', { name: 'この内容で保存する' })).toBeDisabled();
+  await press('編集へ戻る'); await press('内容を確認する');
+  expect(b.client.run).toHaveBeenLastCalledWith('previewRule', {
+    ref: previewID, rule: expect.objectContaining({ id: ruleID, startMinute: 1260 }),
+  });
+  expect(screen.getByText('変更はありません')).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([name]) => name === 'commitRule')).toBe(false);
+  await selectTime('開始時刻', '20:00');
+  expect(screen.queryByText('変更はありません')).toBeNull();
+});
+
+test('a rejected native preview keeps the edited draft and cannot show no-change or saving success', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  b.client.run.mockImplementation(async (action, request) => action === 'previewRule'
+    ? { status: 'error', code: 'changed', impacts: [], snapshot: b.current() } : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('時間帯 1を編集'); await selectTime('開始時刻', '20:00'); await press('内容を確認する');
+  expect(screen.getByRole('button', { name: '開始時刻' }).props.accessibilityValue.text).toBe('20:00');
+  expect(screen.queryByText('変更はありません')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'この内容で保存する' })).toBeNull();
+  expect(b.client.run.mock.calls.some(([name]) => name === 'commitRule')).toBe(false);
+});
+
+test('settings explicitly discards only the preview owned by the retained rule editor', async () => {
+  const b = backend(), alert = jest.spyOn(Alert, 'alert');
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await press('内容を確認する'); await press('保存したルールを確認する'); await press('ルールを追加する');
+  await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
+  expect(b.client.run).toHaveBeenCalledWith('cancelCandidate', { ref: previewID });
+  expect(screen.getByRole('header', { name: '時間のルールをつくる' })).toBeTruthy();
+});
+
+test.each(['editor', 'deletion', 'settings'] as const)('failed preview cancellation retains the %s flow and its owned ref', async (route) => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  const alert = jest.spyOn(Alert, 'alert');
+  let finishCancellation: ((response: ScreenTimeResponse) => void) | undefined;
+  b.client.run.mockImplementation((action, request) => action === 'cancelCandidate'
+    ? new Promise<ScreenTimeResponse>(resolve => { finishCancellation = resolve; }) : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings();
+  if (route === 'deletion') {
+    await press('時間帯 1を削除する内容を確認');
+    await press('削除せず戻る');
+  } else {
+    await press('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+    await press('内容を確認する');
+    if (route === 'settings') {
+      await press('保存したルールを確認する'); await press('ルールを追加する');
+    } else {
+      await press('編集へ戻る'); await press('‹ 戻る');
+    }
+    await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
+  }
+  const title = route === 'editor' ? '時間のルールを編集' : route === 'deletion' ? 'このルールを削除しますか' : 'ルールと設定';
+  expect(screen.getByRole('header', { name: title })).toBeTruthy();
+  await act(async () => { finishCancellation?.({ status: 'error', code: 'storage-failed', impacts: [] }); });
+  expect(screen.getByRole('header', { name: title })).toBeTruthy();
+  if (route === 'editor') {
+    expect(screen.getByRole('button', { name: '開始時刻' }).props.accessibilityValue.text).toBe('20:00');
+    await press('‹ 戻る');
+  } else if (route === 'deletion') await press('削除せず戻る');
+  else await press('ルールを追加する');
+  if (route !== 'deletion') await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
+  expect(b.client.run).toHaveBeenLastCalledWith('cancelCandidate', { ref: previewID });
+  await act(async () => { finishCancellation?.({ status: 'ok', impacts: [] }); });
+  expect(screen.getByRole('header', { name: route === 'settings' ? '時間のルールをつくる' : 'ルールと設定' })).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([name]) => name === 'commitRule')).toBe(false);
+});
+
+test.each([false, true])('a saved policy with an OS failure drops its old preview ref (projectionless preview: %s)', async (projectionless) => {
+  const b = backend(true, false, true), original = b.client.run.getMockImplementation()!;
+  b.client.run.mockImplementation(async (action, request) => {
+    const response = await original(action, request);
+    if (action === 'previewRule' && projectionless) return { ...response, snapshot: undefined };
+    return action === 'commitRule' ? { ...response, status: 'error', code: 'application-uncertain', ref: previewID } : response;
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await press('内容を確認する'); await press('この内容で保存する');
+  expect(b.current().revision).toBe('1');
+  await press('最新の変更内容を確認し直す'); await press('内容を確認する');
+  expect(b.client.run).toHaveBeenLastCalledWith('previewRule', { rule: expect.objectContaining({ expectedRevision: '1', startMinute: 1200 }) });
+  expect(screen.getByText('変更はありません')).toBeTruthy();
+  expect(b.client.run.mock.calls.filter(([name]) => name === 'commitRule')).toHaveLength(1);
+});
+
+test('settings can discard a stale ref after save completed but its response snapshot failed', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!, alert = jest.spyOn(Alert, 'alert');
+  let completed = false;
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'cancelCandidate') {
+      // Durable completion is acknowledged even though native no longer has its RAM cache.
+      expect(completed).toBe(true); expect(request?.ref).toBe(previewID);
+      return { status: 'ok', impacts: [] };
+    }
+    const response = await original(action, request);
+    if (action === 'commitRule') {
+      completed = true;
+      return { status: 'error', code: 'storage-failed', impacts: [] };
+    }
+    return response;
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await press('内容を確認する'); await press('この内容で保存する');
+  expect(b.current().revision).toBe('1');
+  await press('保存したルールを確認する'); await press('ルールを追加する');
+  await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
+  expect(screen.getByRole('header', { name: '時間のルールをつくる' })).toBeTruthy();
+  expect(b.client.run).toHaveBeenCalledWith('cancelCandidate', { ref: previewID });
+  expect(b.client.run.mock.calls.filter(([name]) => name === 'commitRule')).toHaveLength(1);
+});
+
+test('post-accept assessment failure retains its new owned ref without allowing blind confirmation', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!, acceptedRef = '99999999-9999-9999-9999-999999999999';
+  let previews = 0;
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'previewRule' && ++previews === 2) return {
+      status: 'error', code: 'storage-failed', ref: acceptedRef, impacts: [], snapshot: b.current(),
+    };
+    return original(action, request);
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await press('内容を確認する'); await press('編集へ戻る'); await selectTime('開始時刻', '19:00');
+  await press('内容を確認する');
+  expect(screen.queryByRole('button', { name: 'この内容で保存する' })).toBeNull();
+  expect(screen.queryByText('変更はありません')).toBeNull();
+  await press('内容を確認する');
+  expect(b.client.run.mock.calls.filter(([name]) => name === 'previewRule').at(-1)?.[1]).toEqual({
+    ref: acceptedRef, rule: expect.objectContaining({ startMinute: 1140 }),
+  });
+  expect(screen.getByRole('button', { name: 'この内容で保存する' })).toBeEnabled();
+  expect(b.client.run.mock.calls.some(([name]) => name === 'commitRule')).toBe(false);
+});
+
+test('a deletion assessment failure retains its accepted ref for explicit settings discard', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!, acceptedRef = '99999999-9999-9999-9999-999999999999';
+  const alert = jest.spyOn(Alert, 'alert');
+  b.client.run.mockImplementation(async (action, request) => action === 'previewRule' && request?.rule?.remove
+    ? { status: 'error', code: 'storage-failed', ref: acceptedRef, impacts: [], snapshot: b.current() } : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('時間帯 1を削除する内容を確認');
+  expect(screen.queryByRole('button', { name: 'このルールを削除する' })).toBeNull();
+  await press('ルールを追加する');
+  await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
+  expect(b.client.run).toHaveBeenCalledWith('cancelCandidate', { ref: acceptedRef });
+  expect(screen.getByRole('header', { name: '時間のルールをつくる' })).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([name]) => name === 'commitRule')).toBe(false);
+});
+
+test('rule controls cannot change a draft while its native no-change preview is pending', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  let resolvePreview: ((response: ScreenTimeResponse) => void) | undefined;
+  b.client.run.mockImplementation(async (action, request) => action === 'previewRule'
+    ? new Promise<ScreenTimeResponse>(resolve => { resolvePreview = resolve; }) : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('時間帯 1を編集'); await press('内容を確認する');
+  expect(screen.getByRole('switch', { name: 'このルールを有効にする' })).toBeDisabled();
+  for (const day of ['月', '火', '水', '木', '金', '土', '日']) expect(screen.getByRole('checkbox', { name: `${day}曜日` })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '開始時刻' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '対象アプリを選び直す' })).toBeDisabled();
+  await act(async () => { resolvePreview?.({ status: 'ok', impacts: [], snapshot: b.current() }); });
+  expect(screen.getByText('変更はありません')).toBeTruthy();
+  expect(screen.getByRole('switch', { name: 'このルールを有効にする' })).toBeEnabled();
+  expect(screen.getByRole('switch', { name: 'このルールを有効にする' }).props.value).toBe(true);
 });
 
 test('one entry → initially unselected app → free text → editable full review → exactly one app grant with fixed expiry', async () => {

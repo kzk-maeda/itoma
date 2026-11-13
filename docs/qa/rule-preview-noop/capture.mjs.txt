@@ -1,0 +1,72 @@
+import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
+import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+const require = createRequire(import.meta.url), { chromium } = require('playwright');
+const source = process.env.ITOMA_NOOP_SOURCE ?? '/tmp/itoma-audit-152';
+const fixture = process.env.ITOMA_NOOP_FIXTURE ?? '/tmp/itoma-152-web-proof';
+const output = process.env.ITOMA_NOOP_OUTPUT ?? '/tmp/itoma-152-visual';
+mkdirSync(output, { recursive: true });
+const digest = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
+const sourceFiles = ['src/components/flow/rule.tsx', 'src/components/flow/ui.tsx', 'src/components/flow/settings.tsx', 'src/state/screen-time.tsx', 'src/state/control-snapshot.ts', 'modules/itoma-native/src/control-snapshot.ts', 'src/constants/theme.ts'];
+const fixtureFiles = ['src/app/_layout.tsx', 'src/app/proof.tsx', 'src/components/flow/applications.tsx'];
+const fixedClock = Date.parse('2026-11-09T21:30:00Z');
+const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
+const report = { sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: source, encoding: 'utf8' }).trim(),
+  sourceFiles: Object.fromEntries(sourceFiles.map(file => [file, digest(`${source}/${file}`)])),
+  fixtureFiles: Object.fromEntries(fixtureFiles.map(file => [file, digest(`${fixture}/${file}`)])),
+  browser: await browser.version(), platform: 'Linux Chromium, synthetic web ports', fixedClock: new Date(fixedClock).toISOString(),
+  nativeBuild: null, simulatorVerified: false, physicalDeviceVerified: false, screenTimeVerified: false,
+  imagesPublished: false, cases: [] };
+try {
+  for (const [name, colorScheme, width, height, scale] of [
+    ['unchanged-light', 'light', 390, 844, 1], ['unchanged-dark', 'dark', 390, 844, 1],
+    ['unchanged-narrow-large', 'light', 320, 800, 1.5],
+  ]) {
+    const context = await browser.newContext({ viewport: { width, height }, colorScheme, reducedMotion: 'reduce' });
+    await context.addInitScript(at => { Date.now = () => at; }, fixedClock);
+    const page = await context.newPage(), errors = [], scripts = [];
+    page.on('pageerror', error => errors.push(error.message.slice(0, 180)));
+    page.on('response', response => {
+      if (response.request().resourceType() === 'script' || (response.headers()['content-type'] ?? '').includes('javascript')) scripts.push(response.body().then(bytes => ({
+        path: new URL(response.url()).pathname + new URL(response.url()).search,
+        bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'),
+      })));
+    });
+    await page.goto('http://127.0.0.1:8142/proof', { waitUntil: 'networkidle' });
+    await page.getByTestId('proof-banner').waitFor();
+    await page.getByRole('button', { name: '内容を確認する' }).click();
+    await page.getByText('変更はありません', { exact: true }).waitFor();
+    const returnButton = page.getByRole('button', { name: '保存したルールに戻る' });
+    await returnButton.scrollIntoViewIfNeeded();
+    if (scale > 1) await page.evaluate(scale => {
+      const nodes = Array.from(document.querySelectorAll('[dir="auto"], input, textarea')).map(element => {
+        const style = getComputedStyle(element); return [element, parseFloat(style.fontSize), parseFloat(style.lineHeight)];
+      });
+      for (const [element, size, line] of nodes) {
+        element.style.fontSize = `${size * scale}px`;
+        if (Number.isFinite(line)) element.style.lineHeight = `${line * scale}px`;
+      }
+    }, scale);
+    const actualScheme = await page.evaluate(() => getComputedStyle(document.querySelector('[data-testid="proof-banner"]')).backgroundColor);
+    await page.getByTestId('flow-scroll').evaluate(element => {
+      for (let current = element; current; current = current.parentElement) Object.assign(current.style, {
+        height: 'auto', minHeight: '0', maxHeight: 'none', flexGrow: '0', flexBasis: 'auto', position: 'relative', overflow: 'visible',
+      });
+    });
+    const localImage = `${output}/${name}.png`;
+    await page.screenshot({ path: localImage, fullPage: true });
+    const dimensions = await page.evaluate(() => ({ viewport: innerWidth, scroll: document.documentElement.scrollWidth, contentHeight: document.documentElement.scrollHeight }));
+    const actions = await page.evaluate(() => window.qaActions ?? []);
+    report.cases.push({ name, colorScheme, width, height, scale, actualBannerBackground: actualScheme,
+      imageKind: 'full-scroll-content export; DOM font-scale emulation for large text', localImage, sha256: digest(localImage),
+      dimensions, horizontalOverflow: dimensions.scroll > dimensions.viewport + 1, actions, pageErrors: errors,
+      hasCommitButton: await page.getByRole('button', { name: 'この内容で保存する' }).count(),
+      returnButtonEnabled: await returnButton.isEnabled(), webBundles: await Promise.all(scripts) });
+    await context.close();
+  }
+  writeFileSync(`${output}/manifest.json`, JSON.stringify(report, null, 2) + '\n');
+} finally { await browser.close(); }
+console.log(JSON.stringify(report, null, 2));
+if (report.cases.some(item => item.horizontalOverflow || item.pageErrors.length || item.hasCommitButton || !item.returnButtonEnabled
+  || item.actions.some(action => !['snapshot', 'previewRule'].includes(action)))) process.exitCode = 1;
