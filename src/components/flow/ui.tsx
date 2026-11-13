@@ -28,11 +28,11 @@ export function Button({ label, onPress, disabled = false, secondary = false, te
   </Pressable>;
 }
 /** Quiet secondary destinations, matching the demo's flat rows. */
-export function LinkRow({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
+export function LinkRow({ label, detail, onPress, disabled = false }: { label: string; detail?: string; onPress: () => void; disabled?: boolean }) {
   const theme = useFlowTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint={detail} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
     style={({ pressed }) => [styles.link, { borderColor: theme.line, opacity: pressed ? 0.75 : 1 }]}>
-    <Text style={[styles.linkText, { color: disabled ? theme.muted : theme.text }]}>{label}</Text>
+    <View style={{ flex: 1, gap: 4 }}><Text style={[styles.linkText, { color: disabled ? theme.muted : theme.text }]}>{label}</Text>{detail && <Text style={[styles.caption, { color: theme.muted }]}>{detail}</Text>}</View>
     <Text accessible={false} style={{ color: theme.muted, fontSize: 20 }}>›</Text>
   </Pressable>;
 }
@@ -93,5 +93,5 @@ const styles = StyleSheet.create({
   button: { minHeight: 50, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, justifyContent: 'center' }, buttonText: { fontSize: 16, lineHeight: 26, fontWeight: '600', textAlign: 'center' },
   field: { gap: 8 }, label: { fontSize: 14, lineHeight: 22, fontWeight: '600' }, input: { fontSize: 17, lineHeight: 26, minHeight: 50, padding: 14, borderWidth: 1, borderRadius: 12 }, multiline: { minHeight: 150, textAlignVertical: 'top' },
   link: { minHeight: 52, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottomWidth: 1 },
-  linkText: { fontSize: 14, lineHeight: 23, flexShrink: 1 },
+  linkText: { fontSize: 16, lineHeight: 26, flexShrink: 1 },
 });
