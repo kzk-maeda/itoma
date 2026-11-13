@@ -13,8 +13,16 @@ import ItomaCore
     private var busy = false
     private weak var picker: UIViewController?
     private var authorizationEpoch = 0
+    private var lifecycleGeneration = 0
     private var subscriptions: Set<AnyCancellable> = []
     private init() {
+        // These native notifications invalidate reuse even if JS did not observe the transition.
+        for name in [UIApplication.willEnterForegroundNotification, UIApplication.significantTimeChangeNotification,
+                     NSNotification.Name.NSSystemTimeZoneDidChange] {
+            NotificationCenter.default.publisher(for: name).receive(on: DispatchQueue.main).sink { [weak self] _ in
+                MainActor.assumeIsolated { self?.lifecycleGeneration &+= 1 }
+            }.store(in: &subscriptions)
+        }
         AuthorizationCenter.shared.$authorizationStatus.receive(on: DispatchQueue.main).sink { [weak self] status in
             MainActor.assumeIsolated {
                 if status == .denied { self?.authorizationEpoch += 1 }
@@ -55,7 +63,7 @@ import ItomaCore
                     let response: ProductResponse
                     do {
                         let ref = try await ProductController.shared.selectionSaved(data, authorizationEpoch: pickerEpoch)
-                        var saved = await ProductController.shared.perform("snapshot", request: ProductRequest(), authorizationEpoch: self.authorizationEpoch)
+                        var saved = await ProductController.shared.perform("snapshot", request: ProductRequest(), authorizationEpoch: self.authorizationEpoch, lifecycleGeneration: self.lifecycleGeneration)
                         if self.authorizationEpoch == pickerEpoch { saved.ref = ref; response = saved }
                         else { response = ProductResponse(status: "error", code: "selection-required", snapshot: saved.snapshot) }
                     } catch { response = ProductResponse(status: "error", code: "selection-required") }
@@ -82,7 +90,7 @@ import ItomaCore
                 catch { self.finish(ProductResponse(status: "error", code: "authorization-required"), complete); return }
             }
             let result = await ProductController.shared.perform(action == "authorize" ? "snapshot" : action, request: request,
-                authorizationEpoch: self.authorizationEpoch)
+                authorizationEpoch: self.authorizationEpoch, lifecycleGeneration: self.lifecycleGeneration)
             self.finish(result, complete)
         }
     }
