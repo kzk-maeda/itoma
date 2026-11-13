@@ -22,7 +22,7 @@ export function RecordStorageScreen() {
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
   return <FlowScreen title="保存状況と取込" onBack={back}>
     {history.busy && <Body muted>保存状況を確認しています。</Body>}
-    {history.error && <Notice title="保存状況を確認できません">端末のロックを解除してから、もう一度確認できます。確認できない量を0 MBとは扱いません。</Notice>}
+    {history.error && <Notice title="保存状況を確認できません">{history.error === 'unavailable' ? 'この環境では記録の保存状況を利用できません。iPhone版で確認できます。' : '端末のロックを解除してから、もう一度確認できます。'}確認できない量を0 MBとは扱いません。</Notice>}
     {history.storage === 'not-created' && !history.error && <Body>まだ記録の保存先が作られていません。容量と上限は保存先を確認できると表示します。</Body>}
     {history.page && <>
       <RecordStoragePanel page={history.page} />
