@@ -8,7 +8,7 @@ type ReflectionReference = { revision: string; asOf: number; timeZone: string };
 type State = { kind: HistoryKind; day: string; page?: HistoryPage; reason?: HistoryReason; selectedCommandID?: string; storage: HistoryResponse['storage']; busy: boolean; error?: HistoryCode;
   choose: (kind: HistoryKind, day: string) => void; refresh: () => void; move: (cursor: HistoryCursor, direction: 'older' | 'newer') => void;
   reference?: ReflectionReference; chooseReflectionDay: (day: string, reference: ReflectionReference) => void;
-  readReason: (commandID: string) => void; closeReason: () => void; mutate: (action: 'import' | 'deleteReasons' | 'deleteHistory') => void };
+  readReason: (commandID: string) => void; closeReason: () => void; mutate: (action: 'import' | 'deleteReasons' | 'deleteHistory') => Promise<HistoryResponse | undefined> };
 const Context = createContext<State | undefined>(undefined);
 type Client = Pick<typeof historyRecords, 'run'>;
 
@@ -40,7 +40,7 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
       if (loaded.current) reload.current();
     });
   }, [historyEpoch, historyChangeOrigin, client]);
-  const run = useCallback(async (action: HistoryAction, extra: { cursor?: HistoryCursor; direction?: 'older' | 'newer'; commandID?: string } = {}): Promise<void> => {
+  const run = useCallback(async (action: HistoryAction, extra: { cursor?: HistoryCursor; direction?: 'older' | 'newer'; commandID?: string } = {}): Promise<HistoryResponse | undefined> => {
     if (mutation.current) { if (action === 'page') pendingRefresh.current = true; return; }
     const writes = action === 'deleteHistory' || action === 'deleteReasons' || action === 'import';
     if (writes) { mutation.current = true; invalidateHistory('history'); }
@@ -60,6 +60,7 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
       } else if (response.page) { pageRef.current = response.page; setPage(response.page); }
       else if (response.reason) setReason(response.reason);
       else { pageRef.current = undefined; setPage(undefined); }
+      return response;
     } catch { if (ticket === sequence.current) setError('unavailable'); }
     finally {
       if (writes) { mutation.current = false; invalidateHistory('history'); if (pendingRefresh.current) { pendingRefresh.current = false; queueMicrotask(() => { reload.current(); }); } }
@@ -77,7 +78,7 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
     chooseReflectionDay: (day, value) => { setReference(value); query.current = { kind: 'event', day }; setSelection(query.current); position.current = undefined; clear(); void run('page'); },
     move: (cursor, direction) => { position.current = { cursor, direction }; void run('page', position.current); },
     readReason: (commandID) => { setSelectedCommandID(commandID); void run('reason', { commandID }); }, closeReason: () => { sequence.current += 1; setSelectedCommandID(undefined); setReason(undefined); setBusy(false); },
-    mutate: (action) => { position.current = undefined; void run(action); },
+    mutate: (action) => { position.current = undefined; return run(action); },
   }}>{children}</Context.Provider>;
 }
 export function useHistoryRecords() { const value = useContext(Context); if (!value) throw new Error('HistoryProvider missing'); return value; }

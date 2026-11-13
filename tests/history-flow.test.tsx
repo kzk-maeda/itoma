@@ -85,6 +85,7 @@ test('deletion needs explicit confirmation, keeps policy operations separate, an
   await press('保存した理由'); await press('記録の保存状況を確認する'); await press('記録を削除する'); await press('理由本文のみの削除を確認');
   expect(b.run.mock.calls.some(([action]) => action === 'deleteReasons')).toBe(false);
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
+  expect(screen.getByText('理由本文の削除を確認しました。')).toBeTruthy();
   await press('‹ 戻る'); await press('‹ 戻る');
   expect(screen.getByText('理由本文は削除済みです')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'この記録の理由を読む' })).toBeNull();
@@ -135,4 +136,15 @@ test('storage and deletion navigation reuse earlier routes instead of growing a 
     expect(mockRoutes).toEqual(['/history', '/settings-storage']);
   }
   await press('‹ 戻る'); expect(screen.getByRole('header', { name: 'あなたの選択の記録' })).toBeTruthy();
+});
+
+test('a deletion response failure remains unknown instead of claiming completion', async () => {
+  const b = backend(), original = b.run.getMockImplementation()!, alert = jest.spyOn(Alert, 'alert');
+  b.run.mockImplementation((action, request) => action === 'deleteReasons'
+    ? Promise.resolve({ status: 'error', code: 'storage-failed', storage: 'unknown' }) : original(action, request));
+  await render(wrap(b));
+  await press('記録の保存状況を確認する'); await press('記録を削除する'); await press('理由本文のみの削除を確認');
+  await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
+  expect(screen.getByText('削除結果を確認できません。保存状況を確認してから、必要なら再試行できます。')).toBeTruthy();
+  expect(screen.queryByText('理由本文の削除を確認しました。')).toBeNull();
 });
