@@ -1,0 +1,26 @@
+{
+  "kind": "synthetic-web-settings-study",
+  "reviewBase": "46a905a",
+  "physicalDevice": false,
+  "osVerified": false,
+  "browser": "155.0.8059.79",
+  "errors": [],
+  "screenshots": [
+    "delete-all-confirm.png",
+    "delete-reasons-confirm.png",
+    "delete-scope.png",
+    "delete-text200.png",
+    "overview-320-text200.png",
+    "overview-dark.png",
+    "overview-light.png",
+    "overview-many.png",
+    "permission-needed.png",
+    "privacy.png",
+    "save-failed.png",
+    "schedule-details.png",
+    "schedule-review.png",
+    "schedules-eight.png",
+    "stop-confirm.png",
+    "unknown-overview.png"
+  ]
+}

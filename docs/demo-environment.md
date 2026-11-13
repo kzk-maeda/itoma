@@ -40,6 +40,7 @@ npm run demo:info
 | `demo/b-native-motion` | `design-motion.html` |
 | `demo/color-variations` | `design-colors.html` |
 | `demo/hourglass-experience` | `hourglass.html` |
+| `demo/settings-experience` | `settings-study.html` |
 
 入口は `scripts/lib/demo-index.mjs` に配信keyとの対応を持ちます。Gitブランチが削除されても環境が残っていれば同じ入口を使い、未知の環境は従来どおりトップを開きます。新しいHTML比較デモを追加するときは、この対応と `tests/demo-index.test.mjs` も更新してください。ページの存在は対象デモの配信で確認し、削除や改名をするときも対応を更新します。「配信情報」は従来どおり各環境の `demo-build.json` です。
 
