@@ -274,6 +274,52 @@ func liveOrUnactivatedCandidateOwnershipIsRetained(status: CommandStatus) throws
     #expect(try f.repository.readSnapshot() == before)
 }
 
+@Test(arguments: [false, true]) @ItomaControlActor
+func completedPreviewDiscardUsesDurableEvidenceAfterTheHostCacheIsReleased(osFailure: Bool) async throws {
+    let f = try Fixture(); defer { f.remove() }
+    let service = RulePreviewService(repository: f.repository, contexts: f.contexts, makeCommandID: { id(500) })
+    let (saved, confirmation) = try requireCandidate(preview(service, f, input(f, start: 541)))
+    if osFailure { f.restriction.response = .failed(.osOperationFailure) }
+    _ = try await f.service.executeAcceptedCandidate(commandID: saved.commandID, confirmation: confirmation)
+    let before = try f.repository.readSnapshot(), command = try f.repository.command(saved.commandID)
+    let plans = f.restriction.plans, requests = f.scheduler.requests, cancellations = f.scheduler.cancellations
+    // Cache=nil models completed native save followed by a failed response snapshot.
+    #expect(try service.discard(ref: raw(500), ownedCandidate: nil) == saved.commandID)
+    #expect(try service.discard(ref: raw(500), ownedCandidate: nil) == saved.commandID)
+    #expect(try f.repository.readSnapshot() == before && f.repository.command(saved.commandID) == command)
+    #expect(f.restriction.plans == plans && f.scheduler.requests == requests && f.scheduler.cancellations == cancellations)
+    let newer = RulePreviewService(repository: f.repository, contexts: f.contexts, makeCommandID: { id(501) })
+    let (pending, _) = try requireCandidate(preview(newer, f, input(f, start: 542)))
+    let afterNewer = try f.repository.readSnapshot(), newerCommand = try f.repository.command(pending.commandID)
+    #expect(try service.discard(ref: raw(500), ownedCandidate: pending) == saved.commandID)
+    #expect(try f.repository.readSnapshot() == afterNewer && f.repository.command(pending.commandID) == newerCommand)
+    // The newer owner can still explicitly discard its own unactivated candidate.
+    #expect(try newer.discard(ref: raw(501), ownedCandidate: pending) == pending.commandID)
+    #expect(try f.repository.command(pending.commandID)?.status == .cancelled)
+    #expect(try newer.discard(ref: raw(501), ownedCandidate: nil) == pending.commandID)
+}
+
+@Test(arguments: [CommandStatus.pending, .failed, .uncertain, .scheduling, .applying]) @ItomaControlActor
+func missingOwnershipCannotDiscardUnfinishedWork(status: CommandStatus) throws {
+    let f = try Fixture(); defer { f.remove() }
+    let service = RulePreviewService(repository: f.repository, contexts: f.contexts, makeCommandID: { id(500) })
+    let (pending, _) = try requireCandidate(preview(service, f, input(f, start: 541)))
+    if status != .pending {
+        try f.repository.write { tx in
+            let stored = try tx.command(pending.commandID), command = try #require(stored)
+            _ = try tx.recordCommand(Command(id: command.id, kind: command.kind, status: status,
+                expectedPolicyRevision: command.expectedPolicyRevision, candidatePolicyRevision: command.candidatePolicyRevision,
+                attempt: command.attempt), expected: command)
+        }
+    }
+    let before = try f.repository.readSnapshot(), command = try f.repository.command(pending.commandID)
+    #expect(throws: StorageError.conflict) { try service.discard(ref: raw(500), ownedCandidate: nil) }
+    #expect(throws: StorageError.conflict) { try service.discard(ref: raw(999), ownedCandidate: pending) }
+    #expect(throws: StorageError.conflict) { try service.discard(ref: "invalid", ownedCandidate: pending) }
+    #expect(try f.repository.readSnapshot() == before && f.repository.command(pending.commandID) == command)
+    #expect(f.scheduler.requests.isEmpty && f.restriction.plans.isEmpty)
+}
+
 @Test(arguments: [AuthorizationStatus.denied, .unknown]) @ItomaControlActor
 func noChangeRequiresCurrentAuthorizationWithoutCreatingAnIntent(status: AuthorizationStatus) throws {
     let f = try Fixture(); defer { f.remove() }

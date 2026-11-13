@@ -126,20 +126,36 @@ public enum RulePreviewResult: Sendable {
         }
     }
 
+    /// A completed command remains verifiable after the host releases its RAM cache.
+    /// Unsubmitted work still requires this flow's exact candidate ownership.
+    @discardableResult public func discard(ref: String, ownedCandidate: PolicyCandidate?) throws -> CommandID {
+        guard let uuid = UUID(uuidString: ref) else { throw StorageError.conflict }
+        let commandID = CommandID(uuid)
+        return try repository.write { tx in
+            guard let saved = try tx.candidate(commandID: commandID) else { throw StorageError.conflict }
+            if try canReleaseOwnership(of: saved, transaction: tx) { return commandID }
+            guard let command = try checkedPrevious(ownedCandidate, ref: ref, transaction: tx) else { throw StorageError.conflict }
+            try cancel(command, transaction: tx)
+            return commandID
+        }
+    }
+
     /// Release only a completed local confirmation cache. This never changes the durable
     /// command/candidate, and cannot discard an operation still scheduling or applying.
     public func canReleaseOwnership(of candidate: PolicyCandidate) throws -> Bool {
-        try repository.write { tx in
-            guard try tx.candidate(commandID: candidate.commandID) == candidate,
-                  let command = try tx.command(candidate.commandID), command.kind == .commitPolicy else {
-                throw StorageError.conflict
-            }
-            switch command.status {
-            case .scheduling, .applying: return false
-            case .succeeded, .cancelled, .expired, .superseded: return true
-            case .pending, .failed, .uncertain:
-                return try tx.activatedCandidateRevision(commandID: candidate.commandID) != nil
-            }
+        try repository.write { try canReleaseOwnership(of: candidate, transaction: $0) }
+    }
+
+    private func canReleaseOwnership(of candidate: PolicyCandidate, transaction tx: ControlTransaction) throws -> Bool {
+        guard try tx.candidate(commandID: candidate.commandID) == candidate,
+              let command = try tx.command(candidate.commandID), command.kind == .commitPolicy else {
+            throw StorageError.conflict
+        }
+        switch command.status {
+        case .scheduling, .applying: return false
+        case .succeeded, .cancelled, .expired, .superseded: return true
+        case .pending, .failed, .uncertain:
+            return try tx.activatedCandidateRevision(commandID: candidate.commandID) != nil
         }
     }
 

@@ -250,6 +250,33 @@ test.each([false, true])('a saved policy with an OS failure drops its old previe
   expect(b.client.run.mock.calls.filter(([name]) => name === 'commitRule')).toHaveLength(1);
 });
 
+test('settings can discard a stale ref after save completed but its response snapshot failed', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!, alert = jest.spyOn(Alert, 'alert');
+  let completed = false;
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'cancelCandidate') {
+      // Durable completion is acknowledged even though native no longer has its RAM cache.
+      expect(completed).toBe(true); expect(request?.ref).toBe(previewID);
+      return { status: 'ok', impacts: [] };
+    }
+    const response = await original(action, request);
+    if (action === 'commitRule') {
+      completed = true;
+      return { status: 'error', code: 'storage-failed', impacts: [] };
+    }
+    return response;
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await press('内容を確認する'); await press('この内容で保存する');
+  expect(b.current().revision).toBe('1');
+  await press('保存したルールを確認する'); await press('ルールを追加する');
+  await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
+  expect(screen.getByRole('header', { name: '時間のルールをつくる' })).toBeTruthy();
+  expect(b.client.run).toHaveBeenCalledWith('cancelCandidate', { ref: previewID });
+  expect(b.client.run.mock.calls.filter(([name]) => name === 'commitRule')).toHaveLength(1);
+});
+
 test('post-accept assessment failure retains its new owned ref without allowing blind confirmation', async () => {
   const b = backend(), original = b.client.run.getMockImplementation()!, acceptedRef = '99999999-9999-9999-9999-999999999999';
   let previews = 0;

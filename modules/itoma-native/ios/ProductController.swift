@@ -464,11 +464,12 @@ struct ProductResponse: Encodable, Sendable {
         // An absent ref owns nothing. A regular editor cannot cancel onboarding/recovery or
         // another flow merely because its accepted candidate is currently in this singleton.
         guard let ref else { return }
-        guard candidateOwner == .rule, let (pending, _) = candidate else { throw StorageError.conflict }
-        guard UUID(uuidString: ref) == pending.commandID.rawValue else { throw StorageError.conflict }
         let service = RulePreviewService(repository: r.repository, contexts: r.contexts)
-        if try !service.canReleaseOwnership(of: pending) { try service.cancel(pending, ref: ref) }
-        candidate = nil; candidateOwner = nil
+        let acknowledged = try service.discard(ref: ref, ownedCandidate: candidateOwner == .rule ? candidate?.0 : nil)
+        // An acknowledgement of an old completed ID cannot release a newer flow's cache.
+        if candidateOwner == .rule, candidate?.0.commandID == acknowledged {
+            candidate = nil; candidateOwner = nil
+        }
     }
 
     private func snapshot(_ r: ScreenTimeRuntime) throws -> ProductSnapshotDTO {
