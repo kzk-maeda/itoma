@@ -47,12 +47,13 @@ function useSettings() {
 }
 
 export function SettingsScreen() {
-  const { s } = useSettings();
+  const { s, device, state } = useSettings();
+  const known = device && !['storage-failed', 'unavailable'].includes(state.error ?? '');
   return <FlowScreen title="設定" tab="settings">
     <Body muted>自分で決めた時間と、記録の扱いを確認できます。</Body>
     <Panel>
-      <LinkRow label="スケジュール" detail={s ? `${s.rules.length}件 · ${s.activation === 'paused' ? '全体を停止中' : s.activation === 'awaitingReauthorizationConfirmation' ? '再開前の確認待ち' : '保存した時間の設定'}` : '保存状態を確認できます'} onPress={() => router.navigate('/settings-schedules')} />
-      <LinkRow label="スクリーンタイム" detail={s?.authorization === 'approved' ? s.needsSelectionReview ? '対象の再選択が必要です' : '許可と反映の状態' : '許可の確認が必要です'} onPress={() => router.navigate('/settings-screen-time')} />
+      <LinkRow label="スケジュール" detail={!s && state.loading ? '保存状態を確認しています' : known && s ? `${s.rules.length}件 · ${s.activation === 'paused' ? '全体を停止中' : s.activation === 'awaitingReauthorizationConfirmation' ? '再開前の確認待ち' : '保存した時間の設定'}` : 'この環境では保存状態を確認できません'} onPress={() => router.navigate('/settings-schedules')} />
+      <LinkRow label="スクリーンタイム" detail={!device ? '許可と反映はiPhoneで確認できます' : s?.authorization === 'approved' ? s.needsSelectionReview ? '対象の再選択が必要です' : '許可と反映の状態' : '許可の確認が必要です'} onPress={() => router.navigate('/settings-screen-time')} />
       <LinkRow label="記録とプライバシー" detail="選択の記録・保存容量・削除" onPress={() => router.navigate('/settings-records')} />
       <LinkRow label="使い方とこのアプリ" detail="制限と一時解除・端末内の保存" onPress={() => router.navigate('/settings-about')} />
     </Panel>
@@ -62,11 +63,12 @@ export function SettingsScreen() {
 
 export function ScheduleListScreen() {
   const { state, setup, s, device, firstRun, edit, stop, resume } = useSettings();
+  const known = device && !['storage-failed', 'unavailable'].includes(state.error ?? '');
   return <FlowScreen title="スケジュール" onBack={back}>
     <Body muted>各行は保存した曜日・時間・対象の設定です。現在の反映状態は「スクリーンタイム」で確認できます。</Body>
     {s?.rules.map((rule, index) => <LinkRow key={rule.id} label={ruleTitle(rule, index)} detail={`${ruleText(rule)} · ${rule.enabled ? '有効' : '無効'}`}
       onPress={() => router.navigate({ pathname: '/settings-schedule', params: { ruleID: rule.id } })} />)}
-    {!s?.rules.length && <Body>保存したルールはありません。</Body>}
+    {!s?.rules.length && <Body>{!s && state.loading ? '保存状態を確認しています。' : known ? '保存したルールはありません。' : 'この環境では保存状態を確認できません。iPhoneアプリで確認できます。'}</Body>}
     <Button label={firstRun ? setup?.draft ? '初回設定を続ける' : '初回設定を始める' : 'ルールを追加する'} disabled={!device || !!state.busy || !!setup?.loading || !!setup?.busy} onPress={() => edit()} />
     {!!s?.rules.length && <Panel><Heading>全体の操作</Heading>
       <Body>{s.activation === 'paused' ? '全体の停止を保存しています。' : s.activation === 'awaitingReauthorizationConfirmation' ? '再開前の確認待ちです。' : '全体の停止はすべてのルールに作用します。'}各ルールの設定は残ります。</Body>
@@ -79,7 +81,7 @@ export function ScheduleListScreen() {
 
 export function ScheduleDetailScreen() {
   const { ruleID } = useLocalSearchParams<{ ruleID: string }>();
-  const { state, s, edit, prepareRemoval, withDraftChoice } = useSettings();
+  const { state, s, device, edit, prepareRemoval, withDraftChoice } = useSettings();
   const index = s?.rules.findIndex(rule => rule.id === ruleID) ?? -1, rule = s?.rules[index];
   return <FlowScreen title={rule ? ruleTitle(rule, index) : 'スケジュールの詳細'} onBack={back}>
     {rule && s ? <>
@@ -91,6 +93,7 @@ export function ScheduleDetailScreen() {
         <Button label={`${ruleTitle(rule, index)}を編集`} secondary disabled={!!state.busy} onPress={() => edit(rule)} />
       </Panel>
       {s.ruleDetailsStatus !== 'ready' && <Body muted>{s.ruleDetailsStatus === 'unavailable' ? '名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。' : '名前と行動目標の編集にはアプリの更新が必要です。'}</Body>}
+      {s.ruleDetailsStatus === 'unavailable' && <Button label="保存した名前と行動目標を読み直す" secondary disabled={!device || !!state.busy} onPress={() => { void state.refresh(); }} />}
       <Panel><Heading>このルールの削除</Heading><Body>削除する内容と一時解除への影響は、次の画面で確認できます。他のルールと記録は残ります。</Body>
         <Button label={`${ruleTitle(rule, index)}を削除する内容を確認`} secondary disabled={!!state.busy} onPress={() => withDraftChoice(() => { void prepareRemoval(rule); })} />
       </Panel>
@@ -104,6 +107,9 @@ export function ScreenTimeSettingsScreen() {
     <Panel><Heading>許可と反映</Heading>
       <Body>{!device ? 'この環境では制限機能を利用できません' : s?.authorization === 'approved' ? 'スクリーンタイムは許可されています' : 'スクリーンタイムの許可を確認してください'}</Body>
       <Body>{s?.activation === 'paused' ? '全体の停止を保存しています' : s?.activation === 'awaitingReauthorizationConfirmation' ? '再開前の確認待ちです' : '保存した設定と、OSへの反映は別の状態です。'}</Body>
+      <Body>{device && s?.observation === 'applied' && s.evaluatedAt !== undefined ? '取得時点でITOMAの設定を反映した記録があります。' : '制限の反映を確認できていません。'}</Body>
+      {s?.evaluatedAt !== undefined && <Body muted>反映の記録時刻：{new Date(s.evaluatedAt * 1000).toLocaleString('ja-JP')}。</Body>}
+      <Body muted>この記録は取得時点のものです。端末全体の制限や、その後も制限が続いていることを保証するものではありません。</Body>
       <Body muted>確認操作は、保存した設定の読み直しに加えて、自動切替の予定準備・反映の再試行・記録の取込を行います。</Body>
       <Button label="保存した設定を再確認・反映する" secondary disabled={!device || !!state.busy} onPress={() => { void state.run('reconcile'); }} />
     </Panel>

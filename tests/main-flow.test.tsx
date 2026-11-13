@@ -441,14 +441,19 @@ test('reauthorization keeps existing rules awaiting explicit review/resume and d
 });
 
 test('home keeps its primary flow and settings expose explicit reconciliation in its category', async () => {
-  const b = backend(); await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  const b = backend(); b.replace({ evaluatedAt: now / 1000 }); await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
   for (const name of ['ルールと設定', '選択の記録を見る', '現在の状態を確認する']) expect(screen.queryByRole('button', { name })).toBeNull();
   await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
   for (const name of ['スケジュール', 'スクリーンタイム', '記録とプライバシー', '使い方とこのアプリ']) expect(screen.getByRole('button', { name })).toBeTruthy();
   expect(screen.queryByRole('button', { name: '時間帯 1を編集' })).toBeNull();
   expect(b.client.run.mock.calls.some(([action]) => action === 'reconcile')).toBe(false);
-  await press('スクリーンタイム'); await press('保存した設定を再確認・反映する');
+  await press('スクリーンタイム');
+  expect(screen.getByText('取得時点でITOMAの設定を反映した記録があります。')).toBeTruthy();
+  b.replace({ sequence: '1', observation: 'unknown', evaluatedAt: undefined, validUntil: undefined });
+  await press('保存した設定を再確認・反映する');
   expect(b.client.run.mock.calls.filter(([action]) => action === 'reconcile')).toHaveLength(1);
+  expect(screen.getByText('制限の反映を確認できていません。')).toBeTruthy();
+  expect(screen.queryByText('取得時点でITOMAの設定を反映した記録があります。')).toBeNull();
 });
 
 
@@ -466,4 +471,16 @@ test('eight saved schedules keep settings top compact and expose one detail befo
   expect(screen.getByRole('button', { name: '架空の時間 1を編集' })).toBeTruthy();
   expect(screen.getByRole('button', { name: '架空の時間 1の名前と行動目標を編集' })).toBeTruthy();
   expect(screen.getByRole('button', { name: '架空の時間 1を削除する内容を確認' })).toBeTruthy();
+});
+
+
+test('settings distinguish unavailable schedule data from a known empty schedule list', async () => {
+  const b = backend(false); b.replace({ availability: 'unsupported-platform' });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
+  expect(screen.getByText('この環境では保存状態を確認できません')).toBeTruthy();
+  expect(screen.queryByText(/0件 ·/)).toBeNull();
+  await press('スケジュール');
+  expect(screen.getByText('この環境では保存状態を確認できません。iPhoneアプリで確認できます。')).toBeTruthy();
+  expect(screen.queryByText('保存したルールはありません。')).toBeNull();
 });
