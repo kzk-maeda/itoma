@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Platform, Pressable, Switch, Text, View } from 'react-native';
 import { ruleInput, useScreenTime, type RuleDraft } from '@/state/screen-time';
 import { Applications } from './applications';
@@ -11,17 +11,33 @@ import { Body, Button, FlowScreen, Heading, Notice, Panel, flowStyles, useFlowTh
 // UI-only confirmation binding; ruleInput allowlists fields sent to native.
 export type RulePreviewDraft = RuleDraft & { previewBaseRevision?: string };
 
+function useDiscardRule() {
+  const state = useScreenTime(), discarding = useRef(false);
+  return async () => {
+    if (discarding.current) return false;
+    discarding.current = true;
+    try {
+      const ref = state.rulePreviewRef ?? state.ruleReview?.ref;
+      if (ref) {
+        const result = await state.run('cancelCandidate', { ref });
+        if (result.status !== 'ok') return false;
+      }
+      state.setRuleDraft(undefined); state.setRuleReview(undefined); state.setRulePreviewRef(undefined);
+      return true;
+    } catch { return false; }
+    finally { discarding.current = false; }
+  };
+}
+
 export function RuleEditorScreen() {
   const state = useScreenTime(), theme = useFlowTheme(), draft = state.ruleDraft as RulePreviewDraft | undefined;
   const [unchanged, setUnchanged] = useState(false);
   // react-native-web 0.21 uses a separate on-state thumb prop. Native iOS uses thumbColor.
   const webSwitchColors = Platform.OS === 'web' ? { activeThumbColor: theme.onAccent } : {};
   const { setRuleExitAllowed, beginRule } = state;
+  const discardRule = useDiscardRule();
   useFocusEffect(useCallback(() => { setRuleExitAllowed(false); if (!draft) beginRule(); }, [draft, beginRule, setRuleExitAllowed]));
-  useDraftGuard(!!draft?.dirty && !state.ruleExitAllowed, state.canExitRule, () => state.setRuleExitAllowed(true), () => {
-    void state.run('cancelCandidate', { ref: state.rulePreviewRef ?? state.ruleReview?.ref });
-    state.setRuleDraft(undefined); state.setRuleReview(undefined); state.setRulePreviewRef(undefined);
-  });
+  useDraftGuard(!!draft?.dirty && !state.ruleExitAllowed, state.canExitRule, () => state.setRuleExitAllowed(true), discardRule);
   if (!draft) return <FlowScreen title="ルールを確認しています"><Body>保存した設定を確認しています。</Body></FlowScreen>;
   const update = (patch: Partial<typeof draft>) => { setUnchanged(false); state.setRuleExitAllowed(false); state.setRuleDraft({ ...draft, ...patch, dirty: true }); state.setRuleReview(undefined); };
   const input = ruleInput(draft, state.snapshot?.revision ?? '0');
@@ -75,6 +91,7 @@ export function RuleConfirmationScreen() {
   const state = useScreenTime(), draft = state.ruleDraft as RulePreviewDraft | undefined, review = state.ruleReview;
   const [failed, setFailed] = useState(false);
   const [openedAt] = useState(Date.now);
+  const discardRule = useDiscardRule();
   const input = draft && ruleInput(draft, review?.snapshot?.revision ?? state.snapshot?.revision ?? '0');
   const submit = async () => {
     if (!review?.ref) return;
@@ -96,10 +113,13 @@ export function RuleConfirmationScreen() {
     if (result?.status === 'confirmation-required') { state.setRuleReview(result); setFailed(false); }
     else if (draft) { state.setRuleReview(undefined); back(); }
   };
-  const goBack = () => { if (draft?.remove) {
-    void state.run('cancelCandidate', { ref: state.rulePreviewRef ?? review?.ref });
-    state.setRuleDraft(undefined); state.setRuleReview(undefined); state.setRulePreviewRef(undefined);
-  } back(); };
+  const goBack = () => { void (async () => {
+    if (draft?.remove) {
+      if (!await discardRule()) return;
+      state.setRuleExitAllowed(true);
+    }
+    back();
+  })(); };
   return <FlowScreen title={draft?.remove ? 'このルールを削除しますか' : 'このルールで保存しますか'} onBack={goBack}>
     {draft && input && <Panel><Heading>曜日と時間帯</Heading><Body>{ruleText({ ...input, id: input.id ?? '' })}</Body>
       <Applications selectionRef={draft.selectionRef} count={state.snapshot?.selections.find((s) => s.ref === draft.selectionRef)?.count ?? 1} refreshKey={state.refreshKey} />

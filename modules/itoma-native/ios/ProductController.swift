@@ -201,7 +201,12 @@ struct ProductResponse: Encodable, Sendable {
                 }
                 if result.failure == nil, let ready = try r.monitors.readyPlan(for: current.policy) { try? r.monitors.cleanup(keeping: ready) }
                 return try commandResponse(result, in: r)
-            case "cancelCandidate": try cancelCandidate(r, ref: request.ref)
+            case "cancelCandidate":
+                // Check protection before cancellation. Once cancelled, a fallible display
+                // projection must not hide the acknowledgement and strand the caller's ref.
+                try r.protectFiles()
+                try cancelCandidate(r, ref: request.ref)
+                return ProductResponse(snapshot: try? snapshot(r))
             case "previewUnlock":
                 guard let targetUUID = request.targetRef.flatMap(UUID.init(uuidString:)) else { throw ScreenTimeRuntimeError.invalidSelection }
                 let before = try r.repository.readSnapshot(), context = r.contexts.context(activation: before.activation)

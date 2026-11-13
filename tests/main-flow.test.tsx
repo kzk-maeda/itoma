@@ -196,6 +196,43 @@ test('settings explicitly discards only the preview owned by the retained rule e
   expect(screen.getByRole('header', { name: '時間のルールをつくる' })).toBeTruthy();
 });
 
+test.each(['editor', 'deletion', 'settings'] as const)('failed preview cancellation retains the %s flow and its owned ref', async (route) => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  const alert = jest.spyOn(Alert, 'alert');
+  let finishCancellation: ((response: ScreenTimeResponse) => void) | undefined;
+  b.client.run.mockImplementation((action, request) => action === 'cancelCandidate'
+    ? new Promise<ScreenTimeResponse>(resolve => { finishCancellation = resolve; }) : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings();
+  if (route === 'deletion') {
+    await press('時間帯 1を削除する内容を確認');
+    await press('削除せず戻る');
+  } else {
+    await press('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+    await press('内容を確認する');
+    if (route === 'settings') {
+      await press('保存したルールを確認する'); await press('ルールを追加する');
+    } else {
+      await press('編集へ戻る'); await press('‹ 戻る');
+    }
+    await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
+  }
+  const title = route === 'editor' ? '時間のルールを編集' : route === 'deletion' ? 'このルールを削除しますか' : 'ルールと設定';
+  expect(screen.getByRole('header', { name: title })).toBeTruthy();
+  await act(async () => { finishCancellation?.({ status: 'error', code: 'storage-failed', impacts: [] }); });
+  expect(screen.getByRole('header', { name: title })).toBeTruthy();
+  if (route === 'editor') {
+    expect(screen.getByRole('button', { name: '開始時刻' }).props.accessibilityValue.text).toBe('20:00');
+    await press('‹ 戻る');
+  } else if (route === 'deletion') await press('削除せず戻る');
+  else await press('ルールを追加する');
+  if (route !== 'deletion') await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
+  expect(b.client.run).toHaveBeenLastCalledWith('cancelCandidate', { ref: previewID });
+  await act(async () => { finishCancellation?.({ status: 'ok', impacts: [] }); });
+  expect(screen.getByRole('header', { name: route === 'settings' ? '時間のルールをつくる' : 'ルールと設定' })).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([name]) => name === 'commitRule')).toBe(false);
+});
+
 test.each([false, true])('a saved policy with an OS failure drops its old preview ref (projectionless preview: %s)', async (projectionless) => {
   const b = backend(true, false, true), original = b.client.run.getMockImplementation()!;
   b.client.run.mockImplementation(async (action, request) => {
