@@ -44,3 +44,21 @@ example
 # generated native folders
 /ios
 /android
+
+# Device Farm input and locally generated packages/evidence
+/e2e/target.json
+*.ipa
+*.tgz
+/device-farm-output/
+__pycache__/
+
+# Terraform: keep provider lockfiles; exclude deployment inputs, state and saved plans.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+**/backend.hcl
+**/backend_override.tf
+crash.log

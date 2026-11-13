@@ -22,7 +22,7 @@ export function PeriodSelector({ selected, onSelect, disabled, reduced, theme }:
     {width > 0 && <Animated.View testID="reflection-period-indicator" pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
       style={[styles.indicator, { width: segmentWidth, backgroundColor: theme.surface, borderColor: theme.accent,
         transform: [{ translateX: position.interpolate({ inputRange: [0, 1], outputRange: [0, segmentWidth + 4] }) }] }]} />}
-    {(['week', 'month'] as const).map(period => <Pressable key={period} accessibilityRole="button"
+    {(['week', 'month'] as const).map(period => <Pressable key={period} testID={`reflection-period-${period}`} accessibilityRole="button"
       accessibilityState={{ selected: selected === period, disabled }} aria-selected={selected === period} disabled={disabled}
       onPress={() => { if (selected !== period) onSelect(period); }} style={({ pressed }) => [styles.segment, { opacity: pressed ? 0.75 : 1 }]}>
       <Text style={[styles.segmentText, { color: theme.text, fontWeight: selected === period ? '600' : '400' }]}>{period === 'week' ? '週次' : '月次'}</Text>

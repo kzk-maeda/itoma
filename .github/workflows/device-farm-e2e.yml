@@ -1,0 +1,137 @@
+name: iOS Device Farm E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_run_id:
+        description: Successful IPA producer Actions run ID (same repository; push or workflow_dispatch)
+        required: true
+        type: string
+      app_artifact:
+        description: Artifact name containing exactly one device IPA
+        required: true
+        type: string
+      app_commit:
+        description: Full 40-character source SHA used to build the IPA and its embedded JS
+        required: true
+        type: string
+      ipa_sha256:
+        description: SHA256 of the IPA (64 lowercase hex characters)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+# Keep billable runs sequential; do not cancel an active run when another is requested.
+concurrency:
+  group: device-farm-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    env:
+      ITOMA_APP_RUN_ID: ${{ inputs.app_run_id }}
+      ITOMA_APP_ARTIFACT: ${{ inputs.app_artifact }}
+      ITOMA_APP_COMMIT: ${{ inputs.app_commit }}
+      ITOMA_IPA_SHA256: ${{ inputs.ipa_sha256 }}
+      ITOMA_TEST_COMMIT: ${{ github.sha }}
+      ITOMA_BUNDLE_ID: ${{ vars.ITOMA_IOS_BUNDLE_ID }}
+      DEVICE_FARM_PROJECT_ARN: ${{ vars.DEVICE_FARM_PROJECT_ARN }}
+      DEVICE_FARM_DEVICE_POOL_ARN: ${{ vars.DEVICE_FARM_DEVICE_POOL_ARN }}
+      CI: '1'
+    steps:
+      # Execute reviewed tooling/tests from the workflow ref. Never execute scripts from the IPA artifact.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Initialize temporary paths
+        shell: bash
+        run: |
+          echo "ITOMA_APP_DIR=$RUNNER_TEMP/itoma-ipa" >> "$GITHUB_ENV"
+          echo "ITOMA_OUTPUT_DIR=$RUNNER_TEMP/itoma-device-farm" >> "$GITHUB_ENV"
+      - name: Validate configuration and immutable IPA provenance
+        id: source
+        uses: actions/github-script@v8
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          HAS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+        with:
+          script: |
+            const env = process.env;
+            if (!/^[1-9][0-9]*$/.test(env.ITOMA_APP_RUN_ID)) throw new Error('Invalid producer run ID');
+            if (!/^[0-9a-f]{40}$/.test(env.ITOMA_APP_COMMIT)) throw new Error('Full source SHA required');
+            if (!/^[0-9a-f]{64}$/.test(env.ITOMA_IPA_SHA256)) throw new Error('IPA SHA256 required');
+            if (!env.ITOMA_APP_ARTIFACT || !env.ITOMA_BUNDLE_ID) throw new Error('Artifact name and ITOMA_IOS_BUNDLE_ID are required');
+            if (!env.AWS_ROLE_ARN && env.HAS_ACCESS_KEY !== 'true') throw new Error('Configure AWS_ROLE_ARN or both AWS access key secrets');
+            const project = env.DEVICE_FARM_PROJECT_ARN.match(/^arn:aws:devicefarm:us-west-2:(\d{12}):project:([0-9a-f-]{36})$/);
+            if (!project || !env.DEVICE_FARM_DEVICE_POOL_ARN.startsWith(`arn:aws:devicefarm:us-west-2:${project[1]}:devicepool:${project[2]}/`)) {
+              throw new Error('Configure a us-west-2 project and an owned device pool in that project');
+            }
+            const run_id = Number(env.ITOMA_APP_RUN_ID);
+            if (!Number.isSafeInteger(run_id)) throw new Error('Invalid run ID');
+            const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id});
+            if (run.head_sha !== env.ITOMA_APP_COMMIT || run.conclusion !== 'success' ||
+                run.repository.full_name !== `${context.repo.owner}/${context.repo.repo}` ||
+                run.head_repository?.full_name !== run.repository.full_name ||
+                !['push', 'workflow_dispatch'].includes(run.event)) {
+              throw new Error('IPA producer must be a successful same-repository push/manual run at the requested SHA');
+            }
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {...context.repo, run_id});
+            const candidates = artifacts.filter(a => a.name === env.ITOMA_APP_ARTIFACT && !a.expired);
+            if (candidates.length !== 1) throw new Error('Exactly one unexpired artifact with this name is required');
+            core.setOutput('artifact_id', String(candidates[0].id));
+      - uses: actions/download-artifact@v7
+        with:
+          artifact-ids: ${{ steps.source.outputs.artifact_id }}
+          run-id: ${{ inputs.app_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ env.ITOMA_APP_DIR }}
+          merge-multiple: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: scripts/device_farm/requirements.txt
+      - run: npm ci --prefix e2e --ignore-scripts --no-audit --no-fund
+      - run: python -m pip install -r scripts/device_farm/requirements.txt
+      - name: Test orchestration without AWS access
+        run: npm run test:device-farm
+      - name: Validate IPA and bundle tests
+        run: python scripts/device_farm/prepare.py
+      - name: Authenticate to AWS
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-region: us-west-2
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: itoma-device-farm-${{ github.run_id }}
+          aws-access-key-id: ${{ secrets.AWS_ROLE_ARN == '' && secrets.AWS_ACCESS_KEY_ID || '' }}
+          aws-secret-access-key: ${{ secrets.AWS_ROLE_ARN == '' && secrets.AWS_SECRET_ACCESS_KEY || '' }}
+          aws-session-token: ${{ secrets.AWS_ROLE_ARN == '' && secrets.AWS_SESSION_TOKEN || '' }}
+          mask-aws-account-id: true
+      - name: Upload, schedule and await Device Farm
+        id: devicefarm
+        run: python scripts/device_farm/run.py run
+      - name: Stop unfinished run, collect evidence and remove uploads
+        if: always() && steps.devicefarm.outcome != 'skipped' && steps.devicefarm.outcome != ''
+        run: python scripts/device_farm/run.py finalize
+      - name: Save results, logs, screenshots, JUnit and video
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: device-farm-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            ${{ env.ITOMA_OUTPUT_DIR }}/input.json
+            ${{ env.ITOMA_OUTPUT_DIR }}/run.json
+            ${{ env.ITOMA_OUTPUT_DIR }}/artifacts/

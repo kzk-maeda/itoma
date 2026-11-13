@@ -20,7 +20,7 @@ export function ProductNavigation({ current, theme }: { current: ProductTab; the
           : productTabIndex(current) * step }] }]} />}
       {productTabs.map(({ key: tab, label }) => {
         const selected = current === tab;
-        return <Pressable key={tab} accessibilityRole="tab" accessibilityLabel={label}
+        return <Pressable key={tab} testID={`product-tab-${tab}`} accessibilityRole="tab" accessibilityLabel={label}
           accessibilityState={{ selected }} aria-selected={selected} onPress={() => {
             if (selected) return;
             if (motion) { motion.select(tab); return; }

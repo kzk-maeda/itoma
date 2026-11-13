@@ -93,7 +93,7 @@ export function ProductHome() {
       <Body>いつ、どのアプリから離れたいか。あなたのペースで決めていきましょう。</Body>
       <Body muted>必要なときは、自分の言葉で理由を書いて一時解除できます。</Body>
     </Panel>}
-    {!s?.rules.length && <Button label={firstRun ? setup.draft ? setup.busy || setup.draft.submitted ? '初回設定の結果を確認する' : '初回設定を続ける' : '初回設定を始める' : 'ルールをつくる'} disabled={!device || !!state.busy || !!setup?.busy || !!setup?.loading} onPress={create} />}
+    {!s?.rules.length && <Button label={firstRun ? setup.draft ? setup.busy || setup.draft.submitted ? '初回設定の結果を確認する' : '初回設定を続ける' : '初回設定を始める' : 'ルールをつくる'} testID="home-rule-create" disabled={!device || !!state.busy || !!setup?.busy || !!setup?.loading} onPress={create} />}
     {device && !!s?.rules.length && !!setup?.draft && <Button label="初回設定の結果を確認する" secondary onPress={() => router.navigate('/onboarding')} />}
     {!!s?.rules.length && state.ruleDraft?.dirty && <Button label="編集中のルールに戻る" secondary onPress={() => router.navigate('/rule')} />}
     {!!s?.rules.length && <View style={styles.targets}><Heading>対象のアプリ</Heading>

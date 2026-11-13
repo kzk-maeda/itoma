@@ -56,7 +56,8 @@
     "lint": "expo lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:ios-tools": "node --test tests/ios-qa.test.mjs tests/screen-time-cng.test.mjs"
+    "test:ios-tools": "node --test tests/ios-qa.test.mjs tests/screen-time-cng.test.mjs",
+    "test:device-farm": "python3 -m unittest discover -s tests/device_farm -p 'test_*.py' && node --check e2e/tests/smoke.test.mjs && node --check e2e/run.mjs"
   },
   "private": true
 }

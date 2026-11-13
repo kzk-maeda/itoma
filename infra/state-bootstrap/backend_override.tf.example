@@ -1,0 +1,4 @@
+# Copy to backend_override.tf only AFTER the bucket has been created, then init -migrate-state.
+terraform {
+  backend "s3" {}
+}

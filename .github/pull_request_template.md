@@ -17,6 +17,15 @@
 | ユニットテスト | | |
 | expo-doctor | | |
 
+## E2Eへの影響
+
+<!-- 機能・画面・状態・文言・testIDを変える場合は docs/e2e/scenarios.md を読んで記入する。 -->
+
+- 影響するシナリオID / 新しく追加する利用経路:
+- シナリオの追加・更新内容、または更新不要と判断した根拠:
+- `npm run test:device-farm` の結果（基盤回帰・構文検査。実機E2Eとは別）:
+- Device Farmの実行結果・run URL・IPA/source SHA、または未実施の理由と次の操作:
+
 ## 検証対象
 
 - 検証したコミット SHA / JS バンドル:

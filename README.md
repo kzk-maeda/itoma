@@ -50,6 +50,8 @@ npx expo-doctor
 GitHub Actions の `quality` ジョブは main への push と PR で依存関係のインストール、型チェック、lint、テストを実行します。
 `expo-doctor` はローカルで実行し、結果を PR に記載します。オンライン照会の失敗と依存関係の不一致は区別してください。
 
+[E2Eテストの入口](docs/e2e/README.md)に、Device Farmの実行手順、シナリオの保守手順、構成とIAM設定をまとめています。機能・画面を変えるときは対応するE2Eも同じPRで更新し、更新不要なら根拠を記録します。`npm run test:device-farm`は基盤回帰・構文検査で、実機E2Eは手動workflowで別途実行します。
+
 ## 現在の実装と未設定事項
 
 - ホームは採用済みの「墨と白」・OPEN CIRCLEへ移行しました。旧サンプル選択は撤去し、時間帯ルールの未接続を明示します。PoC有効のiOSビルドでは検証画面へ戻り、手動制限を停止できます。[画面と検証範囲](docs/qa/adopted-home/README.md)。
