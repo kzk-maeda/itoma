@@ -144,6 +144,7 @@ test('all-record deletion is separately confirmed, serializes repeated approval 
   expect(b.native.mock.calls.filter(call => call[0] === 'deleteAll')).toHaveLength(0);
   const approve = deletionButton(alert).onPress!;
   await act(async () => { approve(); approve(); });
+  expect(screen.getByText('全記録と累計の削除を確認しました。')).toBeTruthy();
   await press('‹ 戻る'); await press('‹ 戻る');
   await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
   await waitFor(() => expect(screen.getAllByText('記録は削除されています').length).toBeGreaterThan(0));

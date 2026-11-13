@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
-import { Alert } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, View } from 'react-native';
 import { useHistoryRecords } from '@/state/history';
 import { useReflection } from '@/state/reflection';
 import { back } from './navigation';
@@ -41,17 +41,30 @@ export function RecordStorageScreen() {
 }
 export function RecordDeletionScreen() {
   const history = useHistoryRecords(), reflection = useReflection();
+  const pending = useRef(false), mounted = useRef(true);
+  const [result, setResult] = useState<string>();
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const remove = async (scope: 'reasons' | 'history' | 'all') => {
+    if (pending.current) return;
+    pending.current = true; setResult('削除の結果を確認しています。');
+    try {
+      const response = scope === 'all' ? await reflection.mutate('deleteAll') : await history.mutate(scope === 'history' ? 'deleteHistory' : 'deleteReasons');
+      if (mounted.current) setResult(response?.status === 'ok' ? response.storage === 'not-created' ? '保存済みの記録はありません。' : scope === 'all' ? '全記録と累計の削除を確認しました。' : scope === 'history' ? '操作履歴と理由の削除を確認しました。' : '理由本文の削除を確認しました。' : '削除結果を確認できません。保存状況を確認してから、必要なら再試行できます。');
+    } catch { if (mounted.current) setResult('削除結果を確認できません。保存状況を確認してから、必要なら再試行できます。'); }
+    finally { pending.current = false; }
+  };
   const confirm = (scope: 'reasons' | 'history' | 'all') => {
     const title = scope === 'reasons' ? '保存した理由をすべて削除しますか' : scope === 'history' ? '操作履歴と理由を削除しますか' : '全記録と累計を削除しますか';
     const detail = scope === 'reasons' ? '理由本文のみを削除します。操作と振り返りの記録・累計は残ります。' : scope === 'history' ? '操作履歴と理由本文を削除します。振り返りの記録と累計は残ります。' : '操作履歴、理由、振り返りの記録と累計を削除します。';
     const label = scope === 'reasons' ? '理由をすべて削除する' : scope === 'history' ? '操作履歴と理由を削除する' : '全記録と累計を削除する';
     Alert.alert(title, `${detail}ルールと現在の一時解除は変わりません。この操作は元に戻せません。`, [
-      { text: '戻る', style: 'cancel' }, { text: label, style: 'destructive', onPress: () => scope === 'all' ? reflection.mutate('deleteAll') : history.mutate(scope === 'history' ? 'deleteHistory' : 'deleteReasons') },
+      { text: '戻る', style: 'cancel' }, { text: label, style: 'destructive', onPress: () => { void remove(scope); } },
     ]);
   };
   const busy = history.busy || reflection.busy;
   return <FlowScreen title="記録を削除する" onBack={back}>
     <Body>削除する範囲を選んだ後、最後に確認します。どの範囲でもルールと現在の一時解除は残ります。</Body>
+    {result && <View accessibilityLiveRegion="polite"><Body>{result}</Body></View>}
     {(history.error || reflection.response?.status === 'error') && <Notice title="操作結果を確認してください">完了したとは扱わず、保存状況や記録を確認してから再試行できます。</Notice>}
     <Panel><Heading>理由本文のみ</Heading><Body>削除：保存した理由の文章。残るもの：操作と振り返りの記録・累計。</Body><Button label="理由本文のみの削除を確認" secondary disabled={busy} onPress={() => confirm('reasons')} /></Panel>
     <Panel><Heading>操作履歴と理由</Heading><Body>削除：操作の一覧と理由本文。残るもの：振り返りの記録・累計。</Body><Button label="操作履歴と理由の削除を確認" secondary disabled={busy} onPress={() => confirm('history')} /></Panel>

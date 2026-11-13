@@ -7,7 +7,7 @@ import { useScreenTime } from './screen-time';
 
 type Client = Pick<typeof reflectionRecords, 'run'>;
 type State = { source: ReflectionSource; memory: ReflectionMemory; remember: (value: ReflectionMemory) => void;
-  refresh: () => void; mutate: (action: 'import' | 'deleteAll') => void; busy: boolean; response?: ReflectionResponse };
+  refresh: () => void; mutate: (action: 'import' | 'deleteAll') => Promise<ReflectionResponse | undefined>; busy: boolean; response?: ReflectionResponse };
 const Context = createContext<State | undefined>(undefined);
 const emptyMemory: ReflectionMemory = { request: { period: 'week', day: '' }, positions: { week: { period: 'week', day: '' }, month: { period: 'month', day: '' } } };
 
@@ -38,10 +38,11 @@ export function ReflectionProvider({ children, client = reflectionRecords }: { c
   // A new source identity hides every old snapshot synchronously on deletion/foreground refresh.
   }), [client, epoch, historyEpoch]);
   const mutate = useCallback((action: 'import' | 'deleteAll') => {
-    if (writing.current) return;
+    if (writing.current) return Promise.resolve(undefined);
     writing.current = true; sequence.current += 1; setBusy(true); setResponse(undefined); invalidateHistory('reflection');
-    void Promise.resolve().then(() => client.run(action, {})).then(result => setResponse({ client, value: result })).catch(() => {
-      setResponse({ client, value: { status: 'error', code: 'unavailable', storage: 'unknown', transfer: 'unavailable' } });
+    return Promise.resolve().then(() => client.run(action, {})).then(result => { setResponse({ client, value: result }); return result; }).catch(() => {
+      const result: ReflectionResponse = { status: 'error', code: 'unavailable', storage: 'unknown', transfer: 'unavailable' };
+      setResponse({ client, value: result }); return result;
     }).finally(() => {
       writing.current = false; sequence.current += 1; setBusy(false); invalidateHistory('reflection'); refresh();
     });
