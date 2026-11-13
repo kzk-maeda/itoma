@@ -41,6 +41,12 @@ const fs=require('node:fs');
    const box=await target.boundingBox();if(!box||box.height<44||box.x<0||box.x+box.width>width+1)throw Error('delete target inaccessible '+label);
   }
   await page.screenshot({path:`/tmp/itoma-settings-evidence/delete-actions-${colorScheme}-${width}.png`,fullPage:true});
+  for(let i=0;i<3;i++)await page.getByRole('button',{name:'‹ 戻る',exact:true}).click();
+  await page.getByRole('heading',{name:'設定',exact:true}).waitFor();
+  await page.getByRole('button',{name:'スクリーンタイム',exact:true}).click();
+  await page.getByRole('heading',{name:'スクリーンタイム',exact:true}).waitFor();
+  await enlarge();
+  await page.screenshot({path:`/tmp/itoma-settings-evidence/screen-time-${colorScheme}-${width}.png`,fullPage:true});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
   if(overflow||errors.length)throw Error(JSON.stringify({overflow,errors}));
   results.push({width,colorScheme,textScale:width===320?2:1,overflow,errors});await page.close();
