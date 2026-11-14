@@ -1,0 +1,130 @@
+{
+  "kind": "service-site-static-study",
+  "baseMain": "d57c68e",
+  "nativeOrOSVerified": false,
+  "browser": "155.0.8059.79",
+  "cases": [
+    {
+      "page": "service-site.html",
+      "width": 320,
+      "textPercent": 100
+    },
+    {
+      "page": "service-site.html",
+      "width": 320,
+      "textPercent": 200
+    },
+    {
+      "page": "service-site.html",
+      "width": 390,
+      "textPercent": 100
+    },
+    {
+      "page": "service-site.html",
+      "width": 390,
+      "textPercent": 200
+    },
+    {
+      "page": "service-site.html",
+      "width": 768,
+      "textPercent": 100
+    },
+    {
+      "page": "service-site.html",
+      "width": 768,
+      "textPercent": 200
+    },
+    {
+      "page": "service-site.html",
+      "width": 1440,
+      "textPercent": 100
+    },
+    {
+      "page": "service-site.html",
+      "width": 1440,
+      "textPercent": 200
+    },
+    {
+      "page": "privacy-guide.html",
+      "width": 320,
+      "textPercent": 100
+    },
+    {
+      "page": "privacy-guide.html",
+      "width": 320,
+      "textPercent": 200
+    },
+    {
+      "page": "privacy-guide.html",
+      "width": 390,
+      "textPercent": 100
+    },
+    {
+      "page": "privacy-guide.html",
+      "width": 390,
+      "textPercent": 200
+    },
+    {
+      "page": "privacy-guide.html",
+      "width": 768,
+      "textPercent": 100
+    },
+    {
+      "page": "privacy-guide.html",
+      "width": 768,
+      "textPercent": 200
+    },
+    {
+      "page": "privacy-guide.html",
+      "width": 1440,
+      "textPercent": 100
+    },
+    {
+      "page": "privacy-guide.html",
+      "width": 1440,
+      "textPercent": 200
+    },
+    {
+      "page": "support-guide.html",
+      "width": 320,
+      "textPercent": 100
+    },
+    {
+      "page": "support-guide.html",
+      "width": 320,
+      "textPercent": 200
+    },
+    {
+      "page": "support-guide.html",
+      "width": 390,
+      "textPercent": 100
+    },
+    {
+      "page": "support-guide.html",
+      "width": 390,
+      "textPercent": 200
+    },
+    {
+      "page": "support-guide.html",
+      "width": 768,
+      "textPercent": 100
+    },
+    {
+      "page": "support-guide.html",
+      "width": 768,
+      "textPercent": 200
+    },
+    {
+      "page": "support-guide.html",
+      "width": 1440,
+      "textPercent": 100
+    },
+    {
+      "page": "support-guide.html",
+      "width": 1440,
+      "textPercent": 200
+    }
+  ],
+  "errors": [],
+  "externalRequests": []
+}
