@@ -12,7 +12,7 @@ await p.goto(base+(process.env.ITOMA_SITE_QA_ROOT?'':pages[0]),{waitUntil:'netwo
 await p.screenshot({path:path.join(out,'home-desktop.png'),fullPage:true});await p.screenshot({path:path.join(out,'home-first-screen.png')});
 await p.getByRole('link',{name:'いとまの使い方'}).click();await p.waitForFunction(()=>location.hash==='#how-it-works');
 await p.getByRole('link',{name:'プライバシーポリシーを読む'}).click();await p.getByRole('heading',{name:'プライバシーポリシー',exact:true}).waitFor();
-await p.getByRole('navigation',{name:'このページの目次'}).getByRole('link',{name:'4. 削除と許可の取消',exact:true}).click();await p.waitForFunction(()=>location.hash==='#deletion');
+await p.getByRole('navigation',{name:'このページの目次'}).getByRole('link',{name:'4. 記録の削除、設定変更、許可の取消',exact:true}).click();await p.waitForFunction(()=>location.hash==='#deletion');
 await p.getByRole('link',{name:'記録の削除について確認する'}).click();await p.getByRole('heading',{name:/迷ったときに、.*戻れる場所。/}).waitFor();
 const faq=p.getByText('理由だけを削除すると、何が残りますか？',{exact:true});await faq.click();assert(await p.locator('details[open]').count()===1,'FAQ did not open');await faq.click();
 await p.getByRole('button',{name:'問い合わせ窓口の準備状況',exact:true}).click();await p.getByRole('dialog').waitFor();await p.keyboard.press('Escape');assert(!(await p.getByRole('dialog').isVisible()),'Escape failed');assert(await p.getByRole('button',{name:'問い合わせ窓口の準備状況',exact:true}).evaluate(el=>el===document.activeElement),'dialog focus not restored');
@@ -22,12 +22,25 @@ for(const page of pages){
  await p.goto(base+page,{waitUntil:'networkidle'});
  const links=await p.locator('a[href]').evaluateAll(es=>es.map(e=>e.getAttribute('href')));
  for(const href of new Set(links)){
-  const url=new URL(href,p.url());assert(url.origin===new URL(base).origin,'external link '+href);
+  const url=new URL(href,p.url());if(url.origin!==new URL(base).origin){assert(url.protocol==='https:'&&url.hostname==='www.apple.com','unapproved external link '+href);continue;}
   const res=await p.request.get(url.href.split('#')[0]);assert(res.ok(),'broken link '+url.href);
   if(url.hash){const html=await res.text();assert(html.includes('id="'+decodeURIComponent(url.hash.slice(1))+'"'),'missing anchor '+href);}
  }
  assert(await p.locator('form,input,textarea').count()===0,'unexpected user data collection');
  assert(await p.locator('h1').count()===1,'not single h1');
+ if(page==='privacy-guide.html'){
+  assert(await p.locator('.prose section h2').count()===9,'policy chapters missing');
+  const normalize=s=>s.replace(/\s/g,'');
+  const rendered=normalize(await p.locator('.prose').innerText());
+  const md=fs.readFileSync('/workspace/itoma/docs/privacy-policy-draft.md','utf8');
+  for(const line of md.split('\n')){
+   if(!line.trim()||line.startsWith('#')||line.startsWith('|'))continue;
+   const plain=line.replace(/^[-] /,'').replace(/\[([^\]]+)\]\(https:\/\/[^)]+\)/g,'$1').replace(/\*\*/g,'').trim();
+   assert(rendered.includes(normalize(plain)),'missing source paragraph: '+plain.slice(0,65));
+  }
+  for(const row of md.split('\n').filter(l=>l.startsWith('|')&&!l.includes('---'))){for(const cell of row.split('|').slice(1,-1)){assert(rendered.includes(normalize(cell)),'missing source table cell: '+cell.slice(0,60));}}
+ }
+
  await p.screenshot({path:path.join(out,page.replace('.html','')+'-desktop.png'),fullPage:true});
  for(const width of [320,390,768,1440]){
   await p.setViewportSize({width,height:1000});
