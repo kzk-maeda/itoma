@@ -23,7 +23,7 @@ function renderCoverage(report) {
     const match = value.match(/^(.+): (?:diff exceeds remaining input budget|diff unavailable \(binary, oversized, or no textual changes\)|GitHub diff may be truncated)$/);
     return match ? [match[1]] : [];
   }))];
-  const media = paths.filter(path => /\.(png|jpe?g|gif|webp|heic|pdf|ico|mp4|mov)$/i.test(path));
+  const media = paths.filter(path => /\.(png|apng|jpe?g|gif|webp|avif|svg|bmp|tiff?|heic|heif|pdf|ico|mp4|mov|webm)$/i.test(path));
   const text = paths.filter(path => !media.includes(path));
   const lines = [];
   if (text.length) {
