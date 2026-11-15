@@ -1,0 +1,248 @@
+{
+  "browser": "155.0.8059.79",
+  "cases": [
+    {
+      "screen": "home",
+      "width": 320,
+      "textPercent": 100
+    },
+    {
+      "screen": "home",
+      "width": 320,
+      "textPercent": 200
+    },
+    {
+      "screen": "home",
+      "width": 390,
+      "textPercent": 100
+    },
+    {
+      "screen": "home",
+      "width": 390,
+      "textPercent": 200
+    },
+    {
+      "screen": "home",
+      "width": 768,
+      "textPercent": 100
+    },
+    {
+      "screen": "home",
+      "width": 768,
+      "textPercent": 200
+    },
+    {
+      "screen": "home",
+      "width": 1440,
+      "textPercent": 100
+    },
+    {
+      "screen": "home",
+      "width": 1440,
+      "textPercent": 200
+    },
+    {
+      "screen": "choose",
+      "width": 320,
+      "textPercent": 100
+    },
+    {
+      "screen": "choose",
+      "width": 320,
+      "textPercent": 200
+    },
+    {
+      "screen": "choose",
+      "width": 390,
+      "textPercent": 100
+    },
+    {
+      "screen": "choose",
+      "width": 390,
+      "textPercent": 200
+    },
+    {
+      "screen": "choose",
+      "width": 768,
+      "textPercent": 100
+    },
+    {
+      "screen": "choose",
+      "width": 768,
+      "textPercent": 200
+    },
+    {
+      "screen": "choose",
+      "width": 1440,
+      "textPercent": 100
+    },
+    {
+      "screen": "choose",
+      "width": 1440,
+      "textPercent": 200
+    },
+    {
+      "screen": "intent",
+      "width": 320,
+      "textPercent": 100
+    },
+    {
+      "screen": "intent",
+      "width": 320,
+      "textPercent": 200
+    },
+    {
+      "screen": "intent",
+      "width": 390,
+      "textPercent": 100
+    },
+    {
+      "screen": "intent",
+      "width": 390,
+      "textPercent": 200
+    },
+    {
+      "screen": "intent",
+      "width": 768,
+      "textPercent": 100
+    },
+    {
+      "screen": "intent",
+      "width": 768,
+      "textPercent": 200
+    },
+    {
+      "screen": "intent",
+      "width": 1440,
+      "textPercent": 100
+    },
+    {
+      "screen": "intent",
+      "width": 1440,
+      "textPercent": 200
+    },
+    {
+      "screen": "review",
+      "width": 320,
+      "textPercent": 100
+    },
+    {
+      "screen": "review",
+      "width": 320,
+      "textPercent": 200
+    },
+    {
+      "screen": "review",
+      "width": 390,
+      "textPercent": 100
+    },
+    {
+      "screen": "review",
+      "width": 390,
+      "textPercent": 200
+    },
+    {
+      "screen": "review",
+      "width": 768,
+      "textPercent": 100
+    },
+    {
+      "screen": "review",
+      "width": 768,
+      "textPercent": 200
+    },
+    {
+      "screen": "review",
+      "width": 1440,
+      "textPercent": 100
+    },
+    {
+      "screen": "review",
+      "width": 1440,
+      "textPercent": 200
+    },
+    {
+      "screen": "records",
+      "width": 320,
+      "textPercent": 100
+    },
+    {
+      "screen": "records",
+      "width": 320,
+      "textPercent": 200
+    },
+    {
+      "screen": "records",
+      "width": 390,
+      "textPercent": 100
+    },
+    {
+      "screen": "records",
+      "width": 390,
+      "textPercent": 200
+    },
+    {
+      "screen": "records",
+      "width": 768,
+      "textPercent": 100
+    },
+    {
+      "screen": "records",
+      "width": 768,
+      "textPercent": 200
+    },
+    {
+      "screen": "records",
+      "width": 1440,
+      "textPercent": 100
+    },
+    {
+      "screen": "records",
+      "width": 1440,
+      "textPercent": 200
+    },
+    {
+      "screen": "settings",
+      "width": 320,
+      "textPercent": 100
+    },
+    {
+      "screen": "settings",
+      "width": 320,
+      "textPercent": 200
+    },
+    {
+      "screen": "settings",
+      "width": 390,
+      "textPercent": 100
+    },
+    {
+      "screen": "settings",
+      "width": 390,
+      "textPercent": 200
+    },
+    {
+      "screen": "settings",
+      "width": 768,
+      "textPercent": 100
+    },
+    {
+      "screen": "settings",
+      "width": 768,
+      "textPercent": 200
+    },
+    {
+      "screen": "settings",
+      "width": 1440,
+      "textPercent": 100
+    },
+    {
+      "screen": "settings",
+      "width": 1440,
+      "textPercent": 200
+    }
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "physicalDevice": false
+}
