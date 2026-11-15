@@ -293,7 +293,7 @@ const property = (context, expression) => expression.trim().split('.').reduce((v
 
 test('workflow checkout ignores a stale PR base and pins both jobs to the workflow revision', () => {
   const refs = [...workflow.matchAll(/^\s+ref: \$\{\{\s*(.*?)\s*\}\}$/gm)].map(match => match[1]);
-  assert.equal(refs.length, 2);
+  assert.ok(refs.length >= 2);
   for (const event of [{ pull_request: { base: { sha: BASE }, head: { sha: HEAD } } }, {}]) {
     const context = { github: { workflow_sha: MERGE_BASE, sha: MERGE_BASE, event } };
     for (const expression of refs) {

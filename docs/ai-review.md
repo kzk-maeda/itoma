@@ -1,94 +1,124 @@
 # OpenAI APIによるPRレビュー
 
-`AI code review`は、OpenAI Responses APIにPR差分・周辺コード・base側の開発ルールと設計資料・対象SHAのGitHub check結果を渡す、読み取り専用のレビュー工程です。アプリのバックエンドは追加しません。
+main向けPRの初回に`ai-review`を自動付与し、Decisions APIで影響を採点します。重要な変更・判定の不確実性・入力不足等がある場合だけ、既存のResponses APIによる本レビューへ進みます。
 
-AIの指摘は参考情報です。通常CI、Simulator/実機QA、人間の承認を別に確認します。Workflowが成功しても「レビュー処理が完了した」だけで、指摘なしやマージ可能を保証しません。自動修正・自動マージは行いません。
+初回以降のpushは過去の結果をstaleにし、自動でAPIを呼び直しません。再実行はPRコメントの`/ai-review`、再判定は`/ai-review reassess`です。通常CI・人間の承認・Simulator/実機QAは別の工程です。
 
-次期の改善案は[Decisions APIでレビュー要否を選別する設計](ai-review-triage.md)を参照してください。PR作成時の自動ラベル・事前採点・PRコメントの`/ai-review`による再実行は未実装で、以下の現行手順にはまだ反映されていません。
+設計の理由・参考事例・採点の定義は[選別の設計](ai-review-triage.md)に集約しています。閾値は未校正の初期値です。モック検証と、実APIの利用可否・モデル精度・費用の検証を分けて記録します。
 
 ## 初回設定
 
-1. このWorkflowをmainへマージする。`pull_request_target`と手動起動はmain側の定義を使います。PR内のWorkflow変更だけでは新しいレビュー処理に切り替わりません。
-2. GitHubの **Settings → Secrets and variables → Actions → Secrets** に、Repository Secret **`OPENAI_API_KEY`** を設定する。OpenAI APIを利用できるプロジェクトのキーを使用します。
-3. 必要なら **Variables** に **`OPENAI_REVIEW_MODEL`** を設定する。既定値は`gpt-5.4`です。Responses API、Structured Outputs、`reasoning.effort: low`に対応するモデルを選びます。APIの利用権限・利用上限はOpenAI側で設定します。
-4. リポジトリに`ai-review`ラベルを作成する。未作成の場合:
+1. 実装をmainへマージする。PRブランチのWorkflow変更だけでは、trusted mainの受付/実行処理は切り替わりません。
+2. Settings → Secrets and variables → ActionsにRepository Secret **`OPENAI_API_KEY`** を設定する。Decisions APIの`gpt-6-luna`と、本レビュー用モデルを利用できるプロジェクトのキーを使います。
+3. 本レビューのモデルはRepository Variable **`OPENAI_REVIEW_MODEL`** で指定する（例: `gpt-5.6-sol`、未設定時は`gpt-5.4`）。Responses API・Structured Outputs・`reasoning.effort: low`への対応が必要です。Decisions側はpolicyの`gpt-6-luna`を使用し、この変数を転用しません。
+4. **`ai-review`** ラベルを用意する（既存repoでは作成済み）。初回ラベル付与にはprepare jobの`pull-requests: write`、コマンド受付から実行への接続には`actions: write`を使用します。追加PATやGitHub用Secretは不要です。
 
-   ```bash
-   gh label create ai-review --repo kzk-maeda/itoma \
-     --description 'OpenAI APIによるPRレビューを有効化' --color 0E8A16
-   ```
+## 実行する
 
-`GITHUB_TOKEN`はActionsが発行するものを使用し、追加のGitHub用Secretは不要です。組織側でActionsによるPRコメント投稿を禁止している場合は、投稿用ジョブの`pull-requests: write`を許可する必要があります。
+### 初回の自動判定
 
-## 実行手順
+main向けPRの作成でラベルと初回状態を記録します。通常PRでは同じWorkflowの中で判定→必要時の本レビューへ接続します。GITHUB_TOKENで付けたラベルから別Workflowが起動することには依存しません。
 
-### ラベルで有効化
+- draftはラベルだけ付け、最初にreadyにした時点のSHAで1回だけ自動判定します。
+- forkにもラベルは付きますが、OpenAIを呼ぶ対象は同一repo・open・非draftに限定します。
+- 低スコアでもラベルは残します。ラベルがあることは、本レビュー実施・テスト成功・承認を意味しません。
+- 導入前の既存PRをpush/reopenしただけでは、新たな初回枠を作りません。必要ならコメントで明示要求してください。
 
-同一リポジトリからmainへ向けた、draftではないPRに`ai-review`を付けます。初回レビュー後も、そのラベルがある間はPRのpush、reopen、draftからreadyへの変更で再レビューします。同じPRの古い実行はキャンセルします。
+### PRコメントで本レビューを再実行
 
-ラベルを外すと以降の自動レビューを停止します。既に送信したAPIリクエストの課金は取り消せません。fork PR、draft、main以外へのPRは対象外です。
+対象PRの**Conversationの新しいコメント**に、次の1行だけを投稿します。
 
-### 手動実行
-
-Actions → **AI code review** → **Run workflow** で、ブランチに**main**、`pull_request_number`にPR番号を指定します。手動起動では`ai-review`ラベルは不要ですが、同一repo・main向け・open・draftでない、という条件は同じです。
-
-```bash
-gh workflow run ai-review.yml --repo kzk-maeda/itoma --ref main \
-  -f pull_request_number=123
+```text
+/ai-review
 ```
 
-main以外を選んだ手動実行はスキップします。キー未設定、APIの認証・利用上限エラーは`failed`として記録されます。設定修正後に再実行します。
+投稿者の現在のwrite/maintain/admin権限を確認した後、Decisionsを迂回して本レビューを1回実行します。ラベルがなければ付与するため、初回に低スコアで省略されたPRも対象にできます。fork/draft/対象外branch/巨大差分等の実行資格は迂回しません。
 
-## 結果の確認
+初回判定からやり直したい場合:
 
-- PRの **AIコードレビュー** コメントを確認する。同じbotコメントを更新し、重要度P0〜P3、ファイル、LEFT/RIGHTの行、問題が発生する条件・根拠・修正案を表示します。コードリンクは対象SHAへ固定します。
-- ActionsのJob summaryと、14日保持の`ai-review-<run_id>-<run_attempt>` artifactを確認する。`review.json`に対象head/base/差分のmerge base、モデル、response ID、トークン使用量、チェック結果、入力省略、構造化指摘を記録し、`review.md`に表示用の結果を保存します。
-- `completed`はAPI応答と形式・位置の検証が完了した状態、`failed`はAPIエラー・拒否・打ち切り・不正な出力など、`skipped`は対象外または収集中の更新です。投稿直前にhead/base、ラベル、PR状態を再確認し、古くなった結果はPRへ投稿せず、artifactだけに残します。
-- CLI起動前の失敗などでartifactを生成できなかった場合、投稿jobはスキップします。artifactがある場合はIDで受け渡すため、failed-jobsだけを再実行してもrun attemptの違いで名前がずれません。
+```text
+/ai-review reassess
+```
 
-CI結果は**収集時点**のcheck名・status・conclusionです。未完了・未実施を成功扱いしません。テストの生ログ、動画、端末画面をAIが検査する処理は含みません。過去のコメントは次の実行まで残るため、必ずコメント中のSHAを確認します。
+Decisionsを1回呼び、その結果に応じて本レビューします。どちらも権限のある人が**新しいコメント**で要求します。同じコメントの編集、引用、コードブロック、説明の併記、未知の引数では起動しません。通常Issueや差分上のinline review commentも対象外です。
 
-## 入力範囲と上限
+### ラベルで要求/停止
 
-- 1〜100変更ファイルのPRが対象です。100件を超えるPRやテキスト差分がないPRは、未レビューのまま成功とせず失敗します。
-- JSON入力は最大160,000 bytes。差分を優先し、周辺の変更ファイル本文は1件最大20,000 bytesで読みます。大きすぎる差分・バイナリ・取得できない本文などは、丸ごと省略して制約として表示します。GitHub側の差分打ち切りも検出して表示します。
-- 変更ファイル内の直接のローカルimport（相対パス・`@/`）から最大6指定の関連コードをheadの固定SHAで読みます。依存グラフ全体や外部ライブラリは読み込みません。
-- `AGENTS.md`、`docs/system/README.md`、UI/nativeに関係する設計資料、該当ディレクトリの`AGENTS.md`をbaseの固定SHAから取得します。ネストしたAGENTS探索は20パスまでです。提案と採用済み仕様を区別するよう指示しています。
-- 実行1回につきAPIリクエストは1回、自動リトライなし、最大出力8,000 tokens（推論を含む）、API待機4分、レビューjob全体10分です。指摘は最大10件。上限は金額の固定を保証しないため、実際の使用量をartifactとOpenAIの利用状況で確認します。
+人間が`ai-review`を追加・付け直すと、本レビューを1回要求します。既にラベルがある場合は一度外して付け直すか、コメントを使ってください。
 
-## 実装・更新箇所
+ラベルを外すと現在の要求を取り消し、新しいAPI呼び出しや古い結果の投稿を抑止します。その後のpushではラベルを復活させません。既に送信されたAPIリクエストの課金は取り消せません。
+
+### Re-runと保守用起動
+
+課金する処理は、同じrunのRe-runでは再送しません。失敗後にAPIからやり直すときは、新しい`/ai-review`または`/ai-review reassess`コメントを投稿します。投稿jobだけの再実行は、元のartifact IDを使って結果を再利用します。
+
+Actionsの手動起動は保守用に残しています。mainを選び、PR番号と`force`/`reassess`を指定します。comment IDを指定しない直接起動は、実際のactorのwrite権限を検証します。通常の再実行操作はPRコメントです。
+
+## 結果を見る
+
+PRの**AIレビュー**コメント、Actionsのsummary、14日保持のartifactを確認します。`review.json`はversion 2で、要求・判定・本レビューを分けて保存します。
+
+| 状態 | 意味 |
+| --- | --- |
+| `claimed` | 要求を登録済み。処理中、または後続jobの起動失敗等で未完了 |
+| `pending_draft` | 最初のready待ち。OpenAIは未実行 |
+| `skipped_low` | 判定条件を下回ったため**本レビュー未実施** |
+| `reviewed` | 本レビューの形式・指摘位置まで検証済み。PR承認ではない |
+| `triage_failed` | キー未設定、認証/利用上限/通信エラー、不正な判定等。本レビューへ自動転送しない |
+| `review_failed` | 本レビューのAPIエラー・拒否・打ち切り等 |
+| `manual_required` | 100ファイル超、テキストなし、API再送禁止のRe-run等。分割/人間の確認/新しい要求が必要 |
+| `stale` / `cancelled` / `unsupported` | 更新・取消・対象外等。古い結果を現在のレビューとして使わない |
+
+結果にはhead/base SHA、元の要求者とコメントリンク、workflow SHA、policy version/hash、判定モデルと本レビューモデル、理由コード・軸別スコア・confidence・省略範囲を記録します。成功応答から取得できたusageとrequest/response IDも保存します。
+
+CI結果は本レビューが収集した時点のcheck名・status・conclusionです。テストの生ログ、動画、画面をAIが検査する処理ではありません。指摘0件と、本レビュー未実施を区別してください。
+
+## 判定ポリシーを更新する
+
+正本は[triage-policy.json](../.github/ai-review/triage-policy.json)です。変更したPR自身にはtrusted workflow版の旧policyを適用します。
+
+- 影響・範囲・重要境界を0〜4で採点。重みは0.40/0.30/0.30、100点へ換算した閾値は50。
+- 重要パスはスコア下限70。rename前のパスも照合します。
+- 最小confidence 0.70未満、高影響側の確率合計0.30以上、refusal/入力不足等は本レビュー対象へ昇格します。
+- 不正な応答やAPI障害は判定失敗とし、0点で補完したり、全件本レビューへ送ったりしません。
+- 低スコアは事故確率やマージの安全性を表しません。閾値は未校正と表示し、変更時はpolicy versionと評価結果を更新します。
+
+判定factsは48 KiB、リクエスト全体は64 KiB、1要求1リクエスト、待機30秒、自動リトライなし。本レビューは入力160,000 bytes、最大出力8,000 tokens、待機4分の既存上限を維持します。これはitomaの上限で、APIサービス自体の上限値ではありません。
+
+## 実装・保守箇所
 
 | 対象 | 正本 |
 | --- | --- |
-| 起動条件・権限・モデル既定値・Secret接続 | [ai-review.yml](../.github/workflows/ai-review.yml) |
-| レビュー観点・日本語出力・根拠の要件 | [prompt.md](../.github/ai-review/prompt.md) |
-| APIの構造化出力契約 | [schema.json](../.github/ai-review/schema.json) |
-| 入力収集・API通信・位置検証・投稿前確認 | [ai-review.mjs](../scripts/lib/ai-review.mjs) |
-| artifact・summaryの保存と終了コード | [CLI](../scripts/ai-review.mjs) |
-| モックAPIによる回帰検証 | [ai-review.test.mjs](../tests/ai-review.test.mjs) |
+| 初回・手動・取消のjob接続と権限 | [ai-review.yml](../.github/workflows/ai-review.yml) |
+| コメント受付と認可後のdispatch | [ai-review-command.yml](../.github/workflows/ai-review-command.yml) |
+| rubric・重み・閾値・重要パス | [triage-policy.json](../.github/ai-review/triage-policy.json) |
+| 状態・要求・コメント認可 | [ai-review-requests.mjs](../scripts/lib/ai-review-requests.mjs) |
+| 軽量収集・Decisions・数値検証 | [ai-review-triage.mjs](../scripts/lib/ai-review-triage.mjs) |
+| 選別から本レビュー・投稿への接続 | [ai-review-pipeline.mjs](../scripts/lib/ai-review-pipeline.mjs) |
+| 本レビューの観点・出力 | [prompt.md](../.github/ai-review/prompt.md)、[schema.json](../.github/ai-review/schema.json)、[実装](../scripts/lib/ai-review.mjs) |
+| artifact/summary/終了コード | [実行CLI](../scripts/ai-review.mjs) |
 
-追加依存のないNode.js 24のスクリプトです。OpenAI/GitHub APIのURLは固定し、モデルにツールやシェル実行権限を与えません。Secret付きjobで実行するコードとプロンプトはtrusted baseから取得し、PR側のソースや依存スクリプトを実行しません。入力するPR本文・ソース・文書は命令として扱わないように指示します。
+追加依存のないNode.js 24で実装しています。実行コードは常に`github.workflow_sha`へ固定し、PRのコードを実行しません。受付/prepare/publishはOpenAIキーを持たず、API実行jobはGitHub読み取り権限だけを持ちます。
 
-実行コードは両jobとも`github.workflow_sha`、つまり実行中のWorkflow定義と同じコミットから取得します。PRイベントの`base.sha`には導入前の古いSHAが残る場合があるため、実行コードの取得には使用しません。レビュー対象のhead/baseや仕様資料の取得SHAとは別の値です。
+初回枠と要求のwatermarkは、botコメントの機械可読状態に保存します。コメント削除/破損から自動枠を未使用と推測しません。破損状態の自動修復はしません。運用者が過去runを確認し、破損コメントの撤去と新しい明示要求で復旧します。コメント削除は過去の重複排除情報も失うため、通常の停止はラベル削除で行います。
 
-API呼び出しjobはGitHub読み取り権限のみ、投稿jobはOpenAIキーを受け取らず、PRコメントの書き込み権限を持ちます。HTTPエラー本文、APIキー、生の入力全文はartifactやログへ保存しません。PRコード・文書・check情報がOpenAI APIへ送られることは、このレビュー処理の前提です。`store: false`を指定しますが、API側のデータ取り扱いは契約と設定に従います。
+無関係なコメントは共有concurrencyへ入れず、受付後とAPI/投稿直前に元コメント・現在の投稿者権限・対象SHA・要求generationを再確認します。state更新とGitHub上のPR更新は原子的ではないため、分散的なexactly-onceを保証したとは扱いません。
 
-### `MODULE_NOT_FOUND` → `Artifact not found`の調査
+HTTPエラー本文、APIキー、入力全文はログやartifactへ保存しません。PRのコードや文書をOpenAIへ送信することは本処理の前提です。本レビューは`store: false`を指定し、Decisionsには未対応のResponses用パラメータを送信しません。
 
-まず`review`jobの最初の失敗を確認します。`scripts/ai-review.mjs`がない場合は、checkoutしたSHAにWorkflowとスクリプトが揃っているかを確認します。この起動失敗に続くartifact未生成は、その失敗の結果であり、OpenAI APIにはまだ到達していません。
-
-Workflowの修正をmainへマージした後は、Actionsからmainを指定して**新しい手動実行**を起動するか、`ai-review`ラベルを付け直します。古いrunのRe-runは古いWorkflow定義を使うため、Workflow修正の確認には使いません。
-
-Workflow、入力収集、出力契約を変えるときは、モックテストも更新します。
+## 検証・障害対応
 
 ```bash
 npm run test:ai-review
 ```
 
-通常の`quality` CIでもこのコマンドを実行します。API通信、Secret未設定、出力検証、古いSHAの投稿抑止、PR状態の再確認をテストし、実APIの動作確認・課金結果とは分けて記録します。
+通常のquality CIでも実行します。API・GitHubのモックによるルーティング/イベント/認可/重複排除/鮮度の検証であり、モデルの実際の精度検証ではありません。
 
-## 公式資料
+実APIの利用可否、実PR30〜50件の人手による正解付け、取りこぼし/費用の測定、閾値の校正は[検証Issue #202](https://github.com/kzk-maeda/itoma/issues/202)で管理します。未校正の初期値を最適・実証済みと扱いません。
 
-- [Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create)
-- [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
-- [既定モデル GPT-5.4](https://developers.openai.com/api/docs/models/gpt-5.4)
+- `MODULE_NOT_FOUND`の後に`Artifact not found`が出たら、最初の失敗とcheckout SHAを確認する。Workflow修正後は古いrunをRe-runせず、新しいmainの実行を起動する。
+- `claimed`のままならprepare後のjobを確認する。artifactがなければ投稿jobを起動せず元の失敗を残す。復旧後は新しいコメントを使う。
+- `triage_failed`はDecisionsのキー/モデル利用可否/利用上限/応答形式を確認する。Responsesが利用可能なら、明示の`/ai-review`で判定を迂回できる。
+- `AI review command`が`rejected`ならコメントの場所・本文・投稿者の権限・PRの実行資格を確認する。引用や編集で再送せず、新しい単独行コメントにする。
+
+公式資料: [Decisions guide](https://developers.openai.com/api/docs/guides/decisions)、[Decisions reference](https://developers.openai.com/api/reference/resources/decisions/methods/create)、[Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create)。
