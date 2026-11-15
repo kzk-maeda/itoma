@@ -55,7 +55,7 @@ push → npm ci → 型チェック・lint・テスト → demo:package
 ```
 
 - 配信workflow自身が全チェックに成功した成果物だけを使います。ローカルでビルド済みである必要はありません。
-- 同じブランチの実行は `concurrency` で直列化し、進行中のアップロードを新しいpushで中断しません。配信直前に先頭SHAを照合し、古い実行の再実行や削除済みブランチの配信はスキップします。別ブランチは並列配信できます。
+- 配信・削除・定期回収は共通の `itoma-demo-resource-mutations` concurrencyで直列化します。ブランチ名を復元できない古い孤立環境の回収も、配信と競合させないためです。別ブランチも待機します。`cancel-in-progress: false` と `queue: max` で進行中処理を中断せず、最大100件のpendingを保持します（上限を超える実行はキャンセル）。[GitHubのqueue仕様](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)に従います。配信直前に先頭SHAを照合し、古い実行や削除済みブランチの配信はスキップします。既存デモブランチにも更新後mainを取り込んで、このworkflowを反映してください。
 - `actions/checkout` のGit資格情報は保持せず、`GITHUB_TOKEN` はcontents:readのみ。Cloudflareトークンは配信ステップだけに渡します。
 - この自動化はリポジトリへpushできるメンバーを信頼する構成です。配信スクリプトもブランチのコードを実行します。未信頼コードを取り込むブランチへpushする前にレビューし、fork PRのコードを資格情報付きで実行する `pull_request_target` 等は使いません。
 - 本人限定Accessは既存ホスト全体に適用されます。配信トークンにはAccessを変更する権限を付けません。
@@ -170,11 +170,11 @@ git push origin --delete demo/example
 GitHubの「Delete branch」でも同じです。PRのclose/mergeだけでは撤去せず、リモートのブランチが実際に削除された時に動きます。GitHubのマージ後ブランチ自動削除を利用している場合も、発生したdeleteイベントが対象です。過去の削除イベントには遡って動きません。
 
 - タグ・main・default branchを除外し、削除されたブランチ名は `github.event.ref` から取得。削除済みブランチのコードはcheckoutせず、default branchのコードとNode標準モジュールだけを実行します。
-- 配信と同じ `deploy-demo-refs/heads/<branch>` のconcurrencyで直列化します。削除pushを配信対象から除外し、後続イベントで進行中のアップロードを中断しません。
+- 配信・定期回収と同じ `itoma-demo-resource-mutations` のconcurrencyで直列化します。削除pushを配信対象から除外し、後続イベントで進行中のアップロードを中断しません。pendingは最大100件まで保持します。
 - GitHub APIでブランチの不存在を確認し、同名ブランチが再作成されていればスキップ。各削除の前にも確認し、途中で再作成されていたら残りの削除を止めます。
 - 指定アカウントの `kzk-maeda.com` zoneのみを参照します。branch-keyに完全一致する2本のRouteとWorker名を照合し、Routeが他Workerを向く、対象Workerに別パスがある、Custom Domainや他リソースの参照がある場合は削除前に停止します。
 - Route IDの現在の所有先を再確認してから削除し、その後Workerと関連Versionを削除します。強制削除は使いません。共通Worker `itoma-demo`・DNS・Custom Domain・Access・他ブランチは削除しません。
-- 削除後にWorker・Routeの不存在をAPIで確認し、Actions Summaryへ対象と結果を記録。存在しないリソースは削除済みとして扱い、部分失敗からも再実行できます。APIの403・500等を不存在として処理しません。
+- 削除後にWorker・Routeの不存在をAPIで確認し、Actions Summaryへ対象と結果を記録。最初からリソースがない場合は `absent` と表示し、実際の削除 `deleted` と区別します。部分失敗からも再実行できます。APIの403・500等を不存在として処理しません。
 - 使用するSecret/Variableは配信と同じです。既存トークンにWorkersの削除権限と対象zoneのWorkers Routes Writeが必要です。DNSやAccessの変更権限は追加しません。
 
 Actionsの中断・キュー入替・API障害で完了しなかった場合は、対象実行のRe-run failed jobs、または下記の手動実行で復旧します。新しく同じブランチを作成した場合は削除せず、通常のpush配信を優先します。ブランチ再作成のタイミングによって一部Routeだけが削除された場合も、次の配信でRouteを再設定します。
@@ -198,6 +198,18 @@ Actions → **Cleanup demo** → **Run workflow** を開きます。
 4. 該当パスがデモを返さないことと、別ブランチが引き続き表示されることを確認する。
 
 自動撤去導入前から残る環境も、削除済みブランチ名を指定する手動実行で整理できます。Worker・Routeの上限と費用を考慮して不要環境を確認します。
+
+### 削除イベントの取りこぼし・導入前の環境の定期回収
+
+`Reconcile demos`（`.github/workflows/reconcile-demos.yml`）は毎時43分に、対象アカウントのWorkersと対象zoneのRoutesをGitHubの全現存ブランチと照合します。予約済みの `itoma-demo-<readable>-<12桁hash>` 名に対応するブランチがない場合だけ、既存cleanupの所有・参照照合を通して撤去します。名前から元のブランチを推測せず、各現存ブランチから計算した完全なkeyで比較します。過去の `feat/`・`docs/`、ローカル配信や、Workerだけ／Routeだけが残った部分失敗も対象です。
+
+- `itoma-demo` 共通一覧、main/default branch、現存ブランチ、予約名以外のWorkerは保持します。PRがmerge/closeされていてもGitブランチが残っていれば削除しません。
+- GitHub・Cloudflareの一覧を最後まで取得し、default branchが含まれない一覧や取得失敗は撤去の根拠にしません。各削除直前にブランチを再照合し、再作成された場合は停止します。共有参照やRouteの所有不一致も失敗として残し、強制削除はしません。
+- Secret/Variableは既存のものを使い、実行コードはdefault branchから取得します。依存のインストールや発見したデモブランチの実行は不要です。定期実行後は既存の一覧更新workflowも起動します。
+- 手動確認は Actions → **Reconcile demos** → **Run workflow**（main）で `dry_run=true` が標準です。SummaryとJSONの対象を確認し、実行する場合だけ `dry_run=false` を指定します。個別復旧には従来の **Cleanup demo** も使えます。
+- 一部の候補で拒否・API失敗があれば他の安全な候補を処理した後、jobを失敗にします。失敗を空の成功へ変換しません。定期実行の遅延・キュー上限・途中中断はあり得るため、Summaryを確認し、必要なら再実行します。
+
+Issue [#205](https://github.com/kzk-maeda/itoma/issues/205)。mainへのマージ後に定期実行が有効になります。ローカルでの実API照合と、GitHub Actionsのスケジュール実行の成立は別に確認します。[今回の実リソース変更](cloudflare-resources.md#2026-11-15の残存環境調査と撤去)を参照してください。
 旧版へ戻す場合は、元の名前のブランチで対象コミットを再パッケージ・配信します。ブランチ名を変えるとURLも変わります。SHAだけのdetached checkoutで配信しません。
 
 ## リソース・検証範囲
@@ -218,7 +230,7 @@ Actions → **Cleanup demo** → **Run workflow** を開きます。
 
 ### 更新と配信
 
-`.github/workflows/demo-index.yml` はmainの信頼済みコードだけを使います。Deploy demo / Cleanup demo完了後、15分おき、main上の一覧関連ファイル変更時、または手動実行で更新します。Cleanup demoはPR #33で追加されるworkflow名に対応しています。
+`.github/workflows/demo-index.yml` はmainの信頼済みコードだけを使います。Deploy demo / Cleanup demo / Reconcile demos完了後、15分おき、main上の一覧関連ファイル変更時、または手動実行で更新します。
 
 1. 既存の `CLOUDFLARE_ACCOUNT_ID`・`CLOUDFLARE_API_TOKEN` とGitHubの読取トークンで対象zoneのRoutes、専用Workers、Gitブランチ・PRを照合。
 2. `scripts/build-demo-index.mjs` で静的HTMLを `dist/demo-index/` へ生成。秘密情報は出力しません。

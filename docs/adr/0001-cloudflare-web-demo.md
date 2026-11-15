@@ -4,6 +4,7 @@
 - 検討Issue: https://github.com/kzk-maeda/itoma/issues/28
 - 自動撤去の追加実装Issue: https://github.com/kzk-maeda/itoma/issues/32
 - 自動撤去の実装PR: https://github.com/kzk-maeda/itoma/pull/33
+- 孤立デモの定期回収: https://github.com/kzk-maeda/itoma/issues/205 （本ADRの状態はProposedのまま）
 - 決定PR: 初期提案 https://github.com/kzk-maeda/itoma/pull/29 （マージ済み、状態はProposed）。ブランチ別パス・Actions配信は https://github.com/kzk-maeda/itoma/pull/30 でレビュー
 - 採用日: 未定（人間のレビュー・採用PRのmainへのマージ後に記載）
 - 関連・置換するADR: なし（初回）
@@ -186,3 +187,9 @@ CIでの配信資格情報、自動PRプレビュー、拒否対象メールの�
 ### 配信prefixの制限と既存環境
 
 `demo/**` の制限は新しい配信に適用し、既存の非demoブランチ環境は自動撤去しない。撤去のprefixは限定せず、これまでの環境の終了処理を保つ。既存ブランチが古いworkflowを持っている場合は更新後mainの取込みが必要。過去の実行やリソース記録は当時の仕様の証拠として残す。
+
+### 孤立デモの定期回収（#205・レビュー対象）
+
+deleteイベントは導入前の削除や取りこぼしを再送しないため、毎時の照合で補完する。対象アカウント内の予約済みbranch Worker名・専用Routeと、全現存Gitブランチから計算したkeyを照合し、対応ブランチがないものだけを既存の厳格な撤去処理へ渡す。PRの終了だけでは撤去しない。共通一覧・現存ブランチ・別用途リソースは保持し、一覧取得失敗・共有参照・所有不一致では削除しない。
+
+元ブランチを復元できないlegacy Workerもあるため、配信・個別撤去・定期回収のリソースjobは共通concurrencyと最大100件のpending queueを使う。別ブランチの配信も直列になるトレードオフを採る。ブランチ再作成は各削除前に再照合し、新しいbackend・DB・Secret・DNS/Access変更は追加しない。scheduleの成立はマージ後の実行で確認する。2026-11-15の実API調査・既存cleanupでの孤立1件撤去・新処理dry-runは[リソース記録](../cloudflare-resources.md#2026-11-15の残存環境調査と撤去)へ分けて記録する。
