@@ -32,3 +32,11 @@ test('only the selected reference and query go to native, with no reason text in
   expect(history).toHaveBeenCalledWith('page', JSON.stringify({ kind: 'reason', day: '2026-11-09' }));
   expect(result.page?.rows).toHaveLength(1);
 });
+
+test('grouped operation metadata is allowlisted without exposing internal event payloads', () => {
+  const response = parseHistoryResponse(JSON.stringify({ status: 'ok', storage: 'ready', page: { ...page,
+    grouping: 'command', rows: [{ key: id, at: 90, updatedAt: 120, action: 'requestTemporaryGrant', status: 'succeeded', commandID: id, grantStatus: 'active', internalEvents: [{ body: 'private' }] }] } }));
+  expect(response.page?.grouping).toBe('command');
+  expect(response.page?.rows[0]).toEqual({ key: id, at: 90, updatedAt: 120, action: 'requestTemporaryGrant', status: 'succeeded', commandID: id, grantStatus: 'active' });
+  expect(JSON.stringify(response)).not.toContain('private');
+});

@@ -47,3 +47,24 @@ DESIGN原則1/3/4/5、U07/U08、UI22〜UI26/UI30/UI32/UI35/UI36に対応する�
 8. Light/Dark、長文、日本語日付入力/keyboard、最大Dynamic Type、VoiceOverの情報順と状態、戻るgesture、往復100回の購読/接続/メモリを実測する。
 
 これらの未実施を成功にせず、実機QA Issueへ結果を記録する。#131のOS成立・App Groupsゲートも保持する。
+
+
+## 一時解除の操作単位での表示（#207）
+
+修正対象：`fix/choice-history-requests`。sourceを含むnative buildが必要（private History5への移行を含む）。過去のビルドは本修正に対してstale。実機の結果は未記入で、自動検証と分ける。
+
+実機確認：
+1. 更新前に1回の解除で複数行となった履歴がある状態から、DBを消さずに更新する。操作一覧で同じ要求が1件になり、保存した理由を読めること。
+2. 架空の理由で一時解除を1回確定→ホーム→「あなたの選択の記録」。新しい解除要求のカードが1件だけ増えること。受付中・完了・解除の反映状態を独立した要求として並べないこと。
+3. 早期終了または期限後再制限→再表示。元の要求カードの保存済み状態/最後の記録が更新され、解除要求のカードが増えないこと。不明や失敗を完了として隠さないこと。
+4. 新しい解除を同じ理由で再度確定する。異なる要求は2件として残ること。理由タブと操作タブは別の表示であること。
+5. 日付絞込と40件の前後移動で同一要求が別ページへ重複しないこと。日付をまたいだ終了でも、操作の一覧位置は最初の記録の日のままであること。
+6. 理由のみ削除→操作の1件表示を保ち本文を隠す。操作履歴削除→取込/再起動しても古い要求が復活しないこと。削除中に届いた新しい記録は既存cutoff契約に従う。
+
+自動検証は実CommandService＋一時SQLiteのimport/read、逆順取込/時計巻戻り、42操作×3eventの前後ページ、schema4移行/rollback、削除cutoff、実Provider/画面の更新・理由閲覧を対象とする。fake OS adapterの成功は実機Shieldの成功を意味しない。
+
+本修正のローカル結果：Storage143、Control106（実サービスで解除→期限終了→再制限の3eventを1カードへ投影）、Jest25 suites/208、tsc・Lint、demo20、iOS tools18、expo-doctor20/20がPASS。最初のcold Jest実行は既存テストの5秒timeoutで失敗し、全suite実行で通過。初回doctorのcache書込/外部接続エラーはtask-local cacheとNodeの環境proxy設定で解消した。Web exportは別worktreeのMetro cacheをclearし、既存のstatic demo出力設定を使って生成した。
+
+Linux Chromiumで320/390/768px × Light/Dark、320pxは文字200%、Reduce Motionを検証。1カード・理由入口1個、横overflow/JS例外なし、12画像。画像は合成native応答で、実機のOS結果ではない。[Light](choice-history/light.png) / [Dark](choice-history/dark.png)、[結果](choice-history/browser-results.json)、[入力/画像digest](choice-history/provenance.json)、[一時route](choice-history/proof-route.tsx.txt)、[操作スクリプト](choice-history/browser-check.cjs.txt)。一時routeは製品sourceから削除済み。実機のVoiceOver/Dynamic Type/移行/OS操作と最大容量の移行時間は未検証。
+
+DESIGN原則1/3/4/5、U03/U07、UI22〜26/UI35、RF07/RF08/RF10を参照。本人の操作を見つけ、保存した結果と理由を確認するため、日時→保存済み状態→解除状態→理由の順を維持。既存テーマ/Panel/文字/ボタンを再利用し、処理段階を別の要求と誤認させるカードの重複を解消する。

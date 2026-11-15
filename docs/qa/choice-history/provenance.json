@@ -1,0 +1,25 @@
+{
+  "baseCommit": "0c2ec4ead42625c322c60087d775d65adb162e40",
+  "kind": "synthetic native DTO / production parser, provider and screen / Linux Chromium",
+  "inputs": {
+    "src/components/flow/history.tsx": "e61358485a12b1cabad7402c79fd36b4f5fb0cdc5e962ec22a8838b9069e919a",
+    "src/state/history.tsx": "6615269b555e3e08d16e1702ae14914de08b275770261082fd6bba87d216ef03",
+    "src/components/flow/ui.tsx": "ee668abc950055e03010e6124e2cf59e1da50adf668106ca244083c92e9d6602",
+    "modules/itoma-native/src/history.ts": "f80aa132c5a50f6be8067d1a898b61fc72240f783a62db7b4dc00a5129e883db",
+    "src/constants/theme.ts": "4ac603b648bb90274a99fa4ebf2666f13d81dbeda143d18d82b11fbc0b747101"
+  },
+  "images": {
+    "card-dark-320.png": "39be410aa18eed8c8305455150691eaed7c12f051b9c8d4424a5082648b78e2b",
+    "card-dark-390.png": "c46335a53090b364d9209b4e1a38fc47095d3e557910d05aa45d67ae107e9233",
+    "card-dark-768.png": "b2dbcd9ca508b459bd06701931617f67fec06cdb03644d063730ca1731cf25fe",
+    "card-light-320.png": "7de5e2f70545afd9715d71caa8595684a8c3315a168290948ce26c8446c9b183",
+    "card-light-390.png": "cb14676a2ec704b295c20909411545571e8d239a0db91053b8629a5eac6ccfed",
+    "card-light-768.png": "70f9888c1c7d48d08d9e933c81c3036cae866aa0ec8628cdb3a714fa92cce688",
+    "top-dark-320.png": "c96f11dc02acb4016b43cd72daa898ab01d30967454558ffdad04bbc3b6d3d1c",
+    "top-dark-390.png": "95cb53ff7c4cf6f8fb59290b2b97260d7090d1925a506deb1b8c781effeb2978",
+    "top-dark-768.png": "1fb56f719cd8e4c9f5abb6efe775c72a848b405a3c846f89044149410bc35eb6",
+    "top-light-320.png": "aa1c7e78a50494b2654496a17f1ebf8be85fb14e0a8dcb1f1b2e224415b2cbe4",
+    "top-light-390.png": "37f43b3b5091d992d3ca5c537028f7d324ff7f95ad31bb4e5abee9e099c4f34e",
+    "top-light-768.png": "460991df0ca99e893fa1c682d5e44a7a8a73c6933472ee10f65eb3997f3f29bf"
+  }
+}

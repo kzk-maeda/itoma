@@ -1,0 +1,23 @@
+import { useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
+import { HistoryScreen } from '@/components/flow/history';
+import { ScreenTimeProvider } from '@/state/screen-time';
+import { HistoryProvider } from '@/state/history';
+import { createHistoryClient } from '../../modules/itoma-native/src/history';
+import { unavailableSnapshot } from '../../modules/itoma-native/src/screen-time';
+const control = { run: async () => ({ status: 'ok' as const, impacts: [], snapshot: unavailableSnapshot('simulator') }) };
+const id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const history = createHistoryClient('ios', () => ({ apiVersion: 1, historyVersion: 1, history: async () => JSON.stringify({
+  status: 'ok', storage: 'ready', page: {
+    revision: '3', asOf: 1794726600, timeZone: 'Asia/Tokyo', grouping: 'command',
+    rows: [{ key: id, at: 1794726000, updatedAt: 1794726300, action: 'requestTemporaryGrant', status: 'succeeded', commandID: id, grantStatus: 'reconciled', expiresAt: 1794726300 }],
+    logicalBytes: '2000', warningBytes: '83886080', maximumBytes: '104857600', warningReached: false, limitReached: false, incomplete: false, transfer: 'current',
+  },
+}) }));
+export default function ChoiceQA() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { setReady(true); }, []);
+  return <View style={{ flex: 1 }}><Text>検証用：合成native応答・Web表示（実機記録ではありません）</Text>
+    {ready && <ScreenTimeProvider client={control}><HistoryProvider client={history}><HistoryScreen /></HistoryProvider></ScreenTimeProvider>}
+  </View>;
+}

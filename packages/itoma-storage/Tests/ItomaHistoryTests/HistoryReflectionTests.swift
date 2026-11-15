@@ -203,7 +203,7 @@ private func reflectionReason(_ history: HistoryRepository) throws -> CommandID 
 @Test func reflectionSchemaThreeMigrationPreservesReasonAndStartsWithoutInventedPast() throws {
     let f = try ReflectionFixture(); defer { f.remove() }
     let command = try reflectionReason(f.history); try f.history.close()
-    try reflectionSQL(f.historyURL, "DROP TABLE reflection_facts; DROP TABLE reflection_sources; DROP TABLE reflection_state; PRAGMA user_version=3")
+    try reflectionSQL(f.historyURL, "DROP TABLE history_choice_index; DROP TABLE reflection_facts; DROP TABLE reflection_sources; DROP TABLE reflection_state; PRAGMA user_version=3")
     #expect(throws: HistoryError.unsupportedSchema(3)) { try HistoryRepository.open(at: f.historyURL, capacity: HistoryCapacityPolicy(warningBytes: 1_000, maximumBytes: 10_000)) }
     let migrated = try HistoryRepository.migrate(at: f.historyURL, capacity: HistoryCapacityPolicy(warningBytes: 1_000, maximumBytes: 10_000))
     defer { try? migrated.close() }

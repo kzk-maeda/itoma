@@ -50,9 +50,11 @@ export function HistoryScreen() {
         <Button label="前の40件へ" secondary disabled={state.busy || !page.next} onPress={() => { if (page.next) state.move(page.next, 'older'); }} />
       </View>
       {!page.rows.length && <Body>この範囲に保存された記録はありません。</Body>}
+      {page.grouping === 'command' && <Body muted>同じ操作の経過は1件にまとめ、保存済みの最新の状態を表示しています。</Body>}
       {page.rows.map((row) => <Panel key={row.key}>
-        <Heading>{actions[row.action]}</Heading><Body muted>{when(row.at, page.timeZone)}</Body>
-        <Body>{row.reasonDeleted ? '理由本文は削除済みです' : `記録時の状態：${statuses[row.status]}`}</Body>
+        <Heading>{actions[row.action]}</Heading><Body muted>{page.grouping === 'command' ? '操作の日時：' : ''}{when(row.at, page.timeZone)}</Body>
+        {row.updatedAt !== undefined && row.updatedAt !== row.at && <Body muted>最後の記録：{when(row.updatedAt, page.timeZone)}</Body>}
+        <Body>{row.reasonDeleted ? '理由本文は削除済みです' : `${page.grouping === 'command' ? '保存済みの状態' : '記録時の状態'}：${statuses[row.status]}`}</Body>
         {row.grantStatus && <Body muted>解除の記録：{grantStatuses[row.grantStatus] ?? '状態を確認できません'}</Body>}
         {row.expiresAt !== undefined && <Body>記録上の解除上限：{when(row.expiresAt, page.timeZone)}</Body>}
         {row.action === 'cancelled' && <Body muted>確定前に取り消した本文は保存していません。</Body>}

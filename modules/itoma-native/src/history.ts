@@ -2,10 +2,10 @@ export type HistoryAction = 'page' | 'reason' | 'import' | 'deleteReasons' | 'de
 export type HistoryKind = 'event' | 'reason';
 export type HistoryCode = 'unavailable' | 'storage-failed' | 'changed' | 'invalid-input' | 'capacity-full' | 'busy';
 export type HistoryCursor = { at: number; key: string };
-export type HistoryRow = { key: string; at: number; action: 'reason' | 'cancelled' | 'commitPolicy' | 'requestTemporaryGrant' | 'retryCommand' | 'resumeAfterAuthorization' | 'stop'; status: 'prepared' | 'pending' | 'scheduling' | 'applying' | 'succeeded' | 'failed' | 'uncertain' | 'superseded' | 'expired' | 'cancelled'; commandID?: string; grantStatus?: string; expiresAt?: number; reasonDeleted?: boolean };
+export type HistoryRow = { key: string; at: number; action: 'reason' | 'cancelled' | 'commitPolicy' | 'requestTemporaryGrant' | 'retryCommand' | 'resumeAfterAuthorization' | 'stop'; status: 'prepared' | 'pending' | 'scheduling' | 'applying' | 'succeeded' | 'failed' | 'uncertain' | 'superseded' | 'expired' | 'cancelled'; commandID?: string; grantStatus?: string; expiresAt?: number; reasonDeleted?: boolean; updatedAt?: number };
 export type HistoryPage = { revision: string; asOf: number; timeZone: string; rows: HistoryRow[]; next?: HistoryCursor; previous?: HistoryCursor;
   logicalBytes: string; warningBytes: string; maximumBytes: string; warningReached: boolean; limitReached: boolean;
-  databaseBytes?: string; walBytes?: string; sharedMemoryBytes?: string; incomplete: boolean; transfer: 'current' | 'pending' | 'unavailable' };
+  databaseBytes?: string; walBytes?: string; sharedMemoryBytes?: string; incomplete: boolean; transfer: 'current' | 'pending' | 'unavailable'; grouping?: 'command' };
 export type HistoryReason = { revision: string; state: 'deleted' | 'missing' | 'prepared-only' | 'shared-accepted' | 'unavailable'; body?: string };
 export type HistoryResponse = { status: 'ok' | 'error'; code?: HistoryCode; storage: 'ready' | 'not-created' | 'unknown'; page?: HistoryPage; reason?: HistoryReason };
 export type HistoryRequest = { kind?: HistoryKind; day?: string; afterAt?: number; afterKey?: string; direction?: 'older' | 'newer'; revision?: string; commandID?: string; timeZone?: string };
@@ -27,10 +27,10 @@ function page(value: unknown): HistoryPage {
   return { revision: counter(p.revision), asOf: number(p.asOf), timeZone: text(p.timeZone),
     rows: p.rows.map((value) => { const r = object(value); return { key: uuid(r.key), at: number(r.at),
       action: choice(r.action, ['reason', 'cancelled', 'commitPolicy', 'requestTemporaryGrant', 'retryCommand', 'resumeAfterAuthorization', 'stop']),
-      status: choice(r.status, statuses), commandID: optional(r.commandID, uuid), grantStatus: optional(r.grantStatus, (v) => choice(v, grants)), expiresAt: optional(r.expiresAt, number), reasonDeleted: optional(r.reasonDeleted, bool) }; }),
+      status: choice(r.status, statuses), commandID: optional(r.commandID, uuid), grantStatus: optional(r.grantStatus, (v) => choice(v, grants)), expiresAt: optional(r.expiresAt, number), reasonDeleted: optional(r.reasonDeleted, bool), updatedAt: optional(r.updatedAt, number) }; }),
     next: optional(p.next, cursor), previous: optional(p.previous, cursor), logicalBytes: counter(p.logicalBytes), warningBytes: counter(p.warningBytes), maximumBytes: counter(p.maximumBytes),
     warningReached: bool(p.warningReached), limitReached: bool(p.limitReached), databaseBytes: optional(p.databaseBytes, counter), walBytes: optional(p.walBytes, counter), sharedMemoryBytes: optional(p.sharedMemoryBytes, counter),
-    incomplete: bool(p.incomplete), transfer: choice(p.transfer, ['current', 'pending', 'unavailable']) };
+    incomplete: bool(p.incomplete), transfer: choice(p.transfer, ['current', 'pending', 'unavailable']), grouping: optional(p.grouping, v => choice(v, ['command'])) };
 }
 /** Allowlisted private reads only: accidental tokens/identities/raw errors are discarded. */
 export function parseHistoryResponse(json: string): HistoryResponse {

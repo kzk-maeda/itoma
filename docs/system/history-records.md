@@ -8,21 +8,27 @@
 
 | action | 処理 |
 | --- | --- |
-| page | 操作または理由のmetadataを新しい順に最大40件。日時＋UUIDの前後keyset、private revision、日付条件、取得zone/as-of、容量と取込状況 |
+| page | 操作は同じcontrol source＋commandを1件にまとめ、理由は理由ごとにmetadataを最大40件。日時＋UUIDの前後keyset、private revision、日付条件、取得zone/as-of、容量と取込状況 |
 | reason | command参照から、保存済み理由・削除済み・保存のみ・受付不明等を返す。本文はURL/イベント/logへ出さない |
 | import | 最大500件の既存outboxを明示取込。private commit後にshared ack。予定登録や制限変更は行わない |
 | deleteReasons | 本文のみ削除し、ID/元時刻のtombstoneを保持。操作履歴・ルール・現在grantは保持 |
 | deleteHistory | 共有cutoffを読み、その後private writerで操作payload/理由を削除。古いoutboxで復活させず、cutoffより新しいeventは保持 |
 
-一覧は操作時点のimmutable事実。`succeeded`は操作処理の記録であり、全OS制限や利用可能性の測定ではない。Pending/Failed/Uncertainとgrantの状態を分ける。確定前の取消はID/時刻だけを保存し、本文を保存しない。通常解除previewの明示取消もこの記録へ接続する。取消記録の保存失敗は共有の保守的な欠損フラグへ記録を試み、解除は行わない。
+一覧の操作カードは本人の操作単位。同じcontrol source＋command IDの受付・処理結果・grant変更を1件にまとめる。内部のimmutable eventは削除せず、`history()`の監査用読取には全eventを残す。理由タブは従来どおり理由1件ごとで、一覧へ理由本文を複製しない。
+
+カードの日時/並び/日付絞込には保存sequenceが最初のeventの時刻を使い、状態/解除上限には最大sequenceのeventを使う。時計が戻っても新しい状態を古い状態へ戻さない。取込順が逆の場合も同じ規則を使う。日付またぎの終了・再制限で過去の操作を別日に移動しない。`updatedAt`で最後の記録時刻を別に示す。最初のeventが欠損/削除済みの場合は残存する最初の記録が起点であり、要求時刻を推定しない。異なるsource、別command、確定前の取消はそれぞれ別件。同じ理由文だけでまとめない。
+
+40件の前後keyset/日付条件はまとめた索引へ適用し、各ページを取得した後のTSによる重複除去は行わない。`grouping=command`を返すnative応答の画面に、まとめ方と保存済みの最新状態を説明する。古いbinaryの未指定応答をまとめ済みと説明しない。
+
+表示する状態は保存された操作の事実。`succeeded`は操作処理の記録であり、全OS制限や利用可能性の測定ではない。Pending/Failed/Uncertainとgrantの状態を分ける。確定前の取消はID/時刻だけを保存し、本文を保存しない。通常解除previewの明示取消もこの記録へ接続する。取消記録の保存失敗は共有の保守的な欠損フラグへ記録を試み、解除は行わない。
 
 日付はGregorianのYYYY-MM-DD、取得時の端末zoneで日初〜翌日初の半開区間にする。DSTの23/25時間の日を24時間に固定しない。cursor/理由取得は取得時のprivate revisionとzoneを渡す。更新・削除・timezone変更は`changed`とし、先頭から明示再読込する。全範囲/日付選択と戻る位置はRAMで保持する。将来の週月画面からは`HistoryProvider.choose(kind,day)`と固定routeへ接続できるが、集計tokenとの一致は #96/#100 の採用・実装まで未接続。
 
-## private schema3と処理の所有者
+## private schema5と処理の所有者
 
-理由/操作payloadの既存表は変更せず、検索用の`history_read_index`と単調増加`history_read_state.revision`を追加する。索引にはkind/不透明ID/時刻だけを保存し、理由やtokenを複製しない。共有Control schema6、monitor schema1は変更しない。ExtensionはItomaHistoryをimportしない。
+理由/操作payloadの既存表、raw検索用`history_read_index`と単調増加`history_read_state.revision`を維持し、schema5で表示用`history_choice_index`を追加する。command/source、最初と最新のevent参照・sequence・最初の時刻だけの派生metadataで、本文・token・payloadを複製しない。取込/cancelと同じprivate writer transactionで更新する。部分削除では生存eventから有界batchで索引を作り直し、古い削除済みoutboxの再送では復活させない。索引にはkind/不透明ID/時刻だけを保存し、理由やtokenを複製しない。共有Control schema6、monitor schema1は変更しない。ExtensionはItomaHistoryをimportしない。
 
-schema1/2はhostが明示的にmigrationし、索引作成/backfill/version更新を単一writer transactionで行う。破損・未知schema・中断では元データを初期化せずrollbackする。schema3を古いschema2 binaryへ戻して読めるという保証はない。downgrade時にDBを削除して対処しない。
+schema1〜4はhostが明示的にmigrationし、索引作成/backfill（100 eventずつ）/version更新を単一writer transactionで行う。破損・未知schema・中断では元データを初期化せずrollbackする。schema5を古いbinaryへ戻して読めるという保証はない。downgrade時にDBを削除して対処しない。
 
 private I/Oは専用`ProductHistoryController` actorが所有する。閲覧・初期化/移行・理由保存/受理・取消・取込・削除まで同actorへ送り、Control actorはawait中に停止処理を受け付けられる。共有受理には既存CASを使い、停止等で前提が変われば古い解除要求を拒否する。private/sharedのwriterを同時に保持しない。保存接続は再利用し、画面往復で接続を増やさない。
 

@@ -85,7 +85,9 @@ extension HistoryRepository {
         return try transaction(writer: false) {
             let revision = try readRevision()
             if let expectedRevision, expectedRevision != revision { throw HistoryError.conflict }
-            var predicate = "kind=?", values: [SQLValue] = [.text(kind.rawValue)]
+            let table = kind == .event ? "history_choice_index" : "history_read_index"
+            var predicate = kind == .event ? "1=1" : "kind=?"
+            var values: [SQLValue] = kind == .event ? [] : [.text(kind.rawValue)]
             if let from, let until {
                 predicate += " AND occurred_at>=CAST(? AS REAL) AND occurred_at<CAST(? AS REAL)"
                 values += [.text(String(from.secondsSince1970)), .text(String(until.secondsSince1970))]
@@ -98,7 +100,7 @@ extension HistoryRepository {
             }
             values += [.integer(Int64(limit + 1))]
             let order = before == nil ? "DESC" : "ASC"
-            let fetched = try database.rows("SELECT record_key,occurred_at FROM history_read_index WHERE \(predicate) ORDER BY occurred_at \(order),record_key \(order) LIMIT ?", values)
+            let fetched = try database.rows("SELECT record_key,occurred_at FROM \(table) WHERE \(predicate) ORDER BY occurred_at \(order),record_key \(order) LIMIT ?", values)
             let keys = before == nil ? Array(fetched.prefix(limit)) : Array(fetched.prefix(limit).reversed())
             var rows: [HistoryReadRow] = []
             for row in keys {
@@ -110,7 +112,7 @@ extension HistoryRepository {
                 default: throw HistoryError.corrupt
                 }
                 if kind == .event {
-                    guard let stored = try eventRows(EventID(id)).first, let record = try validateEventRow(stored), record.readTime == at else { throw HistoryError.corrupt }
+                    let record = try choiceRecord(key: key, at: at)
                     rows.append(HistoryReadRow(key: key, occurredAt: at, record: record, commandID: nil, reasonDeleted: nil))
                 } else {
                     let stored = try database.rows("SELECT command_id,prepared_at,body IS NULL FROM reasons WHERE reason_ref=?", [.text(key)])
@@ -124,7 +126,7 @@ extension HistoryRepository {
             let incomplete = try !database.rows("SELECT 1 FROM history_sources WHERE history_incomplete=1 LIMIT 1").isEmpty
             func boundary(_ row: HistoryReadRow?, comparison: String) throws -> HistoryPageKey? {
                 guard let row else { return nil }
-                let found = try database.rows("SELECT 1 FROM history_read_index WHERE \(basePredicate) AND (occurred_at\(comparison)? OR (occurred_at=? AND record_key\(comparison)?)) LIMIT 1",
+                let found = try database.rows("SELECT 1 FROM \(table) WHERE \(basePredicate) AND (occurred_at\(comparison)? OR (occurred_at=? AND record_key\(comparison)?)) LIMIT 1",
                     baseValues + [.real(row.occurredAt.secondsSince1970), .real(row.occurredAt.secondsSince1970), .text(row.key)])
                 return found.isEmpty ? nil : HistoryPageKey(at: row.occurredAt, key: row.key)
             }
