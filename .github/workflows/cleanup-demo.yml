@@ -23,10 +23,11 @@ jobs:
        github.event.ref != 'main' && github.event.ref != github.event.repository.default_branch) ||
       (github.event_name == 'workflow_dispatch' && inputs.branch != 'main' &&
        inputs.branch != github.event.repository.default_branch)
-    # Must match deployment, even though delete events point at the default ref.
+    # Shared with deployment and recovery of missed/legacy delete events.
     concurrency:
-      group: deploy-demo-refs/heads/${{ github.event_name == 'delete' && github.event.ref || inputs.branch }}
+      group: itoma-demo-resource-mutations
       cancel-in-progress: false
+      queue: max
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -3,7 +3,7 @@ name: Update demo index
 on:
   workflow_dispatch:
   workflow_run:
-    workflows: [Deploy demo, Cleanup demo]
+    workflows: [Deploy demo, Cleanup demo, Reconcile demos]
     types: [completed]
   schedule:
     - cron: '*/15 * * * *'
