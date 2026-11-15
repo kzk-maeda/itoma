@@ -2,7 +2,7 @@ import CSQLite
 import Foundation
 import ItomaCore
 @testable import ItomaHistory
-import ItomaStorage
+@testable import ItomaStorage
 import Testing
 
 private func id<Kind>(_ n: Int) -> EntityID<Kind> { EntityID(UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", n))!) }
@@ -248,6 +248,8 @@ private func execute(_ db: OpaquePointer, _ text: String) { #expect(sqlite3_exec
     try f.history.deleteHistory(through: boundary)
     let records = try f.history.history()
     #expect(records.count == 1 && records[0].record.id == id(2))
+    #expect(try f.history.readPage(kind: .event).rows.count == 1)
+    #expect(try f.history.readPage(kind: .event).rows[0].key == (id(2) as EventID).rawValue.uuidString)
     try f.history.close()
     let reopened = try HistoryRepository.open(at: f.historyURL, capacity: budget())
     #expect(try reopened.history().count == 1)
@@ -284,7 +286,7 @@ private func execute(_ db: OpaquePointer, _ text: String) { #expect(sqlite3_exec
     _ = try f.history.prepareReason(reasonRef: id(100), commandID: id(100), body: "fixture", at: time())
     try f.control.close(); try f.history.close()
     try sql(f.controlURL) { execute($0, "DROP TABLE activation_state; DROP TABLE application_state; DROP TABLE history_outbox; DROP TABLE history_event_ids; DROP TABLE history_state; PRAGMA user_version=3") }
-    try sql(f.historyURL) { execute($0, "DROP TABLE reflection_facts; DROP TABLE reflection_sources; DROP TABLE reflection_state; DROP TABLE history_events; DROP TABLE history_sources; DROP TABLE dummy_selections; DROP TABLE history_read_index; DROP TABLE history_read_state; PRAGMA user_version=1") }
+    try sql(f.historyURL) { execute($0, "DROP TABLE history_choice_index; DROP TABLE reflection_facts; DROP TABLE reflection_sources; DROP TABLE reflection_state; DROP TABLE history_events; DROP TABLE history_sources; DROP TABLE dummy_selections; DROP TABLE history_read_index; DROP TABLE history_read_state; PRAGMA user_version=1") }
     #expect(throws: StorageError.unsupportedSchema(3)) { try ControlRepository.open(at: f.controlURL) }
     #expect(throws: HistoryError.unsupportedSchema(1)) { try HistoryRepository.open(at: f.historyURL, capacity: budget()) }
     let control = try ControlRepository.migrate(at: f.controlURL)
@@ -405,4 +407,96 @@ private func reasonInput(_ f: Fixture) throws -> (Command, GrantRequest, Evaluat
     #expect(try f.history.reason(for: command.id) == nil)
     #expect(try f.control.command(command.id) == nil)
     #expect(try f.control.readSnapshot().snapshotSequence.rawValue == 0)
+}
+
+@Test func choiceProjectionKeepsLatestSequenceAcrossLateImportAndClockRollback() throws {
+    let f = try Fixture(); defer { f.remove() }
+    try accept(f.control)
+    try enqueue(f.control, event: 10)
+    try f.control.write { _ = try $0.recordCommand(command(status: .applying), expected: command()) }
+    try enqueue(f.control, event: 20)
+    try f.control.write { _ = try $0.recordCommand(command(status: .failed), expected: command(status: .applying)) }
+    try enqueue(f.control, event: 5) // Last sequence has an earlier wall-clock time.
+    let batch = try f.control.historyBatch()
+    _ = try f.history.commitHistoryBatch(HistoryOutboxBatch(boundary: batch.boundary, entries: [batch.entries[2]]))
+    _ = try f.history.commitHistoryBatch(HistoryOutboxBatch(boundary: batch.boundary, entries: Array(batch.entries.prefix(2))))
+    let page = try f.history.readPage(kind: .event)
+    #expect(page.rows.count == 1 && page.rows[0].key == (id(10) as EventID).rawValue.uuidString)
+    #expect(page.rows[0].occurredAt.secondsSince1970 == 10)
+    guard case let .control(event) = page.rows[0].record else { Issue.record("Missing command"); return }
+    #expect(event.command.status == .failed && event.occurredAt.secondsSince1970 == 5)
+    #expect(try f.history.history().count == 3)
+    _ = try f.history.commitHistoryBatch(batch)
+    #expect(try f.history.readPage(kind: .event).rows.count == 1)
+    try f.history.close()
+    let reopened = try HistoryRepository.open(at: f.historyURL, capacity: budget()); defer { try? reopened.close() }
+    #expect(try reopened.readPage(kind: .event).rows.count == 1)
+}
+
+@Test func choicePaginationGroupsBeforeLimitingAndFiltersOnTheOperationDate() throws {
+    let f = try Fixture(); defer { f.remove() }
+    for n in 1...42 {
+        try accept(f.control, n: n)
+        try enqueue(f.control, event: n, cmd: n, maximum: 500)
+        // Later stages must not move the operation to the day of its state update.
+        for stage in 1...2 { try enqueue(f.control, event: n + stage * 1000, cmd: n, maximum: 500) }
+    }
+    _ = try f.control.transferHistory(to: f.history, limit: 500)
+    let first = try f.history.readPage(kind: .event)
+    #expect(first.rows.count == 40 && first.previous == nil)
+    let older = try f.history.readPage(kind: .event, after: first.next, expectedRevision: first.revision)
+    #expect(older.rows.count == 2 && older.next == nil)
+    #expect(Set((first.rows + older.rows).map(\.key)).count == 42)
+    let restored = try f.history.readPage(kind: .event, before: older.previous, expectedRevision: first.revision)
+    #expect(restored.rows.map(\.key) == first.rows.map(\.key))
+    let day = try f.history.readPage(kind: .event, from: time(1), until: time(43))
+    #expect(day.rows.count == 40)
+    #expect(try f.history.readPage(kind: .event, from: time(1000), until: time(3000)).rows.isEmpty)
+    try f.history.recordCancellation(eventID: id(9000), at: time(5))
+    #expect(throws: HistoryError.conflict) { try f.history.readPage(kind: .event, after: first.next, expectedRevision: first.revision) }
+}
+
+@Test func choiceMigrationFromFourPreservesFactsAndRollsBackOnInvalidPayload() throws {
+    let f = try Fixture(); defer { f.remove() }
+    try accept(f.control); try enqueue(f.control, event: 1); try enqueue(f.control, event: 2)
+    _ = try f.control.transferHistory(to: f.history)
+    try f.history.recordCancellation(eventID: id(3), at: time(3))
+    _ = try f.history.prepareReason(reasonRef: id(50), commandID: id(50), body: "synthetic", at: time())
+    let bytes = try f.history.capacity().logicalPayloadBytes
+    try f.history.close()
+    try sql(f.historyURL) { execute($0, "DROP TABLE history_choice_index; PRAGMA user_version=4") }
+    #expect(throws: HistoryError.unsupportedSchema(4)) { try HistoryRepository.open(at: f.historyURL, capacity: budget()) }
+    let migrated = try HistoryRepository.migrate(at: f.historyURL, capacity: budget())
+    #expect(try migrated.history().count == 3)
+    #expect(try migrated.readPage(kind: .event).rows.count == 2)
+    #expect(try migrated.readReason(for: id(50)).reason?.body == "synthetic")
+    #expect(try migrated.capacity().logicalPayloadBytes == bytes)
+    try migrated.close()
+    try sql(f.historyURL) { execute($0, "DROP TABLE history_choice_index; PRAGMA user_version=4; UPDATE history_events SET record=x'7b',payload_bytes=1 WHERE event_id='00000000-0000-0000-0000-000000000001'") }
+    #expect(throws: HistoryError.corrupt) { try HistoryRepository.migrate(at: f.historyURL, capacity: budget()) }
+    try sql(f.historyURL) { db in
+        var statement: OpaquePointer?
+        #expect(sqlite3_prepare_v2(db, "PRAGMA user_version", -1, &statement, nil) == SQLITE_OK)
+        defer { sqlite3_finalize(statement) }
+        #expect(sqlite3_step(statement) == SQLITE_ROW && sqlite3_column_int(statement, 0) == 4)
+    }
+}
+
+@Test func failedChoiceIndexUpdateRollsBackImportWithoutAcknowledgingOrLosingFacts() throws {
+    let f = try Fixture(); defer { f.remove() }
+    try accept(f.control); try enqueue(f.control, event: 1)
+    _ = try f.control.transferHistory(to: f.history)
+    try enqueue(f.control, event: 2)
+    try sql(f.historyURL) { execute($0, "CREATE TRIGGER reject_choice BEFORE INSERT ON history_choice_index BEGIN SELECT RAISE(ABORT,'fixture'); END") }
+    #expect(throws: HistoryError.conflict) { try f.control.transferHistory(to: f.history) }
+    #expect(try f.history.history().count == 1)
+    #expect(try f.history.readPage(kind: .event).rows.count == 1)
+    #expect(try f.control.historyBatch().entries.count == 1)
+    try sql(f.historyURL) { execute($0, "DROP TRIGGER reject_choice") }
+    _ = try f.control.transferHistory(to: f.history)
+    #expect(try f.history.history().count == 2)
+    #expect(try f.history.readPage(kind: .event).rows.count == 1)
+    try f.history.close()
+    try sql(f.historyURL) { execute($0, "DELETE FROM history_choice_index") }
+    #expect(throws: HistoryError.corrupt) { try HistoryRepository.open(at: f.historyURL, capacity: budget()) }
 }

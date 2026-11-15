@@ -23,6 +23,7 @@ struct ProductHistoryRow: Encodable, Sendable {
     var grantStatus: String?
     var expiresAt: Double?
     var reasonDeleted: Bool?
+    var updatedAt: Double?
 }
 struct ProductHistoryCursor: Encodable, Sendable { let at: Double; let key: String }
 struct ProductHistoryPage: Encodable, Sendable {
@@ -42,6 +43,7 @@ struct ProductHistoryPage: Encodable, Sendable {
     let sharedMemoryBytes: String?
     let incomplete: Bool
     let transfer: String
+    var grouping: String?
 }
 struct ProductHistoryReason: Encodable, Sendable {
     let revision: String
@@ -167,7 +169,7 @@ actor ProductHistoryController {
                             return ProductHistoryRow(key: row.key.lowercased(), at: row.occurredAt.secondsSince1970,
                                 action: event.command.kind.rawValue, status: event.command.status.rawValue,
                                 commandID: event.command.id.rawValue.uuidString.lowercased(), grantStatus: event.grant?.status.rawValue,
-                                expiresAt: event.grant?.effectiveExpiresAt.secondsSince1970)
+                                expiresAt: event.grant?.effectiveExpiresAt.secondsSince1970, updatedAt: event.occurredAt.secondsSince1970)
                         case .cancelled: return ProductHistoryRow(key: row.key.lowercased(), at: row.occurredAt.secondsSince1970, action: "cancelled", status: "cancelled")
                         }
                     }
@@ -184,7 +186,7 @@ actor ProductHistoryController {
                     logicalBytes: String(page.capacity.logicalPayloadBytes), warningBytes: String(warning), maximumBytes: String(maximum),
                     warningReached: page.capacity.warningReached, limitReached: page.capacity.limitReached,
                     databaseBytes: usage.databaseBytes.map { String($0) }, walBytes: usage.walBytes.map { String($0) }, sharedMemoryBytes: usage.sharedMemoryBytes.map { String($0) },
-                    incomplete: page.incomplete || controlGap, transfer: transfer))
+                    incomplete: page.incomplete || controlGap, transfer: transfer, grouping: kind == .event ? "command" : nil))
             }
         } catch HistoryError.missingDatabase { return ProductHistoryResponse(storage: "not-created") }
         catch HistoryError.conflict { return ProductHistoryResponse(status: "error", code: "changed", storage: "unknown") }
@@ -226,7 +228,7 @@ enum ProductHistoryStore {
         let history: HistoryRepository
         if FileManager.default.fileExists(atPath: url.path) {
             do { history = try HistoryRepository.open(at: url, capacity: capacity) }
-            catch HistoryError.unsupportedSchema(let version) where (1...3).contains(version) {
+            catch HistoryError.unsupportedSchema(let version) where (1...4).contains(version) {
                 history = try HistoryRepository.migrate(at: url, capacity: capacity)
             }
         } else { history = try HistoryRepository.create(at: url, capacity: capacity) }

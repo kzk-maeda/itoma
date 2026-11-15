@@ -148,3 +148,26 @@ test('a deletion response failure remains unknown instead of claiming completion
   expect(screen.getByText('削除結果を確認できません。保存状況を確認してから、必要なら再試行できます。')).toBeTruthy();
   expect(screen.queryByText('理由本文の削除を確認しました。')).toBeNull();
 });
+
+test('one grouped unlock keeps one card and reason entry as its saved status changes', async () => {
+  const b = backend();
+  let status: 'pending' | 'succeeded' = 'pending';
+  b.run.mockImplementation(async (action) => action === 'reason'
+    ? { status: 'ok', storage: 'ready', reason: { revision: '2', state: 'shared-accepted', body } }
+    : { status: 'ok', storage: 'ready', page: { ...b.page(), grouping: 'command', next: undefined, rows: [{
+      key: id, commandID: id, at: 1794265100, updatedAt: status === 'pending' ? 1794265100 : 1794265102,
+      action: 'requestTemporaryGrant', status, grantStatus: status === 'pending' ? 'pending' : 'active',
+    }] } });
+  await render(wrap(b));
+  expect(screen.getAllByRole('header', { name: '一時解除の要求' })).toHaveLength(1);
+  expect(screen.getByText('保存済みの状態：受付済み')).toBeTruthy();
+  status = 'succeeded';
+  await press('最新の記録を確認する');
+  expect(screen.getAllByRole('header', { name: '一時解除の要求' })).toHaveLength(1);
+  expect(screen.getAllByRole('button', { name: 'この記録の理由を読む' })).toHaveLength(1);
+  expect(screen.queryByText('保存済みの状態：受付済み')).toBeNull();
+  expect(screen.getByText('保存済みの状態：処理の完了を記録')).toBeTruthy();
+  expect(screen.getByText(/^最後の記録：/)).toBeTruthy();
+  await press('この記録の理由を読む');
+  expect(screen.getByText(body)).toBeTruthy();
+});

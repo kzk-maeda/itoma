@@ -38,7 +38,7 @@ extension HistoryRepository: ControlHistorySink {
             let repository = try HistoryRepository(url: url, capacity: capacity, busyTimeoutMilliseconds: busyTimeoutMilliseconds)
             try repository.database.transaction(writer: true) {
                 guard case let .integer(version) = try repository.database.rows("PRAGMA user_version").first?.first else { throw HistoryError.corrupt }
-                guard [Int64(1), 2, 3, Self.schemaVersion].contains(version) else { throw HistoryError.unsupportedSchema(version) }
+                guard [Int64(1), 2, 3, 4, Self.schemaVersion].contains(version) else { throw HistoryError.unsupportedSchema(version) }
                 try repository.validateSchema(expected: version)
                 guard try repository.database.rows("PRAGMA quick_check(1)") == [[.text("ok")]],
                       try repository.database.rows("PRAGMA journal_mode") == [[.text("wal")]] else { throw HistoryError.corrupt }
@@ -46,6 +46,7 @@ extension HistoryRepository: ControlHistorySink {
                 if version == 1 { try repository.createPrivateHistoryTables() }
                 if version < 3 { try repository.createReadIndex(); try repository.backfillReadIndex() }
                 if version < 4 { try repository.createReflectionTables() }
+                if version < 5 { try repository.createChoiceIndex(); try repository.backfillChoiceIndex() }
                 try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
                 try repository.validatePrivateHistory()
                 try repository.validateReflectionPayloads()
@@ -126,7 +127,10 @@ extension HistoryRepository: ControlHistorySink {
                     .text(entry.event.id.rawValue.uuidString), .text(batch.boundary.sourceID.rawValue.uuidString),
                     .integer(entry.sequence.rawValue), payload.map(SQLValue.blob) ?? .null, .integer(Int64(payload?.count ?? 0))
                 ])
-                if !removed { try indexRecord(kind: "event", key: entry.event.id.rawValue.uuidString, at: entry.event.occurredAt) }
+                if !removed {
+                    try indexRecord(kind: "event", key: entry.event.id.rawValue.uuidString, at: entry.event.occurredAt)
+                    try indexChoice(.control(entry.event), source: .text(batch.boundary.sourceID.rawValue.uuidString), sequence: entry.sequence.rawValue)
+                }
                 if removed { deleted += 1 } else { imported += 1 }
             }
             let after = try database.rows("SELECT observed_through,history_incomplete FROM history_sources WHERE source_id=?", [.text(batch.boundary.sourceID.rawValue.uuidString)])
@@ -152,6 +156,7 @@ extension HistoryRepository: ControlHistorySink {
                 .text(eventID.rawValue.uuidString), .blob(payload), .integer(Int64(payload.count))
             ])
             try indexRecord(kind: "event", key: eventID.rawValue.uuidString, at: at)
+            try indexChoice(record, source: .null, sequence: 0)
             try advanceReadRevision()
         }
     }
@@ -191,6 +196,9 @@ extension HistoryRepository: ControlHistorySink {
             try database.execute("UPDATE reasons SET body=NULL,payload_bytes=0")
             try database.execute("UPDATE dummy_selections SET payload=NULL,payload_bytes=0")
             try database.execute("DELETE FROM history_read_index WHERE kind='event' AND record_key IN (SELECT event_id FROM history_events WHERE record IS NULL)")
+            // A cutoff can remove the first fact while retaining a later one for the same command.
+            try database.execute("DELETE FROM history_choice_index")
+            try backfillChoiceIndex()
             try advanceReadRevision()
     }
 
@@ -291,11 +299,14 @@ extension HistoryRepository: ControlHistorySink {
             let rows = try database.rows("SELECT cursor,event_id,source_id,sequence,record,payload_bytes FROM history_events WHERE cursor>? ORDER BY cursor LIMIT 100", [.integer(cursor)])
             guard !rows.isEmpty else { break }
             for row in rows {
-                _ = try validateEventRow(row)
+                if let record = try validateEventRow(row) {
+                    try validateChoiceMembership(record, source: row[2], sequence: row[3])
+                }
                 guard case let .integer(next) = row[0] else { throw HistoryError.corrupt }
                 cursor = next
             }
         }
+        try validateChoiceIndex()
         _ = try logicalBytes()
         _ = try readRevision()
         for (kind, table, filter) in [("event", "history_events", "record IS NOT NULL"), ("reason", "reasons", "1=1")] {

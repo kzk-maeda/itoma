@@ -1,0 +1,30 @@
+const { chromium } = require('/tmp/itoma-ui-tools/node_modules/playwright');
+const fs = require('node:fs');
+(async () => {
+ const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
+ const out = '/tmp/itoma-choice-evidence'; fs.mkdirSync(out, { recursive: true });
+ const results = [];
+ for (const colorScheme of ['light','dark']) for (const width of [320,390,768]) {
+  const page = await browser.newPage({ viewport: { width, height: 844 }, colorScheme, reducedMotion:'reduce' });
+  const errors = []; page.on('pageerror', e => errors.push(String(e)));
+  await page.goto('http://127.0.0.1:8769/choice-qa');
+  await page.getByText('同じ操作の経過は1件にまとめ、保存済みの最新の状態を表示しています。', {exact:true}).waitFor();
+  if (await page.getByRole('heading', {name:'一時解除の要求',exact:true}).count() !== 1) throw Error('Duplicate operation card');
+  if (await page.getByRole('button', {name:'この記録の理由を読む',exact:true}).count() !== 1) throw Error('Duplicate reason entry');
+  if (width === 320) await page.evaluate(() => {
+   const nodes = Array.from(document.querySelectorAll('[dir="auto"]'));
+   const sizes = nodes.map(e => [e, getComputedStyle(e).fontSize, getComputedStyle(e).lineHeight]);
+   for(const [e,font,line] of sizes) { e.style.fontSize = `${parseFloat(font)*2}px`; e.style.lineHeight = `${parseFloat(line==='normal'?font:line)*2}px`; }
+  });
+  await page.screenshot({path:`${out}/top-${colorScheme}-${width}.png`, fullPage:true});
+  await page.getByRole('button',{name:'この記録の理由を読む',exact:true}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:`${out}/card-${colorScheme}-${width}.png`, fullPage:true});
+  await page.getByRole('button',{name:'この記録の理由を読む',exact:true}).scrollIntoViewIfNeeded();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+  if (overflow || errors.length) throw Error(JSON.stringify({width,colorScheme,overflow,errors}));
+  results.push({width,colorScheme,textScale:width===320?2:1,overflow,errors,cards:1,reasonEntries:1});
+  await page.close();
+ }
+ fs.writeFileSync(`${out}/results.json`,JSON.stringify({runtime:'Linux Chromium', data:'synthetic native response; production HistoryProvider/parser/HistoryScreen; temporary route',results},null,2));
+ console.log(JSON.stringify(results)); await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});

@@ -10,7 +10,7 @@ let package = Package(
         .target(name: "ItomaControl", dependencies: [
             .product(name: "ItomaCore", package: "itoma-core"), .product(name: "ItomaStorage", package: "itoma-storage"),
         ]),
-        .testTarget(name: "ItomaControlTests", dependencies: ["ItomaControl", "CSQLiteTest", .product(name: "ItomaCore", package: "itoma-core"), .product(name: "ItomaStorage", package: "itoma-storage")]),
+        .testTarget(name: "ItomaControlTests", dependencies: [.product(name: "ItomaHistory", package: "itoma-storage"), "ItomaControl", "CSQLiteTest", .product(name: "ItomaCore", package: "itoma-core"), .product(name: "ItomaStorage", package: "itoma-storage")]),
         .systemLibrary(name: "CSQLiteTest", pkgConfig: "sqlite3"),
     ]
 )
