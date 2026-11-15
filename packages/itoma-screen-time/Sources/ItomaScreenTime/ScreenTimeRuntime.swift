@@ -49,6 +49,22 @@ import ItomaStorage
         for file in ["control.sqlite", "monitors.sqlite"] { try ScreenTimeFiles.protectDatabase(directory.appendingPathComponent(file)) }
     }
 
+    /// Explicit foreground checkpoint only; no timer, schedule registration or shield mutation.
+    /// A mismatch revokes the preceding unconfirmed span instead of reporting it as success.
+    public func recordDurationCheckpoint() throws {
+        let snapshot = try repository.readSnapshot()
+        let context = contexts.context(activation: snapshot.activation)
+        let registry = try ProductTokenRegistry(selections: snapshot.selections)
+        let store = ManagedSettingsStore(named: AppleRestrictionAdapter.storeName)
+        let desired = snapshot.application?.evaluation.desiredTargets ?? []
+        let tokens = Set(desired.compactMap { registry.tokens[$0] })
+        var confirmed = context.authorization.status == .approved
+            && tokens.count == desired.count && (store.shield.applications ?? []) == tokens
+        if #available(iOS 26.5, *) { confirmed = confirmed && store.isActive }
+        try repository.recordReflectionBaseline(durationConfirmed: confirmed, expectedSequence: snapshot.snapshotSequence)
+        try protectFiles()
+    }
+
     public func makeService(additionalPolicy: PolicySnapshot? = nil, stopping: Bool = false) throws -> CommandService {
         let snapshot = try repository.readSnapshot()
         let registry = try ProductTokenRegistry(selections: stopping ? [] : snapshot.selections)

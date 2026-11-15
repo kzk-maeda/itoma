@@ -5,8 +5,8 @@ import ItomaStorage
 
 public struct ReflectionReadSnapshot: Encodable, Sendable {
     public let version = 1
-    public let metricVersion = "restricted-excluding-unlocks-v1"
-    public let proofScope = "pointObservations"
+    public let metricVersion: String
+    public let proofScope: String
     public let token: String
     public let historyRevision: String
     public let timeZone: String
@@ -103,7 +103,7 @@ extension HistoryRepository: ReflectionFactSink {
     }
 
     /// A single private read transaction pins both revisions and the calendar/as-of.
-    /// Point facts intentionally produce no numeric duration, including zero.
+    /// Legacy point facts never become durations. Native operation intervals use a separate scope.
     public func readReflection(period: ReflectionPrototypePeriod, day: String, timeZone: String,
                                expectedToken: String? = nil, clippedTo: ReflectionPrototypeInterval? = nil,
                                now: Instant = try! Instant(secondsSince1970: Date().timeIntervalSince1970)) throws -> ReflectionReadSnapshot {
@@ -130,8 +130,9 @@ extension HistoryRepository: ReflectionFactSink {
             let range = try first.flatMap { start in start < token.asOf.secondsSince1970
                 ? try ReflectionPrototypeInterval(from: Instant(secondsSince1970: start), until: token.asOf) : nil }
             let coverage: ReflectionPrototypeCoverage = count > 0 ? .partial : state.deleted ? .deleted : .notRecorded
-            let input = try ReflectionPrototypeDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf,
+            let legacy = try ReflectionPrototypeDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf,
                 timeZone: timeZone, scope: .pointObservations, coverage: coverage, recordedRange: range)
+            let input = try nativeRestrictionDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf, timeZone: timeZone) ?? legacy
             let anchor: String
             if day.isEmpty {
                 var calendar = Calendar(identifier: .gregorian)
@@ -142,11 +143,48 @@ extension HistoryRepository: ReflectionFactSink {
             } else { anchor = day }
             let view = try ReflectionPrototypeCalculator.snapshot(input, period: period, day: anchor, clippedTo: clippedTo)
             let incomplete = try !database.rows("SELECT 1 FROM reflection_sources WHERE incomplete=1 LIMIT 1").isEmpty
-            return try ReflectionReadSnapshot(token: expectedToken ?? token.string(), historyRevision: String(historyRevision),
+            return try ReflectionReadSnapshot(metricVersion: input.scope == .nativeRecordedIntervals ? "native-restricted-excluding-unlocks-v2" : "restricted-excluding-unlocks-v1",
+                proofScope: input.scope.rawValue, token: expectedToken ?? token.string(), historyRevision: String(historyRevision),
                 timeZone: timeZone, asOf: token.asOf.secondsSince1970, observationCount: count, lastObservedAt: last, incomplete: incomplete,
                 total: view.total, trend: view.trend, period: view.period, anchor: view.anchor,
                 previousAnchor: view.previousAnchor, nextAnchor: view.nextAnchor, selected: view.selected, buckets: view.buckets)
         }
+    }
+
+    /// Only bounded pages are decoded. The derived cache is connection-local and keyed by the
+    /// pinned SQLite version, ledger revision and as-of, so deletion/another writer cannot revive it.
+    private func nativeRestrictionDataset(sourceID: UUID, revision: Int64, asOf: Instant, timeZone: String) throws -> ReflectionPrototypeDataset? {
+        guard case let .integer(dataVersion) = try database.rows("PRAGMA main.data_version").first?.first else { throw HistoryError.corrupt }
+        let builder: RestrictionTimelineBuilder
+        if let cached = restrictionTimelineCache, cached.revision == revision, cached.dataVersion == dataVersion,
+           cached.asOf == asOf || (!cached.hasFutureRecords && cached.asOf <= asOf) {
+            builder = cached.builder
+        } else {
+            var projection = RestrictionTimelineBuilder(), source = "", sequence: Int64 = 0, hasFutureRecords = false
+            while true {
+                let rows = try database.rows("""
+                    SELECT source_id,sequence,record FROM reflection_facts
+                    WHERE record IS NOT NULL AND (source_id>? OR (source_id=? AND sequence>?))
+                    ORDER BY source_id,sequence LIMIT 100
+                    """, [.text(source), .text(source), .integer(sequence)])
+                if rows.isEmpty { break }
+                for row in rows {
+                    guard case let .text(id) = row[0], let uuid = UUID(uuidString: id),
+                          case let .integer(seq) = row[1], case let .blob(data) = row[2] else { throw HistoryError.corrupt }
+                    let fact = try decodeReflectionFact(data)
+                    hasFutureRecords = hasFutureRecords || fact.committedAt > asOf
+                    try projection.append(source: uuid, sequence: seq, sample: fact.durationObservation, asOf: asOf)
+                    source = id; sequence = seq
+                }
+            }
+            restrictionTimelineCache = (revision, dataVersion, asOf, hasFutureRecords, projection)
+            builder = projection
+        }
+        guard let dataset = try builder.dataset(sourceID: sourceID, revision: revision, asOf: asOf, timeZone: timeZone) else { return nil }
+        let incomplete = try !database.rows("SELECT 1 FROM reflection_sources WHERE incomplete=1 LIMIT 1").isEmpty
+        return try ReflectionPrototypeDataset(sourceID: sourceID, revision: revision, asOf: asOf, timeZone: timeZone,
+            scope: .nativeRecordedIntervals, coverage: incomplete ? .partial : dataset.coverage,
+            recordedRange: dataset.recordedRange, restricted: dataset.restricted, gaps: dataset.gaps)
     }
 
     /// Captures shared cutoffs before opening the private writer. First import is not required.

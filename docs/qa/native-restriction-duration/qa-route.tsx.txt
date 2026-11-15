@@ -1,0 +1,21 @@
+import { ReflectionContent } from '@/components/flow/reflection-content';
+import { FlowScreen, Notice } from '@/components/flow/ui';
+import fixtures from '../../tests/fixtures/reflection-records.json';
+import type { ReflectionSource } from '../../modules/itoma-native/src/reflection-model';
+
+const source: ReflectionSource = { async read(request) {
+  const rows = fixtures.observed;
+  const original = rows.find(row => row.request.period === request.period && (!request.day || row.request.day === request.day))
+    ?? rows.find(row => row.request.period === request.period)!;
+  const snapshot = structuredClone(original.response) as Record<string, any>;
+  snapshot.proofScope = 'nativeRecordedIntervals'; snapshot.metricVersion = 'native-restricted-excluding-unlocks-v2';
+  snapshot.total = { ...snapshot.total, from: snapshot.asOf - 7200, until: snapshot.asOf, knownSeconds: 6900, coverage: 'recorded' };
+  snapshot.selected = { ...snapshot.selected, knownSeconds: 6900, coverage: 'partial' };
+  snapshot.buckets = snapshot.buckets.map((bucket: Record<string, any>, n: number) => ({ ...bucket, knownSeconds: n === 0 ? 6900 : 0, coverage: 'recorded' }));
+  snapshot.trend = [snapshot.total];
+  return JSON.stringify(snapshot);
+} };
+export default function DurationQA() { return <FlowScreen title="時間の積み上げ" eyebrow="自分の時間を、振り返る" tab="reflection">
+  <Notice title="合成データによる画面検証">この画面の数値は実機の計測結果ではありません。</Notice>
+  <ReflectionContent source={source} embedded />
+</FlowScreen>; }

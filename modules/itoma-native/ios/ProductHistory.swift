@@ -92,6 +92,7 @@ actor ProductHistoryController {
     func prepareReflectionCapture(in control: ControlRepository) throws {
         guard let limit = Bundle.main.object(forInfoDictionaryKey: "ITOMAPendingEventLimit") as? Int else { throw HistoryError.invalidCapacity }
         try control.installReflectionCapture(capacity: HistoryOutboxCapacity(maximumPendingEvents: limit))
+        try control.installDurationCapture()
     }
     func importForMaintenance() throws {
         let control = try controlRepository()

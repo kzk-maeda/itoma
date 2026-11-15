@@ -16,8 +16,22 @@ public struct ReflectionControlFact: Codable, Equatable, Sendable {
     public let selections: [ReflectionSelectionFact]
     public let grants: [ReflectionGrantFact]
     public let application: ReflectionApplicationFact?
+    public var durationObservation: RestrictionTimelineSample? = nil
 
     public func validate() throws {
+        try durationObservation?.validate()
+        if let sample = durationObservation {
+            guard sample.at == committedAt else { throw StorageError.corrupt }
+            if sample.state != .unknown {
+                guard application?.status == .applied, application?.evidence == .ownStoreReadback,
+                      application?.policyRevision == policy.revision else { throw StorageError.corrupt }
+            }
+            if sample.state == .restricted {
+                guard activation == .enabled, application?.desiredTargets.isEmpty == false,
+                      sample.validUntil.map { $0.secondsSince1970 - sample.at.secondsSince1970 <= 3 * 86_400 } == true,
+                      !grants.contains(where: { [.active, .applying, .uncertain, .expired, .invalidated].contains($0.status) }) else { throw StorageError.corrupt }
+            }
+        }
         guard version == 1, sequence > 0, TimeZone(identifier: timeZone) != nil,
               timeZone.utf8.count <= 128, selections.count <= 1_000, grants.count <= 100,
               Set(selections.map(\.ref)).count == selections.count else { throw StorageError.corrupt }
@@ -95,10 +109,20 @@ extension ControlRepository {
         } }
     }
     /// Fresh point baseline after explicit deletion; never reapplies policy/grants or OS settings.
-    public func recordReflectionBaseline() throws {
+    public func recordReflectionBaseline(durationConfirmed: Bool? = nil, expectedSequence: SnapshotSequence? = nil) throws {
         try serialized { try database.transaction(writer: true) {
             let before = try loadSnapshot()
-            try captureReflection(before: before.snapshotSequence, force: true)
+            if let expectedSequence, before.snapshotSequence != expectedSequence { throw StorageError.conflict }
+            try captureReflection(before: before.snapshotSequence, force: true, durationConfirmed: durationConfirmed)
+        } }
+    }
+    /// Optional shared marker. Older writers still emit points, which break interval continuity.
+    /// Installation never backfills time preceding the first native sample.
+    public func installDurationCapture() throws {
+        try serialized { try database.transaction(writer: true) {
+            guard try hasReflectionCapture() else { throw StorageError.unavailable }
+            try database.execute("CREATE TABLE IF NOT EXISTS reflection_duration_capture(version INTEGER PRIMARY KEY CHECK(version=1))")
+            try database.execute("INSERT OR IGNORE INTO reflection_duration_capture VALUES(1)")
         } }
     }
     /// Optional auxiliary schema. Main schema 6 remains readable by an Extension before host upgrade.
@@ -207,8 +231,8 @@ extension ControlRepository {
 
     /// Runs inside the same short writer as the control state. Optional payload loss never changes
     /// control intent; its high water/loss marker is committed with the control operation.
-    func captureReflection(before: SnapshotSequence, force: Bool = false) throws {
-        do { try captureReflectionPayload(before: before, force: force) }
+    func captureReflection(before: SnapshotSequence, force: Bool = false, durationConfirmed: Bool? = nil) throws {
+        do { try captureReflectionPayload(before: before, force: force, durationConfirmed: durationConfirmed) }
         catch SQLiteFailure.rollbackFailure { throw StorageError.rollbackRequired }
         catch StorageError.rollbackRequired { throw StorageError.rollbackRequired }
         catch {
@@ -218,7 +242,7 @@ extension ControlRepository {
         }
     }
 
-    private func captureReflectionPayload(before: SnapshotSequence, force: Bool) throws {
+    private func captureReflectionPayload(before: SnapshotSequence, force: Bool, durationConfirmed: Bool?) throws {
         guard try hasReflectionCapture() else { return }
         let snapshot = try loadSnapshot(), boundary = try loadReflectionBoundary()
         guard force || snapshot.snapshotSequence != before else { return }
@@ -255,8 +279,9 @@ extension ControlRepository {
                         occurrenceStart: g.occurrence.resolvedStart, timeZone: g.occurrence.timeZone.identifier,
                         acceptedAt: g.acceptedAt, expiresAt: g.effectiveExpiresAt, status: g.status, ended: stored.hasEnded)
                 }.filter { $0.status != .reconciled }
-                let fact = ReflectionControlFact(version: 1, eventID: UUID(), sourceID: boundary.sourceID, sequence: sequence,
-                    committedAt: try Instant(secondsSince1970: Date().timeIntervalSince1970), timeZone: TimeZone.current.identifier,
+                let clock = try durationClock()
+                var fact = ReflectionControlFact(version: 1, eventID: UUID(), sourceID: boundary.sourceID, sequence: sequence,
+                    committedAt: clock.0, timeZone: TimeZone.current.identifier,
                     snapshotSequence: snapshot.snapshotSequence, policy: snapshot.policy, activation: snapshot.activation,
                     selections: snapshot.selections.filter { selection in
                         snapshot.policy.rules.contains { $0.selectionRef == selection.selection.ref }
@@ -270,6 +295,34 @@ extension ControlRepository {
                             status: $0.observation.status, evidence: $0.observation.evidence, failure: $0.observation.error,
                             scheduledValidUntil: $0.observation.validUntil)
                     })
+                if try !database.rows("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reflection_duration_capture'").isEmpty {
+                    guard try database.rows("SELECT version FROM reflection_duration_capture") == [[.integer(1)]] else { throw StorageError.corrupt }
+                    let a = snapshot.application
+                    let hasUnreconciledUnlock = grants.contains { [.active, .applying, .uncertain, .expired, .invalidated].contains($0.status) }
+                    let acknowledged = durationConfirmed != false && a?.observation.status == .applied
+                        && a?.observation.evidence == .ownStoreReadback && a?.evaluation.policyRevision == snapshot.policy.revision
+                        && a?.evaluation.timeZone.identifier == TimeZone.current.identifier
+                        && a.map { $0.observation.observedAt <= clock.0 } == true
+                    // Application.validUntil is a short display/evaluation horizon (often 30m),
+                    // not an instruction to remove the store. Bound a recorded operation by the
+                    // next real policy boundary instead; it is a cutoff, never proof of success.
+                    let context = try EvaluationContext(now: clock.0, timeZone: TimeZoneID(TimeZone.current.identifier),
+                        authorization: AuthorizationObservation(status: .approved, observedAt: clock.0), activation: snapshot.activation)
+                    let rules = try RuleEvaluator.evaluate(policy: snapshot.policy, selections: snapshot.selections.map(\.selection),
+                        context: context, through: Instant(secondsSince1970: clock.0.secondsSince1970 + 3 * 86_400))
+                    let cutoff = rules.nextEvaluationAt
+                    let restricted = acknowledged && snapshot.activation == .enabled
+                        && a?.evaluation.desiredTargets.isEmpty == false && !hasUnreconciledUnlock
+                        && a?.evaluation.desiredTargets == rules.desiredTargets && cutoff > clock.0
+                    let excluded = acknowledged && ((snapshot.activation == .paused && a?.evaluation.desiredTargets.isEmpty == true)
+                        || (snapshot.activation == .enabled && (a?.evaluation.desiredTargets.isEmpty == true || hasUnreconciledUnlock)))
+                    fact.durationObservation = try RestrictionTimelineSample(at: clock.0, uptime: clock.1,
+                        timeZone: TimeZone.current.identifier, state: restricted ? .restricted : excluded ? .excluded : .unknown,
+                        boundary: !force && (a?.observation.status == .applying || snapshot.activation == .paused
+                            || a?.evaluation.policyRevision != snapshot.policy.revision)
+                            ? .controlledTransition : .checkpoint,
+                        validUntil: restricted ? cutoff : nil)
+                }
                 try fact.validate()
                 let data = try Self.reflectionData(fact)
                 guard data.count <= 65_536 else { throw StorageError.invalidPage }

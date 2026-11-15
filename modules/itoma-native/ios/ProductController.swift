@@ -99,6 +99,13 @@ struct ProductResponse: Encodable, Sendable {
         return opened
     }
 
+    func checkpointRestrictionDuration() throws {
+        let r = try open()
+        try r.repository.installReflectionCapture(capacity: r.outboxCapacity)
+        try r.repository.installDurationCapture()
+        try r.recordDurationCheckpoint()
+    }
+
     func selectionSaved(_ data: Data, authorizationEpoch: Int) throws -> String {
         guard !busy else { throw ScreenTimeRuntimeError.busy }
         let runtime = try open(create: true)
@@ -482,6 +489,8 @@ struct ProductResponse: Encodable, Sendable {
         if let ready = try? r.monitors.readyPlan(for: r.repository.readSnapshot().policy) { try? r.monitors.cleanup(keeping: ready) }
         // Best-effort bounded import after OS/control reconciliation. Sink failure is persisted
         // as HistoryIncomplete by Storage; it never rolls back a restriction or confirmed reason.
+        try? await ProductHistoryController.shared.importForMaintenance()
+        try? r.recordDurationCheckpoint()
         try? await ProductHistoryController.shared.importForMaintenance()
         try r.protectFiles()
         return outcome.disposition == .committed && outcome.failure == nil
