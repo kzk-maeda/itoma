@@ -11,17 +11,18 @@
 - main向けPRの作成時に`ai-review`を自動付与する。
 - 本レビューの前にOpenAI Decisions APIで変更の影響を評価し、重要なPRだけ本レビューへ送る。
 - 以降の再実行は、人間によるラベル操作かコマンドで行う。
+- コマンドによる再実行は、PRコメントのスラッシュコマンド形式とする（ユーザー指定）。
 - この仕組みと事例を調べ、設計docsと実装Issueを用意する。
 
 本書の提案（数値・例外はレビュー対象）:
 
 - 自動判定はPRの初回だけ。後続pushは過去の結果をstaleにし、自動の再判定・本レビューを行わない。
-- コマンドの基本は`gh workflow run`。PRコメントの`/ai-review`は追加候補として分離する。
-- 手動のラベル追加と`force`コマンドは「もう一度判定してほしい」ではなく「本レビューを実行してほしい」と扱い、Decisionsを迂回する。
+- PRのConversationに`/ai-review`を投稿すると本レビューを再実行する。補助コマンド`/ai-review reassess`では、その時点の変更を再判定する。
+- 手動のラベル追加と`/ai-review`は「もう一度判定してほしい」ではなく「本レビューを実行してほしい」と扱い、Decisionsを迂回する。
 - 自動で付けたラベルは低スコアでも維持する。ラベルは実行要求の入口であり、判定通過・レビュー完了・マージ承認を示すものではない。状態と対象SHAはコメントで示す。
 - スコア、閾値、confidenceの使い方は暫定。実装前に過去PRで評価し、人間が採用する。
 
-コマンド種別と後続pushの扱いはユーザーへ確認中。未回答時は上記を基本案とする。実装IssueをReadyにする前に採用版へ反映する。
+コマンドの入口はPRコメントと確定した。後続pushの扱いは引き続き「初回だけ自動」を基本案とし、実装IssueをReadyにする前に採用版へ反映する。コマンド自体はまだ実装されていない。
 
 ## 2. 現行実装との差分
 
@@ -33,7 +34,7 @@
 | 要否判定 | なし | Decisions APIとアプリ側ポリシーで選別 |
 | push | ラベルがあれば`synchronize`で本レビュー | SHAを無効化するだけ。再実行は人間が要求 |
 | ラベル付与 | 本レビュー | 人間による追加/付け直しは引き続き本レビュー |
-| 手動起動 | PR番号指定で本レビュー | 既定の`force`を維持し、任意で`reassess`を追加 |
+| 手動起動 | PR番号指定で本レビュー | PRコメントの`/ai-review`で本レビュー、`/ai-review reassess`で再判定 |
 | 実行コード | `github.workflow_sha`に固定 | 維持。PRイベントの古いbase SHAを使用しない |
 | 投稿 | OpenAIキーを持たないjob。artifact IDで受け渡し | 維持。判定結果と未実施理由も保存 |
 
@@ -74,7 +75,8 @@ flowchart TD
     P -->|必要| R[既存の本レビュー]
     P -->|不要| S[本レビュー省略を明示]
     D -->|APIエラー| X[判定失敗を明示・手動対応]
-    M[人間のラベル追加 / forceコマンド] --> R
+    M[人間のラベル追加 / 認可済みai-reviewコマンド] --> R
+    N[認可済みreassessコマンド] --> C
     R --> O[対象SHA・根拠・結果を保存]
     S --> O
     X --> O
@@ -90,8 +92,8 @@ flowchart TD
 | fork PR | ラベルのみ、`unsupported_fork` | なし | なし |
 | 人間の`ai-review`追加/付け直し | `force`要求を登録 | なし | 1回。スコアに関係なく実行 |
 | 人間の`ai-review`削除 | 取消を記録、進行中の処理を停止 | 新規呼び出しなし | 新規呼び出し/投稿を抑止 |
-| `workflow_dispatch`の`force` | ラベルを付け、1回限りの明示要求 | なし | 1回 |
-| `workflow_dispatch`の`reassess` | ラベルを付け、明示の再判定要求 | 1回 | ポリシーで必要な場合 |
+| PRコメントの`/ai-review` | 投稿者を認可後、ラベルを付け、1回限りの明示要求 | なし | 1回 |
+| PRコメントの`/ai-review reassess` | 投稿者を認可後、ラベルを付け、明示の再判定要求 | 1回 | ポリシーで必要な場合 |
 | `synchronize`、reopen、2回目以降のready | 更新されたSHAをstale/手動待ちとして表示 | 自動では呼ばない | 自動では呼ばない |
 | mainへの初回retarget | 初回未登録の場合だけ作成時と同様に処理 | 条件付き初回 | 条件付き初回 |
 | mainからのretarget・close・draft化 | 実行資格を無効化 | なし | 投稿を抑止 |
@@ -105,7 +107,7 @@ retargetによる対象外への変更も検知するため、イベント入口
 
 ### ラベルの意味
 
-`ai-review`は要求の入口と停止操作に使う。初回の低スコアPRでもラベルは残す。再実行したい場合は一度外して付け直すか、CLIを使う。追加の「低リスク」「承認済み」ラベルは作らない。
+`ai-review`は要求の入口と停止操作に使う。初回の低スコアPRでもラベルは残す。再実行したい場合は一度外して付け直すか、PRへ`/ai-review`とコメントする。追加の「低リスク」「承認済み」ラベルは作らない。
 
 Decisionsの低スコアは「このSHAでは本レビューを自動要求しない」という判断であり、不具合なし・マージしてよいという判断ではない。
 
@@ -123,17 +125,19 @@ initial_claimed → skipped_low / reviewed / triage_failed / stale / cancelled /
 
 - `initial_claimed`をAPI送信前に保存する。状態保存に失敗したらAPIを送信しない。
 - 初回の結果にかかわらず、自動枠は消費済みとする。障害時の再試行は人間が要求する。
-- 初回状態のない既存PRをready/reopenしただけでは自動枠を新設しない。導入前PRへの遡及実行はCLIで明示する。
+- 初回状態のない既存PRをready/reopenしただけでは自動枠を新設しない。導入前PRへの遡及実行はPRコメントの`/ai-review`で明示する。
 - 状態コメントが削除/破損していたら、自動枠を未使用と推測せず`manual_required`へ進む。
 - コメントはbotの投稿者・marker・repo/PR番号・schemaを検証する。PR本文の擬似状態やモデル出力を状態として読まない。
 
-手動要求は`run_id`または受理したコマンドIDをキーとし、run attemptは同じ要求の継続として扱う。新しい手動実行なら同じSHAでも再レビューできる。API送信済みか不明な失敗を、Re-runだけで自動的に再送しない。
+ラベル操作による手動要求は`run_id`、コメントからの要求は`repository + comment_id`をキーとし、run attemptは同じ要求の継続として扱う。新しいコメントなら同じSHAでも再レビューできるが、同じコメントを再配送/編集しただけでは新しい要求を作らない。API送信済みか不明な失敗を、Re-runだけで自動的に再送しない。
 
 ### 競合と鮮度
 
 PR単位で要求を直列化し、新しい取消/明示要求が古い要求を置き換える。API直前と投稿直前にhead/base・ラベル・open/draft・要求generationを確認する。古い判定は新しいheadへ流用しない。
 
 無関係な`labeled`や本文編集まで同じ`cancel-in-progress`グループへ入れると、jobの`if`がfalseでも進行中の実行を消してしまう。対象イベントだけ共有グループへ入れ、無関係なイベントはrun固有グループへ分離する等、**Workflow開始時点のconcurrency**もテストする。
+
+コメント受付WorkflowはPRごとの共有concurrencyへ入れない。コマンドと投稿者の権限を検証した後に実行側へ接続する。通常コメントや権限のない投稿によって、進行中の正当なレビューがキャンセルされる構成にしない。
 
 GitHub APIへのコメント更新とPR更新は原子的ではない。最終照合とSHA/generationの明示で対処し、分散的なexactly-onceや完全な競合排除を保証したと扱わない。送信済みAPIの課金は取消操作でも取り消せない。
 
@@ -251,25 +255,40 @@ APIの回答`type/name`、scoreの範囲、各段階のvalue/label/確率、分�
 | job | 権限/Secret | 責務 |
 | --- | --- | --- |
 | prepare | GitHubのラベル/コメント操作に必要な最小のwrite。OpenAIキーなし | イベント分類、ラベル、初回/手動要求の登録、取消 |
+| command receiver（別Workflow） | GitHub read、受理後のdispatchに必要な`actions: write`。OpenAIキーなし | PRコメントと投稿者の認可、実行側への要求送信 |
 | assess | GitHub readと`OPENAI_API_KEY` | 軽量収集、Decisions、ローカル判定、artifact |
 | review | GitHub readと`OPENAI_API_KEY` | gateが要求した場合、またはforce時だけ既存本レビュー |
 | publish | GitHub write。OpenAIキーなし | 最新要求の結果だけ表示、状態更新、artifact ID受け取り |
 
 各jobは`github.workflow_sha`を使用する。判定と本レビューの間でも同じhead/baseを再確認する。PRブランチのnpm install、scripts、シェルをSecret付きjobで実行しない。
 
-想定CLI（未実装の`mode`入力を含む）:
+利用者は、対象PRの**Conversationの新しいコメント**に次を投稿する（未実装）:
 
-```bash
-# スコア判定を迂回して本レビューを1回実行。mode省略もforce。
-gh workflow run ai-review.yml --repo kzk-maeda/itoma --ref main \
-  -f pull_request_number=123 -f mode=force
-
-# 人間の要求により、その時点の変更を再判定する。
-gh workflow run ai-review.yml --repo kzk-maeda/itoma --ref main \
-  -f pull_request_number=123 -f mode=reassess
+```text
+/ai-review
 ```
 
-PRコメントの`/ai-review`を追加する場合は、`issue_comment.created`、PR上であること、単独行の完全一致、投稿者の現在のwrite/maintain/admin権限、コメントIDによる重複排除を検証する。誰でも書けるコメントからSecret付き処理を無条件に起動しない。本文をシェルとして展開しない。この入口はCLIと同じforce要求へ接続し、別の採点処理を作らない。
+これは内部の`force`要求となり、Decisionsを迂回して、その時点のPRに本レビューを1回実行する。ラベルがなくても受理後に付与するので、低スコアで省略されたPRでも明示的に再実行できる。
+
+本レビューではなく判定からやり直す補助コマンドは、次の形式とする:
+
+```text
+/ai-review reassess
+```
+
+### コメント受付の契約
+
+- 入口は`issue_comment`の`created`。PRのConversationだけを対象とし、通常Issueや差分上のinline review commentは対象外。
+- 前後の空白を除いたコメント本文全体が、上記いずれかの単独行に完全一致すること。引用・コードブロック・説明との併記・未知の引数は受理しない。既存コメントの編集では起動せず、再実行は新しいコメントで要求する。
+- PR番号は`github.event.issue.number`から取得し、PR APIで実在・対象repo・main向け・open・非draft・同一repoのheadを確認する。`issue_comment`には`pull_request`イベントと同じpayloadがあると仮定しない。
+- 投稿者は`github.event.comment.user`を使用し、GitHub APIで現在のwrite/maintain/admin権限を確認する。author_associationや後段の`github.actor`だけを認可根拠にしない。権限のないコメントはOpenAI APIを呼ばず無視する。
+- 生の本文や任意の引数をシェルへ展開しない。受理したコマンドを`force`/`reassess`の列挙値へ変換し、PR番号とcomment IDは数値として検証する。
+
+受付Workflow（新設案`ai-review-command.yml`）はtrusted mainの定義で動かし、OpenAIキーを渡さない。認可後、`GITHUB_TOKEN`でmainの実行Workflowへ`workflow_dispatch`する。これはGITHUB_TOKENによるイベント抑制の例外であり、新たなPATは不要。利用者にGitHub CLIやActions画面での操作を要求しない。
+
+dispatchにはPR番号・comment ID・受理時のhead SHA・列挙したmodeだけを渡す。実行側は元コメントをAPIで再取得し、対象PRとの対応、投稿者の現在の権限、本文のコマンド、head SHA、未消費のcomment IDを再確認する。dispatchしたbotを、元の要求者として記録しない。要求者・コメントのpermalink・受理SHAを証跡に残す。
+
+コメントの削除/編集、権限の取消、headの更新が確認された場合は、古い要求で新規API呼び出しや投稿を行わない。同じコメントの再配送・受付側の再実行・投稿jobの再試行で本レビューを重複起動しない。既存の`workflow_dispatch`は内部接続と保守用に残せるが、標準の再実行操作はPRコメントに統一する。
 
 ## 11. 表示・証跡・評価
 
@@ -294,6 +313,7 @@ artifactには上記と要求ID/generation、workflow SHA、policy version/hash�
 [#197](https://github.com/kzk-maeda/itoma/issues/197)の実装対象:
 
 - `.github/workflows/ai-review.yml`: 初回・手動・取消・鮮度の分岐、ラベル/状態job、条件付き本レビュー。
+- `.github/workflows/ai-review-command.yml`等: PRコメントのコマンド受付・投稿者の認可・実行Workflowへの接続（新設案）。
 - `.github/ai-review/triage-policy.json`等: rubric、重み、閾値、重要パス、バージョンの正本（新設案）。
 - `scripts/lib/ai-review-triage.mjs`等: 軽量collector、Decisions呼び出し/validator、決定ロジック（新設案）。
 - 既存CLI/renderer: 要求モード、状態、未実施/判定失敗の表示、現行本レビューとの接続。
@@ -307,7 +327,11 @@ artifactには上記と要求ID/generation、workflow SHA、policy version/hash�
 | testsのみでassertion削除、ルール文書の契約変更 | 拡張子だけでは省略せず採点 |
 | Draft作成→複数push→初回ready | 作成時ラベルのみ、最新SHAで初回gate1回 |
 | 初回後のpush/reopen/ready | stale/手動待ち。自動API呼び出し0回 |
-| 人間の付け直し、forceコマンド | gate0回、本レビュー1回 |
+| 人間の付け直し、権限のある投稿者の`/ai-review` | gate0回、本レビュー1回 |
+| 権限のある投稿者の`/ai-review reassess` | gate1回、必要な場合だけ本レビュー |
+| 通常Issue、inline comment、引用/コードブロック、未知の引数、コメント編集 | 受付対象外。追加API・進行中レビューの取消なし |
+| 権限のない投稿者・受理後の権限取消・コメント削除/編集 | 認可/再確認で拒否し、新規API・古い投稿を抑止 |
+| 同じcomment IDの再配送、受付WorkflowのRe-run | 同じ要求として扱い、APIを重複送信しない |
 | 自動ラベル付与 | 後続labeled Workflowの発火を期待せず同一実行で続行 |
 | ラベル削除後のpush、入力収集中の削除 | 自動復活/新規API/古い投稿なし |
 | 無関係なラベル/本文編集 | 追加APIなし、進行中レビューを取消さない |
@@ -317,6 +341,6 @@ artifactには上記と要求ID/generation、workflow SHA、policy version/hash�
 | gate後のhead/base変更、main対象外へretarget | 古い結果を本レビュー/最新コメントに使用しない |
 | API送信直後の失敗、Re-run、状態削除 | 初回枠/要求を無制限に新設しない。手動対応を表示 |
 | 投稿jobだけ再実行、artifactなし | 元artifact IDを使う。artifactなしなら投稿jobを起動しない |
-| fork/権限のないコメント（入口追加時） | ラベルとAPI資格を分離。権限のないAPI要求は受け付けない |
+| fork/権限のないコメント | ラベルとAPI資格を分離。権限のないAPI要求は受け付けない |
 
-設計レビューで確定するものは、CLI/コメント入口の範囲、初回以降の方針、暫定閾値の校正、障害時の運用、重要パスの範囲。設計承認・main反映・API利用条件の確認後に実装IssueをReadyへ移す。文書のマージだけで選別機能が稼働したとは扱わない。
+コマンドの入口はユーザー指定によりPRコメントへ確定した。設計レビューで確定するものは、初回以降の方針、補助コマンドの詳細、暫定閾値の校正、障害時の運用、重要パスの範囲。設計承認・main反映・API利用条件の確認後に実装IssueをReadyへ移す。文書のマージだけで選別機能が稼働したとは扱わない。
