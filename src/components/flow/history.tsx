@@ -1,83 +1,144 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useHistoryRecords } from '@/state/history';
+import { HistoricalChoices } from '@/runtime/history-context';
 import { completeNativeHistorySmoke } from '@/qa/native-smoke';
 import type { HistoryCode, HistoryRow } from '../../../modules/itoma-native';
 import { back } from './navigation';
-import { Body, Button, Field, FlowScreen, Heading, Notice, Panel, flowStyles } from './ui';
+import { Body, Button, FlowScreen, Heading, LinkRow, Notice, Panel, flowStyles, useFlowTheme } from './ui';
+import { HistoryCalendar } from './history-calendar';
+import { canReadChoiceReason, choiceStatus, choiceTitle, dateLabel, dayAt, groupChoices, moveDay, timeLabel } from './history-presentation';
 
-const actions: Record<HistoryRow['action'], string> = { reason: '保存した理由', cancelled: '確定前の取消', commitPolicy: 'ルールの変更', requestTemporaryGrant: '一時解除の要求', retryCommand: '要求の再試行', resumeAfterAuthorization: 'ルールの再開', stop: 'ルールの停止' };
-const statuses: Record<HistoryRow['status'], string> = { prepared: '理由の保存', pending: '受付済み', scheduling: '予定を登録中', applying: '反映処理中', succeeded: '処理の完了を記録', failed: '処理できませんでした', uncertain: '反映を確認できません', superseded: '新しい操作に置き換え済み', expired: '期限が終了', cancelled: '取消済み' };
-const grantStatuses: Record<string, string> = { pending: '受付済み', scheduling: '予定登録中', applying: '反映処理中', active: '解除の反映を確認', expired: '期限終了', invalidated: '条件変更により終了', reblockPending: '再制限の処理待ち', reconciled: '再制限の反映を確認', uncertain: '反映が不明', failed: '処理失敗' };
-const errors: Record<HistoryCode, string> = { unavailable: 'この環境では履歴を利用できません。履歴機能を含むiPhone版で確認できます。', 'storage-failed': '保存した記録を読み取れません。空の履歴とは扱わず、端末のロックを解除してから再度確認してください。', busy: '前の操作を確認しています。少し待ってから再度確認できます。', changed: '記録が更新されました。古いページは閉じています。最新の記録を確認してください。', 'invalid-input': '日付をYYYY-MM-DDの形式で確認してください。', 'capacity-full': '記録を保存する上限に達しました。不要な理由や操作履歴を削除してから、取込を再試行できます。' };
-const when = (at: number, timeZone: string) => {
-  const date = new Date(at * 1000);
-  if (!Number.isFinite(date.getTime())) return '日時を表示できません';
-  try { return date.toLocaleString('ja-JP', { timeZone, year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
-  catch { return date.toISOString(); }
-};
-
+const errors: Record<HistoryCode, string> = { unavailable: 'この環境では履歴を利用できません。履歴機能を含むiPhone版で確認できます。', 'storage-failed': '記録を読み取れませんでした。記録がないとは扱っていません。端末のロックを解除して、もう一度確認できます。', busy: '前の操作を確認しています。少し待ってから再度確認できます。', changed: '記録が更新されました。最新の内容を読み直してください。', 'invalid-input': '日付を確認してください。', 'capacity-full': '保存する上限に達しました。設定で記録を確認し、取込を再試行できます。' };
+function Disclosure({ label, children }: { label: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false), theme = useFlowTheme();
+  return <View style={styles.disclosure}><Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ expanded: open }} aria-expanded={open} onPress={() => setOpen(value => !value)} style={styles.disclosureButton}>
+    <Text style={{ color: theme.text, fontSize: 14, flex: 1 }}>{label}</Text><Text accessible={false} style={{ color: theme.muted }}>{open ? '−' : '＋'}</Text>
+  </Pressable>{open && <View style={flowStyles.section}>{children}</View>}</View>;
+}
+function recordTitle(row: HistoryRow, application?: string) {
+  if (!application) return choiceTitle(row);
+  return row.action === 'reason' ? `${application}を開く理由` : `${application}の一時解除`;
+}
 
 export function HistoryScreen() {
-  const state = useHistoryRecords(), [day, setDay] = useState(state.day);
+  const state = useHistoryRecords(), theme = useFlowTheme(), contexts = useContext(HistoricalChoices);
+  const [calendar, setCalendar] = useState(false), [viewedAt, setViewedAt] = useState(Date.now);
   const { refresh } = state;
-  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
-  useEffect(() => { let active = true; queueMicrotask(() => { if (active) setDay(state.day); }); return () => { active = false; }; }, [state.day]);
+  useFocusEffect(useCallback(() => { setViewedAt(Date.now()); refresh(); }, [refresh]));
   useEffect(() => {
     if (!state.busy && (state.storage === 'not-created' || state.error)) completeNativeHistorySmoke(state.storage === 'not-created' && !state.error);
   }, [state.busy, state.storage, state.error]);
-  const page = state.page;
+  const page = state.page, zone = page?.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const today = dayAt(viewedAt / 1000, zone), selectedDay = state.day || today;
+  const grouped = groupChoices(page?.rows ?? []);
+  const chooseDay = (day: string) => { state.choose(state.kind, day); setCalendar(false); };
   return <FlowScreen title="あなたの選択の記録" onBack={back}>
-    <Body>保存した操作と、自分の言葉を確認できます。ここにあるのは操作時点の記録で、実際の利用時間や現在の制限を測定したものではありません。</Body>
-    {state.error && <View accessibilityLiveRegion="polite"><Notice title="記録を確認してください">{errors[state.error]}</Notice></View>}
-    <View style={flowStyles.row}>
-      <Button label={state.kind === 'event' ? '✓ 操作の記録' : '操作の記録'} secondary disabled={state.busy} onPress={() => state.choose('event', state.day)} />
-      <Button label={state.kind === 'reason' ? '✓ 保存した理由' : '保存した理由'} secondary disabled={state.busy} onPress={() => state.choose('reason', state.day)} />
+    <Body muted>そのとき、何を選んだか。理由と結果を、一つずつ見直せます。</Body>
+    <View style={[styles.segments, { backgroundColor: theme.background }]}>
+      {(['event', 'reason'] as const).map(kind => <Pressable key={kind} accessibilityRole="button" accessibilityState={{ selected: state.kind === kind, disabled: state.busy }} aria-pressed={state.kind === kind} disabled={state.busy}
+        onPress={() => state.choose(kind, state.day)} style={[styles.segment, { backgroundColor: state.kind === kind ? theme.surface : 'transparent' }]}>
+        <Text style={{ color: state.kind === kind ? theme.text : theme.muted, fontSize: 14, fontWeight: state.kind === kind ? '600' : '400' }}>{kind === 'event' ? '操作と結果' : '保存した理由'}</Text>
+      </Pressable>)}
     </View>
-    <Field label="日付で絞り込む（YYYY-MM-DD・空欄はすべて）" value={day} onChangeText={setDay} autoCapitalize="none" keyboardType="numbers-and-punctuation" />
-    <Button label="この日付の記録を見る" secondary disabled={state.busy} onPress={() => state.choose(state.kind, day)} />
+    {state.kind === 'reason' && <Body muted>解除の受付に至らず、理由だけを保存した記録も確認できます。</Body>}
+    <View style={styles.dateControls}>
+      <Pressable accessibilityRole="button" accessibilityLabel="日付を選ぶ" accessibilityState={{ expanded: calendar, disabled: state.busy }} aria-expanded={calendar} disabled={state.busy} onPress={() => setCalendar(value => !value)} style={[styles.dateButton, { borderColor: theme.line }]}>
+        <Text style={{ color: theme.text, fontSize: 15 }}>{state.day ? dateLabel(state.day) : 'すべての日'}　⌄</Text>
+      </Pressable>
+      {state.day ? <Button label="すべての日へ" secondary disabled={state.busy} onPress={() => chooseDay('')} /> : <Button label="今日" secondary disabled={state.busy} onPress={() => chooseDay(today)} />}
+    </View>
+    {calendar && <HistoryCalendar initialDay={selectedDay} onChoose={chooseDay} onClose={() => setCalendar(false)} />}
+    {!!state.day && <View style={styles.dayNavigation}><Button label="前の日" secondary disabled={state.busy} onPress={() => chooseDay(moveDay(state.day, -1))} /><Button label="次の日" secondary disabled={state.busy} onPress={() => chooseDay(moveDay(state.day, 1))} /></View>}
+    {state.error && <View accessibilityLiveRegion="polite"><Notice title="記録を確認してください">{errors[state.error]}</Notice></View>}
+    {page?.incomplete && <Notice title="記録が一部欠けている可能性があります">確認できる記録だけを表示しています。</Notice>}
+    {page && page.transfer !== 'current' && <Notice title={page.transfer === 'pending' ? 'まだ取り込んでいない記録があります' : '新しい記録の取込状況は未確認です'}>保存済みの記録は下で確認できます。</Notice>}
     {state.busy && <Body muted>記録を確認しています。</Body>}
-    {state.storage === 'not-created' && <Panel><Heading>まだ保存された記録がありません</Heading><Body>ルールの保存や、理由を確定した後の記録をここで確認できます。</Body></Panel>}
-    {page && <>
-      {page.incomplete && <Notice title="記録の一部が欠けている可能性があります">残っている記録だけを表示しています。取込を再試行しても、保存できなかった過去の記録がすべて戻るとは限りません。</Notice>}
-      {page.transfer !== 'current' && <Notice title={page.transfer === 'pending' ? '未取込の記録があります' : '新しい記録の取込状況を確認できません'}>保存済みの記録は下で確認できます。取込はご自身で再試行できます。</Notice>}
-      <Body muted>取得時点：{when(page.asOf, page.timeZone)} · {page.timeZone}。表示は新しい記録から、最大40件ずつです。</Body>
-      {state.reference && (state.reference.revision !== page.revision || state.reference.asOf !== page.asOf || state.reference.timeZone !== page.timeZone)
-        && <Body muted>振り返りとは別の時点で取得した操作記録です。時間の集計と同じ時点の一覧とは限りません。</Body>}
-      <View style={flowStyles.row}>
-        <Button label="新しい40件へ" secondary disabled={state.busy || !page.previous} onPress={() => { if (page.previous) state.move(page.previous, 'newer'); }} />
-        <Button label="前の40件へ" secondary disabled={state.busy || !page.next} onPress={() => { if (page.next) state.move(page.next, 'older'); }} />
-      </View>
-      {!page.rows.length && <Body>この範囲に保存された記録はありません。</Body>}
-      {page.rows.map((row) => <Panel key={row.key}>
-        <Heading>{actions[row.action]}</Heading><Body muted>{when(row.at, page.timeZone)}</Body>
-        <Body>{row.reasonDeleted ? '理由本文は削除済みです' : `記録時の状態：${statuses[row.status]}`}</Body>
-        {row.grantStatus && <Body muted>解除の記録：{grantStatuses[row.grantStatus] ?? '状態を確認できません'}</Body>}
-        {row.expiresAt !== undefined && <Body>記録上の解除上限：{when(row.expiresAt, page.timeZone)}</Body>}
-        {row.action === 'cancelled' && <Body muted>確定前に取り消した本文は保存していません。</Body>}
-        {(row.action === 'reason' || row.action === 'requestTemporaryGrant') && row.commandID && !row.reasonDeleted && <Button label="この記録の理由を読む" secondary disabled={state.busy} onPress={() => { state.readReason(row.commandID!); router.push('/history-reason'); }} />}
-      </Panel>)}
-      <Button label="記録の保存状況を確認する" secondary onPress={() => router.navigate('/settings-storage')} />
-    </>}
+    {state.storage === 'not-created' && !state.error && <Panel><Heading>これからの選択を、ここに。</Heading><Body>理由の保存や、設定を見直したときの記録を確認できます。</Body></Panel>}
+    {!!page && !state.error && !state.busy && !grouped.length && <Panel><Heading>{state.day ? 'この日の記録はありません' : 'この範囲に記録はありません'}</Heading><Body>{state.kind === 'event' ? '理由だけの保存は「保存した理由」から確認できます。' : 'ここで確認できる理由の記録はありません。'}</Body>{state.day && <Button label="すべての日の記録を見る" secondary onPress={() => chooseDay('')} />}</Panel>}
+    {grouped.map((group, index) => {
+      const row = group.row, context = contexts?.(row), day = dayAt(row.at, zone), first = index === 0 || dayAt(grouped[index - 1].row.at, zone) !== day;
+      const label = recordTitle(row, context?.applicationLabel);
+      return <View key={row.key} style={styles.dayGroup}>
+        {first && <Text accessibilityRole="header" style={[styles.dateHeading, { color: theme.text }]}>{day === today ? '今日' : day === moveDay(today, -1) ? '昨日' : dateLabel(day)} {(day === today || day === moveDay(today, -1)) && <Text style={{ color: theme.muted, fontWeight: '400' }}>{dateLabel(day)}</Text>}</Text>}
+        <Pressable accessibilityRole="button" accessibilityLabel={`${label}、${timeLabel(row.at, zone)}、${choiceStatus(row)}。詳細を見る`} disabled={state.busy}
+          testID={`history-choice-${row.key}`} onPress={() => { state.openRecord(row); router.push('/history-reason'); }} style={({ pressed }) => [styles.record, { borderColor: theme.line, opacity: pressed ? 0.75 : 1 }]}>
+          <View style={styles.recordHeader}><View style={styles.timeColumn}><Text style={[styles.caption, { color: theme.muted }]}>記録</Text><Text style={[styles.time, { color: theme.muted }]}>{timeLabel(row.at, zone)}</Text></View><View style={styles.recordBody}>
+            <Text style={[styles.recordTitle, { color: theme.text }]}>{label}</Text>
+            <Text style={[styles.status, { color: theme.text, backgroundColor: theme.soft }]}>{choiceStatus(row)}</Text>
+            {row.expiresAt !== undefined && <Text style={[styles.caption, { color: theme.muted }]}>記録上の上限 {timeLabel(row.expiresAt, zone)}</Text>}
+            <Text style={[styles.caption, { color: theme.muted }]}>{row.reasonDeleted ? '理由は削除済み · 結果を見る' : canReadChoiceReason(row) ? '理由と結果を見る' : '記録を見る'}　›</Text>
+          </View></View>
+        </Pressable>
+      </View>;
+    })}
+    {!!page && (page.next || page.previous) && <View style={styles.dayNavigation}>
+      {page.previous && <Button label="新しい記録へ" secondary disabled={state.busy} onPress={() => state.move(page.previous!, 'newer')} />}
+      {page.next && <Button label="前の記録へ" secondary disabled={state.busy} onPress={() => state.move(page.next!, 'older')} />}
+    </View>}
+    {state.reference && page && (state.reference.revision !== page.revision || state.reference.asOf !== page.asOf || state.reference.timeZone !== page.timeZone) && <Body muted>振り返りとは別の時点の記録です。時間の集計と一致する一覧とは限りません。</Body>}
+    {contexts && <Text style={[styles.caption, { color: theme.muted }]}>デモ：アプリ・ルールは「当時の情報を保存する案」です。現行の履歴には含まれません。</Text>}
+    <Disclosure label="記録について・保存状況">
+      <Body muted>これは選択や処理の記録です。実際の利用時間や集中の成果、現在の制限を示すものではありません。</Body>
+      {page && <Body muted>取得時点：{new Date(page.asOf * 1000).toLocaleString('ja-JP', { timeZone: zone })} · {zone}。最大40件ずつ。関連する処理はこのページ内でまとめています。</Body>}
+      <LinkRow label="記録の保存状況を確認する" onPress={() => router.navigate('/settings-storage')} />
+    </Disclosure>
     <Button label="最新の記録を確認する" secondary disabled={state.busy} onPress={refresh} />
   </FlowScreen>;
 }
 
 export function HistoryReasonScreen() {
-  const state = useHistoryRecords(), reason = state.reason;
+  const state = useHistoryRecords(), row = state.selectedRow, reason = state.reason, contexts = useContext(HistoricalChoices), theme = useFlowTheme();
+  const context = row ? contexts?.(row) : undefined, zone = state.page?.timeZone ?? 'UTC';
+  const related = row?.commandID ? state.page?.rows.filter(item => item.commandID === row.commandID) ?? [] : row ? [row] : [];
   const close = () => { state.closeReason(); back(); };
-  return <FlowScreen title="保存した理由" onBack={close}>
+  const reasonExpected = !!state.selectedCommandID;
+  return <FlowScreen title="選択の詳細" onBack={close}>
     {state.error && <Notice title="記録を確認してください">{errors[state.error]}</Notice>}
-    {state.busy && <Body>理由を確認しています。</Body>}
-    {reason && <Panel><Heading>あなたの言葉</Heading>
-      <Body>{reason.state === 'deleted' ? '理由本文は削除済みです。' : reason.state === 'missing' ? 'この要求に紐づく理由の保存を確認できません。'
-        : reason.state === 'prepared-only' ? '理由の保存だけを確認しました。一時解除の受付記録はありません。'
-          : reason.state === 'shared-accepted' ? '一時解除の要求を受け付けた記録があります。反映の結果は操作の記録で確認できます。' : '理由は保存されていますが、解除の受付は確認できません。'}</Body>
-      {reason.body !== undefined && <Body>{reason.body}</Body>}
+    {row && <View style={flowStyles.section}>
+      <Text style={[styles.caption, { color: theme.muted }]}>記録日時：{dateLabel(dayAt(row.at, zone))} · {timeLabel(row.at, zone)}</Text>
+      <Heading>{recordTitle(row, context?.applicationLabel)}</Heading>
+      <Text style={[styles.status, { color: theme.text, backgroundColor: theme.soft }]}>{reason?.state === 'prepared-only' ? '理由の保存のみ' : choiceStatus(row)}</Text>
+    </View>}
+    {context?.goal && <View style={[styles.goal, { backgroundColor: theme.purposeSurface }]}><Text style={[styles.caption, { color: theme.muted }]}>当時、大切にしたかったこと</Text><Body>{context.goal}</Body></View>}
+    {(reasonExpected || reason) && <Panel><Heading>あなたの理由</Heading>
+      {state.busy && <Body muted>理由を確認しています。</Body>}
+      {reason && <>
+        <Body>{reason.state === 'deleted' ? '理由本文は削除済みです。' : reason.state === 'missing' ? 'この記録に紐づく理由を確認できません。'
+          : reason.state === 'prepared-only' ? '理由の保存だけを確認しました。一時解除の受付記録はありません。'
+            : reason.state === 'shared-accepted' ? '保存した理由です。' : '理由は保存されていますが、解除の受付は確認できません。'}</Body>
+        {reason.body !== undefined && <Text selectable style={[styles.reason, { color: theme.text }]}>{reason.body}</Text>}
+      </>}
+      {!reason && !state.busy && <Body muted>理由を読み取れていません。記録がないとは扱っていません。</Body>}
     </Panel>}
-    {!reason && !state.busy && <Body>記録の一覧から理由を選ぶか、再度確認できます。</Body>}
-    {state.selectedCommandID && <Button label="理由を再確認する" secondary disabled={state.busy} onPress={() => state.readReason(state.selectedCommandID!)} />}
+    {row?.reasonDeleted && <Body muted>理由本文は削除済みです。操作の記録は残っています。</Body>}
+    {row?.action === 'cancelled' && <Body muted>確定前に取り消した本文は保存していません。</Body>}
+    {row && <Panel><Heading>このときの選択と結果</Heading>
+      {context?.ruleTitle && <Body>ルール：{context.ruleTitle}</Body>}
+      {context?.requestedMinutes !== undefined && <Body>希望した時間：{context.requestedMinutes}分</Body>}
+      {row.expiresAt !== undefined && <Body>記録上の解除上限：{timeLabel(row.expiresAt, zone)}</Body>}
+      <Body>{reason?.state === 'prepared-only' ? '理由の保存だけを確認しています。解除の成立を示す記録ではありません。' : choiceStatus(row)}</Body>
+      <Body muted>解除を選んだことと、実際にアプリを使ったことは別です。上限まで利用した時間や集中の成果を示していません。</Body>
+    </Panel>}
+    {row && !context && <Body muted>当時のアプリ名・ルール名・希望時間は、この記録に含まれていません。現在の設定から補っていません。</Body>}
+    {contexts && context && <Body muted>当時の情報を保存するデモ案です。現行のnative履歴から取得した情報ではありません。</Body>}
+    {row && <Disclosure label="処理の記録・補足">
+      <Body muted>表示中のページで確認できる関連記録です。すべての経過が含まれるとは限りません。</Body>
+      {related.slice().reverse().map(item => <View key={item.key} style={flowStyles.section}><Body muted>{timeLabel(item.at, zone)} · {choiceTitle(item)}</Body><Body>{choiceStatus(item)}</Body></View>)}
+    </Disclosure>}
+    {!row && !reasonExpected && !reason && <Body>記録の一覧から、見直したい選択を開いてください。</Body>}
+    {state.selectedCommandID && !state.busy && !reason && <Button label="理由を再確認する" secondary onPress={() => state.readReason(state.selectedCommandID!)} />}
     <Button label="記録の一覧へ戻る" secondary onPress={close} />
   </FlowScreen>;
 }
+const styles = StyleSheet.create({
+  segments: { flexDirection: 'row', borderRadius: 12, padding: 4, gap: 4 }, segment: { flex: 1, minHeight: 48, padding: 10, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  dateControls: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, dateButton: { flex: 1, minWidth: 150, borderWidth: 1, borderRadius: 12, padding: 12, minHeight: 50, justifyContent: 'center' },
+  dayNavigation: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, dayGroup: { gap: 8 }, dateHeading: { fontSize: 15, lineHeight: 24, fontWeight: '600', marginTop: 8 },
+  record: { borderBottomWidth: 1, paddingVertical: 18, minHeight: 88 }, recordHeader: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
+  timeColumn: { minWidth: 42 }, time: { fontSize: 13, lineHeight: 24, minWidth: 42 }, recordBody: { flex: 1, gap: 8, minWidth: 0 }, recordTitle: { fontSize: 17, lineHeight: 27, fontWeight: '500' },
+  status: { alignSelf: 'flex-start', fontSize: 12, lineHeight: 20, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }, caption: { fontSize: 13, lineHeight: 21 },
+  goal: { padding: 18, borderRadius: 16, gap: 8 }, reason: { fontSize: 18, lineHeight: 30 },
+  disclosure: { gap: 12 }, disclosureButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 },
+});

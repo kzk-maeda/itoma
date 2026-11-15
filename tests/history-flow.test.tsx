@@ -61,9 +61,9 @@ afterEach(() => jest.restoreAllMocks());
 
 test('private reason is fetched only after selection, shown in full, and never enters navigation', async () => {
   const b = backend(); await render(wrap(b));
-  expect(screen.getByText('記録時の状態：反映を確認できません')).toBeTruthy();
+  expect(screen.getByText('反映は未確認')).toBeTruthy();
   expect(b.run.mock.calls.some(([action]) => action === 'reason')).toBe(false);
-  await press('この記録の理由を読む');
+  await fireEvent.press(screen.getByTestId(`history-choice-${id}`));
   expect(screen.getByText(body)).toBeTruthy();
   expect(screen.getByText('理由の保存だけを確認しました。一時解除の受付記録はありません。')).toBeTruthy();
   expect(mockRoutes).toEqual(['/history', '/history-reason']);
@@ -72,28 +72,27 @@ test('private reason is fetched only after selection, shown in full, and never e
 });
 test('pagination replaces one page, retains date selection and sends the pinned revision', async () => {
   const b = backend(); await render(wrap(b));
-  await fireEvent.changeText(screen.getByLabelText('日付で絞り込む（YYYY-MM-DD・空欄はすべて）'), '2026-11-09');
-  await press('この日付の記録を見る'); await press('前の40件へ');
-  expect(screen.getByText('確定前の取消')).toBeTruthy();
-  expect(screen.queryByText('一時解除の要求')).toBeNull();
+  await press('日付を選ぶ'); await press('2026年11月9日'); await press('前の記録へ');
+  expect(screen.getByText('確定前に取り消しました')).toBeTruthy();
+  expect(screen.queryByText('一時解除を選びました')).toBeNull();
   expect(b.run).toHaveBeenLastCalledWith('page', expect.objectContaining({ day: '2026-11-09', afterKey: id, direction: 'older', revision: '1', timeZone: 'Asia/Tokyo' }));
-  await press('新しい40件へ');
-  expect(screen.getByLabelText('日付で絞り込む（YYYY-MM-DD・空欄はすべて）')).toHaveDisplayValue('2026-11-09');
+  await press('新しい記録へ');
+  expect(screen.getByText(/2026年11月9日/)).toBeTruthy();
 });
 test('deletion needs explicit confirmation, keeps policy operations separate, and shows tombstones', async () => {
   const b = backend(), alert = jest.spyOn(Alert, 'alert'); await render(wrap(b));
-  await press('保存した理由'); await press('記録の保存状況を確認する'); await press('記録を削除する'); await press('理由本文のみの削除を確認');
+  await press('保存した理由'); await press('記録について・保存状況'); await press('記録の保存状況を確認する'); await press('記録を削除する'); await press('理由本文のみの削除を確認');
   expect(b.run.mock.calls.some(([action]) => action === 'deleteReasons')).toBe(false);
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
   expect(screen.getByText('理由本文の削除を確認しました。')).toBeTruthy();
   await press('‹ 戻る'); await press('‹ 戻る');
-  expect(screen.getByText('理由本文は削除済みです')).toBeTruthy();
+  expect(screen.getByText(/理由は削除済み/)).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'この記録の理由を読む' })).toBeNull();
   expect(b.run.mock.calls.every(([action]) => ['page', 'deleteReasons'].includes(action))).toBe(true);
 });
 test('capacity and incomplete imports are distinct from file usage and OS success', async () => {
   const b = backend(); await render(wrap(b));
-  await press('記録の保存状況を確認する');
+  await press('記録について・保存状況'); await press('記録の保存状況を確認する');
   expect(screen.getByText('保存内容：< 0.01 MB / 上限 < 0.01 MB')).toBeTruthy();
   expect(screen.getByText('関連ファイル合計（観測値）：< 0.01 MB')).toBeTruthy();
   expect(screen.getByText('記録の一部が欠けている可能性があります')).toBeTruthy();
@@ -103,7 +102,7 @@ test('capacity and incomplete imports are distinct from file usage and OS succes
 test('unavailable storage never appears as an empty successful history', async () => {
   const b = backend(); b.run.mockResolvedValue({ status: 'error', storage: 'unknown', code: 'storage-failed' });
   await render(wrap(b));
-  expect(screen.getByText(/保存した記録を読み取れません/)).toBeTruthy();
+  expect(screen.getByText(/記録を読み取れませんでした/)).toBeTruthy();
   expect(screen.queryByText('まだ保存された記録がありません')).toBeNull();
 });
 test('an older reason response cannot resurrect text after settings deletion', async () => {
@@ -128,7 +127,7 @@ test('late pre-deletion list responses cannot replace the post-deletion page', a
 
 test('storage and deletion navigation reuse earlier routes instead of growing a loop of screens', async () => {
   const b = backend(); await render(wrap(b));
-  await press('記録の保存状況を確認する');
+  await press('記録について・保存状況'); await press('記録の保存状況を確認する');
   for (let n = 0; n < 12; n++) {
     await press('記録を削除する');
     expect(mockRoutes).toEqual(['/history', '/settings-storage', '/settings-delete']);
@@ -143,8 +142,19 @@ test('a deletion response failure remains unknown instead of claiming completion
   b.run.mockImplementation((action, request) => action === 'deleteReasons'
     ? Promise.resolve({ status: 'error', code: 'storage-failed', storage: 'unknown' }) : original(action, request));
   await render(wrap(b));
-  await press('記録の保存状況を確認する'); await press('記録を削除する'); await press('理由本文のみの削除を確認');
+  await press('記録について・保存状況'); await press('記録の保存状況を確認する'); await press('記録を削除する'); await press('理由本文のみの削除を確認');
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
   expect(screen.getByText('削除結果を確認できません。保存状況を確認してから、必要なら再試行できます。')).toBeTruthy();
   expect(screen.queryByText('理由本文の削除を確認しました。')).toBeNull();
+});
+
+test('cancelled record opens details without fetching a private reason or inventing a target', async () => {
+  const b = backend();
+  b.run.mockResolvedValue({ status: 'ok', storage: 'ready', page: { ...sample(), next: undefined, incomplete: false, transfer: 'current', rows: [{ key: id, at: 1794265100, action: 'cancelled', status: 'cancelled' }] } });
+  await render(wrap(b));
+  await fireEvent.press(screen.getByTestId(`history-choice-${id}`));
+  expect(screen.getByRole('header', { name: '選択の詳細' })).toBeTruthy();
+  expect(screen.getByText('確定前に取り消した本文は保存していません。')).toBeTruthy();
+  expect(screen.getByText(/当時のアプリ名・ルール名・希望時間は、この記録に含まれていません/)).toBeTruthy();
+  expect(b.run.mock.calls.some(([action]) => action === 'reason')).toBe(false);
 });

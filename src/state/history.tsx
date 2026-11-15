@@ -1,11 +1,11 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { historyRecords, type HistoryAction, type HistoryCode, type HistoryCursor, type HistoryKind, type HistoryPage, type HistoryReason, type HistoryResponse } from '../../modules/itoma-native';
+import { historyRecords, type HistoryAction, type HistoryCode, type HistoryCursor, type HistoryKind, type HistoryPage, type HistoryReason, type HistoryRow, type HistoryResponse } from '../../modules/itoma-native';
 import { useScreenTime } from './screen-time';
 
 type Query = { kind: HistoryKind; day: string };
 type ReflectionReference = { revision: string; asOf: number; timeZone: string };
-type State = { kind: HistoryKind; day: string; page?: HistoryPage; reason?: HistoryReason; selectedCommandID?: string; storage: HistoryResponse['storage']; busy: boolean; error?: HistoryCode;
+type State = { kind: HistoryKind; day: string; page?: HistoryPage; reason?: HistoryReason; selectedCommandID?: string; selectedRow?: HistoryRow; openRecord: (row: HistoryRow) => void; storage: HistoryResponse['storage']; busy: boolean; error?: HistoryCode;
   choose: (kind: HistoryKind, day: string) => void; refresh: () => void; move: (cursor: HistoryCursor, direction: 'older' | 'newer') => void;
   reference?: ReflectionReference; chooseReflectionDay: (day: string, reference: ReflectionReference) => void;
   readReason: (commandID: string) => void; closeReason: () => void; mutate: (action: 'import' | 'deleteReasons' | 'deleteHistory') => Promise<HistoryResponse | undefined> };
@@ -21,10 +21,11 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
   const reload = useRef<() => void>(() => {});
   const loaded = useRef(false);
   const [reference, setReference] = useState<ReflectionReference>();
+  const [selectedKey, setSelectedKey] = useState<string>();
   const [seenEpoch, setSeenEpoch] = useState(historyEpoch), [selectedCommandID, setSelectedCommandID] = useState<string>();
   const [selection, setSelection] = useState<Query>({ kind: 'event', day: '' }), [page, setPage] = useState<HistoryPage>(), [reason, setReason] = useState<HistoryReason>();
   const [storage, setStorage] = useState<HistoryResponse['storage']>('unknown'), [busy, setBusy] = useState(false), [error, setError] = useState<HistoryCode>();
-  const clear = useCallback(() => { sequence.current += 1; pageRef.current = undefined; setPage(undefined); setReason(undefined); setBusy(false); }, []);
+  const clear = useCallback(() => { sequence.current += 1; pageRef.current = undefined; setPage(undefined); setReason(undefined); setSelectedKey(undefined); setSelectedCommandID(undefined); setBusy(false); }, []);
   useEffect(() => {
     if (identity.current.historyEpoch === historyEpoch && identity.current.client === client) return;
     if (historyChangeOrigin === 'history' && identity.current.client === client) {
@@ -73,11 +74,17 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
     if (state !== 'active') { sequence.current += 1; setReason(undefined); setBusy(false); }
     else refresh();
   }); return () => subscription.remove(); }, [refresh]);
-  return <Context.Provider value={{ ...selection, reference, page: seenEpoch === historyEpoch ? page : undefined, reason: seenEpoch === historyEpoch ? reason : undefined, selectedCommandID, storage, busy, error, refresh,
+  return <Context.Provider value={{ ...selection, reference, page: seenEpoch === historyEpoch ? page : undefined, reason: seenEpoch === historyEpoch ? reason : undefined, selectedCommandID, selectedRow: seenEpoch === historyEpoch ? page?.rows.find(row => row.key === selectedKey) : undefined, storage, busy, error, refresh,
+    openRecord: row => {
+      const owned = pageRef.current?.rows.find(item => item.key === row.key);
+      if (!owned) return;
+      sequence.current += 1; setSelectedKey(owned.key); setReason(undefined); setSelectedCommandID(undefined); setBusy(false);
+      if (owned.commandID && !owned.reasonDeleted && ['reason', 'requestTemporaryGrant', 'retryCommand'].includes(owned.action)) { setSelectedCommandID(owned.commandID); void run('reason', { commandID: owned.commandID }); }
+    },
     choose: (kind, day) => { setReference(undefined); query.current = { kind, day }; setSelection(query.current); position.current = undefined; clear(); void run('page'); },
     chooseReflectionDay: (day, value) => { setReference(value); query.current = { kind: 'event', day }; setSelection(query.current); position.current = undefined; clear(); void run('page'); },
     move: (cursor, direction) => { position.current = { cursor, direction }; void run('page', position.current); },
-    readReason: (commandID) => { setSelectedCommandID(commandID); void run('reason', { commandID }); }, closeReason: () => { sequence.current += 1; setSelectedCommandID(undefined); setReason(undefined); setBusy(false); },
+    readReason: (commandID) => { setSelectedCommandID(commandID); void run('reason', { commandID }); }, closeReason: () => { sequence.current += 1; setSelectedCommandID(undefined); setSelectedKey(undefined); setReason(undefined); setBusy(false); },
     mutate: (action) => { position.current = undefined; return run(action); },
   }}>{children}</Context.Provider>;
 }

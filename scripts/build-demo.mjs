@@ -3,18 +3,20 @@ import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { demoTarget } from './lib/demo-target.mjs';
 import { demoRepo } from './lib/demo-repo.mjs';
+import { readDemoStudy } from './lib/demo-study.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const { sha, branch, dirty: changes } = demoRepo();
 const dirty = changes.length > 0;
 const target = demoTarget(branch);
+const study = readDemoStudy(root);
 // Only clear this generated export, so switching branches cannot package old files.
 rmSync(new URL('../dist/demo/', import.meta.url), { recursive: true, force: true });
 rmSync(new URL('../dist/demo-export/', import.meta.url), { recursive: true, force: true });
 
 execFileSync(process.execPath, ['node_modules/expo/bin/cli', 'export', '--platform', 'web', '--output-dir', 'dist/demo-export'], {
   cwd: root,
-  env: { ...process.env, ITOMA_DEMO_BUILD: '1', EXPO_PUBLIC_ITOMA_DEMO: '1', EXPO_PUBLIC_ITOMA_DEMO_BASE_PATH: target.basePath, ITOMA_DEMO_BASE_PATH: target.basePath },
+  env: { ...process.env, ITOMA_DEMO_BUILD: '1', EXPO_PUBLIC_ITOMA_DEMO: '1', EXPO_PUBLIC_ITOMA_DEMO_STUDY: study, EXPO_PUBLIC_ITOMA_DEMO_BASE_PATH: target.basePath, ITOMA_DEMO_BASE_PATH: target.basePath },
   stdio: 'inherit',
 });
 
@@ -30,6 +32,7 @@ const manifest = JSON.stringify({
   builtAt: new Date().toISOString(),
   osFeatures: 'mock-only',
   presentation: 'shared-app',
+  study,
 }, null, 2) + '\n';
 writeFileSync(new URL('demo-build.json', mounted), manifest);
 writeFileSync(new URL('../dist/demo-meta.json', import.meta.url), manifest);

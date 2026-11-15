@@ -1,3 +1,5 @@
+import { dayAt } from '@/lib/history-date';
+import type { HistoricalChoiceContext } from '@/runtime/history-context';
 import type { ProductClients } from '@/runtime/product-providers';
 import { parseScreenTimeResponse, type ScreenTimeAction, type ScreenTimeRequest, type ScreenTimeResponse, type ScreenTimeSnapshot } from '../../modules/itoma-native/src/screen-time';
 import { parseHistoryResponse, type HistoryRequest, type HistoryResponse, type HistoryRow } from '../../modules/itoma-native/src/history';
@@ -13,9 +15,9 @@ const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0
 const ruleID = uuid(1), selectionID = uuid(2);
 export const demoApplications = [{ ref: uuid(3), name: 'X', symbol: '𝕏' }, { ref: uuid(4), name: 'YouTube', symbol: '▶' }, { ref: uuid(5), name: 'Instagram', symbol: '◎' }];
 
-type Options = { scenario?: DemoScenario; now?: () => number };
+type Options = { scenario?: DemoScenario; now?: () => number; historySample?: boolean };
 /** Contract-shaped in-memory port. A UI simulator, never a Screen Time/OS emulator. */
-export function createDemoSession({ scenario = 'normal', now = Date.now }: Options = {}) {
+export function createDemoSession({ scenario = 'normal', now = Date.now, historySample = false }: Options = {}) {
   const started = now() / 1000, endsAt = started + 90 * 60;
   let sequence = 0, nextID = 20, revision = 1;
   let activation: ScreenTimeSnapshot['activation'] = scenario === 'paused' ? 'paused' : 'enabled';
@@ -24,8 +26,11 @@ export function createDemoSession({ scenario = 'normal', now = Date.now }: Optio
   let outcome: DemoOutcome = 'success';
   let title = '自分の時間', goal = '本を読んで、ゆっくり過ごす。';
   const rows: HistoryRow[] = [], reasons = new Map<string, string>();
+  const contexts = new Map<string, HistoricalChoiceContext>();
+  const timeZone = 'Asia/Tokyo';
+  const contextKey = (row: HistoryRow) => row.commandID ?? row.key;
   const grants = new Map<string, { command: string; until: number; status: 'active' | 'uncertain' | 'reblockPending' }>();
-  const previews = new Map<string, { target: string; until: number; reason: string; revision: number }>();
+  const previews = new Map<string, { target: string; until: number; reason: string; revision: number; requestedMinutes: number }>();
   const commands = new Map<string, { command: string; outcome: DemoOutcome }>();
   const at = () => now() / 1000;
   function expire() {
@@ -55,12 +60,12 @@ export function createDemoSession({ scenario = 'normal', now = Date.now }: Optio
     let chosen = rows.filter(row => request.kind !== 'reason' || reasons.has(row.commandID ?? ''));
     if (request.day) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(request.day)) return { status: 'error', storage: 'ready', code: 'invalid-input' };
-      chosen = chosen.filter(row => new Date(row.at * 1000).toISOString().slice(0, 10) === request.day);
+      chosen = chosen.filter(row => dayAt(row.at, timeZone) === request.day);
     }
     const index = request.afterKey ? chosen.findIndex(row => row.key === request.afterKey) : -1;
     const start = index < 0 ? 0 : request.direction === 'newer' ? Math.max(0, index - 40) : index + 1;
     const visible = chosen.slice(start, start + 40);
-    return parseHistoryResponse(JSON.stringify({ status: 'ok', storage: 'ready', page: { revision: String(revision), asOf: at(), timeZone: 'UTC', rows: visible,
+    return parseHistoryResponse(JSON.stringify({ status: 'ok', storage: 'ready', page: { revision: String(revision), asOf: at(), timeZone, rows: visible,
       next: chosen.length > start + 40 ? { at: visible[visible.length - 1].at, key: visible[visible.length - 1].key } : undefined,
       previous: start > 0 && visible.length ? { at: visible[0].at, key: visible[0].key } : undefined,
       logicalBytes: '4096', warningBytes: '83886080', maximumBytes: '104857600', warningReached: false, limitReached: false, incomplete: false, transfer: 'current' } }));
@@ -78,7 +83,7 @@ export function createDemoSession({ scenario = 'normal', now = Date.now }: Optio
           const target = snapshot().targets.find(target => target.ref === request.targetRef);
           if (!target?.unlockable) return fail('changed');
           const ref = uuid(nextID++), until = Math.min(endsAt, at() + request.minutes! * 60);
-          previews.set(ref, { target: target.ref, until, reason: request.reason, revision });
+          previews.set(ref, { target: target.ref, until, reason: request.reason, revision, requestedMinutes: request.minutes! });
           return response({ status: 'confirmation-required', ref, minutes: Math.max(1, Math.ceil((until - at()) / 60)), previewEndsAt: until, shortened: until < at() + request.minutes! * 60 });
         }
         case 'cancelUnlock': previews.clear(); return response();
@@ -90,7 +95,9 @@ export function createDemoSession({ scenario = 'normal', now = Date.now }: Optio
           const preview = previews.get(request.ref ?? '');
           if (!preview || preview.revision !== revision || preview.until <= at() || preview.reason !== request.reason) return fail('changed');
           const command = uuid(nextID++); previews.delete(request.ref!); commands.set(request.ref!, { command, outcome });
-          reasons.set(command, preview.reason); revision++;
+          reasons.set(command, preview.reason);
+          contexts.set(command, Object.freeze({ applicationLabel: demoApplications.find(app => app.ref === preview.target)?.name, ruleTitle: title, goal, requestedMinutes: preview.requestedMinutes }));
+          revision++;
           const failed = outcome === 'schedule-failed', uncertain = outcome === 'uncertain';
           if (!failed) grants.set(preview.target, { command, until: preview.until, status: uncertain ? 'uncertain' : 'active' });
           if (uncertain) observation = 'uncertain';
@@ -130,12 +137,12 @@ export function createDemoSession({ scenario = 'normal', now = Date.now }: Optio
         const row = rows.find(row => row.commandID === request.commandID), body = reasons.get(request.commandID ?? '');
         return parseHistoryResponse(JSON.stringify({ status: 'ok', storage: 'ready', reason: { revision: String(revision), state: row?.reasonDeleted ? 'deleted' : body === undefined ? 'missing' : row?.status === 'prepared' ? 'prepared-only' : 'shared-accepted', body } }));
       }
-      if (action === 'deleteHistory') { rows.length = 0; reasons.clear(); revision++; }
+      if (action === 'deleteHistory') { rows.length = 0; reasons.clear(); contexts.clear(); revision++; }
       if (action === 'deleteReasons') { reasons.clear(); rows.forEach(row => { row.reasonDeleted = true; }); revision++; }
       return page(request);
     } },
     reflection: { async run(action) {
-      if (action === 'deleteAll') { rows.length = 0; reasons.clear(); revision++; }
+      if (action === 'deleteAll') { rows.length = 0; reasons.clear(); contexts.clear(); revision++; }
       return { status: 'ok', storage: 'not-created', transfer: 'current' };
     } },
     onboarding: { async run(action) {
@@ -143,7 +150,21 @@ export function createDemoSession({ scenario = 'normal', now = Date.now }: Optio
       return parseOnboardingResponse(JSON.stringify({ ...response(), onboarding: { revision: String(revision), seenIntro: true, completed: true, selectionReady: false, canEdit: true } }));
     } },
   };
+  if (historySample) {
+    const saved = (row: HistoryRow, context?: HistoricalChoiceContext, body?: string) => {
+      rows.push(row); if (context) contexts.set(contextKey(row), Object.freeze(context)); if (body !== undefined && row.commandID) reasons.set(row.commandID, body);
+    };
+    const first = uuid(nextID++), second = uuid(nextID++), third = uuid(nextID++);
+    const oldContext = { ruleTitle: '夜の読書', goal: '読みかけの本を、ゆっくり読む。' };
+    saved({ key: uuid(nextID++), commandID: second, at: started - 600, action: 'reason', status: 'prepared' }, { ...oldContext, applicationLabel: 'Instagram', requestedMinutes: 5 }, '写真を1枚確認するため。');
+    saved({ key: uuid(nextID++), commandID: first, at: started - 2100, action: 'requestTemporaryGrant', status: 'expired', grantStatus: 'reconciled', expiresAt: started - 2100 }, { ...oldContext, applicationLabel: 'X', requestedMinutes: 5 });
+    saved({ key: uuid(nextID++), commandID: first, at: started - 2400, action: 'requestTemporaryGrant', status: 'succeeded', grantStatus: 'active', expiresAt: started - 2100 }, { ...oldContext, applicationLabel: 'X', requestedMinutes: 5 }, '待ち合わせの場所を確認するため。');
+    saved({ key: uuid(nextID++), at: started - 86400, action: 'cancelled', status: 'cancelled' });
+    saved({ key: uuid(nextID++), commandID: third, at: started - 87000, action: 'requestTemporaryGrant', status: 'uncertain', grantStatus: 'uncertain', expiresAt: started - 86400 }, { ...oldContext, applicationLabel: 'YouTube', requestedMinutes: 10 }, '料理の手順を確認するため。');
+    saved({ key: uuid(nextID++), at: started - 172800, action: 'commitPolicy', status: 'succeeded' }, oldContext);
+  }
   return { clients,
+    historicalChoice: (row: HistoryRow) => contexts.get(contextKey(row)),
     applicationLabel: (selection: string, target: string) => selection !== selectionID ? undefined : target ? demoApplications.find(app => app.ref === target)?.name : demoApplications.map(app => app.name).join('・'),
     applicationSymbol: (selection: string, target: string) => selection === selectionID ? demoApplications.find(app => app.ref === target)?.symbol : undefined,
     setOutcome(value: DemoOutcome) { outcome = value; },

@@ -89,8 +89,9 @@ beforeEach(() => jest.clearAllMocks());
 test('normal route uses product DTOs, preserves fixed total/token and remembers month/clip through day history', async () => {
   const b = backend(); await mount(b); await observed();
   expect(screen.queryByText('検証用プレビュー')).toBeNull();
+  expect(screen.getByRole('button', { name: '選択の記録を見る' })).toBeTruthy();
   expect(screen.queryByText(/保存した状態の記録：/)).toBeNull();
-  for (const name of ['新しい記録を取り込む', '全記録と累計を削除する', '選択の記録を見る']) expect(screen.queryByRole('button', { name })).toBeNull();
+  for (const name of ['新しい記録を取り込む', '全記録と累計を削除する']) expect(screen.queryByRole('button', { name })).toBeNull();
   expect(screen.getByTestId('reflection-total').props.children).toBe('—');
   await press('月次'); await screen.findByText('2026年11月');
   await press('次の期間'); await screen.findByText('2026年12月');
@@ -100,7 +101,7 @@ test('normal route uses product DTOs, preserves fixed total/token and remembers 
   const day = screen.getAllByRole('button').find(node => String(node.props.accessibilityLabel).startsWith('12月2日、'))!;
   await fireEvent.press(day);
   await screen.findByText('あなたの選択の記録');
-  expect(screen.getByDisplayValue('2026-12-02')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '日付を選ぶ' })).toHaveTextContent(/2026年12月2日/);
   expect(screen.getByText(/振り返りとは別の時点/)).toBeTruthy();
   expect(b.historyClient.run).toHaveBeenCalledWith('page', expect.objectContaining({ day: '2026-12-02' }));
   expect(jest.mocked(router.navigate).mock.calls.every(call => call[0] === '/history')).toBe(true);

@@ -41,3 +41,7 @@ privateはComplete保護、backup除外の親ディレクトリへ置く。共�
 - privateのページ/容量は同一read transaction、共有pending/gapは別の短いsample。二つのDBの全状態を同時刻に観測したという意味ではない。
 
 検証・画像・実機への引き継ぎは [QA記録](../qa/history-records.md)。
+
+## 表示整理の検討（#206、共有UIデモ）
+
+[選択の記録の画面検討](../choice-history-study.md)では、既存page/reasonの境界を保ち、日付別一覧と1件詳細へ表示を整理する。ページ内の関連commandをまとめるが、完全な選択単位の履歴queryへ変更したとは扱わない。アプリ名・当時のルール/目的・希望分数はv1にないため、デモ専用の提案port以外から補完しない。native bridge/schema・移行・保護/削除の拡張は未実装で、正式採用前の設計/実機確認が残る。
