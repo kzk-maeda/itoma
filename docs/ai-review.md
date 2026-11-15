@@ -42,6 +42,7 @@ main以外を選んだ手動実行はスキップします。キー未設定、A
 - PRの **AIコードレビュー** コメントを確認する。同じbotコメントを更新し、重要度P0〜P3、ファイル、LEFT/RIGHTの行、問題が発生する条件・根拠・修正案を表示します。コードリンクは対象SHAへ固定します。
 - ActionsのJob summaryと、14日保持の`ai-review-<run_id>-<run_attempt>` artifactを確認する。`review.json`に対象head/base/差分のmerge base、モデル、response ID、トークン使用量、チェック結果、入力省略、構造化指摘を記録し、`review.md`に表示用の結果を保存します。
 - `completed`はAPI応答と形式・位置の検証が完了した状態、`failed`はAPIエラー・拒否・打ち切り・不正な出力など、`skipped`は対象外または収集中の更新です。投稿直前にhead/base、ラベル、PR状態を再確認し、古くなった結果はPRへ投稿せず、artifactだけに残します。
+- CLI起動前の失敗などでartifactを生成できなかった場合、投稿jobはスキップします。artifactがある場合はIDで受け渡すため、failed-jobsだけを再実行してもrun attemptの違いで名前がずれません。
 
 CI結果は**収集時点**のcheck名・status・conclusionです。未完了・未実施を成功扱いしません。テストの生ログ、動画、端末画面をAIが検査する処理は含みません。過去のコメントは次の実行まで残るため、必ずコメント中のSHAを確認します。
 
@@ -66,7 +67,15 @@ CI結果は**収集時点**のcheck名・status・conclusionです。未完了�
 
 追加依存のないNode.js 24のスクリプトです。OpenAI/GitHub APIのURLは固定し、モデルにツールやシェル実行権限を与えません。Secret付きjobで実行するコードとプロンプトはtrusted baseから取得し、PR側のソースや依存スクリプトを実行しません。入力するPR本文・ソース・文書は命令として扱わないように指示します。
 
+実行コードは両jobとも`github.workflow_sha`、つまり実行中のWorkflow定義と同じコミットから取得します。PRイベントの`base.sha`には導入前の古いSHAが残る場合があるため、実行コードの取得には使用しません。レビュー対象のhead/baseや仕様資料の取得SHAとは別の値です。
+
 API呼び出しjobはGitHub読み取り権限のみ、投稿jobはOpenAIキーを受け取らず、PRコメントの書き込み権限を持ちます。HTTPエラー本文、APIキー、生の入力全文はartifactやログへ保存しません。PRコード・文書・check情報がOpenAI APIへ送られることは、このレビュー処理の前提です。`store: false`を指定しますが、API側のデータ取り扱いは契約と設定に従います。
+
+### `MODULE_NOT_FOUND` → `Artifact not found`の調査
+
+まず`review`jobの最初の失敗を確認します。`scripts/ai-review.mjs`がない場合は、checkoutしたSHAにWorkflowとスクリプトが揃っているかを確認します。この起動失敗に続くartifact未生成は、その失敗の結果であり、OpenAI APIにはまだ到達していません。
+
+Workflowの修正をmainへマージした後は、Actionsからmainを指定して**新しい手動実行**を起動するか、`ai-review`ラベルを付け直します。古いrunのRe-runは古いWorkflow定義を使うため、Workflow修正の確認には使いません。
 
 Workflow、入力収集、出力契約を変えるときは、モックテストも更新します。
 

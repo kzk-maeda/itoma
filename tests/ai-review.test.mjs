@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
 import {
   COMMENT_MARKER, MAX_INPUT_BYTES, MAX_OUTPUT_TOKENS, callOpenAI, collectInput,
   githubClient, ineligibleReason, publishReview, renderReport, reviewOptions,
@@ -13,6 +14,7 @@ const MERGE_BASE = 'c'.repeat(40);
 const NEXT = 'd'.repeat(40);
 const schema = JSON.parse(await readFile(new URL('../.github/ai-review/schema.json', import.meta.url), 'utf8'));
 const prompt = await readFile(new URL('../.github/ai-review/prompt.md', import.meta.url), 'utf8');
+const workflow = await readFile(new URL('../.github/workflows/ai-review.yml', import.meta.url), 'utf8');
 const options = () => reviewOptions({
   GITHUB_REPOSITORY: 'owner/itoma', AI_REVIEW_PR_NUMBER: '42', AI_REVIEW_EXPECTED_SHA: HEAD,
   GH_TOKEN: 'github-fixture-secret', OPENAI_API_KEY: 'openai-fixture-secret', GITHUB_RUN_ID: '123',
@@ -283,4 +285,42 @@ test('HTTP client rejects redirects and does not include server error bodies in 
   } });
   await assert.rejects(github('/pulls/42'), /^Error: GitHub HTTP 403$/);
   await assert.rejects(callOpenAI({ ...options(), prompt, schema, input: {}, files: [], fetchImpl: async () => new Response('private server response', { status: 500 }) }), /^Error: OpenAI HTTP 500; no automatic retry$/);
+});
+
+// Replay the relevant GitHub expression values without running PR code or an API.
+// This checks the deployed wiring; actionlint separately checks the full YAML.
+const property = (context, expression) => expression.trim().split('.').reduce((value, key) => value?.[key], context);
+
+test('workflow checkout ignores a stale PR base and pins both jobs to the workflow revision', () => {
+  const refs = [...workflow.matchAll(/^\s+ref: \$\{\{\s*(.*?)\s*\}\}$/gm)].map(match => match[1]);
+  assert.equal(refs.length, 2);
+  for (const event of [{ pull_request: { base: { sha: BASE }, head: { sha: HEAD } } }, {}]) {
+    const context = { github: { workflow_sha: MERGE_BASE, sha: MERGE_BASE, event } };
+    for (const expression of refs) {
+      const selected = expression.split('||').map(part => property(context, part)).find(Boolean);
+      assert.equal(selected, MERGE_BASE, 'execution must use the workflow revision, even when PR base predates the runner');
+    }
+  }
+});
+
+test('publication needs an uploaded artifact even on failure, and retries use its original ID', () => {
+  const publish = workflow.split('\n  publish:\n')[1];
+  const condition = publish.match(/^    if: \$\{\{\s*(.*?)\s*\}\}$/m)[1];
+  for (const [result, artifactId, cancelled, expected] of [
+    ['failure', '', false, false], ['success', '', false, false], ['skipped', '', false, false],
+    ['failure', '987', false, true], ['success', '987', false, true], ['success', '987', true, false],
+  ]) {
+    const actual = runInNewContext(condition, {
+      always: () => true, cancelled: () => cancelled,
+      needs: { review: { result, outputs: { artifact_id: artifactId } } },
+    }, { timeout: 100 });
+    assert.equal(actual, expected);
+  }
+  const producer = workflow.match(/^      artifact_id: \$\{\{\s*(.*?)\s*\}\}$/m)[1];
+  const uploadStep = workflow.match(/name: Save structured review evidence\n\s+id: (\w+)/)[1];
+  const originalId = property({ steps: { [uploadStep]: { outputs: { 'artifact-id': '987' } } } }, producer);
+  assert.equal(originalId, '987');
+  const download = publish.match(/^          artifact-ids: \$\{\{\s*(.*?)\s*\}\}$/m)[1];
+  const context = { github: { run_id: 42, run_attempt: 2 }, needs: { review: { outputs: { artifact_id: originalId } } } };
+  assert.equal(property(context, download), originalId, 'failed-jobs retry must reuse the uploaded ID from attempt 1');
 });
