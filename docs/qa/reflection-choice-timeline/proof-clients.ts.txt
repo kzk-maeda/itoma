@@ -1,0 +1,61 @@
+import { useEffect } from 'react';
+import { useHistoryRecords } from '@/state/history';
+import { createHistoryClient } from '../../modules/itoma-native/src/history';
+import { createReflectionClient } from '../../modules/itoma-native/src/reflection';
+import { unavailableSnapshot } from '../../modules/itoma-native/src/screen-time';
+import { dayAt } from '@/lib/history-date';
+import fixtures from '../../tests/fixtures/reflection-records.json';
+const asOf = fixtures.observed[0].response.asOf, zone = 'UTC';
+const qa = { loaded: 0, pages: 0, calls: [] as { action: string; request: Record<string, unknown> }[], historyRevision: 1, reasonDeleted: false, historyDeleted: false, reflectionDeleted: false,
+  failOlder: false, failRefresh: false, large: false };
+if (typeof window !== 'undefined') Object.assign(window, { itomaTimelineQA: qa });
+const uid = (n: number) => `00000000-0000-0000-0000-${String(n + 1).padStart(12, '0')}`;
+export const control = { run: async (action: string) => {
+  if (action === 'deleteReasons') { qa.reasonDeleted = true; qa.historyRevision++; }
+  return { status: 'ok' as const, impacts: [], snapshot: unavailableSnapshot('simulator') };
+} };
+export const history = createHistoryClient('ios', () => ({ apiVersion: 1, historyVersion: 1, history: async (action, payload) => {
+  const request = JSON.parse(payload); qa.calls.push({ action, request });
+  if (action === 'reason') return JSON.stringify({ status: 'ok', storage: 'ready', reason: { revision: String(qa.historyRevision), state: qa.reasonDeleted ? 'deleted' : 'shared-accepted', body: qa.reasonDeleted ? undefined : '【架空の確認用】\n確認したい情報をひとつ確認します。\n\n自分で選んだ理由の全文です。' } });
+  if (action === 'deleteReasons') { qa.reasonDeleted = true; qa.historyRevision++; }
+  if (action === 'deleteHistory') { qa.historyDeleted = true; qa.reasonDeleted = true; qa.historyRevision++; }
+  if (request.revision && request.revision !== String(qa.historyRevision)) return JSON.stringify({ status: 'error', storage: 'unknown', code: 'changed' });
+  if (request.afterKey && qa.failOlder) return JSON.stringify({ status: 'error', storage: 'ready', code: 'storage-failed' });
+  let rows = Array.from({ length: qa.historyDeleted ? 0 : qa.large ? 2000 : 92 }, (_, n) => ({ key: uid(n), commandID: uid(n), at: asOf - 600 - n * 3600, updatedAt: asOf - 300 - n * 3600,
+    action: request.kind === 'reason' ? 'reason' : n % 9 === 2 ? 'cancelled' : n % 9 === 5 ? 'commitPolicy' : 'requestTemporaryGrant',
+    status: request.kind === 'reason' ? 'prepared' : n % 9 === 2 ? 'cancelled' : n % 9 === 6 ? 'uncertain' : 'succeeded',
+    grantStatus: request.kind === 'reason' || [2,5].includes(n % 9) ? undefined : n % 9 === 6 ? 'reblockPending' : 'reconciled', expiresAt: request.kind === 'reason' || [2,5].includes(n % 9) ? undefined : asOf - 300 - n * 3600,
+    reasonDeleted: qa.reasonDeleted && (request.kind === 'reason' || ![2,5].includes(n % 9)),
+  }));
+  if (request.day) rows = rows.filter(row => dayAt(row.at, zone) === request.day);
+  const start = request.afterKey ? rows.findIndex(row => row.key === request.afterKey) + 1 : 0, chunk = rows.slice(start, start + 40), last = chunk.at(-1);
+  return JSON.stringify({ status: 'ok', storage: 'ready', page: { revision: String(qa.historyRevision), asOf: asOf + 1, timeZone: zone, grouping: request.kind === 'reason' ? undefined : 'command', rows: chunk,
+    next: last && start + 40 < rows.length ? { key: last.key, at: last.at } : undefined,
+    logicalBytes: '40000', warningBytes: '83886080', maximumBytes: '104857600', warningReached: false, limitReached: false, incomplete: false, transfer: 'current' } });
+} }));
+export const reflection = createReflectionClient('ios', () => ({ apiVersion: 1, reflectionVersion: 1, reflection: async (action, payload) => {
+  const request = JSON.parse(payload); qa.calls.push({ action: `reflection:${action}`, request });
+  if (action === 'deleteAll') { qa.reflectionDeleted = true; qa.historyDeleted = true; qa.reasonDeleted = true; qa.historyRevision++; }
+  if (qa.failRefresh) return JSON.stringify({ status: 'error', code: 'storage-failed', storage: 'unknown', transfer: 'current' });
+  const original = fixtures[qa.reflectionDeleted ? 'deleted' : 'observed'].find(row => row.request.period === (request.period ?? 'week') && (!request.day || row.request.day === request.day)
+    && JSON.stringify((row.request as { clippedTo?: unknown }).clippedTo) === JSON.stringify(request.clippedTo));
+  if (!original) return JSON.stringify({ status: 'error', code: 'invalid-input', storage: 'unknown', transfer: 'current' });
+  const snapshot = structuredClone(original.response) as Record<string, any>;
+  snapshot.proofScope = 'nativeRecordedIntervals'; snapshot.metricVersion = 'native-restricted-excluding-unlocks-v2';
+  snapshot.historyRevision = String(qa.historyRevision); snapshot.token += `:qa-${qa.historyRevision}`;
+  if (!qa.reflectionDeleted) {
+    snapshot.total = { ...snapshot.total, from: Date.parse('2026-11-09T12:00:00Z') / 1000, until: asOf, knownSeconds: 6900, coverage: 'recorded' };
+    const marked = Date.parse('2026-11-09T12:00:00Z') / 1000;
+    snapshot.buckets = snapshot.buckets.map((bucket: Record<string, any>) => ({ ...bucket, knownSeconds: bucket.from > asOf ? undefined : bucket.from <= marked && bucket.until > marked ? 6900 : 0, coverage: bucket.from > asOf ? 'notRecorded' : 'recorded' }));
+    const known = snapshot.buckets.filter((b: Record<string, any>) => b.knownSeconds !== undefined);
+    snapshot.selected = { ...snapshot.selected, knownSeconds: known.length ? known.reduce((n: number, b: Record<string, any>) => n + b.knownSeconds, 0) : undefined, coverage: known.length ? 'partial' : 'notRecorded' };
+    snapshot.trend = [snapshot.total];
+  }
+  return JSON.stringify({ status: 'ok', storage: 'ready', transfer: 'current', sharedIncomplete: false, snapshot });
+} }));
+
+export function TimelineProbe() {
+  const state = useHistoryRecords();
+  useEffect(() => { qa.loaded = state.rows.length; qa.pages = state.pages.length; }, [state.rows.length, state.pages.length]);
+  return null;
+}

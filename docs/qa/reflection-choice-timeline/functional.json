@@ -1,0 +1,20 @@
+{
+  "graphRefreshPreservesClip": true,
+  "allEntryResets": true,
+  "pageSizes": [
+    40,
+    40,
+    12
+  ],
+  "maxRendered": 28,
+  "offsetBefore": 21438,
+  "offsetAfter": 21438,
+  "anchorBefore": 363,
+  "anchorAfter": 363,
+  "reasonReads": 1,
+  "continuationFailureAndRetry": true,
+  "autoContinuationAfterDetail": true,
+  "calendarDay": "2026-11-09",
+  "graphRetry": true,
+  "errors": []
+}

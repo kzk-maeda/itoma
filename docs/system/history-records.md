@@ -32,7 +32,7 @@ schema1〜4はhostが明示的にmigrationし、索引作成/backfill（100 even
 
 private I/Oは専用`ProductHistoryController` actorが所有する。閲覧・初期化/移行・理由保存/受理・取消・取込・削除まで同actorへ送り、Control actorはawait中に停止処理を受け付けられる。共有受理には既存CASを使い、停止等で前提が変われば古い解除要求を拒否する。private/sharedのwriterを同時に保持しない。保存接続は再利用し、画面往復で接続を増やさない。
 
-open/移行は全件検証で総量O(n)。理由/dummy/eventの検証/backfillは100件単位で読み、全本文配列を一度に保持しない。画面はmetadata40件と明示的に開いた理由1件だけを保持する。理由の最大長P06をここで新規採用せず、現行の保存byte制限を使う。極端に大きい単一理由の表示と実機最大容量の計測は未検証。
+open/移行は全件検証で総量O(n)。理由/dummy/eventの検証/backfillは100件単位で読み、全本文配列を一度に保持しない。APIはmetadataを1回40件まで返す。#206のタイムラインは、本人がスクロールして取得した成功ページのmetadataを保持し、FlatListで描画を仮想化する。本文は明示的に開いた理由1件だけ。全件を初回取得せず、初期8件/windowSize5/batch8は測定の出発点であり、RAMは読み込んだmetadata量に比例する。大容量のページ窓/上限と実機RAM予算は未決定で、仮想化だけで一定容量を保証しない。理由の最大長P06をここで新規採用せず、現行の保存byte制限を使う。極端に大きい単一理由の表示と実機最大容量の計測は未検証。
 
 `HistoryProvider`は取得世代で旧応答を棄却する。履歴側削除は先に表示を消し、設定側の理由削除はepochで既存本文/ページを隠す。削除前の遅い応答を表示し直さない。背景で本文を閉じ、前景では有界の再取得を行う。履歴用の秒timerはない。読取やimportの失敗を空/成功へ変換しない。
 
@@ -47,3 +47,20 @@ privateはComplete保護、backup除外の親ディレクトリへ置く。共�
 - privateのページ/容量は同一read transaction、共有pending/gapは別の短いsample。二つのDBの全状態を同時刻に観測したという意味ではない。
 
 検証・画像・実機への引き継ぎは [QA記録](../qa/history-records.md)。
+
+
+## 振り返り・タイムライン・詳細の本体接続（#206）
+
+本人了承済みの[Issue206](https://github.com/kzk-maeda/itoma/issues/206)と固定デモ `da5d462a295366423cdfd43ea11b45ca8e2f2897` の画面設計を採用する実装。PR193のnative計測DTO/proofScopeとPR209の要求単位索引を維持し、Web専用provider・比較切替・fixtureを本体へ追加しない。
+
+- 振り返り上部は「集計を更新」。更新は現在の週/月/clipを維持してtokenを解放し、同じ画面の上下を再取得する。失敗時は「集計を再読み込み」。最下部の全期間入口は、遷移前に `choose('event','')` で日付/kind/参照/ページ/選択理由を消す。
+- 日別も同じ `/history` を `chooseReflectionDay` のrevision/asOf/zone参照付きで開く。週/月/clipの記憶は振り返りProviderが保持する。
+- 履歴は単一の仮想リスト。ヘッダーに条件/Notice、フッターに追加読込・補足・保存状況を置き、同方向のScrollViewへ入れ子にしない。操作と理由はnativeの別索引のまま。日付は取得zoneのGregorian日で表示し、前後日はcivil dayで動かしてnativeへ日文字列を渡す。
+- 継続ページは同じquery・revision・zoneだけを追加する。同じcursorの同時要求を拒否し、後退しない/循環するcursor、進むcursorを持つ空または重複だけの応答はエラーで止める。追加失敗は旧カードを残して手動再試行へ。実際の末尾はnativeのnextなしで判断する。
+- source/client・epoch・日付/kind・更新・削除・changedで旧世代の応答と選択を無効化する。理由の読取中と背景/詳細離脱では継続読込を停止。foregroundは先頭から再検証する。詳細から戻るだけなら先頭を読み直さず、同じページとスクロールoffsetを使う。
+- `/history-reason`は「選択の詳細」。同じ世代の取得済みの行そのものを選択して開き、本文はその操作後の1件だけ取得する。戻る・背景・削除・source変更で閉じ、遅い応答を復活させない。
+- 現行DTOに当時のアプリ名/ルール名/目的/希望分数はない。汎用の見出しと不足説明を使い、現在設定や期限差で補わない。理由のない操作にも詳細を用意し、削除/欠落/保存のみ/受付未確認を分ける。全event経過のqueryは追加しない。
+
+`reconciled`は期限到来だけでなく早期終了にも使われるため、デモの「期限後の切替」から「再制限への切替を記録」へ文言を調整する。grantのfailed/uncertain/reblockPendingを、元commandのsucceededやexpiresAtで隠さない。
+
+実機・最大文字・VoiceOver・大容量RAM/ページ窓の受入は #131/#135 と分けて記録する。累計の単位変更は #213、当時の文脈のimmutable保存と取得は別契約。今回のJS画面接続でnativeのschema・制御・保存/削除規則は変えない。

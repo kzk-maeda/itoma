@@ -1,0 +1,118 @@
+{
+  "runtime": "Linux Chromium",
+  "data": "synthetic native responses, production parsers/providers/screens",
+  "results": [
+    {
+      "width": 320,
+      "colorScheme": "light",
+      "textScale": 2,
+      "overflow": false,
+      "errors": [],
+      "calendarMinimumWidth": 44.5625,
+      "calendarMinimumHeight": 70
+    },
+    {
+      "width": 375,
+      "colorScheme": "light",
+      "textScale": 1,
+      "overflow": false,
+      "errors": [],
+      "calendarMinimumWidth": 52.421875,
+      "calendarMinimumHeight": 44
+    },
+    {
+      "width": 390,
+      "colorScheme": "light",
+      "textScale": 1,
+      "overflow": false,
+      "errors": [],
+      "calendarMinimumWidth": 54.5625,
+      "calendarMinimumHeight": 44
+    },
+    {
+      "width": 768,
+      "colorScheme": "light",
+      "textScale": 1,
+      "overflow": false,
+      "errors": [],
+      "calendarMinimumWidth": 67.421875,
+      "calendarMinimumHeight": 44
+    },
+    {
+      "width": 320,
+      "colorScheme": "dark",
+      "textScale": 2,
+      "overflow": false,
+      "errors": [],
+      "calendarMinimumWidth": 44.5625,
+      "calendarMinimumHeight": 70
+    },
+    {
+      "width": 375,
+      "colorScheme": "dark",
+      "textScale": 1,
+      "overflow": false,
+      "errors": [],
+      "calendarMinimumWidth": 52.421875,
+      "calendarMinimumHeight": 44
+    },
+    {
+      "width": 390,
+      "colorScheme": "dark",
+      "textScale": 1,
+      "overflow": false,
+      "errors": [],
+      "calendarMinimumWidth": 54.5625,
+      "calendarMinimumHeight": 44
+    },
+    {
+      "width": 768,
+      "colorScheme": "dark",
+      "textScale": 1,
+      "overflow": false,
+      "errors": [],
+      "calendarMinimumWidth": 67.421875,
+      "calendarMinimumHeight": 44
+    }
+  ],
+  "memory": [
+    {
+      "loaded": 40,
+      "pages": 1,
+      "requests": 2,
+      "usedHeapBytes": 8048408
+    },
+    {
+      "loaded": 480,
+      "pages": 12,
+      "requests": 13,
+      "usedHeapBytes": 11686664
+    },
+    {
+      "loaded": 840,
+      "pages": 21,
+      "requests": 22,
+      "usedHeapBytes": 10924356
+    },
+    {
+      "loaded": 1240,
+      "pages": 31,
+      "requests": 32,
+      "usedHeapBytes": 11662200
+    },
+    {
+      "loaded": 1640,
+      "pages": 41,
+      "requests": 42,
+      "usedHeapBytes": 11795884
+    },
+    {
+      "loaded": 2000,
+      "pages": 50,
+      "requests": 51,
+      "usedHeapBytes": 11149432
+    }
+  ],
+  "maxRendered": 29,
+  "retention": "loaded metadata pages; no constant-RAM claim"
+}
