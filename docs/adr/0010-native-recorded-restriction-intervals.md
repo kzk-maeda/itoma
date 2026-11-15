@@ -15,7 +15,7 @@ ADR0007の`restricted-excluding-unlocks-v1`へown-storeの点を正値として�
 ## 実装
 
 1. Control6のoptional reflection outboxを再利用する。hostがversion1の`reflection_duration_capture`を追加し、新しいhost/Extensionは同じ短いcontrol commitで`durationObservation`を記録する。旧writerが出すsampleなしのfactやsequenceの欠落は継続を切る。main schemaやOS予定・対象・grantを初期化しない。
-2. sampleはUTC時刻・system uptime・zone・restricted/excluded/unknown・controlled transition/checkpoint・適用の有効範囲だけを持つ。理由、目標、native token、実アプリ名を追加しない。
+2. sampleはUTC時刻・スリープを含む単調時計・zone・restricted/excluded/unknown・controlled transition/checkpoint・適用の有効範囲だけを持つ。DarwinではAppleが`mach_continuous_time`と同等としている`clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW)`、Linuxでは`CLOCK_BOOTTIME`を使う。[Apple公式資料](https://developer.apple.com/documentation/kernel/1646199-mach_continuous_time)。awake-onlyの`systemUptime`を区間計測へ使わず、画面ロック中をgapにしない。理由、目標、native token、実アプリ名を追加しない。
 3. `restricted`はenabled、適用成功/own-store確認、policyとzoneの一致、対象あり、有効範囲内、一時解除なしを必要とする。予定保存だけでは開始しない。Applying/停止の耐久commitで直前の区間を切り、再制限の成功まで開始しない。
 
    既存`ApplicationObservation.validUntil`には30分の評価探索上限も含まれ、OSがstoreを解除する時刻を意味しない。区間記録の上限には同じRuleEvaluatorで求めた次の実際のpolicy境界を使う。これは未確認の境界以後を切るための上限であり、境界まで成功したことの根拠にはしない。

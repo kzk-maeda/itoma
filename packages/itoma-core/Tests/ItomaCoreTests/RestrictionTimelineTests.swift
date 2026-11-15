@@ -91,3 +91,15 @@ private func total(_ builder: RestrictionTimelineBuilder) throws -> ReflectionPr
     try b.append(source: c, sequence: 2, sample: sample(75, .excluded), asOf: instant(1_000))
     #expect(try total(b)?.total.knownSeconds == 50)
 }
+
+@Test func nativeTimelineIncludesScreenLockSleepAndRejectsAnAwakeOnlyClock() throws {
+    let source = UUID(); var continuous = RestrictionTimelineBuilder(), awakeOnly = RestrictionTimelineBuilder()
+    for value in [try sample(0, .restricted), try sample(7_200, .unknown, boundary: .controlledTransition)] {
+        try continuous.append(source: source, sequence: value.at == instant(0) ? 1 : 2, sample: value, asOf: instant(10_000))
+    }
+    #expect(try total(continuous)?.total.knownSeconds == 7_200)
+    try awakeOnly.append(source: source, sequence: 1, sample: sample(0, .restricted), asOf: instant(10_000))
+    try awakeOnly.append(source: source, sequence: 2,
+        sample: sample(7_200, .unknown, boundary: .controlledTransition, uptime: 10_000), asOf: instant(10_000))
+    #expect(try total(awakeOnly) == nil)
+}
