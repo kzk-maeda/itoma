@@ -169,7 +169,7 @@ test('one grouped unlock keeps one card and reason entry as its saved status cha
   expect(screen.getAllByTestId(`history-choice-${id}`)).toHaveLength(1);
   expect(screen.getAllByRole('button', { name: /一時解除を選びました.*詳細を見る/ })).toHaveLength(1);
   expect(screen.queryByText('受付済み')).toBeNull();
-  expect(screen.getByText('処理の完了を記録')).toBeTruthy();
+  expect(screen.getByText('解除の反映を記録')).toBeTruthy();
   await fireEvent.press(screen.getByTestId(`history-choice-${id}`));
   expect(screen.getByText(body)).toBeTruthy();
 });
@@ -196,6 +196,7 @@ function FeedProbe() {
     <Pressable accessibilityRole="button" accessibilityLabel="retry older" onPress={() => { void h.loadOlder(true); }} />
     <Pressable accessibilityRole="button" accessibilityLabel="other day" onPress={() => h.choose('event', '2026-11-01')} />
     <Pressable accessibilityRole="button" accessibilityLabel="open older" onPress={() => h.openRecord(h.rows.at(-1)!)} />
+    <Pressable accessibilityRole="button" accessibilityLabel="open older twice" onPress={() => { h.openRecord(h.rows.at(-1)!); h.openRecord(h.rows.at(-1)!); }} />
     <Pressable accessibilityRole="button" accessibilityLabel="delete external" onPress={() => { void s.run('deleteReasons'); }} />
     <Pressable accessibilityRole="button" accessibilityLabel="start over" onPress={h.restart} />
     <Pressable accessibilityRole="button" accessibilityLabel="pause continuation" onPress={h.pauseOlder} />
@@ -360,4 +361,12 @@ test('switching the native client drops old metadata and a late continuation fro
   await act(async () => resolve({ status: 'ok', storage: 'ready', page: tail }));
   expect(screen.queryByText(id)).toBeNull(); expect(screen.queryByText(nextID)).toBeNull();
   expect(screen.getByText(replacementID)).toBeTruthy();
+});
+
+
+test('rapid repeated selection opens one detail and reads the private reason once', async () => {
+  const { b } = pagedBackend(); await render(wrap(b, <FeedProbe />));
+  await press('open older twice');
+  expect(b.run.mock.calls.filter(([action]) => action === 'reason')).toHaveLength(1);
+  expect(screen.getByText(body)).toBeTruthy();
 });

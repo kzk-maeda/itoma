@@ -61,6 +61,6 @@ privateはComplete保護、backup除外の親ディレクトリへ置く。共�
 - `/history-reason`は「選択の詳細」。同じ世代の取得済みの行そのものを選択して開き、本文はその操作後の1件だけ取得する。戻る・背景・削除・source変更で閉じ、遅い応答を復活させない。
 - 現行DTOに当時のアプリ名/ルール名/目的/希望分数はない。汎用の見出しと不足説明を使い、現在設定や期限差で補わない。理由のない操作にも詳細を用意し、削除/欠落/保存のみ/受付未確認を分ける。全event経過のqueryは追加しない。
 
-`reconciled`は期限到来だけでなく早期終了にも使われるため、デモの「期限後の切替」から「再制限への切替を記録」へ文言を調整する。grantのfailed/uncertain/reblockPendingを、元commandのsucceededやexpiresAtで隠さない。
+`reconciled`は期限到来だけでなく早期終了にも使われるため、デモの「期限後の切替」から「再制限への切替を記録」へ文言を調整する。全grantStatusを明示的に表示し、元commandのsucceededでpending/scheduling/applying/activeを隠さない。failed/uncertain/reblockPendingも、元commandの成功や期限表示で隠さない。カードの重複選択は同期ガードで拒否し、理由read/詳細pushを一度だけにする。
 
 実機・最大文字・VoiceOver・大容量RAM/ページ窓の受入は #131/#135 と分けて記録する。累計の単位変更は #213、当時の文脈のimmutable保存と取得は別契約。今回のJS画面接続でnativeのschema・制御・保存/削除規則は変えない。

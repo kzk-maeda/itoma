@@ -80,37 +80,37 @@
       "loaded": 40,
       "pages": 1,
       "requests": 2,
-      "usedHeapBytes": 8048408
+      "usedHeapBytes": 8066200
     },
     {
-      "loaded": 480,
-      "pages": 12,
-      "requests": 13,
-      "usedHeapBytes": 11686664
+      "loaded": 440,
+      "pages": 11,
+      "requests": 12,
+      "usedHeapBytes": 10685412
     },
     {
       "loaded": 840,
       "pages": 21,
       "requests": 22,
-      "usedHeapBytes": 10924356
+      "usedHeapBytes": 10899340
     },
     {
       "loaded": 1240,
       "pages": 31,
       "requests": 32,
-      "usedHeapBytes": 11662200
+      "usedHeapBytes": 10781452
     },
     {
       "loaded": 1640,
       "pages": 41,
       "requests": 42,
-      "usedHeapBytes": 11795884
+      "usedHeapBytes": 11298308
     },
     {
       "loaded": 2000,
       "pages": 50,
       "requests": 51,
-      "usedHeapBytes": 11149432
+      "usedHeapBytes": 11127008
     }
   ],
   "maxRendered": 29,

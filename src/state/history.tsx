@@ -19,7 +19,7 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
   const position = useRef<{ cursor: HistoryCursor; direction: 'older' | 'newer' } | undefined>(undefined);
   const identity = useRef({ historyEpoch, client });
   const reload = useRef<() => void>(() => {});
-  const loaded = useRef(false), active = useRef(true), scroll = useRef({ offset: 0 });
+  const loaded = useRef(false), selectionOpen = useRef(false), active = useRef(true), scroll = useRef({ offset: 0 });
   const tails = useRef<HistoryPage[]>([]), olderGeneration = useRef(0), olderPending = useRef(false), reading = useRef(false), continuationError = useRef<HistoryCode | undefined>(undefined);
   const [tailPages, setTailPages] = useState<HistoryPage[]>([]), [loadingOlder, setLoadingOlder] = useState(false), [olderError, setOlderError] = useState<HistoryCode>();
   const [viewGeneration, setViewGeneration] = useState(0);
@@ -31,7 +31,7 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
   const [seenEpoch, setSeenEpoch] = useState(historyEpoch), [selectedCommandID, setSelectedCommandID] = useState<string>();
   const [selection, setSelection] = useState<Query>({ kind: 'event', day: '' }), [page, setPage] = useState<HistoryPage>(), [reason, setReason] = useState<HistoryReason>();
   const [storage, setStorage] = useState<HistoryResponse['storage']>('unknown'), [busy, setBusy] = useState(false), [error, setError] = useState<HistoryCode>();
-  const clear = useCallback(() => { sequence.current += 1; reading.current = false; pageRef.current = undefined; resetTail(); setPage(undefined); setReason(undefined); setSelectedKey(undefined); setSelectedCommandID(undefined); scroll.current.offset = 0; setBusy(false); }, [resetTail]);
+  const clear = useCallback(() => { selectionOpen.current = false; sequence.current += 1; reading.current = false; pageRef.current = undefined; resetTail(); setPage(undefined); setReason(undefined); setSelectedKey(undefined); setSelectedCommandID(undefined); scroll.current.offset = 0; setBusy(false); }, [resetTail]);
   useEffect(() => {
     if (identity.current.historyEpoch === historyEpoch && identity.current.client === client) return;
     if (historyChangeOrigin === 'history' && identity.current.client === client) {
@@ -39,7 +39,7 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
       queueMicrotask(() => setSeenEpoch(historyEpoch));
       return; // The local mutation already owns its response and invalidates older tickets.
     }
-    identity.current = { historyEpoch, client }; const barrier = ++sequence.current; olderGeneration.current++; olderPending.current = false; reading.current = false; pageRef.current = undefined; tails.current = []; position.current = undefined;
+    identity.current = { historyEpoch, client }; const barrier = ++sequence.current; selectionOpen.current = false; olderGeneration.current++; olderPending.current = false; reading.current = false; pageRef.current = undefined; tails.current = []; position.current = undefined;
     queueMicrotask(() => {
       if (identity.current.historyEpoch !== historyEpoch || identity.current.client !== client) return;
       setSeenEpoch(historyEpoch); setSeenClient(client);
@@ -54,7 +54,7 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
     loaded.current = true;
     const ticket = ++sequence.current, selected = query.current, pinned = pageRef.current;
     reading.current = true;
-    if (action !== 'reason') { resetTail(); pageRef.current = undefined; setPage(undefined); setSelectedKey(undefined); setSelectedCommandID(undefined); scroll.current.offset = 0; setViewGeneration(value => value + 1); } else pauseOlder();
+    if (action !== 'reason') { selectionOpen.current = false; resetTail(); pageRef.current = undefined; setPage(undefined); setSelectedKey(undefined); setSelectedCommandID(undefined); scroll.current.offset = 0; setViewGeneration(value => value + 1); } else pauseOlder();
     setBusy(true); setError(undefined); setReason(undefined);
     if (action === 'deleteHistory' || action === 'deleteReasons') { pageRef.current = undefined; setPage(undefined); }
     try {
@@ -77,7 +77,7 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
     }
   }, [client, invalidateHistory, pauseOlder, resetTail]);
   const closeReason = useCallback(() => {
-    sequence.current += 1; reading.current = false;
+    selectionOpen.current = false; sequence.current += 1; reading.current = false;
     setSelectedCommandID(undefined); setSelectedKey(undefined); setReason(undefined); setBusy(false);
     setError(code => code === 'changed' ? code : undefined);
   }, []);
@@ -86,7 +86,7 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
   useEffect(() => { reload.current = refresh; }, [refresh]);
   useEffect(() => { const subscription = AppState.addEventListener('change', (state) => {
     active.current = state === 'active';
-    if (!active.current) { sequence.current += 1; reading.current = false; pauseOlder(); setReason(undefined); setSelectedKey(undefined); setSelectedCommandID(undefined); setBusy(false); }
+    if (!active.current) { selectionOpen.current = false; sequence.current += 1; reading.current = false; pauseOlder(); setReason(undefined); setSelectedKey(undefined); setSelectedCommandID(undefined); setBusy(false); }
     else refresh();
   }); return () => subscription.remove(); }, [refresh, pauseOlder]);
   const loadOlder = useCallback(async (retry = false) => {
@@ -120,7 +120,8 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
   return <Context.Provider value={{ ...selection, reference, page: pages[0], pages, rows, viewGeneration, restart: () => { position.current = undefined; void run('page'); }, next: pages.at(-1)?.next, loadingOlder, olderError, loadOlder, pauseOlder, ensureLoaded, reason: owned ? reason : undefined, selectedCommandID: owned ? selectedCommandID : undefined, getScrollOffset: () => scroll.current.offset, rememberScroll: offset => { if (Number.isFinite(offset) && offset >= 0) scroll.current.offset = offset; }, selectedRow: rows.find(row => row.key === selectedKey), storage, busy, error, refresh,
     openRecord: row => {
       const owned = [pageRef.current, ...tails.current].flatMap(p => p?.rows ?? []).find(item => item.key === row.key);
-      if (!owned || owned !== row || mutation.current || !active.current) return false;
+      if (!owned || owned !== row || selectionOpen.current || mutation.current || !active.current) return false;
+      selectionOpen.current = true;
       sequence.current += 1; reading.current = false; pauseOlder(); setSelectedKey(owned.key); setError(undefined); setReason(undefined); setSelectedCommandID(undefined); setBusy(false);
       if (owned.commandID && !owned.reasonDeleted && ['reason', 'requestTemporaryGrant', 'retryCommand'].includes(owned.action)) { setSelectedCommandID(owned.commandID); void run('reason', { commandID: owned.commandID }); }
       return true;
