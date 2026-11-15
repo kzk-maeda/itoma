@@ -136,8 +136,10 @@ Issue [#205](https://github.com/kzk-maeda/itoma/issues/205)。調査対象main�
 | 削除 | Worker `itoma-demo-demo-path-isolation-check-98eb139cc452` | 1件削除、削除後の取得は404 |
 | 削除 | Route `itoma-demo.kzk-maeda.com/demos/demo-path-isolation-check-98eb139cc452` と同パスの `/*` | 2件削除、取得一覧から消えたことを確認 |
 | 保持 | 共通Worker `itoma-demo` と現存Gitブランチ15件のWorker | 同じWorker IDがすべて残ることを前後一覧で照合 |
+| 更新 | 共通一覧Worker `itoma-demo` | [既存mainの一覧更新Actions](https://github.com/kzk-maeda/itoma/actions/runs/43695215920)で15環境の一覧を生成・配信、成功を確認 |
+| 作成 | 上記更新のWorker Version | `a6dfb10e-f79d-47c6-809a-9e1b56c14e4a`。既存Workerの新versionで、別のWorkerではない |
 | 変更なし | Custom Domain・DNS・Access Application/許可ポリシー・IdP | 更新・削除APIは呼び出していない |
-| 新規作成 | Cloudflareリソース・Secret・トークン | なし |
+| 新規作成なし | Worker・Route・Secret・トークン | 追加なし。上記の既存Worker更新のversionだけを作成 |
 
 Worker数は **17→16**、対象zoneのRoute数は **32→30**。新しい定期回収処理の実API dry-runは `inspected=15, retained=15, results=[]` で、孤立候補が残らないことを確認した。匿名302は撤去検証の根拠に使っていない。ローカル原本はrepo内のGit管理外 `.tmp/qa/demo-cleanup-20261115/` に保存し、資格情報を含まない要約だけを本書へ記載する。
 
