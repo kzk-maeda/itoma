@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { Body, Heading, LinkRow, Notice, useFlowTheme } from '@/components/flow/ui';
+import { Body, Heading, Notice, useFlowTheme } from '@/components/flow/ui';
 import { HomeLayout } from '@/constants/theme';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { PeriodSelector, PeriodTransition } from './period-transition';
@@ -89,9 +89,19 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
   const describe = (bucket: ReflectionBucket) => !prototype && bucket.coverage === 'partial' && bucket.knownSeconds === undefined
     ? '制限を続けた時間は、まだ確定できません。' : coverageText(bucket);
   const max = Math.max(1, ...(snapshot?.buckets.map(b => b.knownSeconds ?? 0) ?? []));
+  const refreshLabel = visibleError && !visibleError.empty ? '集計を再読み込み' : '集計を更新';
   const content = <>
     {prototype && <Notice title="検証用プレビュー">合成データまたは点の観測を使う実装検証です。実機の制限時間との接続はまだ行っていません。</Notice>}
     {!embedded && <Heading>これまでの自分の時間</Heading>}
+    <View style={styles.refreshActions}>
+      <Pressable accessibilityRole="button" accessibilityLabel={refreshLabel} accessibilityHint="この画面の集計を読み直します。画面は移動しません。"
+        accessibilityState={{ disabled: blocked }} disabled={blocked} testID="reflection-refresh"
+        onPress={() => { latest.current = undefined; setOwned(undefined); setBusy(true); setRetry(n => n + 1); }}
+        style={({ pressed }) => [styles.refreshButton, { opacity: pressed ? 0.75 : 1 }]}>
+        <Text accessible={false} style={{ color: theme.muted, fontSize: 20 }}>↻</Text>
+        <Text style={[styles.caption, { color: theme.muted }]}>{busy ? '集計を確認中' : refreshLabel}</Text>
+      </Pressable>
+    </View>
     <View style={[styles.totalCard, { backgroundColor: theme.background }]}>
       <Text style={[styles.caption, { color: theme.muted }]}>{snapshot?.proofScope === 'nativeRecordedIntervals' ? '制限の適用を記録した時間' : 'これまでに制限を続けた時間'}</Text>
       <Text testID="reflection-total" style={[styles.total, { color: theme.text }]}>{reflectionDuration(snapshot?.total.knownSeconds)}</Text>
@@ -154,15 +164,13 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
         : '制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。'}</Text>
       <Text style={[styles.caption, { color: theme.muted }]}>一時解除中と、制限を確認できない時間は加算しません。</Text>
     </View>}
-    <LinkRow label="最新の記録を確認する" disabled={blocked} onPress={() => {
-      latest.current = undefined; setOwned(undefined); setBusy(true); setRetry(n => n + 1);
-    }} />
     {controls}
   </>;
   return embedded ? <View style={styles.embedded}>{content}</View> : <ScrollView testID="reflection-preview-scroll" style={{ backgroundColor: theme.background }} contentContainerStyle={styles.content}>{content}</ScrollView>;
 }
 const styles = StyleSheet.create({
   embedded: { gap: 20 },
+  refreshActions: { alignItems: 'flex-end' }, refreshButton: { minHeight: 44, minWidth: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8 },
   content: { width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center', paddingHorizontal: HomeLayout.gutter, paddingTop: 24, paddingBottom: 44, gap: 20 },
   totalCard: { padding: 18, borderRadius: 18, gap: 8 }, total: { fontSize: 36, lineHeight: 52, fontWeight: '400', fontVariant: ['tabular-nums'], flexShrink: 1 },
   metadata: { gap: 4 }, caption: { fontSize: 13, lineHeight: 21 }, sectionTitle: { fontSize: 15, lineHeight: 24, fontWeight: '600', marginTop: 4 },

@@ -26,6 +26,6 @@ export function ReflectionScreen() {
         router.navigate('/history');
       }} />
     {preview && <Body muted>表示例：2026年11月15日時点。グラフと選択の記録は、それぞれ独立した架空データです。</Body>}
-    <LinkRow label="選択の記録を見る" detail="そのときの理由と結果を、日付から見直す" onPress={() => router.navigate('/history')} />
+    <LinkRow label="すべての選択の記録を見る" detail="日付で絞らず、これまでの理由と結果を確認" onPress={() => { history.choose('event', ''); router.navigate('/history'); }} />
   </FlowScreen>;
 }

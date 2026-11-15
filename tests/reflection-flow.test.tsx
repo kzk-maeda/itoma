@@ -91,7 +91,7 @@ beforeEach(() => jest.clearAllMocks());
 test('normal route uses product DTOs, preserves fixed total/token and remembers month/clip through day history', async () => {
   const b = backend(); await mount(b); await observed();
   expect(screen.queryByText('検証用プレビュー')).toBeNull();
-  expect(screen.getByRole('button', { name: '選択の記録を見る' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'すべての選択の記録を見る' })).toBeTruthy();
   expect(screen.queryByText(/保存した状態の記録：/)).toBeNull();
   for (const name of ['新しい記録を取り込む', '全記録と累計を削除する']) expect(screen.queryByRole('button', { name })).toBeNull();
   expect(screen.getByTestId('reflection-total').props.children).toBe('—');
@@ -248,7 +248,7 @@ test('demo uses PR193 shared charts with fixture proof, fixed totals and a botto
   await screen.findByText('60時間50分');
   expect(screen.getByText('表示の時間はすべて架空の検証値です。')).toBeTruthy();
   expect(screen.getByTestId('reflection-period-total')).toHaveTextContent('8時間15分');
-  expect(screen.getAllByRole('button').at(-1)?.props.accessibilityLabel).toBe('選択の記録を見る');
+  expect(screen.getAllByRole('button').at(-1)?.props.accessibilityLabel).toBe('すべての選択の記録を見る');
   await press('月次'); await screen.findByText('2026年11月');
   expect(screen.getByTestId('reflection-total')).toHaveTextContent('60時間50分');
   const clipped = screen.getAllByRole('button').find(node => String(node.props.accessibilityLabel).startsWith('11月9日、'))!;
@@ -256,4 +256,22 @@ test('demo uses PR193 shared charts with fixture proof, fixed totals and a botto
   const day = screen.getAllByRole('button').find(node => String(node.props.accessibilityLabel).startsWith('11月11日、0分'))!;
   await fireEvent.press(day); await screen.findByText('あなたの選択の記録');
   expect(b.historyClient.run).toHaveBeenCalledWith('page', expect.objectContaining({ day: '2026-11-11' }));
+});
+
+
+test('all-history entry clears the prior graph day, reason filter and reflection reference', async () => {
+  const b = backend(); await mount(b); await observed();
+  const day = screen.getAllByRole('button').find(node => String(node.props.accessibilityLabel).startsWith('11月9日、'))!;
+  await fireEvent.press(day); await screen.findByText('あなたの選択の記録');
+  expect(screen.getByText('日付で絞り込み中')).toBeTruthy();
+  expect(screen.getByText(/振り返りとは別の時点/)).toBeTruthy();
+  await press('保存した理由');
+  await press('‹ 戻る'); await observed();
+  await press('すべての選択の記録を見る'); await screen.findByText('あなたの選択の記録');
+  expect(b.historyClient.run).toHaveBeenLastCalledWith('page', expect.objectContaining({ kind: 'event', day: undefined }));
+  expect(screen.getByRole('button', { name: '日付を選ぶ' })).toHaveTextContent(/すべての日/);
+  expect(screen.queryByText('日付で絞り込み中')).toBeNull();
+  expect(screen.queryByText(/振り返りとは別の時点/)).toBeNull();
+  await press('今日'); expect(screen.getByText('日付で絞り込み中')).toBeTruthy();
+  await press('絞り込みを解除'); expect(screen.getByRole('button', { name: '日付を選ぶ' })).toHaveTextContent(/すべての日/);
 });

@@ -74,11 +74,12 @@ export function HistoryScreen() {
       </Pressable>)}
     </View>
     {state.kind === 'reason' && <Body muted>解除の受付に至らず、理由だけを保存した記録も確認できます。</Body>}
+    {!!state.day && <View accessibilityLiveRegion="polite"><Body muted>日付で絞り込み中</Body></View>}
     <View style={styles.dateControls}>
       <Pressable accessibilityRole="button" accessibilityLabel="日付を選ぶ" accessibilityState={{ expanded: calendar, disabled: state.busy }} aria-expanded={calendar} disabled={state.busy} onPress={() => setCalendar(value => !value)} style={[styles.dateButton, { borderColor: theme.line }]}>
         <Text style={{ color: theme.text, fontSize: 15 }}>{state.day ? dateLabel(state.day) : 'すべての日'}　⌄</Text>
       </Pressable>
-      {state.day ? <Button label="すべての日へ" secondary disabled={state.busy} onPress={() => chooseDay('')} /> : <Button label="今日" secondary disabled={state.busy} onPress={() => chooseDay(today)} />}
+      {state.day ? <Button label="絞り込みを解除" secondary disabled={state.busy} onPress={() => chooseDay('')} /> : <Button label="今日" secondary disabled={state.busy} onPress={() => chooseDay(today)} />}
     </View>
     {calendar && <HistoryCalendar initialDay={selectedDay} onChoose={chooseDay} onClose={() => setCalendar(false)} />}
     {!!state.day && <View style={styles.dayNavigation}><Button label="前の日" secondary disabled={state.busy} onPress={() => chooseDay(moveDay(state.day, -1))} /><Button label="次の日" secondary disabled={state.busy} onPress={() => chooseDay(moveDay(state.day, 1))} /></View>}

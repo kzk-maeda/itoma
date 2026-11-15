@@ -1,0 +1,16 @@
+{
+  "browser": "155.0.8059.79",
+  "refreshWithoutNavigation": true,
+  "globalEntryClearsDayAndKind": true,
+  "sameHistoryRoute": "http://127.0.0.1:8822/demos/demo-choice-history-0b7bc336eea3/history",
+  "explicitFilterAndClear": true,
+  "widths": [
+    320,
+    390,
+    768,
+    1440
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "physicalDevice": false
+}

@@ -87,9 +87,9 @@ test('explicit refresh releases old token and typed changed failure does not cau
   await screen.findByLabelText('この週の記録：1時間55分'); changed = true;
   await press('月次'); await screen.findByText('記録が更新されました');
   expect(screen.getByTestId('reflection-total').props.children).toBe('—');
-  await press('最新の記録を確認する'); await screen.findByText('2026年11月');
+  await press('集計を再読み込み'); await screen.findByText('2026年11月');
   expect(client.read.mock.calls.at(-1)![0].expectedToken).toBeUndefined();
-  await press('最新の記録を確認する'); await screen.findByText('2026年11月');
+  await press('集計を更新'); await screen.findByText('2026年11月');
   expect(client.read.mock.calls.at(-1)![0].expectedToken).toBeUndefined();
 });
 test('malformed and synchronous source failures remain errors rather than empty history', async () => {
@@ -98,7 +98,7 @@ test('malformed and synchronous source failures remain errors rather than empty 
   await render(<ReflectionPrototypePreview source={client} initialAnchor="2026-11-09" />);
   await screen.findByText('記録を読み取れませんでした');
   expect(screen.queryByText(/raw error stays private/)).toBeNull();
-  fail = false; await press('最新の記録を確認する'); await screen.findByLabelText('この週の記録：1時間55分');
+  fail = false; await press('集計を再読み込み'); await screen.findByLabelText('この週の記録：1時間55分');
 });
 test('source replacement hides old cumulative immediately and ignores a delayed old response', async () => {
   let resolve: ((value: string) => void) | undefined;
@@ -145,4 +145,17 @@ test.each(['週月切替', '月の前後移動'])('%s keeps the accepted period 
   await screen.findByText(mode === '週月切替' ? '2026年11月' : '2026年10月');
   expect(screen.getByTestId('reflection-total')).toBe(total);
   expect(screen.getByTestId('reflection-period-panel')).toHaveProp('accessibilityState', { busy: false });
+});
+
+
+test('summary refresh stays on the selected period and does not invoke a day/history action', async () => {
+  const client = source(), onDay = jest.fn();
+  await render(<ReflectionPrototypePreview source={client} initialAnchor="2026-11-09" onDay={onDay} />);
+  await screen.findByLabelText('この週の記録：1時間55分');
+  await press('月次'); await screen.findByText('2026年11月');
+  await press('集計を更新'); await screen.findByText('2026年11月');
+  expect(client.read.mock.calls.at(-1)![0]).toMatchObject({ period: 'month' });
+  expect(client.read.mock.calls.at(-1)![0].expectedToken).toBeUndefined();
+  expect(onDay).not.toHaveBeenCalled();
+  expect(screen.queryByRole('button', { name: '最新の記録を確認する' })).toBeNull();
 });
