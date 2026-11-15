@@ -72,3 +72,12 @@ private func total(_ builder: RestrictionTimelineBuilder) throws -> ReflectionPr
     let value = try #require(try total(b)); #expect(value.total.knownSeconds == 200)
     #expect(value.total.coverage == .partial) // 100...200 was beyond the old policy's validity.
 }
+
+@Test func nativeTimelineExcludesUnlockUnionAcrossOverlappingSourcesOrClockEpochs() throws {
+    var b = RestrictionTimelineBuilder(); let a = UUID(), c = UUID()
+    try b.append(source: a, sequence: 1, sample: sample(0, .restricted), asOf: instant(1_000))
+    try b.append(source: a, sequence: 2, sample: sample(100, .restricted), asOf: instant(1_000))
+    try b.append(source: c, sequence: 1, sample: sample(25, .excluded), asOf: instant(1_000))
+    try b.append(source: c, sequence: 2, sample: sample(75, .excluded), asOf: instant(1_000))
+    #expect(try total(b)?.total.knownSeconds == 50)
+}

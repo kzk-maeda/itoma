@@ -36,6 +36,7 @@ public struct RestrictionTimelineBuilder: Sendable {
     private var last: Instant?
     private var observed: [ReflectionPrototypeInterval] = []
     private var restricted: [ReflectionPrototypeInterval] = []
+    private var excluded: [ReflectionPrototypeInterval] = []
     public init() {}
 
     public mutating func append(source: UUID, sequence: Int64, sample: RestrictionTimelineSample?, asOf: Instant) throws {
@@ -54,10 +55,11 @@ public struct RestrictionTimelineBuilder: Sendable {
                 let interval = try ReflectionPrototypeInterval(from: p.sample.at, until: end)
                 Self.merge(interval, into: &observed)
                 if p.sample.state == .restricted { Self.merge(interval, into: &restricted) }
+                if p.sample.state == .excluded { Self.merge(interval, into: &excluded) }
             }
         }
         previous = (source, sequence, sample)
-        guard observed.count + restricted.count <= 20_000 else { throw ReflectionPrototypeError.invalidInput }
+        guard observed.count + restricted.count + excluded.count <= 20_000 else { throw ReflectionPrototypeError.invalidInput }
     }
 
     public func dataset(sourceID: UUID, revision: Int64, asOf: Instant, timeZone: String) throws -> ReflectionPrototypeDataset? {
@@ -67,6 +69,7 @@ public struct RestrictionTimelineBuilder: Sendable {
         return try ReflectionPrototypeDataset(sourceID: sourceID, revision: revision, asOf: asOf, timeZone: timeZone,
             scope: .nativeRecordedIntervals, coverage: .recorded, recordedRange: range,
             restricted: ReflectionPrototypeCalculator.union(restricted),
+            unlocked: ReflectionPrototypeCalculator.union(excluded),
             gaps: ReflectionPrototypeCalculator.subtract([range], known))
     }
     private static func merge(_ interval: ReflectionPrototypeInterval, into values: inout [ReflectionPrototypeInterval]) {
