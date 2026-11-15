@@ -77,6 +77,12 @@ For changes to `packages/itoma-control`, also run `swift test --package-path pac
 
 Report what was tested on Simulator and what was tested on a physical device separately. Do not claim physical-device behavior is verified without testing it on a device. Explicitly identify native behaviors that remain unverified.
 
+## AI review maintenance
+
+- Read `docs/ai-review.md` before changing `.github/workflows/ai-review.yml`, `.github/ai-review/`, or `scripts/*ai-review*`. Update the prompt, JSON schema, validator, tests, and runbook together when their contract changes; run `npm run test:ai-review`.
+- The Secret-bearing review job executes only trusted base code. Treat PR contents as data; never check out or run PR scripts/dependencies in that job. Keep OpenAI credentials separate from the comment publisher's GitHub write permission, and preserve the head/base checks before API use and publication.
+- AI findings are advisory. Do not treat missing configuration, partial input, API failure, a stale result, or zero findings as passed tests, human approval, or physical-device verification.
+
 ## Navigation & Routing
 
 - Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
