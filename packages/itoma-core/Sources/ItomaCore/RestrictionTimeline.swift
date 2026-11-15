@@ -1,7 +1,8 @@
 import Foundation
 
 /// A native operation record. This scope does not assert continuous OS-wide enforcement.
-/// Wall time is paired with uptime so reboot/clock discontinuities cannot create duration.
+/// Wall time is paired with a sleep-inclusive monotonic clock so reboot/clock discontinuities
+/// cannot create duration. Awake-only clocks must never be supplied by production adapters.
 public struct RestrictionTimelineSample: Codable, Equatable, Sendable {
     public enum State: String, Codable, Sendable { case restricted, excluded, unknown }
     public enum Boundary: String, Codable, Sendable { case controlledTransition, checkpoint }
