@@ -53,6 +53,14 @@ import ItomaCore
     #expect(week.proofScope == "nativeRecordedIntervals")
     #expect(week.metricVersion == "native-restricted-excluding-unlocks-v2")
     #expect(week.total.knownSeconds == 6_900)
+    let tokenData = try #require(Data(base64Encoded: String(week.token.dropFirst("reflection-v1:".count))))
+    var oldToken = try #require(try JSONSerialization.jsonObject(with: tokenData) as? [String: Any])
+    #expect(oldToken["metricVersion"] as? String == "native-restricted-excluding-unlocks-v2")
+    oldToken.removeValue(forKey: "metricVersion")
+    let unscoped = "reflection-v1:" + (try JSONSerialization.data(withJSONObject: oldToken)).base64EncodedString()
+    #expect(throws: HistoryError.conflict) {
+        try reopened.readReflection(period: .week, day: "2026-11-15", timeZone: "UTC", expectedToken: unscoped, now: at(7_201))
+    }
     let month = try reopened.readReflection(period: .month, day: "2026-11-15", timeZone: "UTC", expectedToken: week.token, now: at(7_202))
     #expect(month.total == week.total && month.selected.knownSeconds == week.selected.knownSeconds)
     let json = String(data: try JSONEncoder().encode(month), encoding: .utf8)!

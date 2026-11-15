@@ -29,6 +29,7 @@ private struct ReflectionReadToken: Codable {
     let historyRevision: Int64
     let asOf: Instant
     let timeZone: String
+    var metricVersion: String? = nil
     func string() throws -> String { "reflection-v1:" + (try JSONEncoder().encode(self)).base64EncodedString() }
     static func parse(_ string: String) throws -> Self {
         let prefix = "reflection-v1:"
@@ -110,7 +111,7 @@ extension HistoryRepository: ReflectionFactSink {
         try transaction(writer: false) {
             try validateReflectionPayloads()
             let state = try reflectionState(), historyRevision = try readRevision()
-            let token: ReflectionReadToken
+            var token: ReflectionReadToken
             if let expectedToken {
                 token = try ReflectionReadToken.parse(expectedToken)
                 guard token.datasetID == state.id, token.ledgerRevision == state.revision,
@@ -133,6 +134,10 @@ extension HistoryRepository: ReflectionFactSink {
             let legacy = try ReflectionPrototypeDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf,
                 timeZone: timeZone, scope: .pointObservations, coverage: coverage, recordedRange: range)
             let input = try nativeRestrictionDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf, timeZone: timeZone) ?? legacy
+            let metric = input.scope == .nativeRecordedIntervals ? "native-restricted-excluding-unlocks-v2" : nil
+            if expectedToken != nil {
+                guard token.metricVersion == metric else { throw HistoryError.conflict }
+            } else { token.metricVersion = metric }
             let anchor: String
             if day.isEmpty {
                 var calendar = Calendar(identifier: .gregorian)
@@ -143,7 +148,7 @@ extension HistoryRepository: ReflectionFactSink {
             } else { anchor = day }
             let view = try ReflectionPrototypeCalculator.snapshot(input, period: period, day: anchor, clippedTo: clippedTo)
             let incomplete = try !database.rows("SELECT 1 FROM reflection_sources WHERE incomplete=1 LIMIT 1").isEmpty
-            return try ReflectionReadSnapshot(metricVersion: input.scope == .nativeRecordedIntervals ? "native-restricted-excluding-unlocks-v2" : "restricted-excluding-unlocks-v1",
+            return try ReflectionReadSnapshot(metricVersion: metric ?? "restricted-excluding-unlocks-v1",
                 proofScope: input.scope.rawValue, token: expectedToken ?? token.string(), historyRevision: String(historyRevision),
                 timeZone: timeZone, asOf: token.asOf.secondsSince1970, observationCount: count, lastObservedAt: last, incomplete: incomplete,
                 total: view.total, trend: view.trend, period: view.period, anchor: view.anchor,
@@ -173,7 +178,7 @@ extension HistoryRepository: ReflectionFactSink {
                           case let .integer(seq) = row[1], case let .blob(data) = row[2] else { throw HistoryError.corrupt }
                     let fact = try decodeReflectionFact(data)
                     hasFutureRecords = hasFutureRecords || fact.committedAt > asOf
-                    try projection.append(source: uuid, sequence: seq, sample: fact.durationObservation, asOf: asOf)
+                    try projection.append(source: uuid, sequence: seq, sample: fact.durationObservation, asOf: asOf, unobservedAt: fact.committedAt)
                     source = id; sequence = seq
                 }
             }

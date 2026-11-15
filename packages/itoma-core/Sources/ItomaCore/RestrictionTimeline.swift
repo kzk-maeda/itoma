@@ -39,9 +39,14 @@ public struct RestrictionTimelineBuilder: Sendable {
     private var excluded: [ReflectionPrototypeInterval] = []
     public init() {}
 
-    public mutating func append(source: UUID, sequence: Int64, sample: RestrictionTimelineSample?, asOf: Instant) throws {
+    public mutating func append(source: UUID, sequence: Int64, sample: RestrictionTimelineSample?, asOf: Instant, unobservedAt: Instant? = nil) throws {
         guard sequence > 0 else { throw ReflectionPrototypeError.invalidInput }
-        guard let sample, sample.at <= asOf else { previous = nil; return }
+        guard let sample, sample.at <= asOf else {
+            if let first, let unobservedAt, unobservedAt >= first, unobservedAt <= asOf {
+                last = max(last ?? unobservedAt, unobservedAt)
+            }
+            previous = nil; return
+        }
         try sample.validate()
         first = min(first ?? sample.at, sample.at); last = max(last ?? sample.at, sample.at)
         if let p = previous, p.source == source, p.sequence < Int64.max, sequence == p.sequence + 1,
