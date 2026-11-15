@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { Body, Heading, LinkRow, Notice, useFlowTheme } from '@/components/flow/ui';
 import { HomeLayout } from '@/constants/theme';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
@@ -24,6 +24,9 @@ function Trend({ buckets }: { buckets: ReflectionBucket[] }) {
     <Svg width="100%" height={52} viewBox="0 0 320 52" accessible={false}>
       <Path d="M0 51H320" stroke={theme.line} strokeWidth={1} />
       {path ? <Path d={path} fill="none" stroke={theme.accent} strokeWidth={2} /> : null}
+      {buckets.map((b, n) => b.knownSeconds === undefined ? null : <Circle key={n}
+        cx={buckets.length === 1 ? 160 : n * 320 / (buckets.length - 1)} cy={44 - b.knownSeconds / max * 38}
+        r={2.5} fill={theme.accent} />)}
     </Svg>
   </View>;
 }
@@ -90,7 +93,7 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
     {prototype && <Notice title="検証用プレビュー">合成データまたは点の観測を使う実装検証です。実機の制限時間との接続はまだ行っていません。</Notice>}
     {!embedded && <Heading>これまでの自分の時間</Heading>}
     <View style={[styles.totalCard, { backgroundColor: theme.background }]}>
-      <Text style={[styles.caption, { color: theme.muted }]}>これまでに制限を続けた時間</Text>
+      <Text style={[styles.caption, { color: theme.muted }]}>{snapshot?.proofScope === 'nativeRecordedIntervals' ? '制限の適用を記録した時間' : 'これまでに制限を続けた時間'}</Text>
       <Text testID="reflection-total" style={[styles.total, { color: theme.text }]}>{reflectionDuration(snapshot?.total.knownSeconds)}</Text>
       <Text style={[styles.caption, { color: theme.muted }]}>記録全体の累計 · 一時解除を除く</Text>
       {snapshot && <>
@@ -98,7 +101,7 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
         {snapshot.total.knownSeconds !== undefined && snapshot.total.knownSeconds > 0 && <Body>自分の時間を、少しずつ積み重ねています。</Body>}
         <Trend buckets={snapshot.trend} />
       </>}
-      {!prototype && <Text style={[styles.caption, { color: theme.text }]}>時間の集計は準備中です</Text>}
+      {!prototype && snapshot?.proofScope !== 'nativeRecordedIntervals' && <Text style={[styles.caption, { color: theme.text }]}>時間の記録を確認できていません</Text>}
     </View>
     {!prototype && <>
       {snapshot?.incomplete && <Body muted>記録の一部が欠けている可能性があります。</Body>}
@@ -143,7 +146,12 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
       </Pressable>)}</View>
     </PeriodTransition>}
     {!prototype && <View style={styles.metadata}>
-      <Text style={[styles.caption, { color: theme.muted }]}>制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。</Text>
+      {snapshot?.proofScope === 'nativeRecordedIntervals' && <Text style={[styles.caption, { color: theme.muted }]}>記録の確認時刻：{new Intl.DateTimeFormat('ja-JP', {
+        timeZone: snapshot.timeZone, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
+      }).format(snapshot.total.until * 1000)}</Text>}
+      <Text style={[styles.caption, { color: theme.muted }]}>{snapshot?.proofScope === 'nativeRecordedIntervals'
+        ? '端末で制限の適用を確認してから、解除や停止までの記録です。OS内部の遮断状態を常時観測した値ではありません。'
+        : '制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。'}</Text>
       <Text style={[styles.caption, { color: theme.muted }]}>一時解除中と、制限を確認できない時間は加算しません。</Text>
     </View>}
     <LinkRow label="最新の記録を確認する" disabled={blocked} onPress={() => {

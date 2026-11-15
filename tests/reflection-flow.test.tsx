@@ -79,6 +79,28 @@ async function mount(b: ReturnType<typeof backend>) {
 }
 const press = async (label: string) => fireEvent.press(screen.getByRole('button', { name: label }));
 const observed = () => screen.findByText('制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。');
+
+test('native restriction duration reaches the real provider, total and period UI with measurement scope', async () => {
+  const b = backend();
+  b.native.mockImplementation(async (_action, payload) => {
+    const request = JSON.parse(payload);
+    const entry = fixtures.observed.find(row => row.request.period === (request.period ?? 'week'))!;
+    const snapshot = structuredClone(entry.response);
+    snapshot.proofScope = 'nativeRecordedIntervals'; snapshot.metricVersion = 'native-restricted-excluding-unlocks-v2';
+    snapshot.total = { ...snapshot.total, from: snapshot.asOf - 7200, until: snapshot.asOf, knownSeconds: 6900, coverage: 'recorded' };
+    snapshot.selected = { ...snapshot.selected, knownSeconds: 6900, coverage: 'partial' };
+    snapshot.trend = [snapshot.total];
+    return wrap(snapshot);
+  });
+  await mount(b);
+  await screen.findByText('制限の適用を記録した時間');
+  expect(screen.getByTestId('reflection-total').props.children).toBe('1時間55分');
+  expect(screen.getByTestId('reflection-period-total').props.children).toBe('1時間55分');
+  expect(screen.getByText(/OS内部の遮断状態を常時観測した値ではありません/)).toBeTruthy();
+  expect(screen.queryByText('時間の集計は準備中です')).toBeNull();
+  await press('月次'); await screen.findByText('2026年11月');
+  expect(screen.getByTestId('reflection-total').props.children).toBe('1時間55分');
+});
 function deletionButton(alert: jest.SpyInstance) {
   const choices = alert.mock.calls.at(-1)![2] as { text: string; onPress?: () => void }[];
   return choices.find(choice => choice.text === '全記録と累計を削除する')!;

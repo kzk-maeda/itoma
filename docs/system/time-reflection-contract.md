@@ -4,6 +4,8 @@
 
 ## 根拠と訂正
 
+- 2026-11-15の実装依頼に対する[ADR0010](../adr/0010-native-recorded-restriction-intervals.md)は、native操作を追跡した区間を別のscope/metricで表示する**提案**。このAccepted契約の実遮断qualificationを暗黙に解除せず、人間レビューで採否を判断する。旧point factの時間補間は行わない。
+
 - デザインIssue [#86](https://github.com/kzk-maeda/itoma/issues/86)、親 #17、[PR88固定版の説明](https://github.com/kzk-maeda/itoma/blob/8892ad07fca729d60fd0499026a24e49f4ec41da/docs/history-studies.md) は、上部の累計固定＋下部の週/月、月→週→日、欠損の明示、穏やかな表現の根拠。
 - 同デモの「設定時間は解除を控除しない」は比較用の数値定義であり、製品指標の確定ではなかった。これを製品へ流用したPR134初版と旧 #98 の文言を、本人の最新指示で訂正する。
 - 本人が指定した計上方針を同じ承認質問へ戻さない。観測/記録/削除の詳細は上記の本人回答で採用。正値qualification・実機の成立は継続して確認する。

@@ -35,6 +35,9 @@ public final class ControlRepository {
     static let applicationID: Int64 = 0x49544F4D
     let database: SQLiteDatabase
     private let lock = NSRecursiveLock()
+    var durationClock: () throws -> (Instant, Double) = {
+        (try Instant(secondsSince1970: Date().timeIntervalSince1970), ProcessInfo.processInfo.systemUptime)
+    }
 
     public static func create(
         at url: URL, initialPolicy: PolicySnapshot, selections: [StoredSelection] = [],

@@ -1,0 +1,48 @@
+{
+  "runtime": "Linux Chromium",
+  "data": "synthetic native intervals; production component; temporary QA route",
+  "results": [
+    {
+      "width": 320,
+      "colorScheme": "light",
+      "textScale": 2,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "colorScheme": "light",
+      "textScale": 1,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 768,
+      "colorScheme": "light",
+      "textScale": 1,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "colorScheme": "dark",
+      "textScale": 2,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "colorScheme": "dark",
+      "textScale": 1,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 768,
+      "colorScheme": "dark",
+      "textScale": 1,
+      "overflow": false,
+      "errors": []
+    }
+  ]
+}
