@@ -2,7 +2,7 @@ import { type ReactNode, useState } from 'react';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ProductProviders } from '@/runtime/product-providers';
-import { ApplicationLabels } from '@/runtime/application-labels';
+import { ApplicationLabels, ApplicationSymbols } from '@/runtime/application-labels';
 import { GraphiteColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createDemoSession, demoScenarios, readDemoScenario, type DemoOutcome } from './session';
@@ -33,7 +33,7 @@ export function DemoProviders({ children }: { children: ReactNode }) {
         <Text style={[styles.caption, { color: theme.muted }]}>理由はタブ内メモリーのみ。再読込で消えます。ルールの追加・曜日/時間編集・対象選び直し・オンボーディングは未対応で、完了を装いません。時間集計も未提供です。iOSとWebの表示・キーボード・操作感には差があります。</Text>
       </ScrollView>}
     </View>
-    <ApplicationLabels.Provider value={session.applicationLabel}><ProductProviders clients={session.clients}>{children}</ProductProviders></ApplicationLabels.Provider>
+    <ApplicationLabels.Provider value={session.applicationLabel}><ApplicationSymbols.Provider value={session.applicationSymbol}><ProductProviders clients={session.clients}>{children}</ProductProviders></ApplicationSymbols.Provider></ApplicationLabels.Provider>
   </View>;
 }
 const styles = StyleSheet.create({ banner: { paddingHorizontal: 16, paddingTop: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#8888' },

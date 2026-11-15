@@ -347,7 +347,7 @@ test('one entry → initially unselected app → free text → editable full rev
   expect(screen.getAllByRole('button', { name: '一時解除する' })).toHaveLength(1);
   await press('一時解除する');
   expect(screen.getByRole('button', { name: '解除内容を確認する' })).toBeDisabled();
-  await press('テスト用アプリA');
+  await fireEvent.press(screen.getByRole('radio', { name: /テスト用アプリA/ }));
   await fireEvent.changeText(screen.getByLabelText('いま使う理由'), ' \n ');
   expect(screen.getByRole('button', { name: '解除内容を確認する' })).toBeDisabled();
   await fireEvent.changeText(screen.getByLabelText('いま使う理由'), 'synthetic purpose\nsecond line');
@@ -383,7 +383,7 @@ test('dirty cancellation keeps text on Keep, and confirmed discard does not requ
 test('failed accepted grants expose retry of the same command and original absolute upper bound', async () => {
   const b = backend(true, true);
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await press('一時解除する'); await press('テスト用アプリA');
+  await press('一時解除する'); await fireEvent.press(screen.getByRole('radio', { name: /テスト用アプリA/ }));
   await fireEvent.changeText(screen.getByLabelText('いま使う理由'), 'synthetic retry');
   await press('解除内容を確認する'); await press('理由を保存して一時解除する');
   expect(screen.getByText('解除を完了できませんでした')).toBeTruthy();
@@ -397,7 +397,7 @@ test('failed accepted grants expose retry of the same command and original absol
 test('continuing restrictions from input and confirmation preserves text until explicit discard and never accepts a grant', async () => {
   const b = backend(), alert = jest.spyOn(Alert, 'alert');
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await press('一時解除する'); await press('テスト用アプリA');
+  await press('一時解除する'); await fireEvent.press(screen.getByRole('radio', { name: /テスト用アプリA/ }));
   await fireEvent.changeText(screen.getByLabelText('いま使う理由'), 'synthetic continued restriction');
   await press('制限を続ける');
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[0].onPress?.(); });

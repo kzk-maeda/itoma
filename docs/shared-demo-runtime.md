@@ -81,3 +81,13 @@ EXPO_PUBLIC_ITOMA_DEMO=1 node node_modules/expo/bin/cli export --platform ios --
 ```
 
 静的サーバーでdeep linkを試すときは、Cloudflare Assetsと同じように `/history` を `/history.html` へ解決する必要がある。Python標準http.serverだけではそのdeep linkの直接再読込は404になる。本体のclient-side遷移と、配信側のclean URL解決を区別して確認する。
+
+## 一時解除のアプリ選択行（本人指定の改修）
+
+`ApplicationChoice` が本体とdemoで共通の選択行を担当する。行全体のPressable、右端のラジオ、選択中の枠・背景と文言、checked/disabled状態をまとめる。未選択でも○を見せる。説明文・余白・ラジオの付近を押しても、同じ1つの選択処理が動く。選び直しでは理由を消さず、対象と確認内容だけを更新する。
+
+`Applications` は識別表示だけに絞り、nativeにはselectable=falseを渡す。Appleのアイコン・名前をJSへ取り出さず、ネストしたnativeボタンとの二重発火を避ける。WebはApplicationLabelsとApplicationSymbolsからサンプル名と代替グリフを供給する（公式アプリアイコンの画像ではない）。外枠とラジオは本体と同じReact Native部品。
+
+選択不可の行にも理由を表示し、押しても選べない。Webにはaria-checked/aria-disabledを明示し、nativeには同じ値のaccessibilityStateを渡す。nativeではAppleの識別表示を含む名前の読み上げ・タップ領域・文字拡大を実機確認する必要がある。Swift/ABIに変更はないが、JSの外側Pressableへの集約を実機検証済みとは扱わない。
+
+選択行の単体テスト、余白/端を押すWeb操作、枠/背景の変化、選び直しても理由が残ること、disabled、Dark/狭幅と既存フローを検証。記録・解除のドメイン仕様は変更しない。

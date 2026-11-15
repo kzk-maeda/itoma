@@ -3,6 +3,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useScreenTime } from '@/state/screen-time';
 import { Applications } from './applications';
+import { ApplicationChoice } from './application-choice';
 import { back, home, useDraftGuard } from './navigation';
 import { endTime, ruleText } from './presentation';
 import { ruleTitle } from './rule-identity';
@@ -44,14 +45,18 @@ export function UnlockScreen() {
   return <FlowScreen title="必要な分だけ、一時解除" onBack={back}>
     <Body>使う目的と時間を、いったん言葉に。解除するかどうかは、内容を確認してから決められます。</Body>
     <View style={flowStyles.section}><Heading>解除するアプリ</Heading>
-      {state.snapshot?.targets.map((target) => <Panel key={target.ref}>
-        <Applications selectionRef={target.selectionRef} targetRef={target.ref} refreshKey={state.refreshKey}
-          selected={draft.targetRef === target.ref} onSelect={available && target.unlockable && !state.busy ? () => {
+      <Body muted>一時解除するアプリを1つ選んでください。</Body>
+      <View accessibilityRole="radiogroup" accessibilityLabel="解除するアプリ" style={flowStyles.section}>
+        {state.snapshot?.targets.map((target) => <ApplicationChoice key={target.ref}
+          selectionRef={target.selectionRef} targetRef={target.ref} refreshKey={state.refreshKey}
+          selected={draft.targetRef === target.ref} disabled={!available || !target.unlockable || !!state.busy}
+          detail={target.grantCommandID ? '一時解除の要求があります。状況を確認できます。'
+            : !available || !target.unlockable ? '現在、一時解除できません。'
+              : draft.targetRef === target.ref ? '選択中' : 'タップして選択'}
+          onSelect={() => {
             state.setUnlockExitAllowed(false); state.setUnlockDraft({ ...draft, targetRef: target.ref }); state.setUnlockReview(undefined);
-          } : undefined} />
-        <Body muted>{target.unlockable ? draft.targetRef === target.ref ? '✓ このアプリを選択中' : 'このアプリを選べます'
-          : target.grantCommandID ? 'このアプリには進行中の要求があります。状況を確認できます。' : '現在、一時解除できる制限対象ではありません。'}</Body>
-      </Panel>)}
+          }} />)}
+      </View>
       {!state.snapshot?.targets.length && <Body muted>解除できる対象がありません。ホームで現在の時間帯と許可を確認できます。</Body>}
     </View>
     <Field label="いま使う理由" testID="unlock-reason" value={draft.reason} multiline placeholder="自分の言葉で入力してください"

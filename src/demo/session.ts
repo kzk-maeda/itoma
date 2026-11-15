@@ -11,7 +11,7 @@ export function readDemoScenario(value: string | null): DemoScenario {
 }
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const ruleID = uuid(1), selectionID = uuid(2);
-export const demoApplications = [{ ref: uuid(3), name: 'X' }, { ref: uuid(4), name: 'YouTube' }, { ref: uuid(5), name: 'Instagram' }];
+export const demoApplications = [{ ref: uuid(3), name: 'X', symbol: '𝕏' }, { ref: uuid(4), name: 'YouTube', symbol: '▶' }, { ref: uuid(5), name: 'Instagram', symbol: '◎' }];
 
 type Options = { scenario?: DemoScenario; now?: () => number };
 /** Contract-shaped in-memory port. A UI simulator, never a Screen Time/OS emulator. */
@@ -145,6 +145,7 @@ export function createDemoSession({ scenario = 'normal', now = Date.now }: Optio
   };
   return { clients,
     applicationLabel: (selection: string, target: string) => selection !== selectionID ? undefined : target ? demoApplications.find(app => app.ref === target)?.name : demoApplications.map(app => app.name).join('・'),
+    applicationSymbol: (selection: string, target: string) => selection === selectionID ? demoApplications.find(app => app.ref === target)?.symbol : undefined,
     setOutcome(value: DemoOutcome) { outcome = value; },
   };
 }

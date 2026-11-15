@@ -1,0 +1,14 @@
+{
+  "browser": "155.0.8059.79",
+  "fullRowPaddingAndEdge": true,
+  "singleChecked": true,
+  "borderAndBackgroundChange": true,
+  "reasonPreserved": true,
+  "keyboardSpace": true,
+  "widths": [
+    320,
+    390,
+    768
+  ],
+  "physicalDevice": false
+}
