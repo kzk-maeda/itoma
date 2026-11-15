@@ -47,6 +47,7 @@ export function githubClient({ repository, githubToken, fetchImpl = fetch }) {
     }
     if (optional && response.status === 404) return null;
     requireValue(response.ok, `GitHub HTTP ${response.status}`);
+    if (response.status === 204) return null;
     try { return await response.json(); }
     catch { throw new Error('GitHub returned invalid JSON'); }
   };
@@ -233,7 +234,7 @@ export async function callOpenAI({ apiKey, model, prompt, schema, input, files, 
   return { review: validateReview(review, files), responseId: result.id, usage: result.usage ?? null };
 }
 
-export async function runReview(options, { github, prompt, schema, fetchImpl }) {
+export async function runReview(options, { github, prompt, schema, fetchImpl, beforeApi }) {
   const report = { version: 1, status: 'failed', repository: options.repository, number: options.number, run_url: options.runUrl, model: options.model };
   try {
     const pr = await github(`/pulls/${options.number}`);
@@ -251,9 +252,11 @@ export async function runReview(options, { github, prompt, schema, fetchImpl }) 
     if (current.head.sha !== pr.head.sha || current.base.sha !== pr.base.sha || ineligibleReason(current, options)) {
       return { ...report, status: 'skipped', reason: 'PR changed before the API call' };
     }
+    if (beforeApi) await beforeApi();
     const result = await callOpenAI({ ...options, prompt, schema, input, files: reviewedFiles, fetchImpl });
     return { ...report, status: 'completed', review: result.review, response_id: result.responseId, usage: result.usage };
   } catch (error) {
+    if (error.name === 'StaleRequestError') return { ...report, status: 'skipped', reason: safeError(error, options) };
     // Only our bounded diagnostic messages are persisted; never dump HTTP bodies/inputs.
     return { ...report, error: safeError(error, options) };
   }
@@ -266,6 +269,7 @@ export function safeError(error, options) {
 }
 
 const markdown = value => String(value).replaceAll('@', '@\u200b').replace(/[\\`*_{}[\]()<>!|#]/g, '\\$&');
+export { markdown };
 export function renderReport(report) {
   const lines = [COMMENT_MARKER, '## AIコードレビュー', '', `対象: \`${report.head_sha ?? '未取得'}\` / base: \`${report.base_sha ?? '未取得'}\``, '', `状態: **${report.status}** / モデル: ${markdown(report.model)}`];
   if (report.run_url) lines.push('', `[Actionsの実行・証跡](${report.run_url})`);
@@ -289,6 +293,16 @@ export function renderReport(report) {
   return lines.join('\n');
 }
 
+export async function findReviewComment(number, github) {
+  for (let page = 1; page <= 10; page++) {
+    const comments = await github(`/issues/${number}/comments?per_page=100&page=${page}`);
+    const comment = comments.find(item => item.user?.login === 'github-actions[bot]' && item.user?.type === 'Bot' && item.body?.startsWith(COMMENT_MARKER));
+    if (comment) return comment;
+    if (comments.length < 100) return null;
+  }
+  throw new Error('Too many PR comments to safely locate review state');
+}
+
 export async function publishReview(report, options, github) {
   requireValue(report.version === 1 && report.repository === options.repository && report.number === options.number, 'Review artifact does not match the target PR');
   requireValue(['completed', 'failed', 'skipped'].includes(report.status), 'Invalid report status');
@@ -297,13 +311,7 @@ export async function publishReview(report, options, github) {
   if (ineligibleReason(pr, options) || pr.head.sha !== report.head_sha || pr.base.sha !== report.base_sha) {
     return { status: 'stale', reason: 'PR revision or eligibility changed; review retained only as an artifact' };
   }
-  let comment;
-  for (let page = 1; page <= 10; page++) {
-    const comments = await github(`/issues/${options.number}/comments?per_page=100&page=${page}`);
-    comment = comments.find(item => item.user?.login === 'github-actions[bot]' && item.user?.type === 'Bot' && item.body?.startsWith(COMMENT_MARKER));
-    if (comment || comments.length < 100) break;
-    requireValue(page < 10, 'Too many PR comments to safely locate the previous review');
-  }
+  const comment = await findReviewComment(options.number, github);
   // Recheck after pagination, immediately before the write. The body always pins both SHAs.
   const current = await github(`/pulls/${options.number}`);
   if (ineligibleReason(current, options) || current.head.sha !== report.head_sha || current.base.sha !== report.base_sha) return { status: 'stale' };
