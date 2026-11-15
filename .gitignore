@@ -44,3 +44,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Generated AI review evidence (uploaded by Actions, never source-controlled)
+/artifacts/ai-review/
