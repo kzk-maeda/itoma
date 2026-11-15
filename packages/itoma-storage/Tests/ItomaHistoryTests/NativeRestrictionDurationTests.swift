@@ -67,3 +67,21 @@ import ItomaCore
         try reopened.readReflection(period: .week, day: "2026-11-15", timeZone: "UTC", expectedToken: week.token, now: at(7_202))
     }
 }
+
+@Test func anUnknownDurationAuxiliaryVersionIsNotRewrittenAndCannotPreventStop() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let control = try ControlRepository.create(at: root.appendingPathComponent("control.sqlite"),
+        initialPolicy: PolicySnapshot(revision: PolicyRevision(0), rules: [], priorityOrder: []), activation: .enabled)
+    defer { try? control.close() }
+    try control.installReflectionCapture(capacity: HistoryOutboxCapacity(maximumPendingEvents: 100))
+    try control.database.execute("CREATE TABLE reflection_duration_capture(version INTEGER PRIMARY KEY)")
+    try control.database.execute("INSERT INTO reflection_duration_capture VALUES(2)")
+    #expect(throws: StorageError.corrupt) { try control.installDurationCapture() }
+    #expect(try control.database.rows("SELECT version FROM reflection_duration_capture").count == 1)
+    let before = try control.readSnapshot()
+    _ = try control.setActivation(.paused, expectedSequence: before.snapshotSequence)
+    #expect(try control.readSnapshot().activation == .paused)
+    #expect(try control.reflectionBatch()?.boundary.incomplete == true)
+}

@@ -17,6 +17,8 @@ ADR0007の`restricted-excluding-unlocks-v1`へown-storeの点を正値として�
 1. Control6のoptional reflection outboxを再利用する。hostがversion1の`reflection_duration_capture`を追加し、新しいhost/Extensionは同じ短いcontrol commitで`durationObservation`を記録する。旧writerが出すsampleなしのfactやsequenceの欠落は継続を切る。main schemaやOS予定・対象・grantを初期化しない。
 2. sampleはUTC時刻・system uptime・zone・restricted/excluded/unknown・controlled transition/checkpoint・適用の有効範囲だけを持つ。理由、目標、native token、実アプリ名を追加しない。
 3. `restricted`はenabled、適用成功/own-store確認、policyとzoneの一致、対象あり、有効範囲内、一時解除なしを必要とする。予定保存だけでは開始しない。Applying/停止の耐久commitで直前の区間を切り、再制限の成功まで開始しない。
+
+   既存`ApplicationObservation.validUntil`には30分の評価探索上限も含まれ、OSがstoreを解除する時刻を意味しない。区間記録の上限には同じRuleEvaluatorで求めた次の実際のpolicy境界を使う。これは未確認の境界以後を切るための上限であり、境界まで成功したことの根拠にはしない。
 4. 一部対象だけの解除でも累計全体から除く。解除は期限ではなく結果から追跡するため、早期終了・遅れた再制限・重なる複数grantも同じ規則で扱う。処理中や失敗の区間は補わない。
 5. sample間のwall差とuptime差が2秒を超えてずれる、uptimeが逆行する、zoneが変わる、sequenceが欠ける、checkpointが不明になる場合はその区間をgapにする。OS全体の継続を証明するための仕組みではなく、観測した不連続から誤計上を防ぐためのもの。
 6. 明示refresh/前景復帰で、現在の認可・own-store対象・store.isActive（対応OS）を確認する。shared snapshot sequenceを照合してcheckpointを保存する。画面の15秒pollでは新しい記録やOS writeを生成しない。Shield、monitor、grantの変更は行わない。

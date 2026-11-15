@@ -24,6 +24,8 @@ const fs = require('node:fs');
     await enlarge();
     if (await page.getByTestId('reflection-total').innerText() !== '1時間55分') throw Error('wrong cumulative duration');
     await page.screenshot({ path: `${out}/week-${colorScheme}-${width}.png`, fullPage: true });
+    await page.getByText(/OS内部の遮断状態を常時観測した値ではありません/).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${out}/scope-${colorScheme}-${width}.png`, fullPage: true });
     await page.getByRole('button', { name: '月次', exact: true }).click();
     await page.getByText('2026年11月', { exact: true }).waitFor();
     await enlarge();
