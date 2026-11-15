@@ -4,13 +4,13 @@
 
 ## 検証結果
 
-- PASS：tsc、Lint、Jest **26 suites / 232件**、demo tools **32件**、iOS tools **18件**、expo-doctor **20/20**、diff check。
+- PASS：tsc、Lint、Jest **26 suites / 237件**、demo tools **32件**、iOS tools **18件**、expo-doctor **20/20**、diff check。
 - PASS：通常構成のiOS JS/Hermes export、通常のserver Web export。これらはnative build/実機の成功ではない。Swift/native/configは変更していない。
 - PASS：通常exportへ一時的なQA runtimeが混ざらないことを、製品sourceの復元と一意のmarkerの不在で確認。`prototype`の既定値やsyntheticFixture拒否を変更していない。
 - PASS：Linux Chromiumで320/375/390/768px × Light/Dark、375pxはSE相当667高、320pxは文字200%、Reduce Motion。カレンダーの日付セルは全ケース44pt相当以上、横overflow/JS例外なし。Web文字拡大はiOS Dynamic Typeではない。
 - PASS：固定累計→週/月→月端clip→日別、補助更新の非遷移/clip保持/token解放、日別の理由indexから全期間/eventへのリセット、カレンダー/絞り込み解除、エラー後の集計再取得。
 - PASS：92件を40+40+12の3ページで自動追加し、cursorを重複要求せず末尾へ。詳細で選んだ理由1件だけを取得し、戻った時のscrollTop **21438→21438**、カード上端 **363→363**。先頭ページを読み直していない。詳細復帰後の自動追加、追加失敗/自動再試行停止/明示再試行も確認。
-- PASS：Provider/component回帰テストで、追加中の日付/更新/削除/背景/client変更、revision/zone不一致、戻る方向/循環/空のcursor、不正な選択行、別sourceで同じcommand ID、遅い本文/ページの棄却を確認。
+- PASS：Provider/component回帰テストで、追加中の日付/更新/削除/背景/client変更、revision/zone不一致、戻る方向/循環/空のcursor、不正な選択行、カード連打の重複選択、別sourceで同じcommand ID、遅い本文/ページの棄却を確認。
 
 [機能操作結果](functional.json)、[幅・RAM結果](width-memory.json)、[入力・画像・iOS bundleのdigest](provenance.json)。36画像のdigestを保存し、代表7枚を本ディレクトリへ収録した。対象sourceのUI入力hashを照合済み。
 
@@ -24,7 +24,7 @@
 
 ## 描画とRAM
 
-390×844の合成Webで、初期40件/1ページから2000件/50ページまでスクロールした。同時描画は最大29カード。ChromiumのGC後JS heapは8.05 MB→11.15 MB、測定点の最大11.80 MB。これはブラウザー全体のJS heap（QA port・React・仮想リストの計測情報等を含む）で、iOSのRSS・FPS・最大容量の評価ではない。
+390×844の合成Webで、初期40件/1ページから2000件/50ページまでスクロールした。同時描画は最大29カード。ChromiumのGC後JS heapは8.07 MB→11.13 MB、測定点の最大11.30 MB。これはブラウザー全体のJS heap（QA port・React・仮想リストの計測情報等を含む）で、iOSのRSS・FPS・最大容量の評価ではない。
 
 成功したmetadataページは読み込んだ分だけRAMに残す。本文は1件だけ、全件の初回取得はしない。一定RAMを保証したり、途中で打ち切って本当の末尾と表示したりしない。保持ページ窓と実機予算は [#214](https://github.com/kzk-maeda/itoma/issues/214) で追跡する。
 
@@ -61,3 +61,10 @@ DESIGN原則1/3/4/5、U07、UI22〜26/35/36、RF01/05〜09。日時→選択→�
 4. 保存済みの理由・取消・削除済み等を開き、全文/選択/戻ると状態の区別を確認する。現在設定のアプリ名や目的が過去へ補われないこと。
 5. 理由のみ削除/操作履歴削除では累計を維持し、全記録と累計の削除では双方を消すこと。背景/再取込/古い応答で復活しないこと。
 6. SEの狭幅、Light/Dark、最大Dynamic Type、VoiceOver、Reduce Motion、戻るgestureとSafe Areaを確認する。スクロール/RAMは#214で実機測定する。
+
+
+## レビュー対応
+
+自動レビューのP1（元commandのsucceededがpending/scheduling/applying/activeのgrantを隠す）へ対応し、全grantStatusを明示的に表示する。未確認/失敗/再制限待ちを期限表示で隠さない優先順位も保ち、成功commandとの組み合わせ4ケースを追加した。
+
+カード連打も追試し、旧実装では同じ行から理由readが2回発生することを確認した。選択中の同期ガードを追加し、2回の選択から1回だけ詳細を開き理由を読む回帰テストが通ることを確認した。戻る/背景/日付・source・削除/更新で選択ガードを解放する。

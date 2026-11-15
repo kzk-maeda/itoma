@@ -22,3 +22,9 @@ test('uncertain or pending reblock is not hidden behind a successful command or 
   expect(choiceStatus({ ...row, grantStatus: 'failed' })).toBe('完了できませんでした');
   expect(choiceStatus({ ...row, grantStatus: 'invalidated' })).toBe('解除の終了を記録');
 });
+
+test.each([
+  ['pending', '受付済み'], ['scheduling', '予定を登録中'], ['applying', '反映を確認中'], ['active', '解除の反映を記録'],
+])('a succeeded command does not hide the saved grant status %s', (grantStatus, expected) => {
+  expect(choiceStatus({ ...row, status: 'succeeded', grantStatus })).toBe(expected);
+});
