@@ -1,6 +1,7 @@
 import { COMMENT_MARKER, markdown, renderReport, runReview, safeError } from './ai-review.mjs';
 import { assessPR, policyHash } from './ai-review-triage.mjs';
 import { currentRequest, readState, writeState } from './ai-review-requests.mjs';
+import { renderPipelineComment } from './ai-review-comment.mjs';
 
 const requireValue = (ok, message) => { if (!ok) throw new Error(message); };
 const statuses = ['reviewed', 'skipped_low', 'triage_failed', 'review_failed', 'manual_required', 'stale'];
@@ -64,7 +65,7 @@ export async function publishPipeline(report, options, github) {
     state.current.reason = report.error || null;
     // Recheck after constructing the result, immediately before the write.
     await currentRequest(report.request, options, github);
-    await writeState(state, comment, options, github, renderPipelineReport(report));
+    await writeState(state, comment, options, github, renderPipelineComment(report));
     return { status: 'published' };
   } catch (error) {
     if (error.name !== 'StaleRequestError') throw error;
