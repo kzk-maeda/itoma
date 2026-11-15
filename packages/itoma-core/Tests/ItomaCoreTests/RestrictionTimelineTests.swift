@@ -63,6 +63,16 @@ private func total(_ builder: RestrictionTimelineBuilder) throws -> ReflectionPr
     #expect(partial.total.coverage == .partial)
 }
 
+@Test func anOldExtensionWritingLegacyPointsLeavesAPartialTailInsteadOfCompleteCoverage() throws {
+    var b = RestrictionTimelineBuilder(); let source = UUID()
+    try b.append(source: source, sequence: 1, sample: sample(0, .restricted), asOf: instant(10_000))
+    try b.append(source: source, sequence: 2, sample: sample(100, .restricted), asOf: instant(10_000))
+    try b.append(source: source, sequence: 3, sample: nil, asOf: instant(10_000), unobservedAt: instant(200))
+    let value = try #require(try total(b))
+    #expect(value.total.knownSeconds == 100 && value.total.coverage == .partial)
+    #expect(value.total.until == timelineBase + 200)
+}
+
 @Test func nativeTimelineTreatsLateReblockAsExcludedAndClipsAtPolicyValidity() throws {
     var b = RestrictionTimelineBuilder(); let source = UUID()
     // The requested unlock deadline is deliberately absent: only native transition samples count.
