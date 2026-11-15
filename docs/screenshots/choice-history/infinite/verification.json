@@ -1,0 +1,20 @@
+{
+  "browser": "155.0.8059.79",
+  "initialMounted": 8,
+  "maxMounted": 23,
+  "uniqueRecordsSeen": 91,
+  "sawLoading": true,
+  "actualEnd": true,
+  "scrollBeforeDetail": 27484,
+  "scrollAfterDetail": 27484,
+  "widths": [
+    320,
+    390,
+    768,
+    1440
+  ],
+  "errors": [],
+  "warnings": [],
+  "externalRequests": [],
+  "physicalDevice": false
+}

@@ -41,3 +41,20 @@ test('demo historical context is immutable and never rebuilt from renamed curren
   await session.clients.reflection.run('deleteAll');
   expect(session.historicalChoice(first)).toBeUndefined();
 });
+
+test('long demo history follows real 40-row cursors, ends without repetition and rejects a cursor after deletion', async () => {
+  const session = createDemoSession({ now: () => Date.parse('2026-11-15T12:00:00Z'), historySample: true, historyMore: true });
+  let page = (await session.clients.history.run('page')).page!;
+  const first = page, rows = [...page.rows], sizes = [page.rows.length];
+  while (page.next) {
+    const cursor = page.next;
+    page = (await session.clients.history.run('page', { afterAt: cursor.at, afterKey: cursor.key, direction: 'older', revision: first.revision, timeZone: first.timeZone })).page!;
+    rows.push(...page.rows); sizes.push(page.rows.length);
+  }
+  expect(sizes).toEqual([40, 40, 12]);
+  expect(new Set(rows.map(row => row.key)).size).toBe(92);
+  expect(rows.every(row => !('body' in row))).toBe(true);
+  await session.clients.history.run('deleteReasons');
+  expect((await session.clients.history.run('page', { afterAt: first.next!.at, afterKey: first.next!.key, revision: first.revision, timeZone: first.timeZone })).code).toBe('changed');
+  expect((await session.clients.history.run('reason', { commandID: rows.at(-1)!.commandID })).reason?.body).toBeUndefined();
+});

@@ -15,9 +15,9 @@ const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0
 const ruleID = uuid(1), selectionID = uuid(2);
 export const demoApplications = [{ ref: uuid(3), name: 'X', symbol: '𝕏' }, { ref: uuid(4), name: 'YouTube', symbol: '▶' }, { ref: uuid(5), name: 'Instagram', symbol: '◎' }];
 
-type Options = { scenario?: DemoScenario; now?: () => number; historySample?: boolean };
+type Options = { scenario?: DemoScenario; now?: () => number; historySample?: boolean; historyMore?: boolean; historyPageDelayMs?: number };
 /** Contract-shaped in-memory port. A UI simulator, never a Screen Time/OS emulator. */
-export function createDemoSession({ scenario = 'normal', now = Date.now, historySample = false }: Options = {}) {
+export function createDemoSession({ scenario = 'normal', now = Date.now, historySample = false, historyMore = false, historyPageDelayMs = 0 }: Options = {}) {
   const started = now() / 1000, endsAt = started + 90 * 60;
   let sequence = 0, nextID = 20, revision = 1;
   let activation: ScreenTimeSnapshot['activation'] = scenario === 'paused' ? 'paused' : 'enabled';
@@ -57,12 +57,14 @@ export function createDemoSession({ scenario = 'normal', now = Date.now, history
   const response = (extra: Partial<ScreenTimeResponse> = {}): ScreenTimeResponse => parseScreenTimeResponse(JSON.stringify({ status: 'ok', impacts: [], snapshot: snapshot(), ...extra }));
   const fail = (code: ScreenTimeResponse['code']) => response({ status: 'error', code });
   function page(request: HistoryRequest = {}): HistoryResponse {
+    if ((request.revision && request.revision !== String(revision)) || (request.timeZone && request.timeZone !== timeZone)) return { status: 'error', storage: 'ready', code: 'changed' };
     let chosen = rows.filter(row => request.kind !== 'reason' || reasons.has(row.commandID ?? ''));
     if (request.day) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(request.day)) return { status: 'error', storage: 'ready', code: 'invalid-input' };
       chosen = chosen.filter(row => dayAt(row.at, timeZone) === request.day);
     }
     const index = request.afterKey ? chosen.findIndex(row => row.key === request.afterKey) : -1;
+    if (request.afterKey && (index < 0 || chosen[index].at !== request.afterAt)) return { status: 'error', storage: 'ready', code: 'changed' };
     const start = index < 0 ? 0 : request.direction === 'newer' ? Math.max(0, index - 40) : index + 1;
     const visible = chosen.slice(start, start + 40);
     return parseHistoryResponse(JSON.stringify({ status: 'ok', storage: 'ready', page: { revision: String(revision), asOf: at(), timeZone, rows: visible,
@@ -132,6 +134,7 @@ export function createDemoSession({ scenario = 'normal', now = Date.now, history
       }
     } },
     history: { async run(action, request = {}) {
+      if (action === 'page' && request.afterKey && historyPageDelayMs > 0) await new Promise(resolve => setTimeout(resolve, historyPageDelayMs));
       expire();
       if (action === 'reason') {
         const row = rows.find(row => row.commandID === request.commandID), body = reasons.get(request.commandID ?? '');
@@ -162,6 +165,11 @@ export function createDemoSession({ scenario = 'normal', now = Date.now, history
     saved({ key: uuid(nextID++), at: started - 86400, action: 'cancelled', status: 'cancelled' });
     saved({ key: uuid(nextID++), commandID: third, at: started - 87000, action: 'requestTemporaryGrant', status: 'uncertain', grantStatus: 'uncertain', expiresAt: started - 86400 }, { ...oldContext, applicationLabel: 'YouTube', requestedMinutes: 10 }, '料理の手順を確認するため。');
     saved({ key: uuid(nextID++), at: started - 172800, action: 'commitPolicy', status: 'succeeded' }, oldContext);
+    if (historyMore) for (let index = 0; index < 86; index++) {
+      const commandID = uuid(nextID++), minutes = 5 + index % 3 * 5, at = started - (3 + Math.floor(index / 2)) * 86400 - index % 2 * 600;
+      saved({ key: uuid(nextID++), commandID, at, action: 'requestTemporaryGrant', status: 'expired', grantStatus: 'reconciled', expiresAt: at + minutes * 60 },
+        { ...oldContext, applicationLabel: demoApplications[index % demoApplications.length].name, requestedMinutes: minutes }, '次の予定を確認するため。');
+    }
   }
   return { clients,
     historicalChoice: (row: HistoryRow) => contexts.get(contextKey(row)),

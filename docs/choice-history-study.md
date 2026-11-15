@@ -93,3 +93,22 @@ JS/iOS exportは依存解決とdemo除外の検証に限る。iOS実機・VoiceO
 検証：型/lint、Jest29 suites・220件、demo tools21件、Web package、iOS JS exportがpass。Cloudflare Assets local previewで表示/Space操作/日付保持/詳細往復/理由削除、4画面×4幅（320/390/768/1440）、Dark/Reduce Motion、外部request/Web Storageなしを確認。新しい画像と再現scriptは `docs/screenshots/choice-history/timeline/`。iOS source mapに共有timelineを含みWeb demoを除外。実機/VoiceOver/Dynamic Type/native保存は未検証。Doctor18/20は同じ外部照会2件が未確認。SDK58文書の再取得は403、既存のRN基本部品と同じAPIのみを利用し依存追加なし。
 
 検証JSは2f4e8db上の今回working tree。確定SHAと配信VersionはPR210へ追記する。
+
+## タイムラインの継続読込（本人追加依頼・#206）
+
+本人はタイムライン型を選択。既存v1の40件keysetを使い、末尾0.6画面手前で過去のmetadataを追加取得するレビュー用UIを追加した。API/Swift/DB/サーバーは変更しない。Webデモは長い架空履歴を初期状態にする。上部シナリオの「長い履歴でスクロールを試す」「過去の記録サンプル」「記録のない状態」で比較できる。
+
+- FlatListを画面の唯一の縦スクロールとして使い、見出し/日付条件はheader、保存状況等はfooterに置く。ScrollViewの中にFlatListを入れない。カードの描画を仮想化し、理由本文は引き続き選択した1件だけ読む。
+- 最初のページのrevision/zoneと次のcursorを渡す。同じcursorを同時に要求しない。成功したページだけ追加し、keyを重複表示せず、関連commandは読み込んだ範囲でまとめる。完全な選択queryとは宣言しない。
+- 追加読込中も前のカードを残す。失敗後は自動再試行を止め、明示的な再読込ボタンを出す。読み込みが進まないcursorも止める。最後は「この範囲の記録はここまでです」。手動の「過去の記録を読み込む」も用意する。
+- 途中でrevision/zoneが変わった場合はページを混ぜず、表示済みの範囲と選択を消して「最新の記録を確認する」へ。日付/kind変更・削除・source変更・foreground再取得でも旧応答を棄却する。refreshはタイムラインの先頭へ戻る。
+- 詳細へ進むと追加読込を止め、選んだrowは読み込んだ範囲内で確認する。戻る際は不要な再読込をせず、ページとFlatListを保持する。背景では理由を閉じ、foregroundで先頭から現在の世代を読む。
+- 一覧の比較案は従来の40件置換型。Webの表示切替を本体の設定として追加しない。本体のcontext未供給時は一覧のまま、タイムラインの正式接続はPR採用時に判断する。
+
+描画の仮想化と、取得済みmetadataの保持は別。metadataはスクロールして読み込んだ範囲だけRAMに保持し、日付/更新/削除等で破棄する。全件を初回取得・永続化しない。数万件までのRAM推移やページ窓の上限、VoiceOver/Dynamic Type、iOSでの復帰位置/スクロール性能は未検証で、仮想化だけで一定メモリーを保証しない。
+
+デモデータは92行（40+40+12）、関連eventをまとめて91カード。追加ページに400msの架空の応答待ちを入れ、読込表示を確認できる。重複/停止/遅い応答・日付/削除/更新・revision不一致・進まないcursorのテストを追加。Jest29 suites・229件、型/lint、demo tools21件、Web package/iOS JS exportがpass。iOS graphに共有timeline/FlatListを含み、Web demoを含まないことを確認（native buildではない）。Doctor18/20の外部照会2件は未確認。RN/SDK58文書の再取得は403。
+
+画像・ブラウザー再現scriptは `docs/screenshots/choice-history/infinite/`。検証JSは31bc73a上の本変更のworking tree。確定SHAと配信VersionはPR210へ記録する。
+
+Cloudflare Assets local previewのブラウザー確認もpass：92行の3ページを自動読込、末尾で停止、過去ページの理由表示、詳細からの位置復帰、日付変更でtail破棄、一覧との比較、削除/空状態、4幅とDark/Reduce Motion。ブラウザーエラー/外部request/Web Storageなし。描画枚数と復帰前後の位置は `infinite/verification.json` に記録した。実機性能の確認ではない。

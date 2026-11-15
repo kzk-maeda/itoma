@@ -6,47 +6,40 @@ import { canReadChoiceReason, choiceRecordTitle, choiceStatus, dateLabel, dayAt,
 import { useFlowTheme } from './ui';
 
 /** The rail shows record order, never elapsed time or continuous app activity. */
-export function HistoryTimeline({ rows, zone, today, busy, onOpen }: {
-  rows: HistoryRow[]; zone: string; today: string; busy: boolean; onOpen: (row: HistoryRow) => void;
+export function HistoryTimelineEntry({ row, first, continues, zone, today, busy, onOpen }: {
+  row: HistoryRow; first: boolean; continues: boolean; zone: string; today: string; busy: boolean; onOpen: (row: HistoryRow) => void;
 }) {
   const theme = useFlowTheme(), contexts = useContext(HistoricalChoices);
-  return <View testID="history-timeline">
-    <Text style={[styles.caption, { color: theme.muted }]}>新しい記録から</Text>
-    {rows.map((row, index) => {
-      const day = dayAt(row.at, zone), first = index === 0 || dayAt(rows[index - 1].at, zone) !== day;
-      const continues = index + 1 < rows.length && dayAt(rows[index + 1].at, zone) === day;
-      const context = contexts?.(row), title = choiceRecordTitle(row, context?.applicationLabel);
-      return <View key={row.key}>
-        {first && <View style={styles.dayHeading}>
-          <Text accessibilityRole="header" style={[styles.day, { color: theme.text }]}>{day === today ? '今日' : day === moveDay(today, -1) ? '昨日' : dateLabel(day)}</Text>
-          {(day === today || day === moveDay(today, -1)) && <Text style={[styles.caption, { color: theme.muted }]}>{dateLabel(day)}</Text>}
-        </View>}
-        <View style={styles.entry}>
-          <View accessible={false} pointerEvents="none" style={styles.rail}>
-            {continues && <View style={[styles.line, { backgroundColor: theme.line }]} />}
-            <View style={[styles.dot, { borderColor: theme.muted, backgroundColor: theme.background }]} />
+  const day = dayAt(row.at, zone), context = contexts?.(row), title = choiceRecordTitle(row, context?.applicationLabel);
+  return <View>
+    {first && <View style={styles.dayHeading}>
+      <Text accessibilityRole="header" style={[styles.day, { color: theme.text }]}>{day === today ? '今日' : day === moveDay(today, -1) ? '昨日' : dateLabel(day)}</Text>
+      {(day === today || day === moveDay(today, -1)) && <Text style={[styles.caption, { color: theme.muted }]}>{dateLabel(day)}</Text>}
+    </View>}
+    <View style={styles.entry}>
+      <View accessible={false} pointerEvents="none" style={styles.rail}>
+        {continues && <View style={[styles.line, { backgroundColor: theme.line }]} />}
+        <View style={[styles.dot, { borderColor: theme.muted, backgroundColor: theme.background }]} />
+      </View>
+      <View style={styles.content}>
+        <Text style={[styles.time, { color: theme.muted }]}>{timeLabel(row.at, zone)} の記録</Text>
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy}
+          accessibilityLabel={`${title}、${timeLabel(row.at, zone)}、${choiceStatus(row)}。詳細を見る`}
+          testID={`history-choice-${row.key}`} onPress={() => onOpen(row)}
+          style={({ pressed }) => [styles.card, { backgroundColor: theme.surface, borderColor: theme.line, opacity: pressed ? 0.75 : 1 }]}>
+          <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
+          {context?.ruleTitle && <Text style={[styles.caption, { color: theme.muted }]}>ルール：{context.ruleTitle}</Text>}
+          <Text style={[styles.status, { color: theme.text, backgroundColor: theme.soft }]}>{choiceStatus(row)}</Text>
+          {(context?.requestedMinutes !== undefined || row.expiresAt !== undefined) && <View style={styles.facts}>
+            {context?.requestedMinutes !== undefined && <Text style={[styles.caption, { color: theme.muted }]}>希望 {context.requestedMinutes}分</Text>}
+            {row.expiresAt !== undefined && <Text style={[styles.caption, { color: theme.muted }]}>記録上の上限 {timeLabel(row.expiresAt, zone)}</Text>}
+          </View>}
+          <View style={[styles.action, { borderColor: theme.line }]}>
+            <Text style={[styles.actionText, { color: theme.text }]}>{row.reasonDeleted ? '理由は削除済み · 結果を見る' : canReadChoiceReason(row) ? '理由と結果を見る' : '記録を見る'}　›</Text>
           </View>
-          <View style={styles.content}>
-            <Text style={[styles.time, { color: theme.muted }]}>{timeLabel(row.at, zone)} の記録</Text>
-            <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy}
-              accessibilityLabel={`${title}、${timeLabel(row.at, zone)}、${choiceStatus(row)}。詳細を見る`}
-              testID={`history-choice-${row.key}`} onPress={() => onOpen(row)}
-              style={({ pressed }) => [styles.card, { backgroundColor: theme.surface, borderColor: theme.line, opacity: pressed ? 0.75 : 1 }]}>
-              <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
-              {context?.ruleTitle && <Text style={[styles.caption, { color: theme.muted }]}>ルール：{context.ruleTitle}</Text>}
-              <Text style={[styles.status, { color: theme.text, backgroundColor: theme.soft }]}>{choiceStatus(row)}</Text>
-              {(context?.requestedMinutes !== undefined || row.expiresAt !== undefined) && <View style={styles.facts}>
-                {context?.requestedMinutes !== undefined && <Text style={[styles.caption, { color: theme.muted }]}>希望 {context.requestedMinutes}分</Text>}
-                {row.expiresAt !== undefined && <Text style={[styles.caption, { color: theme.muted }]}>記録上の上限 {timeLabel(row.expiresAt, zone)}</Text>}
-              </View>}
-              <View style={[styles.action, { borderColor: theme.line }]}>
-                <Text style={[styles.actionText, { color: theme.text }]}>{row.reasonDeleted ? '理由は削除済み · 結果を見る' : canReadChoiceReason(row) ? '理由と結果を見る' : '記録を見る'}　›</Text>
-              </View>
-            </Pressable>
-          </View>
-        </View>
-      </View>;
-    })}
+        </Pressable>
+      </View>
+    </View>
   </View>;
 }
 

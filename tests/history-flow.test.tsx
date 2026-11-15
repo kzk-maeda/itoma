@@ -187,3 +187,79 @@ test('cancelled record opens details without fetching a private reason or invent
   expect(screen.getByText(/当時のアプリ名・ルール名・希望時間は、この記録に含まれていません/)).toBeTruthy();
   expect(b.run.mock.calls.some(([action]) => action === 'reason')).toBe(false);
 });
+
+function FeedProbe() {
+  const h = useHistoryRecords(), s = useScreenTime();
+  useEffect(h.ensureLoaded, [h.ensureLoaded]);
+  return <>
+    {h.rows.map(row => <Text key={row.key}>{row.key}</Text>)}
+    <Text>{h.loadingOlder ? 'loading older' : 'idle older'}</Text><Text>{h.olderError ?? h.error ?? 'no error'}</Text><Text>{h.next ? 'more' : 'end'}</Text>
+    <Text>{h.selectedRow?.key ?? 'no selection'}</Text><Text>{h.reason?.body ?? 'no reason'}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel="older twice" onPress={() => { void h.loadOlder(); void h.loadOlder(); }} />
+    <Pressable accessibilityRole="button" accessibilityLabel="retry older" onPress={() => { void h.loadOlder(true); }} />
+    <Pressable accessibilityRole="button" accessibilityLabel="other day" onPress={() => h.choose('event', '2026-11-01')} />
+    <Pressable accessibilityRole="button" accessibilityLabel="open older" onPress={() => h.openRecord(h.rows.at(-1)!)} />
+    <Pressable accessibilityRole="button" accessibilityLabel="delete external" onPress={() => { void s.run('deleteReasons'); }} />
+    <Pressable accessibilityRole="button" accessibilityLabel="start over" onPress={h.restart} />
+  </>;
+}
+function pagedBackend() {
+  const b = backend();
+  const head = { ...sample(), incomplete: false, transfer: 'current' as const };
+  const tail = { ...head, next: undefined, rows: [{ key: nextID, at: 1794200000, action: 'requestTemporaryGrant' as const, status: 'succeeded' as const, commandID: nextID }] };
+  b.run.mockImplementation(async (action, request) => action === 'reason'
+    ? { status: 'ok', storage: 'ready', reason: { revision: '1', state: 'shared-accepted', body } }
+    : { status: 'ok', storage: 'ready', page: request?.afterKey ? tail : head });
+  return { b, head, tail };
+}
+test('continuation requests one cursor at a time, retains earlier metadata, and reads only the opened older reason', async () => {
+  const { b, head, tail } = pagedBackend();
+  let resolve!: (value: HistoryResponse) => void;
+  const original = b.run.getMockImplementation()!;
+  b.run.mockImplementation((action, request) => request?.afterKey ? new Promise(r => { resolve = r; }) : original(action, request));
+  await render(wrap(b, <FeedProbe />));
+  await press('older twice');
+  expect(b.run.mock.calls.filter(([, request]) => request?.afterKey)).toHaveLength(1);
+  expect(b.run.mock.calls.at(-1)?.[1]).toMatchObject({ afterAt: head.next!.at, afterKey: head.next!.key, direction: 'older', revision: head.revision, timeZone: head.timeZone });
+  expect(screen.getByText('loading older')).toBeTruthy();
+  await act(async () => resolve({ status: 'ok', storage: 'ready', page: tail }));
+  expect(screen.getByText(id)).toBeTruthy(); expect(screen.getByText(nextID)).toBeTruthy();
+  expect(screen.getByText('end')).toBeTruthy();
+  expect(b.run.mock.calls.some(([action]) => action === 'reason')).toBe(false);
+  await press('open older');
+  expect(screen.getByText(body)).toBeTruthy();
+  expect(b.run.mock.calls.at(-1)?.[1]?.commandID).toBe(nextID);
+});
+test('continuation failure retains records, does not automatically retry, and explicit retry reaches the end', async () => {
+  const { b, tail } = pagedBackend(), original = b.run.getMockImplementation()!;
+  b.run.mockImplementation((action, request) => request?.afterKey ? Promise.resolve({ status: 'error', storage: 'ready', code: 'storage-failed' }) : original(action, request));
+  await render(wrap(b, <FeedProbe />)); await press('older twice');
+  expect(screen.getByText(id)).toBeTruthy(); expect(screen.getByText('storage-failed')).toBeTruthy();
+  const reads = b.run.mock.calls.length; await press('older twice'); expect(b.run.mock.calls.length).toBe(reads);
+  b.run.mockImplementation((action, request) => request?.afterKey ? Promise.resolve({ status: 'ok', storage: 'ready', page: tail }) : original(action, request));
+  await press('retry older'); expect(screen.getByText(nextID)).toBeTruthy();
+  const completed = b.run.mock.calls.length; await press('older twice'); expect(b.run.mock.calls.length).toBe(completed);
+});
+test.each(['other day', 'delete external', 'start over'])('a late continuation cannot restore previous records after %s', async action => {
+  const { b, head, tail } = pagedBackend(); let resolve!: (value: HistoryResponse) => void;
+  const cleared = { ...head, rows: [], next: undefined, revision: '2' };
+  b.run.mockImplementation(async (_action, request) => request?.afterKey ? new Promise(r => { resolve = r; }) : { status: 'ok', storage: 'ready', page: head });
+  await render(wrap(b, <FeedProbe />)); await press('older twice');
+  b.run.mockResolvedValue({ status: 'ok', storage: 'ready', page: cleared });
+  await press(action);
+  await act(async () => resolve({ status: 'ok', storage: 'ready', page: tail }));
+  expect(screen.queryByText(id)).toBeNull(); expect(screen.queryByText(nextID)).toBeNull();
+  expect(screen.getByText('end')).toBeTruthy();
+});
+test.each(['changed', 'changed page', 'repeated cursor'])('continuation stops safely for %s instead of looping or mixing versions', async mode => {
+  const { b, head, tail } = pagedBackend(), original = b.run.getMockImplementation()!;
+  b.run.mockImplementation((action, request) => request?.afterKey ? Promise.resolve(mode === 'changed'
+    ? { status: 'error', storage: 'ready', code: 'changed' }
+    : { status: 'ok', storage: 'ready', page: mode === 'changed page' ? { ...tail, revision: '2' } : { ...tail, next: head.next } }) : original(action, request));
+  await render(wrap(b, <FeedProbe />)); await press('older twice');
+  expect(screen.getByText(mode !== 'repeated cursor' ? 'changed' : 'unavailable')).toBeTruthy();
+  if (mode !== 'repeated cursor') expect(screen.queryByText(id)).toBeNull();
+  else expect(screen.getByText(id)).toBeTruthy();
+  expect(screen.queryByText(nextID)).toBeNull();
+  const reads = b.run.mock.calls.length; await press('older twice'); expect(b.run.mock.calls.length).toBe(reads);
+});
