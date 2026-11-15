@@ -56,7 +56,28 @@ Actionsの手動起動は保守用に残しています。mainを選び、PR番�
 
 ## 結果を見る
 
-PRの**AIレビュー**コメント、Actionsのsummary、14日保持のartifactを確認します。`review.json`はversion 2で、要求・判定・本レビューを分けて保存します。
+PRの**AIレビュー**コメントには、修正候補と必要な次の操作を表示します。各指摘は優先度・コードへのリンク・発生条件/影響/修正方針で構成し、モデルの総評や重複する状態説明は載せません。修正候補がない場合も、確認できた範囲での結果と明示します。
+
+未取得・不完全なテキスト差分があれば、人手で確認する対象を最大3ファイル表示し、残りの件数を案内します。画像・動画等は目視確認の件数を分けて表示します。周辺コードだけの取得制限も、完全な確認と誤認しないよう短く表示します。取得制約の解消にならない同じ入力での再実行を勧めず、分割または人手での確認につなげます。
+
+コメント末尾の短い対象SHAリンクと**詳細・ログ**から、対象コミットとActionsを確認できます。採点内訳、モデル/ポリシー/要求情報、全省略ログ、モデルの未検証事項、収集時点のCI一覧はActions summaryと14日保持のartifactに残します。`review.json`はversion 2で、要求・判定・本レビューを分けて保存します。コメント内の機械可読状態も保持します。
+
+たとえば、入力上限で3つのテキスト差分と4つの画像を確認できず、具体的な不具合を特定しなかった場合:
+
+```text
+AIレビュー
+
+確認できた範囲では、修正候補は見つかりませんでした。
+
+未確認・不完全な差分3ファイルは、人手でレビューしてください。
+- （対象ファイルへのリンク3件）
+
+画像・動画等4ファイルの差分は、目視で確認してください。
+
+対象: 短いSHA · 詳細・ログ
+```
+
+省略、失敗、Draft待ち、更新による無効化も、実施済みの指摘0件とは別に表示します。再実行が必要な状態だけ、その状態に合うPRコメントのコマンドを案内します。修正候補を修正した後の再確認も、新しい`/ai-review`コメントで要求します。
 
 | 状態 | 意味 |
 | --- | --- |
@@ -95,6 +116,7 @@ CI結果は本レビューが収集した時点のcheck名・status・conclusion
 | 状態・要求・コメント認可 | [ai-review-requests.mjs](../scripts/lib/ai-review-requests.mjs) |
 | 軽量収集・Decisions・数値検証 | [ai-review-triage.mjs](../scripts/lib/ai-review-triage.mjs) |
 | 選別から本レビュー・投稿への接続 | [ai-review-pipeline.mjs](../scripts/lib/ai-review-pipeline.mjs) |
+| PRコメントの修正候補・未確認範囲・次の操作 | [ai-review-comment.mjs](../scripts/lib/ai-review-comment.mjs) |
 | 本レビューの観点・出力 | [prompt.md](../.github/ai-review/prompt.md)、[schema.json](../.github/ai-review/schema.json)、[実装](../scripts/lib/ai-review.mjs) |
 | artifact/summary/終了コード | [実行CLI](../scripts/ai-review.mjs) |
 

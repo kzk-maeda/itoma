@@ -292,7 +292,9 @@ dispatchにはPR番号・comment ID・受理時のhead SHA・列挙したmodeだ
 
 ## 11. 表示・証跡・評価
 
-コメント/summaryには、対象head/base、判定モデル、本レビューの実施/省略/未判定、S_model/S_final、閾値、軸別score/confidence、重要パス、reason codes、未取得範囲、次の手動操作を表示する。「指摘0件」と「本レビュー未実施」を混同しない。
+PR #193へのユーザーの指摘（情報過多なので行動にフォーカスする）に従い、コメントは修正候補・人手で確認する差分・状態に応じた次の操作へ絞る。対象headへの短いリンクとActionsへの詳細リンクを1か所に置き、「確認できた範囲の指摘0件」と「本レビュー未実施」を区別する。未取得のテキスト差分は最大3ファイルと残りの件数、画像等は目視確認の件数を案内し、部分入力を完全な確認と表示しない。
+
+対象head/base、判定モデル、本レビューの実施/省略/未判定、S_model/S_final、閾値、軸別score/confidence、重要パス、reason codes、全未取得範囲、収集時点のCI一覧はActions summaryへ表示する。コメントにモデル総評・実行情報・注意書きを重ねたり、未取得ログを全件展開したりしない。具体的な未検証事項もActionsで参照できるよう残す。
 
 artifactには上記と要求ID/generation、workflow SHA、policy version/hash、APIのusageと分布、所要時間を保存する。生のAPIキーや入力コード全文は保存しない。判定と本レビューの使用量を分けて記録する。
 

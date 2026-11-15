@@ -1,4 +1,5 @@
-import { COMMENT_MARKER, findReviewComment, ineligibleReason, markdown } from './ai-review.mjs';
+import { COMMENT_MARKER, findReviewComment, ineligibleReason } from './ai-review.mjs';
+import { renderRequestStatus } from './ai-review-comment.mjs';
 
 const requireValue = (ok, message) => { if (!ok) throw new Error(message); };
 const integer = value => Number.isSafeInteger(Number(value)) && Number(value) > 0;
@@ -99,13 +100,9 @@ export async function readState(options, pr, github) {
 
 export function renderState(state, options, visible = '') {
   const current = state.current;
-  const lines = [COMMENT_MARKER, '## AIレビュー', '', `状態: **${markdown(current.status)}**`, '', `対象: \`${current.head_sha}\` / base: \`${current.base_sha}\``, '', `要求: ${markdown(current.id)} / 実行版: \`${current.workflow_sha}\``];
-  if (current.author) lines.push('', `要求者: ${markdown(current.author)}`);
-  if (current.comment_id) lines.push('', `[要求コメント](https://github.com/${options.repository}/pull/${options.number}#issuecomment-${current.comment_id})`);
-  if (current.run_url) lines.push('', `[Actionsの実行・証跡](${current.run_url})`);
-  if (current.reason) lines.push('', markdown(current.reason));
-  if (visible) lines.push('', visible);
-  lines.push('', '初回以降のpushでは再レビューしません。本レビューの再実行は、新しいPRコメントに `/ai-review`、要否の再判定は `/ai-review reassess` と投稿してください。', '', 'AIの省略・指摘0件は、テスト成功・PR承認・実機検証を意味しません。', '', `<!-- itoma-ai-state:${Buffer.from(JSON.stringify(state)).toString('base64url')} -->`);
+  const target = `対象: [\`${current.head_sha.slice(0, 7)}\`](https://github.com/${options.repository}/commit/${current.head_sha})`;
+  const lines = [COMMENT_MARKER, '## AIレビュー', '', visible || renderRequestStatus(current), '', `${target}${current.run_url ? ` · [詳細・ログ](${current.run_url})` : ''}`,
+    '', `<!-- itoma-ai-state:${Buffer.from(JSON.stringify(state)).toString('base64url')} -->`];
   return lines.join('\n');
 }
 

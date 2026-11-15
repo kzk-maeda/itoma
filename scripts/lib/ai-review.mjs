@@ -270,6 +270,20 @@ export function safeError(error, options) {
 
 const markdown = value => String(value).replaceAll('@', '@\u200b').replace(/[\\`*_{}[\]()<>!|#]/g, '\\$&');
 export { markdown };
+
+export function renderFindings(report, { includeSide = false } = {}) {
+  const lines = [];
+  const priorities = ['P0', 'P1', 'P2', 'P3'];
+  for (const finding of report.review.findings.toSorted((a, b) => priorities.indexOf(a.priority) - priorities.indexOf(b.priority))) {
+    const file = report.files.find(file => file.path === finding.path);
+    const sha = finding.side === 'LEFT' ? report.diff_base_sha : report.head_sha;
+    const path = finding.side === 'LEFT' ? file.previous_path || finding.path : finding.path;
+    const url = `https://github.com/${report.repository}/blob/${sha}/${pathUrl(path)}#L${finding.line}`;
+    lines.push(`### ${finding.priority}: ${markdown(finding.title)}`, '', `[${markdown(finding.path)}:${finding.line}${includeSide ? ` (${finding.side})` : ''}](${url})`, '', markdown(finding.body), '');
+  }
+  return lines.join('\n').trimEnd();
+}
+
 export function renderReport(report) {
   const lines = [COMMENT_MARKER, '## AIコードレビュー', '', `対象: \`${report.head_sha ?? '未取得'}\` / base: \`${report.base_sha ?? '未取得'}\``, '', `状態: **${report.status}** / モデル: ${markdown(report.model)}`];
   if (report.run_url) lines.push('', `[Actionsの実行・証跡](${report.run_url})`);
@@ -277,13 +291,7 @@ export function renderReport(report) {
     lines.push('', markdown(report.error || report.reason || 'レビューは完了していません。'));
   } else {
     lines.push('', markdown(report.review.summary), '', `指摘: ${report.review.findings.length}件（人間による確認が必要）`);
-    for (const finding of report.review.findings) {
-      const file = report.files.find(file => file.path === finding.path);
-      const sha = finding.side === 'LEFT' ? report.diff_base_sha : report.head_sha;
-      const path = finding.side === 'LEFT' ? file.previous_path || finding.path : finding.path;
-      const url = `https://github.com/${report.repository}/blob/${sha}/${pathUrl(path)}#L${finding.line}`;
-      lines.push('', `### ${finding.priority}: ${markdown(finding.title)}`, '', `[${markdown(finding.path)}:${finding.line} (${finding.side})](${url})`, '', markdown(finding.body));
-    }
+    if (report.review.findings.length) lines.push('', renderFindings(report, { includeSide: true }));
     const limitations = [...(report.omissions ?? []), ...report.review.limitations];
     lines.push('', '### レビュー範囲・制約', '', `対象差分: ${report.files.length}ファイル / 入力: ${report.input_bytes} bytes`, '', ...limitations.map(value => `- ${markdown(value)}`));
     lines.push('', '### 対象SHAのCI結果（収集時点）', '');
