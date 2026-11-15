@@ -121,8 +121,12 @@ extension ControlRepository {
     public func installDurationCapture() throws {
         try serialized { try database.transaction(writer: true) {
             guard try hasReflectionCapture() else { throw StorageError.unavailable }
-            try database.execute("CREATE TABLE IF NOT EXISTS reflection_duration_capture(version INTEGER PRIMARY KEY CHECK(version=1))")
-            try database.execute("INSERT OR IGNORE INTO reflection_duration_capture VALUES(1)")
+            if try database.rows("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reflection_duration_capture'").isEmpty {
+                try database.execute("CREATE TABLE reflection_duration_capture(version INTEGER PRIMARY KEY CHECK(version=1))")
+                try database.execute("INSERT INTO reflection_duration_capture VALUES(1)")
+            } else {
+                guard try database.rows("SELECT version FROM reflection_duration_capture") == [[.integer(1)]] else { throw StorageError.corrupt }
+            }
         } }
     }
     /// Optional auxiliary schema. Main schema 6 remains readable by an Extension before host upgrade.
@@ -299,6 +303,7 @@ extension ControlRepository {
                     guard try database.rows("SELECT version FROM reflection_duration_capture") == [[.integer(1)]] else { throw StorageError.corrupt }
                     let a = snapshot.application
                     let hasUnreconciledUnlock = grants.contains { [.active, .applying, .uncertain, .expired, .invalidated].contains($0.status) }
+                    let confirmedUnlock = grants.contains { $0.status == .active }
                     let acknowledged = durationConfirmed != false && a?.observation.status == .applied
                         && a?.observation.evidence == .ownStoreReadback && a?.evaluation.policyRevision == snapshot.policy.revision
                         && a?.evaluation.timeZone.identifier == TimeZone.current.identifier
@@ -315,10 +320,11 @@ extension ControlRepository {
                         && a?.evaluation.desiredTargets.isEmpty == false && !hasUnreconciledUnlock
                         && a?.evaluation.desiredTargets == rules.desiredTargets && cutoff > clock.0
                     let excluded = acknowledged && ((snapshot.activation == .paused && a?.evaluation.desiredTargets.isEmpty == true)
-                        || (snapshot.activation == .enabled && (a?.evaluation.desiredTargets.isEmpty == true || hasUnreconciledUnlock)))
+                        || (snapshot.activation == .enabled && (a?.evaluation.desiredTargets.isEmpty == true || confirmedUnlock)))
                     fact.durationObservation = try RestrictionTimelineSample(at: clock.0, uptime: clock.1,
                         timeZone: TimeZone.current.identifier, state: restricted ? .restricted : excluded ? .excluded : .unknown,
-                        boundary: !force && (a?.observation.status == .applying || snapshot.activation == .paused
+                        boundary: !force && a?.observation.error != .authorizationRequired
+                            && (a?.observation.status == .applying || snapshot.activation == .paused
                             || a?.evaluation.policyRevision != snapshot.policy.revision)
                             ? .controlledTransition : .checkpoint,
                         validUntil: restricted ? cutoff : nil)
