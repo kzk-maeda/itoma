@@ -73,6 +73,16 @@ test('failure and lifecycle messages identify the next operation without exposin
   }
 });
 
+test('omitted vector and modern image formats are assigned visual inspection, not source-code review', () => {
+  const report = completed();
+  const images = ['logo.svg', 'hero.AVIF', 'splash.bmp', 'scan.tiff', 'animated.apng', 'photo.heif'];
+  report.review.omissions = images.map(path => `${path}: diff unavailable (binary, oversized, or no textual changes)`);
+  const body = renderPipelineComment(report);
+  assert.match(body, /画像・動画等6ファイル.*目視/);
+  assert.ok(!body.includes('テキスト'));
+  assert.ok(!body.includes('人手でレビュー'));
+});
+
 test('model text and omission paths cannot inject HTML, links or mentions into the compact comment', () => {
   const report = completed();
   report.review.review.findings = [finding({ title: '<script>@everyone</script>', body: '![image](https://bad.example)' })];
