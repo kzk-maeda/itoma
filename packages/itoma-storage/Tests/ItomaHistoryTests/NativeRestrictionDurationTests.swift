@@ -20,7 +20,8 @@ import ItomaCore
     let history = try HistoryRepository.create(at: historyURL, capacity: capacity)
     try control.installReflectionCapture(capacity: HistoryOutboxCapacity(maximumPendingEvents: 100))
     try control.installDurationCapture()
-    let base = 1_794_700_800.0
+    var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone.current
+    let base = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 15))).timeIntervalSince1970
     func at(_ offset: Double) throws -> Instant { try Instant(secondsSince1970: base + offset) }
     func apply(_ seconds: Double, _ status: ApplicationStatus, restricted: Bool) throws {
         control.durationClock = { (try at(seconds), 10_000 + seconds) }

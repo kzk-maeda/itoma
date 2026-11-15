@@ -6,7 +6,8 @@ import ItomaCore
 
 @Test @ItomaControlActor func twoTargetsAndOverlappingUnlocksExcludeTheWholeUnionUntilConfirmedReblock() async throws {
     let f = try Fixture(); defer { f.remove() }
-    let base = 1_794_744_000.0 // 2026-11-15 12:00 UTC; fixture rule is active.
+    var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone.current
+    let base = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 15, hour: 12))).timeIntervalSince1970
     f.contexts.zone = try TimeZoneID(TimeZone.current.identifier)
     func move(_ offset: Double) throws {
         let now = try Instant(secondsSince1970: base + offset)

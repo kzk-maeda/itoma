@@ -184,7 +184,7 @@ extension HistoryRepository: ReflectionFactSink {
         let incomplete = try !database.rows("SELECT 1 FROM reflection_sources WHERE incomplete=1 LIMIT 1").isEmpty
         return try ReflectionPrototypeDataset(sourceID: sourceID, revision: revision, asOf: asOf, timeZone: timeZone,
             scope: .nativeRecordedIntervals, coverage: incomplete ? .partial : dataset.coverage,
-            recordedRange: dataset.recordedRange, restricted: dataset.restricted, gaps: dataset.gaps)
+            recordedRange: dataset.recordedRange, restricted: dataset.restricted, unlocked: dataset.unlocked, gaps: dataset.gaps)
     }
 
     /// Captures shared cutoffs before opening the private writer. First import is not required.
