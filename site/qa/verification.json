@@ -1,0 +1,88 @@
+{
+  "browser": "155.0.8059.79",
+  "cases": [
+    {
+      "path": "/",
+      "width": 320,
+      "textPercent": 100
+    },
+    {
+      "path": "/",
+      "width": 320,
+      "textPercent": 200
+    },
+    {
+      "path": "/",
+      "width": 390,
+      "textPercent": 100
+    },
+    {
+      "path": "/",
+      "width": 390,
+      "textPercent": 200
+    },
+    {
+      "path": "/",
+      "width": 768,
+      "textPercent": 100
+    },
+    {
+      "path": "/",
+      "width": 768,
+      "textPercent": 200
+    },
+    {
+      "path": "/",
+      "width": 1440,
+      "textPercent": 100
+    },
+    {
+      "path": "/",
+      "width": 1440,
+      "textPercent": 200
+    },
+    {
+      "path": "/privacy/",
+      "width": 320,
+      "textPercent": 100
+    },
+    {
+      "path": "/privacy/",
+      "width": 320,
+      "textPercent": 200
+    },
+    {
+      "path": "/privacy/",
+      "width": 390,
+      "textPercent": 100
+    },
+    {
+      "path": "/privacy/",
+      "width": 390,
+      "textPercent": 200
+    },
+    {
+      "path": "/privacy/",
+      "width": 768,
+      "textPercent": 100
+    },
+    {
+      "path": "/privacy/",
+      "width": 768,
+      "textPercent": 200
+    },
+    {
+      "path": "/privacy/",
+      "width": 1440,
+      "textPercent": 100
+    },
+    {
+      "path": "/privacy/",
+      "width": 1440,
+      "textPercent": 200
+    }
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "physicalDevice": false
+}

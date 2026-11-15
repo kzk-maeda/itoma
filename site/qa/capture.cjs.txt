@@ -1,0 +1,15 @@
+const {chromium}=require('playwright'),fs=require('fs');
+(async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const context=await browser.newContext();const p=await context.newPage(),errors=[],requests=[];p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:8788/'))requests.push(r.url());});const cases=[];try{
+for(const path of ['/','/privacy/'])for(const width of [320,390,768,1440])for(const size of [16,32]){
+await p.setViewportSize({width,height:1000});await p.goto('http://127.0.0.1:8788'+path);await p.evaluate(size=>document.documentElement.style.fontSize=`${size}px`,size);
+if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('overflow '+path+width+size);
+cases.push({path,width,textPercent:size/16*100});
+if(size===16&&[390,1440].includes(width))await p.screenshot({path:`/workspace/itoma/site/qa/${path==='/'?'home':'privacy'}-${width}.png`,fullPage:true});
+}
+await p.goto('http://127.0.0.1:8788/');await p.locator('footer').getByRole('link',{name:'プライバシーポリシー'}).click();if(!p.url().endsWith('/privacy/'))throw Error('privacy navigation');await p.goBack();if(!p.url().endsWith('/'))throw Error('back');
+await p.keyboard.press('Tab');await p.keyboard.press('Enter');
+if(await p.locator('footer a[href="mailto:support@itoma.app"]').count()!==1)throw Error('email');
+for(const path of ['/','/privacy/']){await p.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});await p.goto('http://127.0.0.1:8788'+path);if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('dark overflow');}
+if(errors.length||requests.length)throw Error(JSON.stringify({errors,requests}));
+fs.writeFileSync('/workspace/itoma/site/qa/verification.json',JSON.stringify({browser:browser.version(),cases,errors,externalRequests:requests,physicalDevice:false},null,2)+'\n');console.log('PASS: 16 viewport/text cases, dark/reduce-motion, footer navigation/back/mailto, no overflow/errors/external requests');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});
