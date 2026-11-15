@@ -1,0 +1,47 @@
+import json
+from datetime import date,datetime,timedelta,timezone
+from pathlib import Path
+zone=timezone(timedelta(hours=9)); first=date(2026,10,5); last=date(2026,11,15); asof=int(datetime(2026,11,15,21,tzinfo=zone).timestamp())
+# Pre-aggregated fictional daily totals. These are presentation samples, not restriction/interval calculations.
+minutes=[85,100,110,70,95,120,90, 100,90,0,105,115,80,100, 110,95,None,85,100,125,90, 95,105,90,115,80,110,120, 100,85,115,90,None,105,80, 105,95,0,None,110,100,85]
+values={first+timedelta(days=i):v for i,v in enumerate(minutes)}
+def stamp(d):return int(datetime.combine(d,datetime.min.time(),zone).timestamp())
+def bucket(a,b):
+ days=[d for d in values if a<=d<b]
+ known=[values[d]*60 for d in days if values[d] is not None]
+ cov='notRecorded' if not known else 'recorded' if len(known)==(b-a).days else 'partial'
+ result={'day':a.isoformat(),'from':stamp(a),'until':stamp(b),'coverage':cov}
+ if known:result['knownSeconds']=sum(known)
+ return result
+# A known 0 remains recorded. Absent days and gaps remain unknown, never 0.
+alltotal=bucket(first,last+timedelta(days=1));alltotal['until']=asof
+trend=[bucket(first+timedelta(days=i),first+timedelta(days=i+1)) for i in range(len(minutes))]
+weeks=[date(2026,9,28)+timedelta(days=7*i) for i in range(10)]
+months=[date(2026,10,1),date(2026,11,1)]
+entries=[]
+def snapshot(period,anchor,a,b,request):
+ points=[]
+ if period=='week':
+  d=a
+  while d<b:points.append(bucket(d,d+timedelta(days=1)));d+=timedelta(days=1)
+  anchors=weeks
+ else:
+  d=a
+  while d<b:
+   following=min(d+timedelta(days=7-d.weekday()),b)
+   points.append(bucket(d,following));d=following
+  anchors=months
+ idx=anchors.index(anchor)
+ r={'version':1,'metricVersion':'restricted-excluding-unlocks-prototype-v1','proofScope':'syntheticFixture','token':'prototype-v1:reflection-demo:1','timeZone':'Asia/Tokyo','asOf':asof,'total':alltotal,'trend':trend,'period':period,'anchor':anchor.isoformat(),'selected':bucket(a,b),'buckets':points}
+ if idx>0:r['previousAnchor']=anchors[idx-1].isoformat()
+ if idx<len(anchors)-1:r['nextAnchor']=anchors[idx+1].isoformat()
+ entries.append({'request':request,'response':r})
+for a in weeks:snapshot('week',a,a,a+timedelta(days=7),{'period':'week','day':a.isoformat()})
+for a in months:
+ b=date(a.year+(a.month==12),a.month%12+1,1)
+ snapshot('month',a,a,b,{'period':'month','day':a.isoformat()})
+ for p in entries[-1]['response']['buckets']:
+  d=date.fromisoformat(p['day']); monday=d-timedelta(days=d.weekday());end=datetime.fromtimestamp(p['until'],zone).date()
+  snapshot('week',monday,d,end,{'period':'week','day':d.isoformat(),'clippedTo':{'from':p['from'],'until':p['until']}})
+Path('src/demo/fixtures/reflection.json').write_text(json.dumps({'description':'Pre-aggregated fictional display data as of 2026-11-15 21:00 Asia/Tokyo. Not native/OS measurements.','entries':entries},ensure_ascii=False,separators=(',',':'))+'\n')
+print(len(entries),'snapshots; fixed total',alltotal['knownSeconds'],'seconds')

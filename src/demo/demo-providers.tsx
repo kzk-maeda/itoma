@@ -2,6 +2,7 @@ import { type ReactNode, useState } from 'react';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { HistoricalChoices, HistoryPresentation } from '@/runtime/history-context';
+import { ReflectionPreview } from '@/runtime/reflection-preview';
 import { ProductProviders } from '@/runtime/product-providers';
 import { ApplicationLabels, ApplicationSymbols } from '@/runtime/application-labels';
 import { GraphiteColors } from '@/constants/theme';
@@ -10,7 +11,7 @@ import { createDemoSession, demoScenarios, readDemoScenario, type DemoOutcome } 
 
 const labels = { normal: '通常', uncertain: '反映未確認', paused: '停止中', denied: '許可なし' };
 export function DemoProviders({ children }: { children: ReactNode }) {
-  const [session] = useState(() => createDemoSession({ scenario: readDemoScenario(typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('scenario')), historySample: process.env.EXPO_PUBLIC_ITOMA_DEMO_STUDY === 'history' && (typeof window === 'undefined' || new URLSearchParams(window.location.search).get('history') !== 'empty'), historyMore: process.env.EXPO_PUBLIC_ITOMA_DEMO_STUDY === 'history' && (typeof window === 'undefined' || new URLSearchParams(window.location.search).get('history') !== 'sample'), historyPageDelayMs: 400 }));
+  const [session] = useState(() => createDemoSession({ scenario: readDemoScenario(typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('scenario')), historySample: process.env.EXPO_PUBLIC_ITOMA_DEMO_STUDY === 'history' && (typeof window === 'undefined' || new URLSearchParams(window.location.search).get('history') !== 'empty'), historyMore: process.env.EXPO_PUBLIC_ITOMA_DEMO_STUDY === 'history' && (typeof window === 'undefined' || new URLSearchParams(window.location.search).get('history') !== 'sample'), historyPageDelayMs: 400, reflectionSample: true }));
   const [contextsEnabled] = useState(() => typeof window === 'undefined' || new URLSearchParams(window.location.search).get('context') !== 'missing');
   const [historyLayout, setHistoryLayout] = useState<'timeline' | 'list'>(process.env.EXPO_PUBLIC_ITOMA_DEMO_STUDY === 'history' ? 'timeline' : 'list');
   const [expanded, setExpanded] = useState(false), [outcome, setOutcome] = useState<DemoOutcome>('success');
@@ -48,10 +49,10 @@ export function DemoProviders({ children }: { children: ReactNode }) {
         {process.env.EXPO_PUBLIC_ITOMA_DEMO_STUDY === 'history' && <View style={styles.row}><Pressable accessibilityRole="button" onPress={() => reload('normal', 'sample')} style={[styles.chip, { borderColor: theme.muted }]}><Text style={{ color: theme.text }}>過去の記録サンプル</Text></Pressable><Pressable accessibilityRole="button" onPress={() => reload('normal', 'empty')} style={[styles.chip, { borderColor: theme.muted }]}><Text style={{ color: theme.text }}>記録のない状態</Text></Pressable></View>}
         {process.env.EXPO_PUBLIC_ITOMA_DEMO_STUDY === 'history' && <Pressable accessibilityRole="button" onPress={() => reload('normal', 'long')} style={[styles.chip, { borderColor: theme.muted }]}><Text style={{ color: theme.text }}>長い履歴でスクロールを試す</Text></Pressable>}
         {process.env.EXPO_PUBLIC_ITOMA_DEMO_STUDY === 'history' && <View style={styles.row}><Pressable accessibilityRole="button" onPress={() => reload('normal', undefined, 'sample')} style={[styles.chip, { borderColor: theme.muted }]}><Text style={{ color: theme.text }}>当時情報の保存案で表示</Text></Pressable><Pressable accessibilityRole="button" onPress={() => reload('normal', undefined, 'missing')} style={[styles.chip, { borderColor: theme.muted }]}><Text style={{ color: theme.text }}>現行の項目だけで表示</Text></Pressable></View>}
-        <Text style={[styles.caption, { color: theme.muted }]}>理由はタブ内メモリーのみ。再読込で消えます。ルールの追加・曜日/時間編集・対象選び直し・オンボーディングは未対応で、完了を装いません。時間集計も未提供です。iOSとWebの表示・キーボード・操作感には差があります。</Text>
+        <Text style={[styles.caption, { color: theme.muted }]}>理由はタブ内メモリーのみ。再読込で消えます。ルールの追加・曜日/時間編集・対象選び直し・オンボーディングは未対応で、完了を装いません。時間集計は架空の表示例で、native計測への接続はしていません。iOSとWebの表示・キーボード・操作感には差があります。</Text>
       </ScrollView>}
     </View>
-    <ApplicationLabels.Provider value={session.applicationLabel}><ApplicationSymbols.Provider value={session.applicationSymbol}><HistoricalChoices.Provider value={contextsEnabled ? session.historicalChoice : undefined}><HistoryPresentation.Provider value={historyLayout}><ProductProviders clients={session.clients}>{children}</ProductProviders></HistoryPresentation.Provider></HistoricalChoices.Provider></ApplicationSymbols.Provider></ApplicationLabels.Provider>
+    <ApplicationLabels.Provider value={session.applicationLabel}><ApplicationSymbols.Provider value={session.applicationSymbol}><HistoricalChoices.Provider value={contextsEnabled ? session.historicalChoice : undefined}><HistoryPresentation.Provider value={historyLayout}><ReflectionPreview.Provider value><ProductProviders clients={session.clients}>{children}</ProductProviders></ReflectionPreview.Provider></HistoryPresentation.Provider></HistoricalChoices.Provider></ApplicationSymbols.Provider></ApplicationLabels.Provider>
   </View>;
 }
 const styles = StyleSheet.create({ banner: { paddingHorizontal: 16, paddingTop: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#8888' },

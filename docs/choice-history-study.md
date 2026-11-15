@@ -30,7 +30,7 @@
 
 ## 画面設計
 
-1. 振り返りタブの上部に「選択の記録を見る」。時間集計が未提供でも、確認できる記録へ進める。時間集計や成果を架空の値で埋めない。
+1. 振り返りの累計・期間別グラフの下部に「選択の記録を見る」。時間集計の提供状況にかかわらず、確認できる記録へ進める。時間集計や成果を架空の値で埋めない。
 2. 一覧は「操作と結果／保存した理由」のindex切替と、日付カレンダー/今日/前日/翌日/全期間。kindは既存APIの区分であり、取得ページをローカルfilterして全件の結果と装わない。
 3. 日付ごとに対象・選択・結果。関連commandは**表示中の最大40件の範囲で**まとめ、最新の処理事実を代表にする。時刻も「記録」と明示し、最初の選択時刻を推測しない。次のページに同じcommandの記録が続く可能性は残る。
 4. タップで「選択の詳細」。当時の目的→自分の理由→希望/上限/結果→必要なら処理の補足。理由本文の読み込みはこの操作の後だけ。取消/設定変更等の理由がない記録にも詳細を用意する。
@@ -112,3 +112,19 @@ JS/iOS exportは依存解決とdemo除外の検証に限る。iOS実機・VoiceO
 画像・ブラウザー再現scriptは `docs/screenshots/choice-history/infinite/`。検証JSは31bc73a上の本変更のworking tree。確定SHAと配信VersionはPR210へ記録する。
 
 Cloudflare Assets local previewのブラウザー確認もpass：92行の3ページを自動読込、末尾で停止、過去ページの理由表示、詳細からの位置復帰、日付変更でtail破棄、一覧との比較、削除/空状態、4幅とDark/Reduce Motion。ブラウザーエラー/外部request/Web Storageなし。描画枚数と復帰前後の位置は `infinite/verification.json` に記録した。実機性能の確認ではない。
+
+## 振り返りの下部導線とPR193のグラフ（本人追加依頼）
+
+「選択の記録を見る」を振り返りの上部から、累計・週/月のグラフ・説明・更新操作の後へ移動。振り返りを見てから理由や結果へ進む導線にする。操作履歴そのものや削除操作を振り返りへ並べる変更ではない。
+
+Draft [PR193](https://github.com/kzk-maeda/itoma/pull/193) のhead `6dca01b78bcc7309d82314734d8a541abb4ffc71` から `ReflectionContent` と `reflection-model.ts` の変更をそのまま取り込んだ。点の表示、nativeRecordedIntervals-v2のDTO組み合わせ検証、測定scopeの文言を同じ部品で扱う。Swift/DB/producer/ExtensionやADR0010の採用状態は取り込まない。PR193の計測・実機検証をこのデモの検証として扱わない。
+
+Web demoだけが `ReflectionPreview=true` と、集計済みの架空DTOを返すtyped clientを共通Providerへ注入する。値は `syntheticFixture / restricted-excluding-unlocks-prototype-v1` のまま、既存prototype parserで検証。nativeRecordedIntervalsを名乗るfixtureにせず、通常のnative/product parserはこの合成DTOを拒否する。本体のcontext既定値はfalse、native bundleにdemo client/fixtureを含めない。
+
+- 表示例は **2026-11-15 21:00 Asia/Tokyo** 時点。累計60時間50分を固定し、下部だけ週/月/期間を変える。10月/11月と各週・月端の週を確認できる。
+- 既知0分と未記録/一部不明を区別し、推移の欠損へ線をつながない。値は架空の日別集計値を元にした静的な表示サンプル。解除unionや実区間を計算するJS実装を追加していない。
+- 月の棒→月内にclipした週→日別の選択の記録へ進める。グラフと操作履歴は独立した架空データだと表示する。合成DTOでは実historyRevisionの一致を装わず、日付条件だけで記録へ進む。本体のnative経路は従来どおりrevision/asOf/zoneを渡す。
+- 理由/操作の削除は架空累計を保ち、全削除は全期間の値を削除済みにする。古いtokenはchanged、再取込や期間切替で値を復活させない。別タブ/再読込で新しいサンプルになる。
+- fixtureは `src/demo/fixtures/reflection.json`。生成元とブラウザー再現scriptは `docs/screenshots/choice-history/reflection/`。生成は表示サンプル作成専用で、native計測や計算の正しさの証拠ではない。
+
+原則1/3/4/5、U07、UI22〜26/35/36、RF01/05/06/07/08/09を参照。検証は型/lint・Jest30 suites/234件・demo tools21件・Web package/iOS JS exportがpass。Cloudflare Assets local previewで固定累計、週/月/前月/clip/日付履歴/理由/期間復帰、下部導線、理由削除と全削除、4幅(320/390/768/1440)、Dark/Reduce Motion、外部request/Web Storageなしを確認した。Doctor18/20は同じ外部照会2件が未確認。iOS実機/VoiceOver/Dynamic Type/実計測・native保存は未検証。検証JSは17f8984上の本変更working tree、確定SHA/配信VersionはPR210へ記録する。

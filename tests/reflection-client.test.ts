@@ -67,3 +67,13 @@ test('not-created, deleted and capacity failure stay distinct through the real c
   native.mockResolvedValueOnce('{broken');
   expect((await client.run('read')).status).toBe('error');
 });
+
+test('native intervals require their own metric; legacy points cannot be relabelled by metric alone', () => {
+  const value = observed();
+  value.proofScope = 'nativeRecordedIntervals'; value.metricVersion = 'native-restricted-excluding-unlocks-v2';
+  value.total.from = value.asOf - 7200; value.total.until = value.asOf;
+  value.total.knownSeconds = 6900; value.total.coverage = 'recorded';
+  expect(parseReflectionResponse(ok(value)).snapshot?.total.knownSeconds).toBe(6900);
+  expect(() => parseReflectionResponse(ok({ ...value, proofScope: 'pointObservations' }))).toThrow();
+  expect(() => parseReflectionResponse(ok({ ...value, metricVersion: 'restricted-excluding-unlocks-v1' }))).toThrow();
+});

@@ -7,6 +7,8 @@ import { router } from 'expo-router';
 import { createReflectionClient } from '../modules/itoma-native/src/reflection';
 import type { ReflectionRequest, ReflectionSnapshot } from '../modules/itoma-native/src/reflection-model';
 import type { HistoryAction, HistoryRequest, HistoryResponse, ScreenTimeAction, ScreenTimeResponse } from '../modules/itoma-native';
+import { ReflectionPreview } from '../src/runtime/reflection-preview';
+import { createDemoSession } from '../src/demo/session';
 import { ReflectionScreen } from '../src/components/flow/reflection';
 import { ProductHome } from '../src/components/flow/home';
 import { RecordSettingsScreen, RecordDeletionScreen, RecordStorageScreen } from '../src/components/flow/settings-records';
@@ -72,10 +74,10 @@ function Pages() {
   const current = stack.at(-1);
   return <>{current === '/' ? <ProductHome /> : current === '/settings' ? <SettingsScreen /> : current === '/settings-records' ? <RecordSettingsScreen /> : current === '/settings-delete' ? <RecordDeletionScreen /> : current === '/settings-storage' ? <RecordStorageScreen /> : current === '/history' ? <HistoryScreen /> : current === '/history-reason' ? <HistoryReasonScreen /> : <ReflectionScreen />}</>;
 }
-async function mount(b: ReturnType<typeof backend>) {
-  return render(<ScreenTimeProvider client={controlClient}><HistoryProvider client={b.historyClient}>
+async function mount(b: ReturnType<typeof backend>, preview = false) {
+  return render(<ReflectionPreview.Provider value={preview}><ScreenTimeProvider client={controlClient}><HistoryProvider client={b.historyClient}>
     <ReflectionProvider client={b.client}><HeldReason /><Pages /></ReflectionProvider>
-  </HistoryProvider></ScreenTimeProvider>);
+  </HistoryProvider></ScreenTimeProvider></ReflectionPreview.Provider>);
 }
 const press = async (label: string) => fireEvent.press(screen.getByRole('button', { name: label }));
 const observed = () => screen.findByText('制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。');
@@ -236,4 +238,22 @@ test('settings storage shows measured MB, imports records explicitly and preserv
   await press('新しい記録を取り込む');
   expect(b.native.mock.calls.filter(([action]) => action === 'import')).toHaveLength(1);
   expect(controlClient.run.mock.calls.every(([action]) => action === 'snapshot')).toBe(true);
+});
+
+
+test('demo uses PR193 shared charts with fixture proof, fixed totals and a bottom history entry', async () => {
+  const b = backend(), session = createDemoSession({ reflectionSample: true });
+  b.client.run = session.clients.reflection.run;
+  await mount(b, true);
+  await screen.findByText('60時間50分');
+  expect(screen.getByText('表示の時間はすべて架空の検証値です。')).toBeTruthy();
+  expect(screen.getByTestId('reflection-period-total')).toHaveTextContent('8時間15分');
+  expect(screen.getAllByRole('button').at(-1)?.props.accessibilityLabel).toBe('選択の記録を見る');
+  await press('月次'); await screen.findByText('2026年11月');
+  expect(screen.getByTestId('reflection-total')).toHaveTextContent('60時間50分');
+  const clipped = screen.getAllByRole('button').find(node => String(node.props.accessibilityLabel).startsWith('11月9日、'))!;
+  await fireEvent.press(clipped); await screen.findByText('11月9日からの週');
+  const day = screen.getAllByRole('button').find(node => String(node.props.accessibilityLabel).startsWith('11月11日、0分'))!;
+  await fireEvent.press(day); await screen.findByText('あなたの選択の記録');
+  expect(b.historyClient.run).toHaveBeenCalledWith('page', expect.objectContaining({ day: '2026-11-11' }));
 });

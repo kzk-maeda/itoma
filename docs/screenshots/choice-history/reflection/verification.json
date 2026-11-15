@@ -1,0 +1,15 @@
+{
+  "browser": "155.0.8059.79",
+  "upstream": "PR193 / 6dca01b",
+  "entryBelowRefresh": true,
+  "fixedTotal": "60時間50分",
+  "widths": [
+    320,
+    390,
+    768,
+    1440
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "physicalDevice": false
+}

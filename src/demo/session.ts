@@ -1,6 +1,7 @@
 import { dayAt } from '@/lib/history-date';
 import type { HistoricalChoiceContext } from '@/runtime/history-context';
 import type { ProductClients } from '@/runtime/product-providers';
+import { createReflectionFixture } from './reflection-fixture';
 import { parseScreenTimeResponse, type ScreenTimeAction, type ScreenTimeRequest, type ScreenTimeResponse, type ScreenTimeSnapshot } from '../../modules/itoma-native/src/screen-time';
 import { parseHistoryResponse, type HistoryRequest, type HistoryResponse, type HistoryRow } from '../../modules/itoma-native/src/history';
 import { parseOnboardingResponse } from '../../modules/itoma-native/src/onboarding';
@@ -15,9 +16,10 @@ const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0
 const ruleID = uuid(1), selectionID = uuid(2);
 export const demoApplications = [{ ref: uuid(3), name: 'X', symbol: '𝕏' }, { ref: uuid(4), name: 'YouTube', symbol: '▶' }, { ref: uuid(5), name: 'Instagram', symbol: '◎' }];
 
-type Options = { scenario?: DemoScenario; now?: () => number; historySample?: boolean; historyMore?: boolean; historyPageDelayMs?: number };
+type Options = { scenario?: DemoScenario; now?: () => number; historySample?: boolean; historyMore?: boolean; historyPageDelayMs?: number; reflectionSample?: boolean };
 /** Contract-shaped in-memory port. A UI simulator, never a Screen Time/OS emulator. */
-export function createDemoSession({ scenario = 'normal', now = Date.now, historySample = false, historyMore = false, historyPageDelayMs = 0 }: Options = {}) {
+export function createDemoSession({ scenario = 'normal', now = Date.now, historySample = false, historyMore = false, historyPageDelayMs = 0, reflectionSample = false }: Options = {}) {
+  const reflection = createReflectionFixture();
   const started = now() / 1000, endsAt = started + 90 * 60;
   let sequence = 0, nextID = 20, revision = 1;
   let activation: ScreenTimeSnapshot['activation'] = scenario === 'paused' ? 'paused' : 'enabled';
@@ -144,8 +146,9 @@ export function createDemoSession({ scenario = 'normal', now = Date.now, history
       if (action === 'deleteReasons') { reasons.clear(); rows.forEach(row => { row.reasonDeleted = true; }); revision++; }
       return page(request);
     } },
-    reflection: { async run(action) {
-      if (action === 'deleteAll') { rows.length = 0; reasons.clear(); contexts.clear(); revision++; }
+    reflection: { async run(action, request) {
+      if (action === 'deleteAll') { rows.length = 0; reasons.clear(); contexts.clear(); revision++; reflection.clear(); }
+      if (reflectionSample) return reflection.read(request);
       return { status: 'ok', storage: 'not-created', transfer: 'current' };
     } },
     onboarding: { async run(action) {

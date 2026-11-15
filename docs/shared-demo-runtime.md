@@ -91,3 +91,7 @@ EXPO_PUBLIC_ITOMA_DEMO=1 node node_modules/expo/bin/cli export --platform ios --
 選択不可の行にも理由を表示し、押しても選べない。Webにはaria-checked/aria-disabledを明示し、nativeには同じ値のaccessibilityStateを渡す。nativeではAppleの識別表示を含む名前の読み上げ・タップ領域・文字拡大を実機確認する必要がある。Swift/ABIに変更はないが、JSの外側Pressableへの集約を実機検証済みとは扱わない。
 
 選択行の単体テスト、余白/端を押すWeb操作、枠/背景の変化、選び直しても理由が残ること、disabled、Dark/狭幅と既存フローを検証。記録・解除のドメイン仕様は変更しない。
+
+## 振り返りの表示サンプル（#206・PR193参照）
+
+PR210ではPR193の表示/DTO部品を共有し、WebのDemoProvidersからReflectionPreview contextとreflectionSample=trueのclientを注入する。集計済みの架空JSONをsyntheticFixtureのprototype parserで読み、本体の通常parserやnative接続をfixture対応へ切り替えない。累計固定/週月/clip/一日/下部の記録導線を確認可能。時刻とグラフ・履歴の独立性を明記し、実OSの制限時間とは扱わない。通常のnative contextはfalse。詳細と検証は[画面検討](choice-history-study.md)。
