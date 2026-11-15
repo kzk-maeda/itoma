@@ -80,3 +80,16 @@ JS/iOS exportは依存解決とdemo除外の検証に限る。iOS実機・VoiceO
 - Cloudflare Assetsのローカルpreviewでも同じブラウザー操作を再実行してpass。`/history` / `/history-reason` のclean URLがHTMLを200で返すことを確認。
 - expo-doctor: 18/20。Expo API（EAI_AGAIN）とReact Native Directoryの外部照会が完了せず、残る2件は未確認。
 - 検証したJS: 共有基盤8306777上の本変更のworking tree。配信版の確定SHA/CI/Cloudflare versionはPRへ記録する。iOS実機/Simulator実行はなし。
+
+## 追加比較：タイムライン型（本人追加依頼）
+
+同じ記録を新しい順に縦線とカードで表示する比較案を追加。日付の見出し→記録時刻→対象/選択→当時のルール→状態→希望分数/記録上限→詳細への入口、の順で確認する。日付ごとに線を区切り、線の長さ・カード間隔は経過時間や継続利用を表さない。処理ログを一つずつ増やさず、一覧と同じページ内command集約を使用する。
+
+- Webデモの上部「履歴の表示案」で **タイムライン／一覧** を切替。今回の比較ではタイムラインを初期表示とする。切替でquery・選択中の日付・session・入力/記録を再生成しない。詳細から戻っても表示案を維持する。
+- 比較操作はWebのbanner内だけ。本体には表示設定を新設しない。任意のHistoryPresentation contextが未供給の本体は従来の一覧を表示する。画面・データ取得・詳細は共通のまま。
+- 理由本文はカードに自動展開しない。カードを選んだ後に既存の詳細で1件だけ読む。削除/取消/未確認/不足情報は一覧と同じ扱い。当時情報の保存案・現行項目だけ・記録なしの比較も両表示で確認可能。
+- 一覧は多くの記録を探しやすく、タイムラインは一つずつの選択と結果を追いやすい。タイムラインのカードは縦に場所を使うため、比較後に採用を判断する。新しい永続化・成果集計・native契約を採用した意味ではない。
+
+検証：型/lint、Jest29 suites・220件、demo tools21件、Web package、iOS JS exportがpass。Cloudflare Assets local previewで表示/Space操作/日付保持/詳細往復/理由削除、4画面×4幅（320/390/768/1440）、Dark/Reduce Motion、外部request/Web Storageなしを確認。新しい画像と再現scriptは `docs/screenshots/choice-history/timeline/`。iOS source mapに共有timelineを含みWeb demoを除外。実機/VoiceOver/Dynamic Type/native保存は未検証。Doctor18/20は同じ外部照会2件が未確認。SDK58文書の再取得は403、既存のRN基本部品と同じAPIのみを利用し依存追加なし。
+
+検証JSは2f4e8db上の今回working tree。確定SHAと配信VersionはPR210へ追記する。

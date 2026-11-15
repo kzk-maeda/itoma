@@ -20,6 +20,10 @@ export function choiceTitle(row: HistoryRow) {
   if (row.action === 'stop') return 'ルールの停止を選びました';
   return '一時解除を選びました';
 }
+export function choiceRecordTitle(row: HistoryRow, application?: string) {
+  if (!application) return choiceTitle(row);
+  return row.action === 'reason' ? `${application}を開く理由` : `${application}の一時解除`;
+}
 export function choiceStatus(row: HistoryRow) {
   if (row.action === 'reason' && row.status === 'prepared') return '理由の保存のみ';
   if (row.grantStatus === 'reblockPending') return '再制限の反映は未確認';

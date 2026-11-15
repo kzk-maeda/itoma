@@ -1,0 +1,72 @@
+{
+  "browser": "155.0.8059.79",
+  "cases": [
+    {
+      "view": "timeline",
+      "width": 320
+    },
+    {
+      "view": "timeline",
+      "width": 390
+    },
+    {
+      "view": "timeline",
+      "width": 768
+    },
+    {
+      "view": "timeline",
+      "width": 1440
+    },
+    {
+      "view": "list",
+      "width": 320
+    },
+    {
+      "view": "list",
+      "width": 390
+    },
+    {
+      "view": "list",
+      "width": 768
+    },
+    {
+      "view": "list",
+      "width": 1440
+    },
+    {
+      "view": "detail",
+      "width": 320
+    },
+    {
+      "view": "detail",
+      "width": 390
+    },
+    {
+      "view": "detail",
+      "width": 768
+    },
+    {
+      "view": "detail",
+      "width": 1440
+    },
+    {
+      "view": "calendar",
+      "width": 320
+    },
+    {
+      "view": "calendar",
+      "width": 390
+    },
+    {
+      "view": "calendar",
+      "width": 768
+    },
+    {
+      "view": "calendar",
+      "width": 1440
+    }
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "physicalDevice": false
+}

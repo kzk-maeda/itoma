@@ -5,6 +5,8 @@ import { HistoryProvider, useHistoryRecords } from '../src/state/history';
 import { ScreenTimeProvider, useScreenTime } from '../src/state/screen-time';
 import { RecordStorageScreen, RecordDeletionScreen } from '../src/components/flow/settings-records';
 import { HistoryScreen, HistoryReasonScreen } from '../src/components/flow/history';
+import { HistoryPresentation } from '../src/runtime/history-context';
+import { dateLabel } from '../src/lib/history-date';
 import { unavailableSnapshot } from '../modules/itoma-native/src/screen-time';
 import type { HistoryAction, HistoryRequest, HistoryResponse, HistoryPage, ScreenTimeAction, ScreenTimeResponse } from '../modules/itoma-native';
 
@@ -68,6 +70,33 @@ test('private reason is fetched only after selection, shown in full, and never e
   expect(screen.getByText('理由の保存だけを確認しました。一時解除の受付記録はありません。')).toBeTruthy();
   expect(mockRoutes).toEqual(['/history', '/history-reason']);
   await press('記録の一覧へ戻る');
+  expect(screen.queryByText(body)).toBeNull();
+});
+
+test('timeline/list comparison preserves the selected day and does not read reasons until opening a record', async () => {
+  function Study() {
+    const [layout, setLayout] = useState<'list' | 'timeline'>('timeline');
+    return <HistoryPresentation.Provider value={layout}>
+      <Pressable accessibilityRole="button" accessibilityLabel="switch layout" onPress={() => setLayout(value => value === 'timeline' ? 'list' : 'timeline')} />
+      <Pages />
+    </HistoryPresentation.Provider>;
+  }
+  const b = backend(); await render(wrap(b, <Study />));
+  expect(screen.getByTestId('history-timeline')).toBeTruthy();
+  await press('今日');
+  const selected = b.run.mock.calls.filter(([action]) => action === 'page').at(-1)![1]!.day!;
+  const reads = b.run.mock.calls.length;
+  await press('switch layout');
+  expect(screen.queryByTestId('history-timeline')).toBeNull();
+  expect(screen.getByRole('button', { name: '日付を選ぶ' })).toHaveTextContent(new RegExp(dateLabel(selected)));
+  await press('switch layout');
+  expect(screen.getByTestId('history-timeline')).toBeTruthy();
+  expect(b.run.mock.calls.length).toBe(reads);
+  expect(b.run.mock.calls.some(([action]) => action === 'reason')).toBe(false);
+  await fireEvent.press(screen.getByTestId(`history-choice-${id}`));
+  expect(screen.getByText(body)).toBeTruthy();
+  await press('記録の一覧へ戻る');
+  expect(screen.getByTestId('history-timeline')).toBeTruthy();
   expect(screen.queryByText(body)).toBeNull();
 });
 test('pagination replaces one page, retains date selection and sends the pinned revision', async () => {
