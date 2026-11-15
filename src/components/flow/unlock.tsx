@@ -1,3 +1,4 @@
+import { Alert } from '@/runtime/product-alert';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useScreenTime } from '@/state/screen-time';
@@ -6,7 +7,7 @@ import { back, home, useDraftGuard } from './navigation';
 import { endTime, ruleText } from './presentation';
 import { ruleTitle } from './rule-identity';
 import { Body, Button, Field, FlowScreen, Heading, Notice, Panel, flowStyles } from './ui';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 
 function useContinueRestrictions() {
   const state = useScreenTime(), draft = state.unlockDraft;

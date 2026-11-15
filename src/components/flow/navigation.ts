@@ -1,6 +1,6 @@
 import { router, usePreventRemove } from 'expo-router';
 import { useRef } from 'react';
-import { Alert } from 'react-native';
+import { Alert } from '@/runtime/product-alert';
 
 export function home() { router.dismissTo('/'); }
 export function back() { if (router.canGoBack()) router.back(); else router.replace('/'); }

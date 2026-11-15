@@ -229,3 +229,9 @@ Actions → **Cleanup demo** → **Run workflow** を開きます。
 初回はこのworkflowをmainへマージ後、Actionsの「Update demo index」を実行します。更新には既存トークンのWorker更新・Route読取・zone読取権限が必要です。新しいSecretや閲覧用の独自認証・製品バックエンドは追加しません。
 
 ローカルで構成だけ検証する場合は、テスト用の静的HTMLを `dist/demo-index/` に置き、`npx --no-install wrangler deploy --config wrangler.demo-index.jsonc --dry-run` を使います。API取得には専用の環境変数が必要です。認証値をログやファイルに出さないでください。
+
+## 本体の画面・部品を使う新規デモ
+
+新規のアプリ画面デモは、HTMLへの画面コピーではなく、本体と同じExpo Router・画面・共通Providerを使い、Web demo buildでだけtypedなメモリー内clientを注入する。[共有UIデモの作り方](shared-demo-runtime.md)を参照。
+
+`npm run demo:web` でローカル確認、`demo/**` のpushで従来の配信CIを使う。通常のWeb/nativeへmockを切り替えるqueryは提供しない。以前に公開したHTMLデザイン検討用のデモは別方式として残る。

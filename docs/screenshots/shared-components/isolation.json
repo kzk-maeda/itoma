@@ -1,0 +1,13 @@
+{
+  "kind": "build-and-browser-isolation",
+  "nativeExportDemoFlag": "1",
+  "nativeSourceMapModuleCount": 1814,
+  "nativeRuntimeModules": [
+    "/src/runtime/product-alert.tsx",
+    "/src/runtime/app-providers.tsx"
+  ],
+  "demoAndWebRuntimeModules": [],
+  "ordinaryWebBuildFlag": "0",
+  "queryCannotActivateDemo": true,
+  "physicalDevice": false
+}

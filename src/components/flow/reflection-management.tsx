@@ -1,4 +1,5 @@
-import { Alert, View } from 'react-native';
+import { Alert } from '@/runtime/product-alert';
+import { View } from 'react-native';
 import { useReflection } from '@/state/reflection';
 import { Body, LinkRow, Notice } from './ui';
 

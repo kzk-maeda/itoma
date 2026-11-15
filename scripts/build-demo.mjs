@@ -14,7 +14,7 @@ rmSync(new URL('../dist/demo-export/', import.meta.url), { recursive: true, forc
 
 execFileSync(process.execPath, ['node_modules/expo/bin/cli', 'export', '--platform', 'web', '--output-dir', 'dist/demo-export'], {
   cwd: root,
-  env: { ...process.env, ITOMA_DEMO_BUILD: '1', ITOMA_DEMO_BASE_PATH: target.basePath },
+  env: { ...process.env, ITOMA_DEMO_BUILD: '1', EXPO_PUBLIC_ITOMA_DEMO: '1', EXPO_PUBLIC_ITOMA_DEMO_BASE_PATH: target.basePath, ITOMA_DEMO_BASE_PATH: target.basePath },
   stdio: 'inherit',
 });
 
@@ -29,6 +29,7 @@ const manifest = JSON.stringify({
   dirty,
   builtAt: new Date().toISOString(),
   osFeatures: 'mock-only',
+  presentation: 'shared-app',
 }, null, 2) + '\n';
 writeFileSync(new URL('demo-build.json', mounted), manifest);
 writeFileSync(new URL('../dist/demo-meta.json', import.meta.url), manifest);

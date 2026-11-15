@@ -1,6 +1,7 @@
+import { Alert } from '@/runtime/product-alert';
 import { router, usePreventRemove } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useOnboarding } from '@/state/onboarding';
 import { useScreenTime } from '@/state/screen-time';
 import { useVisibleClock } from '@/hooks/use-visible-clock';

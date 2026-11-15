@@ -1,6 +1,7 @@
+import { Alert } from '@/runtime/product-alert';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import { useHistoryRecords } from '@/state/history';
 import { useReflection } from '@/state/reflection';
 import { back } from './navigation';

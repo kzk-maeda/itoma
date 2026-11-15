@@ -1,7 +1,8 @@
 import { requireNativeViewManager } from 'expo-modules-core';
-import { type ComponentType, memo, useState } from 'react';
+import { type ComponentType, memo, useContext, useState } from 'react';
 import { type ViewProps, Pressable, Text } from 'react-native';
 import { useFlowTheme } from './ui';
+import { ApplicationLabels } from '@/runtime/application-labels';
 
 type Props = ViewProps & { selectionRef: string; targetRef: string; source: 'product'; refreshKey: number;
   selectable: boolean; selected: boolean; onSelect?: () => void; onContentSize: (event: { nativeEvent: { height: number } }) => void };
@@ -11,7 +12,12 @@ export const Applications = memo(function Applications({ selectionRef, targetRef
   selectionRef: string; targetRef?: string; count?: number; refreshKey: number; selected?: boolean; onSelect?: () => void;
 }) {
   const theme = useFlowTheme();
+  const labels = useContext(ApplicationLabels);
   const [height, setHeight] = useState(Math.max(48, count * 56));
+  const label = labels?.(selectionRef, targetRef);
+  if (label) return onSelect ? <Pressable accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ selected }} onPress={onSelect} style={{ minHeight: 48, justifyContent: 'center' }}>
+    <Text style={{ color: theme.text, fontSize: 17 }}>{selected ? '✓ ' : ''}{label}</Text>
+  </Pressable> : <Text style={{ color: theme.text, fontSize: 17 }}>{label}</Text>;
   try { native ??= requireNativeViewManager<Props>('ItomaNative'); } catch { /* Web/old binaries render a safe count only. */ }
   if (!native) return onSelect ? <Pressable accessibilityRole="radio" accessibilityState={{ selected }} onPress={onSelect} style={{ minHeight: 48, justifyContent: 'center' }}>
     <Text style={{ color: theme.text, fontSize: 17 }}>{selected ? '✓ ' : ''}選択したアプリ（{count}件）</Text>

@@ -1,6 +1,7 @@
+import { Alert } from '@/runtime/product-alert';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
-import { Alert } from 'react-native';
+
 import { ruleInput, useScreenTime } from '@/state/screen-time';
 import type { RulePreviewDraft } from './rule';
 import { useOptionalOnboarding } from '@/state/onboarding';

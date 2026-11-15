@@ -1,0 +1,20 @@
+{
+  "browser": "155.0.8059.79",
+  "cases": [
+    {
+      "width": 320
+    },
+    {
+      "width": 390
+    },
+    {
+      "width": 768
+    },
+    {
+      "width": 1440
+    }
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "physicalDevice": false
+}

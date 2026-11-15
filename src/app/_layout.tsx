@@ -4,10 +4,7 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { runNativeSmoke } from '@/qa/native-smoke';
-import { ScreenTimeProvider } from '@/state/screen-time';
-import { HistoryProvider } from '@/state/history';
-import { ReflectionProvider } from '@/state/reflection';
-import { OnboardingProvider } from '@/state/onboarding';
+import { AppProviders } from '@/runtime/app-providers';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -17,9 +14,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <View style={{ flex: 1 }} onLayout={() => { void SplashScreen.hideAsync(); }}>
-        <ScreenTimeProvider><OnboardingProvider><HistoryProvider><ReflectionProvider><Stack screenOptions={{ headerShown: false }}>
+        <AppProviders><Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(main)" options={{ animation: 'none' }} />
-        </Stack></ReflectionProvider></HistoryProvider></OnboardingProvider></ScreenTimeProvider>
+        </Stack></AppProviders>
       </View>
     </ThemeProvider>
   );

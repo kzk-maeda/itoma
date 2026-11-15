@@ -1,4 +1,5 @@
-import { Alert } from 'react-native';
+import { Alert } from '@/runtime/product-alert';
+
 import { useVisibleClock } from '@/hooks/use-visible-clock';
 import { useScreenTime } from '@/state/screen-time';
 import { Applications } from './applications';

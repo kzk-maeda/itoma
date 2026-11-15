@@ -1,6 +1,7 @@
+import { Alert } from '@/runtime/product-alert';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useVisibleClock } from '@/hooks/use-visible-clock';
 import { useScreenTime } from '@/state/screen-time';
 import { useOptionalOnboarding } from '@/state/onboarding';

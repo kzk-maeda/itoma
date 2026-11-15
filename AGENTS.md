@@ -19,6 +19,10 @@ Read and follow `DESIGN.md` before UI, interaction, or copy changes. Explain the
 
 Also read `docs/ui-guidelines.md` for screen/state/interaction/token/component contracts and `docs/ui-acceptance.md` for acceptance IDs. Cite the applicable principle and UI acceptance IDs in implementation PRs. Keep explicit user requirements separate from the documents' proposed choices and PR #36's accepted system design (merged 2026-11-06; OS/device behavior remains unverified). The B demo is visual evidence, not the authority for multi-app grants, persistence, or OS success. Consolidate theme values through `src/constants/theme.ts` when implementing; the documentation does not mean that migration has happened.
 
+## App-screen demos
+
+For app-screen demos, follow [the shared demo runtime](docs/shared-demo-runtime.md). Reuse the application's Expo Router routes, screen components, and shared Provider tree; inject typed scenario clients and external identity data at the runtime boundary. Keep demo controls web-only and explicitly label synthetic state. Record the tested commit and the differences from iOS. Keep intentionally independent website/design studies clearly identified as separate artifacts.
+
 ## Architecture
 
 Read `docs/system/README.md` before changing domain rules, persistence, native boundaries, or OS integration. Track unresolved decisions in linked issues; keep specifications and models in `docs/system/` and significant decision rationale in `docs/adr/`. Initial design documents are proposals, not accepted requirements or verified OS behavior. Resolve applicable design prerequisites through reviewed PRs before dependent implementation; small explicitly scoped PoCs may proceed to test those proposals. Update affected documents and link decisions in the implementation PR. Do not mark a decision accepted without human review or equate acceptance with device validation.
