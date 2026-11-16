@@ -155,7 +155,7 @@
     "missing-rule.png": "2ec5072a3c47aace0673ee7d436de30b923d715cc1a1024373cc4cbf0244ea7e",
     "modal-dark-320.png": "74357076a82776a27f32fd3da81d80c41e67ace8f852720e636787a1e340aa5f",
     "navigation-probe.tsx.txt": "6fff1f9c9e7064e99236382cc0c8686fe8099877e87fd0c439fc312887a4ed2c",
-    "proof-clients.tsx.txt": "ceb81f4ebd6b387176b9bed428fd026d86199a121e97568214157b09ec8ab664",
+    "proof-clients.tsx.txt": "9b20844f77a6fd764a49279451abc05bdd7ebcaa15ce139f945bd4ff9aefcc0d",
     "proof-layout.tsx.txt": "178d6d33adfcb2041ceb2feebcbb03cb379afd46040fc207d1382740a1103ad4",
     "records.png": "72ba400b4eeb278693a26be8f5def54d3026b5dc3786a83191818076677e7bc7",
     "return-context.cjs.txt": "1a62771a7be8548e9b309a303691f4ba221ffc15ba7ab7950264f2b4dcbe7193",
@@ -205,5 +205,10 @@
         "client/_expo/static/js/web/entry-e3fcdff4b6bfe66ed45e415b4c24022d.js": "47acf90a4fcd7f0e12bd337fa10758282cf8c5695971361ef446b6074daf66bf"
       }
     }
+  },
+  "proofWhitespaceNormalization": {
+    "file": "proof-clients.tsx.txt",
+    "capturedSHA256": "ceb81f4ebd6b387176b9bed428fd026d86199a121e97568214157b09ec8ab664",
+    "transformation": "remove trailing spaces only; no executable change"
   }
 }

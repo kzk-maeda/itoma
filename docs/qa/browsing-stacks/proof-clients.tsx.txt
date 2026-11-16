@@ -34,7 +34,7 @@ export const control = createScreenTimeClient('ios', () => ({ apiVersion: 1, scr
       return response({ ref });
     }
     case 'saveRuleDetails': {
-      
+
       const details = request.details!;
       if (details.expectedRevision !== snapshot.ruleDetailsRevision || details.expectedPolicyRevision !== snapshot.revision) return response({ status: 'error', code: 'changed' });
       snapshot = { ...snapshot, ruleDetailsRevision: String(Number(snapshot.ruleDetailsRevision) + 1), rules: snapshot.rules.map(rule => rule.id === details.ruleID ? { ...rule, title: details.title.trim(), goal: details.goal } : rule) };
