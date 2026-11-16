@@ -763,3 +763,38 @@ test('a late accepted rule result cannot redirect a closed flow or overwrite a l
   expect(mockHistory.at(-1)).toBe('/');
   expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
 });
+
+test('a deletion preview that finishes after leaving its detail does not reopen the modal', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  let finish!: () => void;
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'previewRule') await new Promise<void>(resolve => { finish = resolve; });
+    return original(action, request);
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await openRule('時間帯 1を削除する内容を確認');
+  await act(async () => mockGo('/', true));
+  await act(async () => finish());
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
+  expect(mockHistory.at(-1)).toBe('/');
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'previewRule')).toHaveLength(1);
+  expect(b.client.run.mock.calls.some(([action]) => action === 'commitRule')).toBe(false);
+});
+
+test('an authorization result after closing recovery updates native state without redirecting the next screen', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  b.replace({ authorization: 'denied' });
+  let finish!: () => void;
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'authorize') await new Promise<void>(resolve => { finish = resolve; });
+    return original(action, request);
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await press('許可を確認する'); await press('スクリーンタイムを許可する');
+  await act(async () => mockGo('/settings', true));
+  await act(async () => finish());
+  expect(screen.getByRole('header', { name: '設定' })).toBeTruthy();
+  expect(mockHistory.at(-1)).toBe('/settings');
+  expect(b.current().authorization).toBe('approved');
+  expect(b.client.run.mock.calls.some(([action]) => action === 'resume')).toBe(false);
+});

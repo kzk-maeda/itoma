@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { Alert } from 'react-native';
 import { ruleInput, useScreenTime } from '@/state/screen-time';
 import type { RulePreviewDraft } from './rule';
@@ -14,7 +14,8 @@ import { Body, Button, FlowScreen, Heading, LinkRow, Notice, Panel } from './ui'
 function useSettings() {
   const state = useScreenTime(), setup = useOptionalOnboarding(), s = state.snapshot, navigation = useAppNavigation();
   const { refresh } = state;
-  useFocusEffect(useCallback(() => { void refresh(); }, [refresh]));
+  const focused = useRef(false);
+  useFocusEffect(useCallback(() => { focused.current = true; void refresh(); return () => { focused.current = false; }; }, [refresh]));
   const device = s?.availability === 'device';
   const withDraftChoice = (proceed: () => void) => {
     if (!state.ruleDraft?.dirty) { proceed(); return; }
@@ -33,10 +34,12 @@ function useSettings() {
   const edit = (rule?: ScreenTimeRule) => withDraftChoice(() => { if (firstRun && !rule) { navigation.start({ screen: 'onboarding' }, { screen: 'settings-schedules' }); return; } state.beginRule(rule); navigation.start({ screen: s?.authorization === 'approved' ? 'rule' : 'onboarding' }, rule ? { screen: 'settings-schedule', ruleID: rule.id } : { screen: 'settings-schedules' }); });
   const prepareRemoval = async (rule: ScreenTimeRule) => {
     state.beginRule(rule);
+    const session = state.ruleSession();
     const draft: RulePreviewDraft = { ...rule, start: clockText(rule.startMinute), end: clockText(rule.endMinute), dirty: true, remove: true, previewBaseRevision: s!.revision };
     state.setRuleDraft(draft);
     const response = await state.run('previewRule', { rule: ruleInput(draft, s!.revision) });
-    if (response.status === 'confirmation-required') { state.setRulePreviewRef(response.ref); state.setRuleReview(response); navigation.start({ screen: 'rule-confirm' }, { screen: 'settings-schedule', ruleID: rule.id }); }
+    if (!state.ownsRuleSession(session)) return;
+    if (response.status === 'confirmation-required') { state.setRulePreviewRef(response.ref); state.setRuleReview(response); if (focused.current) navigation.start({ screen: 'rule-confirm' }, { screen: 'settings-schedule', ruleID: rule.id }); }
     else if (response.status === 'error' && response.ref) { state.setRulePreviewRef(response.ref); state.setRuleReview(undefined); }
   };
   const stop = () => Alert.alert('すべてのルールを停止しますか', '時間帯の制限を停止し、進行中の一時解除も終了します。保存したルールは残り、ご自身で再開できます。', [
