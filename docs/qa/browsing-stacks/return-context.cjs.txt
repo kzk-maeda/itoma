@@ -1,0 +1,26 @@
+const {chromium}=require('/tmp/itoma-ui-tools/node_modules/playwright');const fs=require('node:fs');
+const out='/tmp/itoma-217-qa';
+const heading=(p,name)=>p.getByRole('heading',{name,exact:true});const button=(p,name)=>p.getByRole('button',{name,exact:true});
+const app=state=>{let s=state;while(s){if(s.routes.some(r=>['(main)','(work)'].includes(r.name)))return s;s=s.routes[s.index??0]?.state;}};
+const state=p=>p.evaluate(()=>window.itomaNavigationState);
+const calls=p=>p.evaluate(()=>window.itomaNavigationQA.calls);
+const tab=async(p,name)=>{await p.getByRole('tab',{name,exact:true}).click();await p.getByRole('tab',{name,exact:true,selected:true}).waitFor();};
+const ready=async(p,path='/')=>{await p.goto('http://127.0.0.1:8774'+path,{waitUntil:'domcontentloaded',timeout:120000});await p.waitForFunction(()=>window.itomaNavigationQA?.ready&&window.itomaNavigationQA?.dialogReady&&window.itomaNavigationState);await p.waitForTimeout(450);if(path==='/')await heading(p,'いとま').waitFor();};
+const scroll=async(p,end=false)=>p.evaluate(end=>{const el=[...document.querySelectorAll('[data-testid="flow-scroll"]')].filter(x=>x.clientHeight>0&&!x.closest('[aria-hidden="true"]')).at(-1);if(!el)throw Error('missing visible scroll');if(end)el.scrollTop=el.scrollHeight;return el.scrollTop;},end);
+const chain=async(p,group)=>{const a=app(await state(p));const t=a.routes.find(r=>r.name==='(main)').state;return t.routes.find(r=>r.name===`(${group})`)?.state?.routes.map(r=>r.name)};
+(async()=>{const b=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});const p=await b.newPage({viewport:{width:390,height:844},colorScheme:'light',reducedMotion:'reduce'});const errors=[];p.on('pageerror',e=>{errors.push(e.message);console.log('PAGEERROR',e.message)});p.on('console',m=>{if(m.type()==='error')console.log('CONSOLEERROR',m.text())});try{
+ await ready(p);await tab(p,'設定');await button(p,'スケジュール').click();await button(p,'時間帯 1').click();await heading(p,'時間帯 1').waitFor();
+ await p.screenshot({path:`${out}/settings-detail.png`});const initialKeys=JSON.stringify(app(await state(p)).routes[0].state.routes.find(r=>r.name==='(settings)').state.routes.map(r=>r.key));
+ await tab(p,'ホーム');await heading(p,'いとま').waitFor();await tab(p,'設定');await heading(p,'時間帯 1').waitFor();
+ if(JSON.stringify(app(await state(p)).routes[0].state.routes.find(r=>r.name==='(settings)').state.routes.map(r=>r.key))!==initialKeys)throw Error('tab return replaced detail stack');
+ await tab(p,'設定');await heading(p,'時間帯 1').waitFor();
+ await button(p,'対象アプリと時間を編集').click();await button(p,'閉じる').click();await heading(p,'時間帯 1').waitFor();await p.evaluate(()=>window.itomaNavigate('/unlock'));await heading(p,'必要な分だけ、一時解除').waitFor();await button(p,'閉じる').click();await heading(p,'いとま').waitFor();await tab(p,'設定');await heading(p,'時間帯 1').waitFor();
+ await button(p,'対象アプリと時間を編集').click();await p.getByRole('checkbox',{name:'土曜日',exact:true}).click();await button(p,'内容を確認する').click();
+ if(await p.getByRole('tab').count())throw Error('modal exposed tabs');
+ await p.screenshot({path:`${out}/rule-review.png`});await button(p,'編集へ戻る').click();await heading(p,'時間のルールを編集').waitFor();if(!(await p.getByRole('checkbox',{name:'土曜日',exact:true}).innerText()).includes('✓'))throw Error('Saturday selection lost');
+ await button(p,'閉じる').click();await p.getByRole('alert').waitFor();await p.screenshot({path:`${out}/discard-confirmation.png`});await button(p,'入力を続ける').click();
+ await p.evaluate(()=>window.itomaNavigationQA.failCancel=true);await button(p,'閉じる').click();await button(p,'破棄して閉じる').click();await heading(p,'時間のルールを編集').waitFor();if(!p.url().endsWith('/rule'))throw Error('failed discard closed');
+ await p.evaluate(()=>window.itomaNavigationQA.failCancel=false);await p.evaluate(()=>window.itomaNavigate('/settings'));await p.getByRole('alert').waitFor();await button(p,'入力を続ける').click();if(!p.url().endsWith('/rule'))throw Error('external exit bypassed guard');
+ await button(p,'内容を確認する').click();await button(p,'この内容で保存する').click();await heading(p,'時間帯 1').waitFor();if(!p.url().includes('/settings-schedule?'))throw Error('edit saved to wrong origin');
+ const result={settingsDetailOneTab:true,settingsStackKeysRetained:true,warmLinkClearsPreviousOrigin:true,modalTabsHidden:true,internalBackPreservesInput:true,closeDiscardFailureRetains:true,externalExitGuarded:true,editReturnsToDetail:true,errors};if(errors.length)throw Error(errors.join('\n'));fs.writeFileSync(`${out}/return-context.json`,JSON.stringify(result,null,2));console.log(JSON.stringify(result));
+ }catch(e){console.log('URL',p.url(),'BODY',(await p.locator('body').innerText()).slice(-2200));await p.screenshot({path:`${out}/functional-error.png`});throw e;}finally{await b.close()}})().catch(e=>{console.error(e);process.exitCode=1});

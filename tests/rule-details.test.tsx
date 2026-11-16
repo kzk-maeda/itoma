@@ -8,7 +8,7 @@ import { unavailableSnapshot, type ScreenTimeAction, type ScreenTimeRequest, typ
 
 let mockGuard: ((event: { repeat: () => void }) => void) | undefined;
 const mockBack = jest.fn();
-jest.mock('expo-router', () => ({ router: { back: jest.fn(() => mockGuard ? mockGuard({ repeat: mockBack }) : mockBack()), canGoBack: () => true },
+jest.mock('expo-router', () => ({ router: { dismissTo: jest.fn(() => mockGuard ? mockGuard({ repeat: mockBack }) : mockBack()), back: jest.fn(() => mockGuard ? mockGuard({ repeat: mockBack }) : mockBack()), canGoBack: () => true },
   useFocusEffect: (callback: () => void) => require('react').useEffect(callback, [callback]),
   usePreventRemove: (dirty: boolean, callback: typeof mockGuard) => { require('react').useEffect(() => { mockGuard = dirty ? callback : undefined; return () => { mockGuard = undefined; }; }, [dirty, callback]); },
 }));

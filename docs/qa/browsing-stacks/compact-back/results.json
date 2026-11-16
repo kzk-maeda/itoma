@@ -1,0 +1,150 @@
+{
+  "runtime": "Linux Chromium, production Router/screens/providers with synthetic native ports",
+  "physicalGestureVerified": false,
+  "results": [
+    {
+      "width": 320,
+      "colorScheme": "light",
+      "simulatedTextScale": 2,
+      "backTarget": {
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "borderWidth": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "glyph": "‹",
+        "fontSize": "30px"
+      },
+      "settingsRootBackCount": 0,
+      "cleanBackWithoutPrompt": true,
+      "internalBackPreservesInput": true,
+      "headerBackGuarded": true,
+      "routerPopGuarded": true,
+      "discardReturnsToOrigin": true,
+      "navigationPolicyGrantWrites": 0,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 375,
+      "colorScheme": "light",
+      "simulatedTextScale": 1,
+      "backTarget": {
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "borderWidth": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "glyph": "‹",
+        "fontSize": "30px"
+      },
+      "settingsRootBackCount": 0,
+      "cleanBackWithoutPrompt": true,
+      "internalBackPreservesInput": true,
+      "headerBackGuarded": true,
+      "routerPopGuarded": true,
+      "discardReturnsToOrigin": true,
+      "navigationPolicyGrantWrites": 0,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "colorScheme": "light",
+      "simulatedTextScale": 1,
+      "backTarget": {
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "borderWidth": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "glyph": "‹",
+        "fontSize": "30px"
+      },
+      "settingsRootBackCount": 0,
+      "cleanBackWithoutPrompt": true,
+      "internalBackPreservesInput": true,
+      "headerBackGuarded": true,
+      "routerPopGuarded": true,
+      "discardReturnsToOrigin": true,
+      "navigationPolicyGrantWrites": 0,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "colorScheme": "dark",
+      "simulatedTextScale": 2,
+      "backTarget": {
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "borderWidth": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "glyph": "‹",
+        "fontSize": "30px"
+      },
+      "settingsRootBackCount": 0,
+      "cleanBackWithoutPrompt": true,
+      "internalBackPreservesInput": true,
+      "headerBackGuarded": true,
+      "routerPopGuarded": true,
+      "discardReturnsToOrigin": true,
+      "navigationPolicyGrantWrites": 0,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 375,
+      "colorScheme": "dark",
+      "simulatedTextScale": 1,
+      "backTarget": {
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "borderWidth": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "glyph": "‹",
+        "fontSize": "30px"
+      },
+      "settingsRootBackCount": 0,
+      "cleanBackWithoutPrompt": true,
+      "internalBackPreservesInput": true,
+      "headerBackGuarded": true,
+      "routerPopGuarded": true,
+      "discardReturnsToOrigin": true,
+      "navigationPolicyGrantWrites": 0,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "colorScheme": "dark",
+      "simulatedTextScale": 1,
+      "backTarget": {
+        "width": 44,
+        "height": 44
+      },
+      "style": {
+        "borderWidth": "0px",
+        "background": "rgba(0, 0, 0, 0)",
+        "glyph": "‹",
+        "fontSize": "30px"
+      },
+      "settingsRootBackCount": 0,
+      "cleanBackWithoutPrompt": true,
+      "internalBackPreservesInput": true,
+      "headerBackGuarded": true,
+      "routerPopGuarded": true,
+      "discardReturnsToOrigin": true,
+      "navigationPolicyGrantWrites": 0,
+      "overflow": false,
+      "errors": []
+    }
+  ]
+}

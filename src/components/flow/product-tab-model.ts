@@ -1,7 +1,7 @@
 export const productTabs = [
-  { key: 'home', route: 'index', label: 'ホーム', href: '/' },
-  { key: 'reflection', route: 'reflection', label: '振り返り', href: '/reflection' },
-  { key: 'settings', route: 'settings', label: '設定', href: '/settings' },
+  { key: 'home', route: '(home)', label: 'ホーム', href: '/' },
+  { key: 'reflection', route: '(reflection)', label: '振り返り', href: '/reflection' },
+  { key: 'settings', route: '(settings)', label: '設定', href: '/settings' },
 ] as const;
 export type ProductTab = (typeof productTabs)[number]['key'];
 export const productTabIndex = (tab: ProductTab) => productTabs.findIndex(value => value.key === tab);

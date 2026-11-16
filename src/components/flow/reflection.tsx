@@ -1,4 +1,5 @@
-import { router, useFocusEffect } from 'expo-router';
+import { useAppNavigation } from '@/state/navigation';
+import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { useHistoryRecords } from '@/state/history';
 import { useReflection } from '@/state/reflection';
@@ -8,6 +9,7 @@ import { ReflectionContent } from './reflection-content';
 import { completeNativeReflectionSmoke } from '@/qa/native-smoke';
 
 export function ReflectionScreen() {
+  const navigation = useAppNavigation();
   const state = useReflection(), history = useHistoryRecords(), tabs = useProductTabs();
   const { refresh } = state;
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
@@ -20,8 +22,8 @@ export function ReflectionScreen() {
       onDay={(day, snapshot) => {
         if (!snapshot.historyRevision) return;
         history.chooseReflectionDay(day, { revision: snapshot.historyRevision, asOf: snapshot.asOf, timeZone: snapshot.timeZone });
-        router.navigate('/history');
+        navigation.open({ screen: 'history' });
       }} />
-    <LinkRow label="すべての選択の記録を見る" detail="日付で絞らず、これまでの理由と結果を確認" onPress={() => { history.choose('event', ''); router.navigate('/history'); }} />
+    <LinkRow label="すべての選択の記録を見る" detail="日付で絞らず、これまでの理由と結果を確認" onPress={() => { history.choose('event', ''); navigation.open({ screen: 'history' }); }} />
   </FlowScreen>;
 }

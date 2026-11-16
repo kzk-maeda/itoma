@@ -1,4 +1,5 @@
-import { router, usePreventRemove } from 'expo-router';
+import { useAppNavigation } from '@/state/navigation';
+import { usePreventRemove } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useOnboarding } from '@/state/onboarding';
@@ -8,7 +9,6 @@ import { currentControlSnapshot } from '@/state/control-snapshot';
 import type { OnboardingDraft, OnboardingStep, ScreenTimeSnapshot, ScreenTimeResponse } from '../../../modules/itoma-native';
 import { OpenCircle } from '../home/open-circle';
 import { Applications } from './applications';
-import { home } from './navigation';
 import { weekdayNames, endTime } from './presentation';
 import { RuleGoal } from './rule-identity';
 import { ReviewAction, ReviewSection } from './onboarding-review';
@@ -32,6 +32,7 @@ export function onboardingResult(s?: ScreenTimeSnapshot, now = Date.now()): { ti
 }
 
 export function FirstRunOnboarding() {
+  const navigation = useAppNavigation(), home = () => navigation.finish({ screen: 'index' });
   const setup = useOnboarding(), state = useScreenTime(), theme = useFlowTheme(), now = useVisibleClock();
   const draft = setup.draft, progress = setup.progress;
   const [reviewed, setReviewed] = useState(false), [resultSnapshot, setResultSnapshot] = useState<ScreenTimeSnapshot>();
@@ -177,7 +178,7 @@ export function FirstRunOnboarding() {
     {draft.step === 'review' ? <ReviewAction label="内容を残して、ホームへ" disabled={disabled} onPress={() => { void leave(); }} />
       : <Button label="内容を残して、ホームへ" secondary disabled={disabled} onPress={() => { void leave(); }} />}
     {editable && (draft.step === 'review' ? <ReviewAction label="下書きを破棄する" disabled={disabled} onPress={discard} /> : <Button label="下書きを破棄する" secondary disabled={disabled} onPress={discard} />)}
-    {!editable && <Button label="設定で現在の状態を確認する" secondary onPress={() => router.dismissTo('/settings')} />}
+    {!editable && <Button label="設定で現在の状態を確認する" secondary onPress={() => navigation.finish({ screen: 'settings-screen-time' })} />}
   </FlowScreen>;
 }
 const styles = StyleSheet.create({

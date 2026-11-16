@@ -22,7 +22,7 @@ function TabsFrame({ current }: { current: ProductTab }) {
 }
 function TabsSurface() {
   const motion = useProductTabs()!, theme = useFlowTheme();
-  return <SafeAreaView style={[styles.surface, { backgroundColor: theme.surface }]}>
+  return <SafeAreaView pointerEvents={motion.active ? 'auto' : 'none'} accessibilityElementsHidden={!motion.active} importantForAccessibility={motion.active ? 'auto' : 'no-hide-descendants'} aria-hidden={!motion.active} style={[styles.surface, { backgroundColor: theme.surface }]}>
     <View testID="product-tab-viewport" style={styles.viewport} onLayout={event => motion.setWidth(event.nativeEvent.layout.width)}>
       <TabSlot detachInactiveScreens={false} renderFn={renderTab} style={styles.viewport} />
     </View>

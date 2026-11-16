@@ -35,5 +35,5 @@ test('reduced motion/background finish immediately on the selected page, preserv
   const stopped = nextTabFrame(moving, 0.4, 0, false);
   expect(stopped.animate).toBe(false); expect(stopped.fromTab).toBe(0); expect(stopped.toTab).toBe(0);
   expect(stopped.visible).toEqual([true, false, false]); fillsViewport(stopped, 1);
-  expect(['index', 'reflection', 'settings'].map(productTabFromRoute)).toEqual(['home', 'reflection', 'settings']);
+  expect(['(home)', '(reflection)', '(settings)'].map(productTabFromRoute)).toEqual(['home', 'reflection', 'settings']);
 });

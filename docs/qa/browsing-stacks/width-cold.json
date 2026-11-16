@@ -1,0 +1,103 @@
+{
+  "runtime": "Linux Chromium synthetic Web ports",
+  "results": [
+    {
+      "width": 320,
+      "colorScheme": "light",
+      "simulatedTextScale": 2,
+      "coldParents": [
+        "settings",
+        "settings-schedules",
+        "settings-schedule"
+      ],
+      "modalTabs": 0,
+      "closeHeight": 78,
+      "backHeight": 78,
+      "longTextSaved": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 375,
+      "colorScheme": "light",
+      "simulatedTextScale": 1,
+      "coldParents": [
+        "settings",
+        "settings-schedules",
+        "settings-schedule"
+      ],
+      "modalTabs": 0,
+      "closeHeight": 52,
+      "backHeight": 52,
+      "longTextSaved": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "colorScheme": "light",
+      "simulatedTextScale": 1,
+      "coldParents": [
+        "settings",
+        "settings-schedules",
+        "settings-schedule"
+      ],
+      "modalTabs": 0,
+      "closeHeight": 52,
+      "backHeight": 52,
+      "longTextSaved": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "colorScheme": "dark",
+      "simulatedTextScale": 2,
+      "coldParents": [
+        "settings",
+        "settings-schedules",
+        "settings-schedule"
+      ],
+      "modalTabs": 0,
+      "closeHeight": 78,
+      "backHeight": 78,
+      "longTextSaved": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 375,
+      "colorScheme": "dark",
+      "simulatedTextScale": 1,
+      "coldParents": [
+        "settings",
+        "settings-schedules",
+        "settings-schedule"
+      ],
+      "modalTabs": 0,
+      "closeHeight": 52,
+      "backHeight": 52,
+      "longTextSaved": true,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "colorScheme": "dark",
+      "simulatedTextScale": 1,
+      "coldParents": [
+        "settings",
+        "settings-schedules",
+        "settings-schedule"
+      ],
+      "modalTabs": 0,
+      "closeHeight": 52,
+      "backHeight": 52,
+      "longTextSaved": true,
+      "overflow": false,
+      "errors": []
+    }
+  ],
+  "coldReasonNoAutoBody": true,
+  "missingRuleReturnsList": true
+}

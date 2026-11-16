@@ -1,12 +1,13 @@
+import { useAppNavigation } from '@/state/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useScreenTime } from '@/state/screen-time';
-import { back, home, useDraftGuard } from './navigation';
+import { useDraftGuard } from './navigation';
 import { invalidRuleIdentity, RuleIdentityFields } from './rule-identity';
 import { Body, Button, FlowScreen, Heading, Notice, Panel } from './ui';
 
 type Draft = { ruleID: string; title: string; goal: string; originalTitle: string; originalGoal: string; revision: string; policyRevision: string };
 export function RuleDetailsScreen({ ruleID }: { ruleID?: string }) {
-  const state = useScreenTime(), s = state.snapshot, rule = s?.rules.find(r => r.id === ruleID);
+  const state = useScreenTime(), navigation = useAppNavigation(), s = state.snapshot, rule = s?.rules.find(r => r.id === ruleID);
   const pendingCreation = ruleID !== undefined && state.ruleDraft?.createdRuleID === ruleID ? state.ruleDraft : undefined;
   const [draft, setDraft] = useState<Draft>();
   const [reviewRequired, setReviewRequired] = useState(!!pendingCreation), [reviewedLatest, setReviewedLatest] = useState(false);
@@ -25,19 +26,25 @@ export function RuleDetailsScreen({ ruleID }: { ruleID?: string }) {
   const dirty = !!pendingCreation || (!!draft && (draft.title !== draft.originalTitle || draft.goal !== draft.originalGoal));
   useDraftGuard(dirty && !exitAllowed, () => allowed.current, () => { allowed.current = true; setExitAllowed(true); }, () => { if (pendingCreation) state.setRuleDraft(undefined); },
     pendingCreation ? '名前と行動目標の未保存入力を破棄します。保存済みの時間のルールは残ります。' : undefined);
-  const leave = pendingCreation ? home : back;
+  const leave = () => navigation.close(ruleID ? { screen: 'settings-schedule', ruleID } : { screen: 'settings-schedules' });
   const invalid = !!draft && invalidRuleIdentity(draft.title, draft.goal);
   const save = async () => {
     if (!draft || invalid || !rule || reviewRequired || pending.current) return;
     // Save is explicit acceptance; leaving now does not cancel the native write.
     pending.current = true; allowed.current = true; setExitAllowed(true);
+    const session = state.ruleSession();
+    if (pendingCreation) state.setRuleExitAllowed(true);
     const result = await state.run('saveRuleDetails', { details: { ruleID: draft.ruleID, title: draft.title, goal: draft.goal,
       expectedRevision: draft.revision, expectedPolicyRevision: draft.policyRevision } });
     pending.current = false;
+    if (pendingCreation && state.ownsRuleSession(session)) {
+      if (result.status === 'ok' && result.snapshot?.ruleDetailsStatus === 'ready') state.setRuleDraft(undefined);
+      else state.setRuleExitAllowed(false);
+    }
     if (!mounted.current) return;
     if (result.status === 'ok' && result.snapshot?.ruleDetailsStatus === 'ready') {
       allowed.current = true; setExitAllowed(true);
-      if (pendingCreation) { state.setRuleDraft(undefined); home(); } else back();
+      navigation.finish({ screen: 'settings-schedule', ruleID: draft.ruleID });
     } else {
       allowed.current = false; setExitAllowed(false);
       if (result.code === 'changed' || result.status === 'ok') setReviewRequired(true);
@@ -68,6 +75,6 @@ export function RuleDetailsScreen({ ruleID }: { ruleID?: string }) {
       <Button label="最新の保存内容を確認する" secondary disabled={!!state.busy} onPress={() => { void reviewLatest(); }} />
       <Button label={latest ? '入力した内容で保存する' : '保存する'} disabled={!dirty || invalid || !!state.busy || !rule || reviewRequired || s?.ruleDetailsStatus !== 'ready'} onPress={() => { void save(); }} />
     </>}
-    <Button label={pendingCreation ? '名前と行動目標を保存せずホームへ' : 'キャンセル'} secondary disabled={!!state.busy} onPress={leave} />
+    <Button label={pendingCreation ? '名前と行動目標を保存せず戻る' : 'キャンセル'} secondary disabled={!!state.busy} onPress={leave} />
   </FlowScreen>;
 }

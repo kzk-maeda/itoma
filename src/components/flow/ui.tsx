@@ -5,6 +5,7 @@ import { GraphiteColors, HomeLayout } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useScreenTime } from '@/state/screen-time';
 import { useProductTabs } from '@/state/product-tabs';
+import { useWorkScope } from '@/state/work-scope';
 import type { ScreenTimeCode } from '../../../modules/itoma-native';
 import { OpenCircle } from '../home/open-circle';
 import { ProductNavigation, type ProductTab } from './product-navigation';
@@ -25,6 +26,14 @@ export function Button({ label, onPress, disabled = false, secondary = false, te
     style={({ pressed }) => [styles.button, { backgroundColor: disabled ? theme.soft : secondary ? 'transparent' : theme.accent,
       borderColor: secondary ? theme.muted : 'transparent', opacity: pressed ? 0.75 : 1 }]}>
     <Text style={[styles.buttonText, { color: disabled ? theme.muted : secondary ? theme.text : theme.onAccent }]}>{label}</Text>
+  </Pressable>;
+}
+/** Navigation stays quieter than actions; its actual target remains at least 44pt. */
+function BackButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const theme = useFlowTheme(), parent = label.replace(/^‹\s*/, '');
+  return <Pressable testID="flow-back" accessibilityRole="button" accessibilityLabel={parent === '戻る' ? '前の画面に戻る' : `${parent}に戻る`} onPress={onPress}
+    style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.6 : 1 }]}>
+    <Text accessible={false} allowFontScaling={false} style={[styles.backChevron, { color: theme.text }]}>‹</Text>
   </Pressable>;
 }
 /** Quiet secondary destinations, matching the demo's flat rows. */
@@ -75,12 +84,9 @@ function FlowRecordList<T>({ list, header, footer }: { list: FlowList<T>; header
     scrollEventThrottle={16} onScroll={event => { if (restored.current) onScrollOffset?.(event.nativeEvent.contentOffset.y); }}
     ListHeaderComponent={<View style={styles.listHeader}>{header}</View>} ListFooterComponent={<View style={styles.listFooter}>{footer}</View>} />;
 }
-export function FlowScreen<T>({ title, children, onBack, footer, tab, eyebrow, list }: { title: string; children: ReactNode; onBack?: () => void; footer?: ReactNode; tab?: ProductTab; eyebrow?: string; list?: FlowList<T> }) {
-  const theme = useFlowTheme(), state = useScreenTime(), hosted = useProductTabs();
+export function FlowScreen<T>({ title, children, onBack, backLabel = '‹ 戻る', footer, tab, eyebrow, list }: { title: string; children: ReactNode; onBack?: () => void; backLabel?: string; footer?: ReactNode; tab?: ProductTab; eyebrow?: string; list?: FlowList<T> }) {
+  const theme = useFlowTheme(), state = useScreenTime(), hosted = useProductTabs(), work = useWorkScope();
   const header = <>
-        {(!tab || onBack) && <View style={styles.top}>
-          {onBack ? <Button label="‹ 戻る" secondary onPress={onBack} /> : <View style={styles.brand}><OpenCircle color={theme.accent} /><Text style={[styles.brandName, { color: theme.text }]}>いとま</Text></View>}
-        </View>}
         <View style={{ gap: 6 }}>
           {eyebrow && <Text style={[styles.caption, { color: theme.muted }]}>{eyebrow}</Text>}
           <View style={tab === 'home' ? styles.brand : undefined}>{tab === 'home' && <OpenCircle color={theme.accent} size={28} />}<Text accessibilityRole="header" style={[styles.title, tab && styles.productTitle, tab === 'home' && styles.homeTitle, { color: theme.text }]}>{title}</Text></View>
@@ -90,6 +96,10 @@ export function FlowScreen<T>({ title, children, onBack, footer, tab, eyebrow, l
         {children}
   </>;
   return <SafeAreaView edges={hosted ? [] : undefined} style={[styles.screen, { backgroundColor: tab ? theme.surface : theme.background }]}>
+    {(onBack || work) && <View style={styles.navigation}>
+      {onBack ? <BackButton label={backLabel} onPress={onBack} /> : <View />}
+      {work && <Button label="閉じる" secondary onPress={work.close} />}
+    </View>}
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {list ? <FlowRecordList key={list.viewKey} list={list} header={header} footer={footer} />
         : <ScrollView testID="flow-scroll" style={styles.screen} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, tab && styles.productContent]}>{header}{footer}</ScrollView>}
@@ -99,6 +109,9 @@ export function FlowScreen<T>({ title, children, onBack, footer, tab, eyebrow, l
 }
 export const flowStyles = StyleSheet.create({ row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', minHeight: 44, gap: 8 }, section: { gap: 12 }, center: { alignItems: 'center', gap: 12 } });
 const styles = StyleSheet.create({
+  navigation: { width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center', paddingHorizontal: HomeLayout.gutter, paddingTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
+  backButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  backChevron: { fontSize: 30, lineHeight: 36, fontWeight: '400' },
   screen: { flex: 1 }, content: { flexGrow: 1, width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center', paddingHorizontal: HomeLayout.gutter, paddingTop: 20, paddingBottom: 40, gap: HomeLayout.sectionGap },
   listContent: { gap: 0 }, listHeader: { gap: HomeLayout.sectionGap, marginBottom: HomeLayout.sectionGap }, listFooter: { gap: HomeLayout.sectionGap },
   productContent: { gap: 20, paddingBottom: 28 }, productTitle: { fontSize: 24, lineHeight: 36 }, homeTitle: { fontSize: 22, letterSpacing: 3 }, caption: { fontSize: 13, lineHeight: 20 },
