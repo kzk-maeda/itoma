@@ -321,11 +321,27 @@ extension ControlRepository {
                         && a?.evaluation.desiredTargets == rules.desiredTargets && cutoff > clock.0
                     let excluded = acknowledged && ((snapshot.activation == .paused && a?.evaluation.desiredTargets.isEmpty == true)
                         || (snapshot.activation == .enabled && (a?.evaluation.desiredTargets.isEmpty == true || confirmedUnlock)))
+                    // A successful read can arrive after the applied rule window ended but
+                    // before reconciliation updates the application. This is a policy cutoff,
+                    // not a failed store/auth checkpoint. Close only the previous bounded span;
+                    // the builder still excludes everything after its original validUntil.
+                    var completedRuleBoundary = false
+                    if !restricted, !excluded, acknowledged, !hasUnreconciledUnlock,
+                       snapshot.activation == .enabled, let a, !a.evaluation.desiredTargets.isEmpty,
+                       a.evaluation.evaluatedAt <= a.observation.observedAt {
+                        let appliedContext = try EvaluationContext(now: a.evaluation.evaluatedAt, timeZone: a.evaluation.timeZone,
+                            authorization: AuthorizationObservation(status: .approved, observedAt: a.evaluation.evaluatedAt), activation: .enabled)
+                        let appliedRules = try RuleEvaluator.evaluate(policy: snapshot.policy, selections: snapshot.selections.map(\.selection),
+                            context: appliedContext, through: Instant(secondsSince1970: a.evaluation.evaluatedAt.secondsSince1970 + 3 * 86_400))
+                        completedRuleBoundary = appliedRules.desiredTargets == a.evaluation.desiredTargets
+                            && a.observation.observedAt < appliedRules.nextEvaluationAt
+                            && appliedRules.nextEvaluationAt <= clock.0
+                    }
                     fact.durationObservation = try RestrictionTimelineSample(at: clock.0, uptime: clock.1,
                         timeZone: TimeZone.current.identifier, state: restricted ? .restricted : excluded ? .excluded : .unknown,
-                        boundary: !force && a?.observation.error != .authorizationRequired
+                        boundary: completedRuleBoundary || (!force && a?.observation.error != .authorizationRequired
                             && (a?.observation.status == .applying || snapshot.activation == .paused
-                            || a?.evaluation.policyRevision != snapshot.policy.revision)
+                            || a?.evaluation.policyRevision != snapshot.policy.revision))
                             ? .controlledTransition : .checkpoint,
                         validUntil: restricted ? cutoff : nil)
                 }
