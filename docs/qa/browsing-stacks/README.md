@@ -1,4 +1,6 @@
-# 閲覧Stack / 作業modalの確認（#217）
+# 閲覧Stack / 作業フローの確認（#217）
+
+**追加依頼：** 戻るを小さな‹と44ptの領域へ変更し、作業先頭も標準の左端popを使えるcard presentationへ更新。[最新の画像・6条件・入力保護の確認](compact-back/README.md)。以下は各source時点の記録で、初回の枠付き戻る画像を最新UIとは扱わない。
 
 2026-11-16 UTC。Linux Chromiumの合成Web操作とsource/componentテスト。**iPhone/Simulatorを操作した記録ではない。** 画像のアプリ・理由・名前・目標・6900秒の集計は架空。Screen Timeの成功や制限時間の実測を示さない。
 
