@@ -4,7 +4,8 @@ import { timeRange } from '@/lib/schedule-time';
 
 import { screenTime, type RuleInput, type ScreenTimeAction, type ScreenTimeCode, type ScreenTimeRequest, type ScreenTimeResponse, type ScreenTimeRule, type ScreenTimeSnapshot } from '../../modules/itoma-native';
 
-export type RuleDraft = { id?: string; selectionRef: string; weekdays: number[]; start: string; end: string; nextDay: boolean; enabled: boolean; dirty: boolean; remove?: boolean };
+export type RuleDraft = { id?: string; selectionRef: string; weekdays: number[]; start: string; end: string; nextDay: boolean; enabled: boolean; dirty: boolean; remove?: boolean;
+  title?: string; goal?: string; createdRuleID?: string; creationCommitted?: boolean };
 export type UnlockDraft = { targetRef?: string; reason: string; minutes: string };
 type Client = Pick<typeof screenTime, 'run'>;
 type HistoryChangeOrigin = 'history' | 'reflection' | 'settings' | 'external';

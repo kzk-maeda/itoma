@@ -1,0 +1,74 @@
+[
+  {
+    "width": 320,
+    "colorScheme": "light",
+    "textScale": 2,
+    "reviewBackPreservesInput": true,
+    "privateRetry": false,
+    "policyCommits": 1,
+    "privateWrites": 1,
+    "savedGoal": true,
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "width": 375,
+    "colorScheme": "light",
+    "textScale": 1,
+    "reviewBackPreservesInput": true,
+    "privateRetry": false,
+    "policyCommits": 1,
+    "privateWrites": 1,
+    "savedGoal": true,
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "colorScheme": "light",
+    "textScale": 1,
+    "reviewBackPreservesInput": true,
+    "privateRetry": false,
+    "policyCommits": 1,
+    "privateWrites": 1,
+    "savedGoal": true,
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "width": 320,
+    "colorScheme": "dark",
+    "textScale": 2,
+    "reviewBackPreservesInput": true,
+    "privateRetry": true,
+    "policyCommits": 1,
+    "privateWrites": 2,
+    "savedGoal": true,
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "width": 375,
+    "colorScheme": "dark",
+    "textScale": 1,
+    "reviewBackPreservesInput": true,
+    "privateRetry": true,
+    "policyCommits": 1,
+    "privateWrites": 2,
+    "savedGoal": true,
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "colorScheme": "dark",
+    "textScale": 1,
+    "reviewBackPreservesInput": true,
+    "privateRetry": true,
+    "policyCommits": 1,
+    "privateWrites": 2,
+    "savedGoal": true,
+    "overflow": false,
+    "errors": []
+  }
+]
