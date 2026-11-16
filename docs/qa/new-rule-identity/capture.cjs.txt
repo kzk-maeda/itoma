@@ -1,0 +1,58 @@
+const { chromium } = require('/tmp/itoma-ui-tools/node_modules/playwright');
+const fs = require('node:fs');
+const out = '/tmp/itoma-rule-qa';
+const title = '夜の余白（画面確認用）', goal = '【架空の確認用】\n自分で選んだ時間を過ごす';
+const enlarge = async p => p.evaluate(() => { for(const el of document.querySelectorAll('[dir="auto"],input,textarea')) { if(el.dataset.enlarged) continue; const c = getComputedStyle(el); el.style.fontSize = `${parseFloat(c.fontSize)*2}px`; el.style.lineHeight = `${parseFloat(c.lineHeight==='normal'?c.fontSize:c.lineHeight)*2}px`; el.dataset.enlarged='1'; } });
+const top = async p => p.evaluate(() => { for(const el of document.querySelectorAll('[data-testid="flow-scroll"]')) el.scrollTop = 0; });
+(async () => {
+ const browser = await chromium.launch({ executablePath:'/usr/bin/chromium', headless:true, args:['--no-sandbox'] });
+ const results=[];
+ try {
+ for(const colorScheme of ['light','dark']) for(const width of [320,375,390]) {
+  const p = await browser.newPage({ viewport:{width,height:width===375?667:844}, colorScheme, reducedMotion:'reduce' });
+  const errors=[]; p.on('pageerror', e=>errors.push(e.message));
+  await p.goto('http://127.0.0.1:8771/settings-schedules');
+  await p.getByRole('button',{name:'ルールを追加する',exact:true}).click();
+  await p.getByLabel('ルール名（任意）',{exact:true}).last().fill(title);
+  await p.getByLabel('行動目標（任意）',{exact:true}).last().fill(goal);
+  await p.waitForTimeout(450); if(width===320) await enlarge(p); await top(p);
+  await p.screenshot({path:`${out}/editor-${colorScheme}-${width}.png`});
+  await p.getByRole('button',{name:'対象アプリを選ぶ',exact:true}).click();
+  await p.getByRole('button',{name:'内容を確認する',exact:true}).click();
+  await p.getByRole('heading',{name:'このルールで保存しますか',exact:true}).waitFor();
+  if(width===320) await enlarge(p); await p.waitForTimeout(450); await top(p);
+  if(!(await p.getByTestId('flow-scroll').last().innerText()).includes(goal)) throw Error('review omitted goal');
+  await p.screenshot({path:`${out}/review-${colorScheme}-${width}.png`});
+  await p.getByRole('button',{name:'編集へ戻る',exact:true}).click();
+  if(await p.getByLabel('ルール名（任意）',{exact:true}).last().inputValue()!==title) throw Error('lost title');
+  if(await p.getByLabel('行動目標（任意）',{exact:true}).last().inputValue()!==goal) throw Error('lost goal');
+  await p.getByRole('button',{name:'内容を確認する',exact:true}).click();
+  const failDetails = colorScheme==='dark';
+  if(failDetails) await p.evaluate(()=>window.itomaNewRuleQA.failDetails=true);
+  await p.getByRole('button',{name:'この内容で保存する',exact:true}).click();
+  if(failDetails) {
+   await p.getByRole('heading',{name:'ルール名と行動目標',exact:true}).waitFor();
+   if(await p.getByLabel('行動目標（任意）',{exact:true}).last().inputValue()!==goal) throw Error('failure lost goal');
+   if(!await p.getByRole('button',{name:'保存する',exact:true}).isDisabled()) throw Error('unreviewed overwrite');
+   await p.waitForTimeout(450); if(width===320) await enlarge(p); await top(p);
+   await p.screenshot({path:`${out}/retry-${colorScheme}-${width}.png`});
+   await p.getByRole('button',{name:'最新の保存内容を確認する',exact:true}).click();
+   await p.getByRole('button',{name:'入力した内容で保存する',exact:true}).click();
+  }
+  await p.getByRole('heading',{name:'いとま',exact:true}).waitFor(); await p.waitForTimeout(450);
+  await p.getByRole('tab',{name:'設定',exact:true}).click();
+  await p.getByRole('button',{name:'スケジュール',exact:true}).click();
+  await p.getByRole('button',{name:title,exact:true}).click();
+  await p.getByText(/自分で選んだ時間を過ごす/).last().waitFor(); await p.waitForTimeout(450); if(width===320) await enlarge(p); await top(p);
+  await p.screenshot({path:`${out}/saved-${colorScheme}-${width}.png`});
+  const actions=await p.evaluate(()=>window.itomaNewRuleQA.calls.map(x=>x.action));
+  if(actions.filter(x=>x==='commitRule').length!==1) throw Error('repeated commit');
+  if(actions.filter(x=>x==='saveRuleDetails').length!==(failDetails?2:1)) throw Error('unexpected private writes');
+  const overflow=await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
+  if(overflow||errors.length||p.url().includes(encodeURIComponent(title))||p.url().includes(encodeURIComponent(goal))) throw Error(JSON.stringify({overflow,errors}));
+  results.push({width,colorScheme,textScale:width===320?2:1,reviewBackPreservesInput:true,privateRetry:failDetails,policyCommits:1,privateWrites:failDetails?2:1,savedGoal:true,overflow,errors});
+  await p.close();
+ }
+ fs.writeFileSync(`${out}/results.json`,JSON.stringify(results,null,2)); console.log(JSON.stringify(results));
+ } finally { await browser.close(); }
+})().catch(e=>{console.error(e);process.exitCode=1});

@@ -1,0 +1,80 @@
+{
+  "base": "6fad80d6c6852bebc58a45f935a7e7b4fe89c915",
+  "productionInputs": {
+    "src/components/flow/rule.tsx": "984baac92e3a242542318bf2e77b916ea95042aeb57797d72f3d170f86f9526c",
+    "src/components/flow/rule-details.tsx": "d7d8d7285d90a829d3d81c50accb29699e8cef0fb4e6e1361d4d52e139386a71",
+    "src/components/flow/rule-identity.tsx": "465c94bb06e267b2171eb1fb6aefe27610ed1022047f6855e2cf495b5d220bb2",
+    "src/components/flow/navigation.ts": "8219a9d098d8403c61da2292c60505c41e476dbcc5b38f489d5499448d0853e2",
+    "src/components/flow/settings.tsx": "e6302e665cc144878b6249f6ff5130a3173a64d7a719b09b5e97db0b7cd0e393",
+    "src/components/flow/ui.tsx": "504b306e1a00bd1fac196b8557f33aa3311a8fab12d7fa90d362636f9c1f61a6",
+    "src/state/screen-time.tsx": "73ab98f3b485f9f7ff50828eebf8f22ff9bf6123e033041a9ea7b133ab1ae02c",
+    "modules/itoma-native/src/screen-time.ts": "240f113d9d9e1197d2c90754494d437cf83753097d812073cbb65bd6c3e88883",
+    "src/app/_layout.tsx": "3f15bca7641b6323b78edd370e5e49b808ecc830425ed3e4abe648390ba92661",
+    "app.json": "e1465b754da04a3bd98fe2c6623c399c2c64fa612ed007ad00e0246f6f701c20",
+    "package-lock.json": "434cd2d86116e1f435cc05a3a448f0027e0f321d3b793a0c3017ce8f67d3e745"
+  },
+  "syntheticWebImageSHA256": {
+    "editor-dark-320.png": "14dff5cdad7f356866b078f3865589c11588a1bc27676a536823e4fff283628b",
+    "editor-dark-375.png": "d4a672eade0b4b233d637ce590ee42ac6893e0c112cb3c50ac8bed264153bc0d",
+    "editor-dark-390.png": "660da5f994911b167258056d18efe729d692d3275af9c32c9acdc622ffce502b",
+    "editor-light-320.png": "fecf4f8d433c157ce640d571782282fc48f03d01f6d348f7eb87aacd30be2b06",
+    "editor-light-375.png": "80497591a32428b9bb13659277c26ccd57a0de20cefa72204d88bf514b9bdb01",
+    "editor-light-390.png": "c6bbb1bbf127ab01fca88215635726afed9d29c8e4b80a80b99f2765779ebbe4",
+    "retry-dark-320.png": "faa97b96eff758d7f7736cb7d4a9197e231ff376de9ab0176bbb25b65cacce41",
+    "retry-dark-375.png": "2ce9570461f0c3a0bd13eb1ed06309f13df6dac029c268817617ebb799b9e7d2",
+    "retry-dark-390.png": "4e8346b76808b179c63f5d56686fc55ebced5f818bd8c499e103564d66712f1e",
+    "review-dark-320.png": "e7e2a4a030bcce16234063b153c87466b55f41840f82fc78df38518fe77526d0",
+    "review-dark-375.png": "9e36bfc22cb7d0781f6c4c9b0fc02cbdd8f97fd391efb4196d038d290313f7fa",
+    "review-dark-390.png": "b432fac9a9dd6deec819451d22740592868cd6e0a98321b932215a18010d9232",
+    "review-light-320.png": "1dd7721c86ea00690612c0aa51fe9e7b02ca409ea9b9cdfbcfbfa96c967c2f9b",
+    "review-light-375.png": "ec3f586eb20fd6ecf06acc687e8d0ad28913777a79a4bc7db605b14acb52d9fa",
+    "review-light-390.png": "3cb5c38c94752e83d3a21dcb9dbd4f355174d1b97d316fb04caa3944ae5e540a",
+    "saved-dark-320.png": "76e2554665d8377fc7b1ccb807943977674d96267efc664979c84e2707e96dd0",
+    "saved-dark-375.png": "d7f801db88f4d0ada997898cc54c2699113f081bf6d48526109e9b9d49f29c16",
+    "saved-dark-390.png": "af62271f283f956ef3604157ebca7a7b2f24786a06beaa99cc679d21b421d6a0",
+    "saved-light-320.png": "70750eec83fb1c96e59b32a3c868c67a3064c6b23174bf11bd0970e5268e9f43",
+    "saved-light-375.png": "cccf3c21d89137206412db8fea7ecee34be9e5ca27e2b2ee78b53a771d140554",
+    "saved-light-390.png": "7c58d10223464f2386607d47b62771d638ae4fdc869c0fc8a73c58cb41cd6194"
+  },
+  "productionBundleSHA256": {
+    "ios": {
+      "_expo/static/js/ios/entry-53dd70b78751dce9219ef44591f5110b.hbc": "1db38244e3060acb0ba94ea64d4f0cab862798002c4209a5b4dfe988aabdebca"
+    },
+    "web": {
+      "client/_expo/static/js/web/rule-details-03f3cb0595004204cf8f9e4efdb4afc0.js": "c05c517fb813992aa2fa15054fcdc4a4434b4e11c60f3a8899340b639754e7b3",
+      "client/_expo/static/js/web/settings-schedule-f0290b8e18f1c70065f8119022349fc6.js": "aae5f6ee3c14b9a3da83ab3f671a1c2a699debed5f324b493e01ca2dd22590d9",
+      "client/_expo/static/js/web/unlock-4b7a37f1eef700c6d5146026f7d212a6.js": "cc2153c9b945862ebfa2b906bc44f60b1d9d08b7f391132b2c49c3189fb6ffa0",
+      "client/_expo/static/js/web/settings-schedules-b56ada337344ebd00d81aabcedc1be45.js": "a14efe52d5007de0bb450da932175ee061cd803a02744cf721c70d7d0cef3c07",
+      "client/_expo/static/js/web/grant-af5b2c792d49ab7707b2068208e38078.js": "e810838fa311104b288943c9f68a12969ad5a972266bd078f3029cfa784d6931",
+      "client/_expo/static/js/web/settings-screen-time-d33487a992b7bbfc50440c54a6760a89.js": "fdf815fe5abab41a08c9b90dfda200c44e95cdf33e9e422f50a3ab2c7fa0c9d2",
+      "client/_expo/static/js/web/_layout-984df49cb310b1c6cfb51b253c8954ae.js": "7dd615ac7214720174c1f3547f434edd5a7cf0365e4605acbd07864fe03f2ca1",
+      "client/_expo/static/js/web/native-poc-44332d2c3c86b2c986fc4947a9d10717.js": "60807b3e0ad9432da510dcc5854bb6324ec06be8ac49adaef0c2b29388d68267",
+      "client/_expo/static/js/web/settings-about-3715b9dd3b5b95a6dbacde73880b39b9.js": "4bc8b2954f6dca7c7828372300d8c69a16089a0910b41c7f060a5fcc393c35a0",
+      "client/_expo/static/js/web/rule-ca460289b2b624fc6fc1313fa5b45aea.js": "6e182d6593b017518a2544048c0a36667c0640f28e5353d2f62df58f8fbbcb0a",
+      "client/_expo/static/js/web/entry-d24b98980bf65c7e9873bd30adf131ff.js": "9617a502880c1470bd7f2365a2b5a434ad9fb5fe7971c68f2c8d153b69569546",
+      "client/_expo/static/js/web/settings-delete-b56bbf76d314523282e8a5549efa7c16.js": "ad9dda17452c30257983f05c5aaab833c0661a2808af54d9d000bfc95d0c22ed",
+      "client/_expo/static/js/web/reflection-e76b01ccbab835d7a194d50bf4a97e79.js": "f11a0a7f225c598b9386116d1b1f10bdaa106e0a4e5bb78db6abeffc89f68103",
+      "client/_expo/static/js/web/rule-confirm-88ed8461cc10aee98e96ba90eed0235c.js": "a957687f8ff75a4498565a37ed1bf942233fd16b231715f55c3cb95ae680be36",
+      "client/_expo/static/js/web/settings-records-5f69e40bf1ac7d08b47bcf6b00010312.js": "e0cb5f8bc115240726c7e882b2d20e9d86e1f7f0d9ea622e7a41ae99ace5f215",
+      "client/_expo/static/js/web/settings-storage-a5708ac8ed441f892a2ea521579f28c2.js": "47f2c39da87ad45462f3c25798e853fa2281beb096c4f9c10ae6b81cf70ddf5d",
+      "client/_expo/static/js/web/index-7a55eea507ce768f27ecc76c01756b6e.js": "51ccc7792eb2ba0ac8466cd18a7349da48d2d35ec4c6bd25fa6dd89992dc80bb",
+      "client/_expo/static/js/web/unlock-confirm-16340fdea07be0bfc322777ab9794c4f.js": "ddd636c2e1044546756ecd63c935e122c893f74e6f222746c313065033b397e6",
+      "client/_expo/static/js/web/explore-0f4a00d95a25bf00a82b8ea94bc4421c.js": "87de54fa9a3d8b208a1ff0d338267cdb262d0afae4d6ee04bd09c13f227e1aad",
+      "client/_expo/static/js/web/_layout-ce8c7beb7129394290970f07285ef718.js": "5eb4323814e7b173bd1df990956fc45246f02b788ff8c10cfd3f40b398af5eb0",
+      "client/_expo/static/js/web/history-f1f463fd71ef26d84052ee9b32f3161f.js": "a5b4c4ba28c5ae373f36080e1d252504c1f07789bc6f1ce833b6c88d3aed17b3",
+      "client/_expo/static/js/web/__expo-metro-runtime-ed4c1cfa6193d76fc294130e42bd1916.js": "05f8ad2270b1fcf20739f7f5bb9d66f1d158ac32923ceae243df78864e47b745",
+      "client/_expo/static/js/web/__common-e3cda53458663a539a7ba5a2dea6e5ab.js": "6827c550ddfd0dece90b82629d5563b3ade49cf7794954bd7f439d6ea33734a4",
+      "client/_expo/static/js/web/history-reason-f2b427fc20129b9cd13d94482d8ccd8e.js": "ec349a384179fd657082b13afa936a7e2f720be95dbac07ae949f64ac32bb799",
+      "client/_expo/static/js/web/settings-5a0cb25980e83d86884b49767a234b59.js": "7695f9b139fa71ff16caf1d939468735f43077fe1f526bf06c5a4e772d6edadf",
+      "client/_expo/static/js/web/onboarding-5813c4acca37b8adee845b7e54fb0b34.js": "249f2a93fcb13ac28a23e475fd3e62ee4b70ad316a9f33cd17009e85a6e30f44",
+      "server/_expo/server/render.js": "20ff1648dbe149f2a69b097130508d3f70697b07f25f81e782cff440590675bc"
+    }
+  },
+  "temporaryQAAbsent": true,
+  "originalLayoutAndConfigRestored": true,
+  "jest": {
+    "suites": 26,
+    "tests": 246
+  },
+  "browserCases": 6
+}
