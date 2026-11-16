@@ -384,7 +384,7 @@ test('schedule detail separates checking from failure and offers a retry that ca
   expect(screen.queryByText('名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。')).toBeNull();
   await act(async () => { finish({ status: 'ok', impacts: [], snapshot: b.current() }); });
   expect(screen.queryByText('ルール名と行動目標を確認しています。')).toBeNull();
-  expect(screen.getByRole('button', { name: '時間帯 1の名前と行動目標を編集' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: '名前と行動目標を編集' })).toBeEnabled();
 });
 
 test('normal rule creation after initial setup → explicit permission → native selection → review → saved schedule detail, without PoC navigation', async () => {
@@ -413,7 +413,7 @@ test('native no-change ends review in the editor and preserves the visible fixed
   b.replace({ targets: b.current().targets.map((target) => target.ref === appA
     ? { ...target, restricted: false, unlockable: false, grantStatus: 'active', grantEndsAt: expiry, grantCommandID: commandID } : target) });
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await press('内容を確認する');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await press('内容を確認する');
   expect(screen.getByText('変更はありません')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'この内容で保存する' })).toBeNull();
   expect(mockHistory).not.toContain('/rule-confirm');
@@ -427,7 +427,7 @@ test('native no-change ends review in the editor and preserves the visible fixed
 test('change then revert retains the owned preview ref across editor remount while clearing stale confirmation', async () => {
   const b = backend(true, false, true);
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('編集へ戻る');
   await selectTime('開始時刻', '21:00');
   // The prior accepted reference survives, but editing invalidates the old confirmation.
@@ -448,7 +448,7 @@ test('a rejected native preview keeps the edited draft and cannot show no-change
   b.client.run.mockImplementation(async (action, request) => action === 'previewRule'
     ? { status: 'error', code: 'changed', impacts: [], snapshot: b.current() } : original(action, request));
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00'); await press('内容を確認する');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00'); await press('内容を確認する');
   expect(screen.getByRole('button', { name: '開始時刻' }).props.accessibilityValue.text).toBe('20:00');
   expect(screen.queryByText('変更はありません')).toBeNull();
   expect(screen.queryByRole('button', { name: 'この内容で保存する' })).toBeNull();
@@ -458,7 +458,7 @@ test('a rejected native preview keeps the edited draft and cannot show no-change
 test('settings explicitly discards only the preview owned by the retained rule editor', async () => {
   const b = backend(), alert = jest.spyOn(Alert, 'alert');
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('保存したルールを確認する'); await press('ルールを追加する');
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
   expect(b.client.run).toHaveBeenCalledWith('cancelCandidate', { ref: previewID });
@@ -477,7 +477,7 @@ test.each(['editor', 'deletion', 'settings'] as const)('failed preview cancellat
     await openRule('時間帯 1を削除する内容を確認');
     await press('削除せず戻る');
   } else {
-    await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+    await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
     await press('内容を確認する');
     if (route === 'settings') {
       await press('保存したルールを確認する'); await press('ルールを追加する');
@@ -510,7 +510,7 @@ test.each([false, true])('a saved policy with an OS failure drops its old previe
     return action === 'commitRule' ? { ...response, status: 'error', code: 'application-uncertain', ref: previewID } : response;
   });
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('この内容で保存する');
   expect(b.current().revision).toBe('1');
   await press('最新の変更内容を確認し直す'); await press('内容を確認する');
@@ -536,7 +536,7 @@ test('settings can discard a stale ref after save completed but its response sna
     return response;
   });
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('この内容で保存する');
   expect(b.current().revision).toBe('1');
   await press('保存したルールを確認する'); await press('ルールを追加する');
@@ -556,7 +556,7 @@ test('post-accept assessment failure retains its new owned ref without allowing 
     return original(action, request);
   });
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('編集へ戻る'); await selectTime('開始時刻', '19:00');
   await press('内容を確認する');
   expect(screen.queryByRole('button', { name: 'この内容で保存する' })).toBeNull();
@@ -590,7 +590,7 @@ test('rule controls cannot change a draft while its native no-change preview is 
   b.client.run.mockImplementation(async (action, request) => action === 'previewRule'
     ? new Promise<ScreenTimeResponse>(resolve => { resolvePreview = resolve; }) : original(action, request));
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await press('内容を確認する');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await press('内容を確認する');
   expect(screen.getByRole('switch', { name: 'このルールを有効にする' })).toBeDisabled();
   for (const day of ['月', '火', '水', '木', '金', '土', '日']) expect(screen.getByRole('checkbox', { name: `${day}曜日` })).toBeDisabled();
   expect(screen.getByRole('button', { name: '開始時刻' })).toBeDisabled();
@@ -673,10 +673,10 @@ test('continuing restrictions from input and confirmation preserves text until e
   expect(screen.getByLabelText('いま使う理由')).toHaveDisplayValue('');
 });
 
-test.each(['ルールを追加する', '時間帯 1を編集', '時間帯 1を削除する内容を確認'])('settings cannot overwrite a retained dirty rule draft via %s', async (action) => {
+test.each(['ルールを追加する', '対象アプリと時間を編集', '時間帯 1を削除する内容を確認'])('settings cannot overwrite a retained dirty rule draft via %s', async (action) => {
   const b = backend(), alert = jest.spyOn(Alert, 'alert');
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集');
+  await openSettings(); await openRule('対象アプリと時間を編集');
   await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('保存したルールを確認する');
   const before = b.client.run.mock.calls.length;
@@ -705,7 +705,7 @@ test('home keeps its primary flow and settings expose explicit reconciliation in
   for (const name of ['ルールと設定', '選択の記録を見る', '現在の状態を確認する']) expect(screen.queryByRole('button', { name })).toBeNull();
   await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
   for (const name of ['スケジュール', 'スクリーンタイム', '記録とプライバシー', '使い方とこのアプリ']) expect(screen.getByRole('button', { name: name === '‹ 戻る' ? /^‹ / : name })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: '時間帯 1を編集' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '対象アプリと時間を編集' })).toBeNull();
   expect(b.client.run.mock.calls.some(([action]) => action === 'reconcile')).toBe(false);
   await press('スクリーンタイム');
   expect(screen.getByText('取得時点でITOMAの設定を反映した記録があります。')).toBeTruthy();
@@ -723,13 +723,13 @@ test('eight saved schedules keep settings top compact and expose one detail befo
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
   await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
   expect(screen.getByText(/8件 ·/)).toBeTruthy();
-  expect(screen.queryByRole('button', { name: '架空の時間 1を編集' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '対象アプリと時間を編集' })).toBeNull();
   await press('スケジュール');
   for (let i = 1; i <= 8; i++) expect(screen.getByRole('button', { name: `架空の時間 ${i}` })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: '架空の時間 1を編集' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '対象アプリと時間を編集' })).toBeNull();
   await press('架空の時間 1');
-  expect(screen.getByRole('button', { name: '架空の時間 1を編集' })).toBeTruthy();
-  expect(screen.getByRole('button', { name: '架空の時間 1の名前と行動目標を編集' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '対象アプリと時間を編集' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '名前と行動目標を編集' })).toBeTruthy();
   expect(screen.getByRole('button', { name: '架空の時間 1を削除する内容を確認' })).toBeTruthy();
 });
 
@@ -754,7 +754,7 @@ test('a late accepted rule result cannot redirect a closed flow or overwrite a l
     return original(action, request);
   });
   await render(<ScreenTimeProvider client={b.client}><Capture /><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('この内容で保存する');
   await act(async () => { mockGo('/', true); state.beginRule(); });
   await act(async () => state.setRuleDraft({ ...state.ruleDraft!, title: '後から始めた架空の入力', dirty: true }));

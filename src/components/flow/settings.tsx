@@ -91,8 +91,8 @@ export function ScheduleDetailScreen() {
       {s.authorization === 'approved' && <Applications selectionRef={rule.selectionRef} count={s.selections.find(selection => selection.ref === rule.selectionRef)?.count ?? 1} refreshKey={state.refreshKey} />}
       <Panel><Heading>この時間の設定</Heading>
         <Body muted>名前と行動目標の保存は、曜日・時間・対象の変更とは別です。</Body>
-        <Button label={`${ruleTitle(rule, index)}の名前と行動目標を編集`} secondary disabled={!!state.busy || s.ruleDetailsStatus !== 'ready'} onPress={() => navigation.start({ screen: 'rule-details', ruleID: rule.id }, { screen: 'settings-schedule', ruleID: rule.id })} />
-        <Button label={`${ruleTitle(rule, index)}を編集`} secondary disabled={!!state.busy} onPress={() => edit(rule)} />
+        <LinkRow label="名前と行動目標を編集" disabled={!!state.busy || s.ruleDetailsStatus !== 'ready'} onPress={() => navigation.start({ screen: 'rule-details', ruleID: rule.id }, { screen: 'settings-schedule', ruleID: rule.id })} />
+        <LinkRow label="対象アプリと時間を編集" detail="曜日・有効／無効も変更できます" disabled={!!state.busy} onPress={() => edit(rule)} />
       </Panel>
       {state.ruleDetailsState !== 'ready' && <Body muted>{state.ruleDetailsState === 'checking' ? 'ルール名と行動目標を確認しています。' : state.ruleDetailsState === 'unavailable' ? '名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。' : '名前と行動目標の編集にはアプリの更新が必要です。'}</Body>}
       {state.ruleDetailsState === 'unavailable' && <Button label="保存した名前と行動目標を読み直す" secondary disabled={!device || !!state.busy} onPress={() => { void state.refresh(); }} />}

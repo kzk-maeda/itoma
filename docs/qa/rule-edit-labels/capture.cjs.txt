@@ -1,0 +1,63 @@
+// Run from the repository with Playwright and Chromium available.
+const { chromium } = require('playwright');
+const { writeFileSync } = require('node:fs');
+const { createHash } = require('node:crypto');
+const { readFileSync } = require('node:fs');
+const output = process.cwd() + '/docs/qa/rule-edit-labels';
+const route = 'http://127.0.0.1:8831/settings-schedule?ruleID=dddddddd-dddd-dddd-dddd-dddddddddddd';
+const labels = ['名前と行動目標を編集', '対象アプリと時間を編集'];
+(async () => {
+  const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', args: ['--no-sandbox'] });
+  const results = { browser: await browser.version(), fixture: 'synthetic native snapshots', physicalDevice: false, cases: [] };
+  try {
+    for (const [name, width, colorScheme, scale] of [
+      ['long-name-light', 390, 'light', 1], ['actions-narrow', 320, 'light', 1],
+      ['actions-dark', 390, 'dark', 1], ['actions-large-text', 320, 'light', 2],
+      ['actions-wide', 768, 'light', 1],
+    ]) {
+      const context = await browser.newContext({ viewport: { width, height: 844 }, colorScheme, reducedMotion: 'reduce' });
+      const page = await context.newPage(), errors = [];
+      page.on('pageerror', error => errors.push(error.message));
+      await page.goto(route, { waitUntil: 'domcontentloaded' });
+      await page.getByRole('button', { name: labels[0], exact: true }).waitFor();
+      if (scale > 1) await page.evaluate(scale => {
+        const nodes = [...document.querySelectorAll('[dir="auto"]')].map(el => [el, parseFloat(getComputedStyle(el).fontSize), parseFloat(getComputedStyle(el).lineHeight)]);
+        for (const [el, size, line] of nodes) { el.style.fontSize = `${size * scale}px`; if (Number.isFinite(line)) el.style.lineHeight = `${line * scale}px`; }
+      }, scale);
+      if (name !== 'long-name-light') await page.getByRole('heading', { name: 'この時間の設定', exact: true }).evaluate(el => {
+        const scroller = el.closest('[data-testid="flow-scroll"]');
+        scroller.scrollTop += el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 20;
+      });
+      await page.screenshot({ path: `${output}/${name}.png` });
+      const actions = [];
+      for (const label of labels) {
+        const button = page.getByRole('button', { name: label, exact: true });
+        if (await button.count() !== 1 || !await button.isEnabled()) throw new Error('Missing or disabled action: ' + label);
+        await button.scrollIntoViewIfNeeded();
+        const box = await button.boundingBox();
+        if (box.width < 44 || box.height < 44 || box.x < 0 || box.x + box.width > width + 1) throw new Error('Action bounds: ' + JSON.stringify(box));
+        actions.push({ label, width: box.width, height: box.height });
+      }
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+      if (overflow || errors.length) throw new Error(JSON.stringify({ overflow, errors }));
+      results.cases.push({ name, width, colorScheme, artificialTextScale: scale, horizontalOverflow: overflow, actions, errors,
+        sha256: createHash('sha256').update(readFileSync(`${output}/${name}.png`)).digest('hex') });
+      if (name === 'long-name-light') {
+        await page.getByRole('button', { name: labels[0], exact: true }).click();
+        await page.waitForURL(/\/rule-details\?/);
+        results.nameGoalRoute = new URL(page.url()).pathname;
+        await page.goBack();
+        await page.getByRole('button', { name: labels[1], exact: true }).click();
+        await page.waitForURL(/\/rule(?:\?|$)/);
+        results.appTimeRoute = new URL(page.url()).pathname;
+        await page.goto(route + '&privateState=unavailable', { waitUntil: 'domcontentloaded' });
+        await page.getByText('名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。', { exact: true }).waitFor();
+        if (!await page.getByRole('button', { name: labels[0], exact: true }).isDisabled() || !await page.getByRole('button', { name: labels[1], exact: true }).isEnabled()) throw new Error('Private state guards changed');
+        results.privateUnavailableGuard = 'name/goal disabled; app/time enabled';
+      }
+      await context.close();
+    }
+    writeFileSync(`${output}/verification.json`, JSON.stringify(results, null, 2) + '\n');
+    console.log(JSON.stringify(results));
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

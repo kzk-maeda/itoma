@@ -1,0 +1,25 @@
+// Temporary screenshot harness with fictional data. Not shipped with the app.
+import { type ReactNode, useMemo } from 'react';
+import { Text, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { ScreenTimeProvider } from '@/state/screen-time';
+import { OnboardingProvider } from '@/state/onboarding';
+import { unavailableSnapshot, type ScreenTimeSnapshot, type ScreenTimeResponse } from '../../modules/itoma-native/src/screen-time';
+const ruleID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+export function RuleLabelProof({ children }: { children: ReactNode }) {
+  const { privateState } = useLocalSearchParams<{privateState?: string}>();
+  const client = useMemo(() => ({ run: async (): Promise<ScreenTimeResponse> => {
+    const now = Date.now() / 1000;
+    const snapshot: ScreenTimeSnapshot = { ...unavailableSnapshot('device'), storage: 'ready', sequence: '1', revision: '1',
+      activation: 'enabled', authorization: 'approved', schedulesReady: true, observation: 'applied', evaluatedAt: now, validUntil: now + 1800,
+      ruleDetailsStatus: privateState === 'unavailable' ? 'unavailable' : 'ready', ruleDetailsRevision: '1',
+      rules: [{ id: ruleID, selectionRef: ruleID, title: '夜の時間に読みかけの本を読んで心と体をゆっくり休めるための長い名前のルール'.repeat(3).slice(0, 80),
+        goal: '読みかけの本を読み、ゆっくり過ごす。', weekdays: [1, 2, 3, 4, 5], startMinute: 1260, endMinute: 1380, nextDay: false, enabled: true }],
+      selections: [{ ref: ruleID, count: 2 }], targets: [], periods: [{ ruleID, startsAt: now - 1800, endsAt: now + 5400 }] };
+    return { status: 'ok', impacts: [], snapshot };
+  } }), [privateState]);
+  const onboarding = useMemo(() => ({ run: async () => ({ status: 'ok' as const, impacts: [], onboarding: { revision: '1', seenIntro: true, completed: true, selectionReady: false, canEdit: true } }) }), []);
+  return <View style={{flex: 1}}><Text style={{fontSize: 11, lineHeight: 18}}>画面QA・架空データ・OS操作なし</Text>
+    <ScreenTimeProvider client={client}><OnboardingProvider client={onboarding}>{children}</OnboardingProvider></ScreenTimeProvider>
+  </View>;
+}
