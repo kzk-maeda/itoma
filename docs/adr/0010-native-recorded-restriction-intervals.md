@@ -37,3 +37,9 @@ ADR0007の`restricted-excluding-unlocks-v1`へown-storeの点を正値として�
 本人のタスクは、時間を設定することではなく、解除を除いた記録を穏やかに振り返ること。上部固定累計と下部週/月を維持する。見出しは「制限の適用を記録した時間」、下部で確認時刻と測定scopeを説明する。不明は0へ補間せず、partialは既知部分だけを表示する。推移では欠損を線でつながず、数値がある部分を点で示す。
 
 DESIGN原則1/3/4/5、UI22〜25、RF01〜11。合成native/Core/SQLite/provider/UI検証と、署名済み実機でのShield確認を分ける。[実機確認手順](../qa/native-restriction-duration.md)を参照。nativeの変更を含む新しいbuildが必要。
+
+### 終了境界の記録修正（#219）
+
+成功したown-store確認がルール終了後に届いた場合、現在targetsとの不一致だけで直前の有効区間を失敗gapへ落とさない。同じpolicy/zoneの当時のRuleEvaluatorを使い、当時の適用成功が境界より前だったことと、解除の未解決状態がないことを確認して、既存のcontrolledTransitionで前のsampleのvalidUntilまでを閉じる。確認が失敗した場合・認可不明・時計/sequence不連続の除外は維持する。古いunknown記録の上書きや、設定時間からの加算は行わない。
+
+本人の「10分ルールで1分未満」について、実機記録は別のauthorizationRequiredも含んでおり、この限定修正だけで解消したとは扱わない。[調査・回帰記録](../qa/restriction-duration-boundary.md)と[#222](https://github.com/kzk-maeda/itoma/issues/222)へ引き継ぐ。本追記は測定scopeの変更やADRのAccepted化ではない。
