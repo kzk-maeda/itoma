@@ -139,10 +139,10 @@ function backend(configured = true, failGrant = false, nativeNoChange = false) {
 
 beforeEach(() => { mockHistory = ['/']; mockParams = {}; mockGuard = undefined; jest.spyOn(Date, 'now').mockReturnValue(now); });
 afterEach(() => jest.restoreAllMocks());
-const press = async (name: string) => { await fireEvent.press(screen.getByRole('button', { name: name === '‹ 戻る' ? /^‹ / : name })); };
+const press = async (name: string) => { await fireEvent.press((name === '‹ 戻る' ? screen.getByTestId('flow-back') : screen.getByRole('button', { name: name.startsWith('‹ ') ? `${name.slice(2)}に戻る` : name }))); };
 const openSettings = async () => {
   if (screen.queryByRole('header', { name: 'スケジュール' })) return;
-  if (screen.queryByRole('button', { name: '‹ スケジュール' })) { await press('‹ スケジュール'); return; }
+  if (screen.queryByRole('button', { name: 'スケジュールに戻る' })) { await press('‹ スケジュール'); return; }
   await fireEvent.press(screen.getByRole('tab', { name: '設定' })); await press('スケジュール');
 };
 const openRule = async (action: string) => { if (!screen.queryByRole('button', { name: action })) await press('時間帯 1'); await press(action); };
@@ -704,7 +704,7 @@ test('home keeps its primary flow and settings expose explicit reconciliation in
   const b = backend(); b.replace({ evaluatedAt: now / 1000 }); await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
   for (const name of ['ルールと設定', '選択の記録を見る', '現在の状態を確認する']) expect(screen.queryByRole('button', { name })).toBeNull();
   await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
-  for (const name of ['スケジュール', 'スクリーンタイム', '記録とプライバシー', '使い方とこのアプリ']) expect(screen.getByRole('button', { name: name === '‹ 戻る' ? /^‹ / : name })).toBeTruthy();
+  for (const name of ['スケジュール', 'スクリーンタイム', '記録とプライバシー', '使い方とこのアプリ']) expect(screen.getByRole('button', { name })).toBeTruthy();
   expect(screen.queryByRole('button', { name: '対象アプリと時間を編集' })).toBeNull();
   expect(b.client.run.mock.calls.some(([action]) => action === 'reconcile')).toBe(false);
   await press('スクリーンタイム');

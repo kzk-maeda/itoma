@@ -57,7 +57,7 @@ function wrap(b: ReturnType<typeof backend>, child: React.ReactNode = <Pages />)
 }
 const press = async (name: string) => {
   if (name === '記録の保存状況を確認する' && !screen.queryByRole('button', { name })) await fireEvent.press(screen.getByRole('button', { name: '記録について・保存状況' }));
-  await fireEvent.press(screen.getByRole('button', { name: name === '‹ 戻る' ? /^‹ / : name }));
+  await fireEvent.press((name === '‹ 戻る' ? screen.getByTestId('flow-back') : screen.getByRole('button', { name: name.startsWith('‹ ') ? `${name.slice(2)}に戻る` : name })));
 };
 beforeEach(() => { mockRoutes = ['/history']; });
 afterEach(() => jest.restoreAllMocks());

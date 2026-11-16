@@ -6,7 +6,9 @@
 
 RootのScreenTime/Onboarding/History/Reflection Providerは各1つのまま。`(main)`のカテゴリgroup `(home)/(reflection)/(settings)` がそれぞれ閲覧Stackを持つ。選択中タブはNavigatorのカテゴリ名から決める。public URLはroute groupに依存しないため従来の `/settings-schedule` 等を維持する。
 
-`(work)` はRootのfullScreenModalと内部Stack。`AppNavigationProvider` がRAMの型付き `BrowseDestination` returnContextだけを所有する。任意URL/本文/tokenを戻り先へ渡さず、domainの処理・解除期限・保存形式を所有しない。
+`(work)` はRootの全画面作業フローと内部Stack。本人の追加要望により、先頭画面でも標準の左端popが使えるcard presentationを選ぶ（以前のfullScreenModalから変更）。背後のタブの操作/読み上げ除外と `accessibilityViewIsModal` は維持する。Root/各子Stackは `gestureEnabled: true`、`gestureDirection: horizontal`、`fullScreenGestureEnabled: false` を共有し、iOS 26以降の全幅gestureを明示的に無効にする。独自gestureや別の戻り履歴は追加しない。
+
+`AppNavigationProvider` がRAMの型付き `BrowseDestination` returnContextだけを所有する。任意URL/本文/tokenを戻り先へ渡さず、domainの処理・解除期限・保存形式を所有しない。
 
 | 操作 | 帰還先 |
 | --- | --- |
@@ -18,7 +20,7 @@ RootのScreenTime/Onboarding/History/Reflection Providerは各1つのまま。`(
 | 工程内の戻る | 同じmodalの前工程、初工程なら型付き起点 |
 | 閉じる | returnContext、cold start時はルールなら一覧、その他はホーム |
 
-`WorkFlowBoundary` にchildのdirty guardを登録し、modal全体のremoveに `usePreventRemove` を適用する。内部の戻りはremoveされるchildからRootへ昇格させたguardにより入力を保持する。child effectsの切替中もRoot draftを保護するfallbackを持つ。取消ack前には退出を許さず、busy/取消失敗は保持する。初回設定は既存のdurable flush/退出条件を維持する。
+`WorkFlowBoundary` にchildのdirty guardを登録し、フロー全体のremoveに `usePreventRemove` を適用する。「‹」からの戻りもnativeのpop要求も同じguardへ通す。内部の戻りはremoveされるchildからRootへ昇格させたguardにより入力を保持する。child effectsの切替中もRoot draftを保護するfallbackを持つ。取消ack前には退出を許さず、busy/取消失敗は保持する。初回設定は既存のdurable flush/退出条件を維持する。
 
 受理済みnative処理は画面が消えても継続する。UIのsession世代とmounted lifetimeを照合し、古い応答で新しいdraftを消したり、新しい画面を古い完了先へ移動したりしない。private保存は既存のCAS/追加UUID照合を使う。
 

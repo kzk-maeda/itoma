@@ -2,6 +2,7 @@ import { Stack, usePreventRemove, useSegments } from 'expo-router';
 import { type ReactNode, useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { defaultWorkReturn, type WorkDestination } from '@/lib/navigation-state';
+import { edgeBackOptions } from '@/lib/stack-options';
 import { useAppNavigation } from './navigation';
 import { WorkScopeContext, type ExitGuard } from './work-scope';
 import { useScreenTime } from './screen-time';
@@ -9,7 +10,7 @@ import { useDraftGuard } from '@/components/flow/navigation';
 export { useWorkScope } from './work-scope';
 
 export function WorkFlowLayout() {
-  return <WorkFlowBoundary><Stack screenOptions={{ headerShown: false }} /></WorkFlowBoundary>;
+  return <WorkFlowBoundary><Stack screenOptions={edgeBackOptions} /></WorkFlowBoundary>;
 }
 export function WorkFlowBoundary({ children }: { children: ReactNode }) {
   const navigation = useAppNavigation(), segments = useSegments();

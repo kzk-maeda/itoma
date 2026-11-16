@@ -28,6 +28,14 @@ export function Button({ label, onPress, disabled = false, secondary = false, te
     <Text style={[styles.buttonText, { color: disabled ? theme.muted : secondary ? theme.text : theme.onAccent }]}>{label}</Text>
   </Pressable>;
 }
+/** Navigation stays quieter than actions; its actual target remains at least 44pt. */
+function BackButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const theme = useFlowTheme(), parent = label.replace(/^‹\s*/, '');
+  return <Pressable testID="flow-back" accessibilityRole="button" accessibilityLabel={parent === '戻る' ? '前の画面に戻る' : `${parent}に戻る`} onPress={onPress}
+    style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.6 : 1 }]}>
+    <Text accessible={false} allowFontScaling={false} style={[styles.backChevron, { color: theme.text }]}>‹</Text>
+  </Pressable>;
+}
 /** Quiet secondary destinations, matching the demo's flat rows. */
 export function LinkRow({ label, detail, onPress, disabled = false }: { label: string; detail?: string; onPress: () => void; disabled?: boolean }) {
   const theme = useFlowTheme();
@@ -89,7 +97,7 @@ export function FlowScreen<T>({ title, children, onBack, backLabel = '‹ 戻る
   </>;
   return <SafeAreaView edges={hosted ? [] : undefined} style={[styles.screen, { backgroundColor: tab ? theme.surface : theme.background }]}>
     {(onBack || work) && <View style={styles.navigation}>
-      {onBack ? <Button label={backLabel} secondary onPress={onBack} /> : <View />}
+      {onBack ? <BackButton label={backLabel} onPress={onBack} /> : <View />}
       {work && <Button label="閉じる" secondary onPress={work.close} />}
     </View>}
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -102,6 +110,8 @@ export function FlowScreen<T>({ title, children, onBack, backLabel = '‹ 戻る
 export const flowStyles = StyleSheet.create({ row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', minHeight: 44, gap: 8 }, section: { gap: 12 }, center: { alignItems: 'center', gap: 12 } });
 const styles = StyleSheet.create({
   navigation: { width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center', paddingHorizontal: HomeLayout.gutter, paddingTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
+  backButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  backChevron: { fontSize: 30, lineHeight: 36, fontWeight: '400' },
   screen: { flex: 1 }, content: { flexGrow: 1, width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center', paddingHorizontal: HomeLayout.gutter, paddingTop: 20, paddingBottom: 40, gap: HomeLayout.sectionGap },
   listContent: { gap: 0 }, listHeader: { gap: HomeLayout.sectionGap, marginBottom: HomeLayout.sectionGap }, listFooter: { gap: HomeLayout.sectionGap },
   productContent: { gap: 20, paddingBottom: 28 }, productTitle: { fontSize: 24, lineHeight: 36 }, homeTitle: { fontSize: 22, letterSpacing: 3 }, caption: { fontSize: 13, lineHeight: 20 },

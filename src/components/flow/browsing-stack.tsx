@@ -1,2 +1,3 @@
 import { Stack } from 'expo-router';
-export function BrowsingStack() { return <Stack screenOptions={{ headerShown: false }} />; }
+import { edgeBackOptions } from '@/lib/stack-options';
+export function BrowsingStack() { return <Stack screenOptions={edgeBackOptions} />; }

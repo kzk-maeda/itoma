@@ -78,7 +78,7 @@ async function mount(b: ReturnType<typeof backend>) {
     <ReflectionProvider client={b.client}><HeldReason /><Pages /></ReflectionProvider>
   </HistoryProvider></ScreenTimeProvider>);
 }
-const press = async (label: string) => fireEvent.press(screen.getByRole('button', { name: label === '‹ 戻る' ? /^‹ / : label }));
+const press = async (label: string) => fireEvent.press((label === '‹ 戻る' ? screen.getByTestId('flow-back') : screen.getByRole('button', { name: label })));
 const observed = () => screen.findByText('制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。');
 
 test('native restriction duration reaches the real provider, total and period UI with measurement scope', async () => {

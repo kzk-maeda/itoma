@@ -18,7 +18,7 @@ jest.mock('../src/qa/native-smoke', () => ({ completeNativeHomeSmoke: jest.fn() 
 jest.mock('expo-router', () => ({ router: { navigate: jest.fn(), dismissTo: jest.fn(), replace: jest.fn() }, usePreventRemove: jest.fn(),
   useFocusEffect: (callback: () => void) => require('react').useEffect(callback, [callback]),
 }));
-const press = (name: string) => fireEvent.press(screen.getByRole('button', { name }));
+const press = (name: string) => fireEvent.press(screen.getByRole('button', { name: name === '‹ 戻る' ? '前の画面に戻る' : name }));
 const mount = (b: ReturnType<typeof onboardingFixture>, home = false) => render(<ScreenTimeProvider client={b.control}><OnboardingProvider client={b.setup}>{home ? <ProductHome /> : <OnboardingScreen />}</OnboardingProvider></ScreenTimeProvider>);
 const start = async () => { await screen.findByText('自分の時間に、余白を。'); await press('自分の時間をつくる'); await screen.findByLabelText('この時間の名前（任意）'); };
 const schedule = async () => {

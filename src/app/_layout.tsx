@@ -10,6 +10,7 @@ import { ReflectionProvider } from '@/state/reflection';
 import { OnboardingProvider } from '@/state/onboarding';
 import { AppNavigationProvider } from '@/state/navigation';
 import { rootNavigationRouter } from '@/lib/root-navigation';
+import { edgeBackOptions } from '@/lib/stack-options';
 
 SplashScreen.preventAutoHideAsync();
 export const unstable_settings = { anchor: '(main)' };
@@ -20,9 +21,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <View style={{ flex: 1 }} onLayout={() => { void SplashScreen.hideAsync(); }}>
-        <ScreenTimeProvider><OnboardingProvider><HistoryProvider><ReflectionProvider><AppNavigationProvider><Stack UNSTABLE_router={rootNavigationRouter} screenOptions={{ headerShown: false }}>
+        <ScreenTimeProvider><OnboardingProvider><HistoryProvider><ReflectionProvider><AppNavigationProvider><Stack UNSTABLE_router={rootNavigationRouter} screenOptions={edgeBackOptions}>
           <Stack.Screen name="(main)" options={{ animation: 'none' }} />
-          <Stack.Screen name="(work)" options={{ presentation: 'fullScreenModal', gestureEnabled: true }} />
+          <Stack.Screen name="(work)" options={{ presentation: 'card' }} />
         </Stack></AppNavigationProvider></ReflectionProvider></HistoryProvider></OnboardingProvider></ScreenTimeProvider>
       </View>
     </ThemeProvider>
