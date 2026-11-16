@@ -72,7 +72,7 @@ export function RuleEditorScreen() {
   const update = (patch: Partial<typeof draft>) => { setUnchanged(false); state.setRuleExitAllowed(false); state.setRuleDraft({ ...draft, ...patch, dirty: true }); state.setRuleReview(undefined); };
   const identityInvalid = invalidRuleIdentity(draft.title ?? '', draft.goal ?? '');
   const hasIdentity = !!(draft.title?.trim() || draft.goal?.trim());
-  const identityUnavailable = !draft.id && hasIdentity && state.snapshot?.ruleDetailsStatus !== 'ready';
+  const identityUnavailable = !draft.id && hasIdentity && state.ruleDetailsState !== 'ready';
   const input = !identityInvalid && !identityUnavailable ? ruleInput(draft, state.snapshot?.revision ?? '0') : undefined;
   const pick = async () => { const result = await state.run('pickApplications'); if (result.ref) update({ selectionRef: result.ref }); };
   const preview = async () => {
@@ -96,8 +96,9 @@ export function RuleEditorScreen() {
     {!draft.id && <View style={flowStyles.section}><Heading>この時間に大切にしたいこと</Heading>
       <Body>このルールで、どんな時間を過ごしたいですか？ 名前と行動目標は任意です。</Body>
       <RuleIdentityFields title={draft.title ?? ''} goal={draft.goal ?? ''} disabled={!!state.busy} onChange={update} />
-      {identityUnavailable && <Notice title="名前と行動目標を保存できません">{state.snapshot?.ruleDetailsStatus === 'unavailable' ? '保存状態を確認し直すと、入力した内容の確認へ進めます。' : '名前と行動目標の保存にはアプリの更新が必要です。'}</Notice>}
-      {identityUnavailable && state.snapshot?.ruleDetailsStatus === 'unavailable' && <Button label="名前と行動目標の保存状態を確認する" secondary disabled={!!state.busy} onPress={() => { void state.refresh(); }} />}
+      {identityUnavailable && (state.ruleDetailsState === 'checking' ? <Body muted>ルール名と行動目標を確認しています。</Body>
+        : <Notice title="名前と行動目標を保存できません">{state.ruleDetailsState === 'unavailable' ? '保存状態を確認し直すと、入力した内容の確認へ進めます。' : '名前と行動目標の保存にはアプリの更新が必要です。'}</Notice>)}
+      {identityUnavailable && state.ruleDetailsState === 'unavailable' && <Button label="名前と行動目標の保存状態を確認する" secondary disabled={!!state.busy} onPress={() => { void state.refresh(); }} />}
     </View>}
     <View style={flowStyles.section}><Heading>1. アプリ</Heading>
       <Body muted>選ぶだけでは制限は始まりません。最後に内容を確認して保存します。</Body>

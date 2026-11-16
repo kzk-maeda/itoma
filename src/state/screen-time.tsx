@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { controlSnapshots, retainControlSnapshotLifecycle, withControlSnapshots } from './control-snapshot';
+import { controlSnapshots, getRuleDetailsState, retainControlSnapshotLifecycle, withControlSnapshots, type RuleDetailsState } from './control-snapshot';
 import { timeRange } from '@/lib/schedule-time';
 
 import { screenTime, type RuleInput, type ScreenTimeAction, type ScreenTimeCode, type ScreenTimeRequest, type ScreenTimeResponse, type ScreenTimeRule, type ScreenTimeSnapshot } from '../../modules/itoma-native';
@@ -11,6 +11,7 @@ type Client = Pick<typeof screenTime, 'run'>;
 type HistoryChangeOrigin = 'history' | 'reflection' | 'settings' | 'external';
 type State = {
   snapshot?: ScreenTimeSnapshot; error?: ScreenTimeCode; loading: boolean; busy?: ScreenTimeAction; legacyActive: boolean; refreshKey: number; historyEpoch: number;
+  ruleDetailsState: RuleDetailsState | undefined;
   historyChangeOrigin: HistoryChangeOrigin;
   run: Client['run']; refresh: () => Promise<ScreenTimeResponse>; clearError: () => void; invalidateHistory: (origin?: HistoryChangeOrigin) => void;
   ruleDraft?: RuleDraft; setRuleDraft: (draft: RuleDraft | undefined) => void; beginRule: (rule?: ScreenTimeRule) => void;
@@ -102,7 +103,7 @@ export function ScreenTimeProvider({ children, client = screenTime }: { children
     setRuleDraft(rule ? { ...rule, start: time(rule.startMinute), end: time(rule.endMinute), dirty: false }
       : { selectionRef: '', weekdays: [1, 2, 3, 4, 5], start: '21:00', end: '23:00', nextDay: false, enabled: true, dirty: false });
   }, [setRuleExitAllowed]);
-  return <Context.Provider value={{ snapshot, error, loading, busy, legacyActive, refreshKey, historyEpoch, historyChangeOrigin, invalidateHistory, run, refresh, clearError: () => setError(undefined),
+  return <Context.Provider value={{ snapshot, ruleDetailsState: getRuleDetailsState(snapshot), error, loading, busy, legacyActive, refreshKey, historyEpoch, historyChangeOrigin, invalidateHistory, run, refresh, clearError: () => setError(undefined),
     ruleDraft, setRuleDraft, beginRule, rulePreviewRef, setRulePreviewRef, ruleReview, setRuleReview, unlockDraft, setUnlockDraft, unlockReview, setUnlockReview,
     ruleExitAllowed, unlockExitAllowed, canExitRule: () => ruleExitRef.current, canExitUnlock: () => unlockExitRef.current,
     setRuleExitAllowed, setUnlockExitAllowed,

@@ -4,7 +4,16 @@
 
 新規追加画面で任意の名前/行動目標を入力し、アプリ・曜日・時間帯と一緒に最終確認する。確認から戻っても全文を保持する。共通のField/Graphite/FlowScreenを使い、目的→条件→確認/保存の順で本人の時間の使い方を先に考えられるようにした。初回設定と既存ルールの個人文編集は維持する。
 
-## 検証
+## main統合後の再検証（2026-11-16 JST）
+
+main `341004cf1e92f7dc6fe836c2174745f44820ea49`（#218の確認中/取得失敗の分離）を取り込み、`rule-details.tsx` と `main-flow.test.tsx` の競合を解消した。新規追加の名前/目標入力・RAM保持・private再保存と、mainの確認中表示・取得失敗後の再試行を両方維持する。
+
+新規追加画面もProviderの`ruleDetailsState`を使い、再確認中は補足文のみ、実際の取得失敗後に警告/再確認ボタンを表示する。確認中は確定を無効にし、入力を消さない。背景復帰→確認中→正常/失敗→明示再試行の2ケースを追加し、両側の既存テストも保持した。
+
+- PASS：型チェック、Lint、Jest **26 suites/261件**、demo tools **32件**、expo-doctor **20/20**、diff check。
+- 以下の画像・21画像digest・iOS JS/Web exportは、初回head `5a0d7449772d426a9cc2daa03c22376292112893` の検証記録。統合後のsourceへ実施済みとして付け替えない。今回の再検証は上記のローカルチェックで、実機/Simulator/画面画像の再取得は行っていない。
+
+## 初回実装時の検証（5a0d744）
 
 - PASS：型チェック、Lint、Jest **26 suites/246件**、demo tools **32件**、expo-doctor **20/20**、diff check。
 - PASS：通常構成のiOS JS/Hermes export、server Web export。一時QA runtimeとWebのstatic設定を戻した構成を使い、QA markerが通常bundleに入らないことを確認した。これはnative build/Simulator/実機検証の成功ではない。

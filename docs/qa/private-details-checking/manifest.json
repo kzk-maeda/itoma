@@ -1,0 +1,112 @@
+{
+  "sourceCommit": "07207aecd204ab1fb38fa1abb651dce036044040",
+  "sourceFiles": {
+    "modules/itoma-native/src/control-snapshot.ts": "b648776213e73af9057f3592bbea96e068dc31b0346ddc1b3d4f292bb2319d26",
+    "src/state/control-snapshot.ts": "714d478b98c2dd25203fd28a037b8b5ca76225cd3dcffa0d1a5a2030f26d77ae",
+    "src/state/screen-time.tsx": "6a61ad66931550ebc1ee37f5fefd7dbb5edc08edbcae28e5c65a1267ab6d8b5b",
+    "src/components/flow/home.tsx": "87ddcf7781a2b1ff0e2fa09826f6558f9918e19298b6af1dbeb0dfce27901610",
+    "src/components/flow/settings.tsx": "79595b9ffa1ca5dae4d5423e5d19d8e0030d578daee5f64f1da7d3ef4507b9ea",
+    "src/components/flow/rule-details.tsx": "aca32385163188fbbb264ce48ccc2254a99daf151ab632a187b95663572a34f5"
+  },
+  "fixtureFiles": {
+    "src/app/_layout.tsx": "64b6646f204337b95139e66dccf1162a5ea0e58ff841f01977025c7287c6f90f",
+    "src/app/proof.tsx": "24c6650952ef9418c5e06a1bf698b4eaa681c26afe8f605d7186974fec2b6544",
+    "src/qa/private-details-proof.tsx": "ce17f8b1c3391ed0a163078e5dea24a1b3a9e72ec2176553c597693502b95cff",
+    "src/components/flow/applications.tsx": "390a34276e8f6e94b9f71037bd3353fbcd6d66e4a5504cc4b0a8a64821dcd3d3"
+  },
+  "nativeBuild": null,
+  "physicalDeviceVerified": false,
+  "simulatorVerified": false,
+  "cases": [
+    {
+      "screen": "home",
+      "scheme": "light",
+      "width": 390,
+      "fontScale": 1,
+      "checking": {
+        "state": {
+          "phase": "checking"
+        },
+        "warningSeen": false,
+        "overflow": false
+      },
+      "checkingImage": {
+        "file": "home-light-390-checking.png",
+        "sha256": "09eedee5575e667ad9fd9c0ec6fdd82e6dc212c10787c6cc4d29dc677c7b9bff"
+      },
+      "failedImage": {
+        "file": "home-light-390-failed.png",
+        "sha256": "721f480f1069211910be88f66e8dac9d80e033d2199c45f6e1574935bd539f96"
+      },
+      "recovered": true,
+      "errors": []
+    },
+    {
+      "screen": "home",
+      "scheme": "dark",
+      "width": 390,
+      "fontScale": 1,
+      "checking": {
+        "state": {
+          "phase": "checking"
+        },
+        "warningSeen": false,
+        "overflow": false
+      },
+      "checkingImage": {
+        "file": "home-dark-390-checking.png",
+        "sha256": "529e551fd4f373045eb47b92ff5595df997277c0a9fc455f6118882ddb8f7b20"
+      },
+      "failedImage": {
+        "file": "home-dark-390-failed.png",
+        "sha256": "62d9eca418ec43e2dd8d5eb928b312646a75d54ffcddfe3bc93e5dad68703cc2"
+      },
+      "recovered": true,
+      "errors": []
+    },
+    {
+      "screen": "home",
+      "scheme": "light",
+      "width": 320,
+      "fontScale": 1.5,
+      "checking": {
+        "state": {
+          "phase": "checking"
+        },
+        "warningSeen": false,
+        "overflow": false
+      },
+      "checkingImage": {
+        "file": "home-light-320-checking.png",
+        "sha256": "e9e08a42c6c0596e3164d6aa90777fc76b0d1050a4abf111cc58297fd882563d"
+      },
+      "failedImage": {
+        "file": "home-light-320-failed.png",
+        "sha256": "fa00b911bf6c5807a0f930f61d09c7dc2550ccde59f1aa6712d11dd78f2b5c3f"
+      },
+      "recovered": true,
+      "errors": []
+    },
+    {
+      "screen": "settings",
+      "checkingImage": {
+        "file": "settings-light-checking.png",
+        "sha256": "97b96c0ca540c53a4d9acdc2891a5f4ecf509555c98852ac070cc2836a121bf9"
+      },
+      "transportFailureVisible": true,
+      "draftRetained": false,
+      "errors": []
+    },
+    {
+      "screen": "editor",
+      "checkingImage": {
+        "file": "editor-light-checking.png",
+        "sha256": "2665311cce75669ff47718cc7f88e48f643fc8fd43ee3cfc80efd41169c258fc"
+      },
+      "transportFailureVisible": true,
+      "draftRetained": true,
+      "errors": []
+    }
+  ],
+  "browser": "155.0.8059.79"
+}

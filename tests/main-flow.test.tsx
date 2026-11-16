@@ -1,7 +1,7 @@
 import { selectTime } from './fixtures/time-picker';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, AppState, type AppStateStatus } from 'react-native';
 import { ScreenTimeProvider } from '../src/state/screen-time';
 import { OnboardingProvider } from '../src/state/onboarding';
 import { ProductHome } from '../src/components/flow/home';
@@ -285,6 +285,101 @@ test('a repeated save press while private text is pending sends one policy commi
   expect(b.client.run.mock.calls.filter(([action]) => action === 'saveRuleDetails')).toHaveLength(1);
   await act(async () => finish?.());
   expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
+});
+
+test.each(['ready', 'unavailable'] as const)('new rule input survives a foreground private recheck before %s without showing a premature failure', async outcome => {
+  let emit!: (state: AppStateStatus) => void;
+  jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, callback) => { emit = callback; return { remove: jest.fn() }; });
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  let hold = false, finish!: (result: ScreenTimeResponse) => void;
+  b.client.run.mockImplementation((action, request) => action === 'snapshot' && hold
+    ? new Promise(resolve => { finish = resolve; }) : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule();
+  await act(async () => { emit('inactive'); }); hold = true;
+  await act(async () => { emit('active'); });
+  expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+  expect(screen.queryByText('名前と行動目標を保存できません')).toBeNull();
+  expect(screen.queryByRole('button', { name: '名前と行動目標の保存状態を確認する' })).toBeNull();
+  expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue(creationTitle);
+  expect(screen.getByLabelText('行動目標（任意）')).toHaveDisplayValue(creationGoal);
+  expect(screen.getByRole('button', { name: '内容を確認する' })).toBeDisabled();
+  await act(async () => { finish({ status: 'ok', impacts: [], snapshot: { ...b.current(), ruleDetailsStatus: outcome } }); });
+  expect(screen.queryByText('ルール名と行動目標を確認しています。')).toBeNull();
+  if (outcome === 'unavailable') {
+    expect(screen.getByText('名前と行動目標を保存できません')).toBeTruthy();
+    await press('名前と行動目標の保存状態を確認する');
+    expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+    expect(screen.queryByText('名前と行動目標を保存できません')).toBeNull();
+    await act(async () => { finish({ status: 'ok', impacts: [], snapshot: b.current() }); });
+  }
+  expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue(creationTitle);
+  expect(screen.getByLabelText('行動目標（任意）')).toHaveDisplayValue(creationGoal);
+  expect(screen.getByRole('button', { name: '内容を確認する' })).toBeEnabled();
+  expect(b.client.run.mock.calls.some(([action]) => action === 'previewRule' || action === 'commitRule' || action === 'saveRuleDetails')).toBe(false);
+});
+
+test.each(['ready', 'unavailable', 'transport'] as const)('foreground private read shows checking before %s without flashing the failure notice', async outcome => {
+  let emit!: (state: AppStateStatus) => void;
+  jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, callback) => { emit = callback; return { remove: jest.fn() }; });
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  b.replace({ ruleDetailsStatus: 'ready', ruleDetailsRevision: '10', rules: b.current().rules.map(rule => ({ ...rule, title: 'saved synthetic title', goal: 'saved synthetic goal' })) });
+  let hold = false, finish!: (result: ScreenTimeResponse) => void;
+  b.client.run.mockImplementation((action, request) => action === 'snapshot' && hold
+    ? new Promise(resolve => { finish = resolve; }) : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  expect(screen.getByText('saved synthetic title')).toBeTruthy();
+  await act(async () => { emit('inactive'); });
+  hold = true;
+  await act(async () => { emit('active'); });
+  expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+  expect(screen.queryByText('ルール名と行動目標を確認できません')).toBeNull();
+  expect(screen.queryByText('saved synthetic title')).toBeNull();
+  expect(screen.queryByText('saved synthetic goal')).toBeNull();
+  await act(async () => { finish(outcome === 'transport' ? { status: 'error', code: 'unavailable', impacts: [] }
+    : { status: 'ok', impacts: [], snapshot: { ...b.current(), ruleDetailsStatus: outcome } }); });
+  expect(screen.queryByText('ルール名と行動目標を確認しています。')).toBeNull();
+  if (outcome === 'ready') {
+    expect(screen.getByText('saved synthetic title')).toBeTruthy();
+    expect(screen.queryByText('ルール名と行動目標を確認できません')).toBeNull();
+  } else {
+    expect(screen.getByText('ルール名と行動目標を確認できません')).toBeTruthy();
+    expect(screen.queryByText('saved synthetic title')).toBeNull();
+  }
+});
+
+test('an unconfirmed initial AppState waits for an active read without showing a private failure', async () => {
+  jest.replaceProperty(AppState, 'currentState', 'unknown');
+  const b = backend();
+  b.replace({ ruleDetailsStatus: 'ready', ruleDetailsRevision: '10', rules: b.current().rules.map(rule => ({ ...rule, title: 'unconfirmed synthetic title' })) });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+  expect(screen.queryByText('ルール名と行動目標を確認できません')).toBeNull();
+  expect(screen.queryByText('unconfirmed synthetic title')).toBeNull();
+});
+
+test('schedule detail separates checking from failure and offers a retry that can recover', async () => {
+  let emit!: (state: AppStateStatus) => void;
+  jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, callback) => { emit = callback; return { remove: jest.fn() }; });
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  b.replace({ ruleDetailsStatus: 'ready', ruleDetailsRevision: '10' });
+  let hold = false, finish!: (result: ScreenTimeResponse) => void;
+  b.client.run.mockImplementation((action, request) => action === 'snapshot' && hold
+    ? new Promise(resolve => { finish = resolve; }) : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('時間帯 1');
+  await act(async () => { emit('inactive'); }); hold = true;
+  await act(async () => { emit('active'); });
+  expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+  expect(screen.queryByText('名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。')).toBeNull();
+  await act(async () => { finish({ status: 'ok', impacts: [], snapshot: { ...b.current(), ruleDetailsStatus: 'unavailable' } }); });
+  expect(screen.getByText('名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。')).toBeTruthy();
+  await press('保存した名前と行動目標を読み直す');
+  expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+  expect(screen.queryByText('名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。')).toBeNull();
+  await act(async () => { finish({ status: 'ok', impacts: [], snapshot: b.current() }); });
+  expect(screen.queryByText('ルール名と行動目標を確認しています。')).toBeNull();
+  expect(screen.getByRole('button', { name: '時間帯 1の名前と行動目標を編集' })).toBeEnabled();
 });
 
 test('normal rule creation after initial setup → explicit permission → native selection → review → saved home, without PoC navigation', async () => {

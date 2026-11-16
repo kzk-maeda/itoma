@@ -1,4 +1,4 @@
-import { createControlSnapshotSession, currentControlSnapshot, withControlSnapshots } from '../modules/itoma-native/src/control-snapshot';
+import { controlSnapshots, createControlSnapshotSession, currentControlSnapshot, getRuleDetailsState, withControlSnapshots } from '../modules/itoma-native/src/control-snapshot';
 import { createScreenTimeClient, unavailableSnapshot, type ScreenTimeResponse, type ScreenTimeSnapshot } from '../modules/itoma-native/src/screen-time';
 import { createOnboardingClient } from '../modules/itoma-native/src/onboarding';
 const ref = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -7,6 +7,88 @@ const make = (sequence = '9', revision = '10', title = 'new title'): ScreenTimeS
   rules: [{ id: ref, selectionRef: ref, weekdays: [1], startMinute: 0, endMinute: 1, nextDay: false, enabled: true, title, goal: 'synthetic goal' }] });
 const hidden = (sequence = '9'): ScreenTimeSnapshot => ({ ...make(sequence), ruleDetailsStatus: 'unavailable', ruleDetailsRevision: undefined });
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; };
+
+test('checking hides stale text while distinguishing lifecycle invalidation from an actual failed read', () => {
+  const s = createControlSnapshotSession();
+  expect(getRuleDetailsState(s.getSnapshot())).toBe('checking');
+  s.integrate(make(), s.beginRequest());
+  const old = s.beginRequest();
+  s.setActive(false); s.setActive(true);
+  const read = s.beginRequest(true);
+  expect(getRuleDetailsState(s.getSnapshot())).toBe('checking');
+  expect(s.getSnapshot()?.rules[0].title).toBeUndefined();
+  // An old epoch may advance control, but must not supply text or a failure banner.
+  s.integrate(hidden('10'), old);
+  expect(getRuleDetailsState(s.getSnapshot())).toBe('checking');
+  s.integrate(hidden('10'), read);
+  expect(getRuleDetailsState(s.getSnapshot())).toBe('unavailable');
+  const retry = s.beginRequest(true);
+  expect(getRuleDetailsState(s.getSnapshot())).toBe('checking');
+  s.integrate(make('10', '10', 'recovered'), retry);
+  expect(getRuleDetailsState(s.getSnapshot())).toBe('ready');
+  expect(s.getSnapshot()?.rules[0].title).toBe('recovered');
+});
+
+test('a newer pending read rejects an older read failure and keeps the durable revision floor', () => {
+  const s = createControlSnapshotSession();
+  s.integrate(make(), s.beginRequest()); s.invalidatePrivate();
+  const old = s.beginRequest(true), fresh = s.beginRequest(true);
+  s.failRead(old);
+  expect(getRuleDetailsState(s.getSnapshot())).toBe('checking');
+  s.failRead(fresh);
+  expect(getRuleDetailsState(s.getSnapshot())).toBe('unavailable');
+  expect(s.getSnapshot()?.ruleDetailsRevision).toBe('10');
+  s.integrate(make('10', '9', 'below floor'), s.beginRequest(true));
+  expect(getRuleDetailsState(s.getSnapshot())).toBe('unavailable');
+  expect(s.getSnapshot()?.rules[0].title).toBeUndefined();
+});
+
+test('a read error without snapshot ends reconfirmation, but never clears already confirmed text', async () => {
+  controlSnapshots.integrate(make(), controlSnapshots.beginRequest());
+  const client = withControlSnapshots({ run: async (_action: 'snapshot'): Promise<ScreenTimeResponse> => ({ status: 'error', code: 'unavailable', impacts: [] }) });
+  await client.run('snapshot');
+  expect(getRuleDetailsState(controlSnapshots.getSnapshot())).toBe('ready');
+  controlSnapshots.invalidatePrivate();
+  await client.run('snapshot');
+  expect(getRuleDetailsState(controlSnapshots.getSnapshot())).toBe('unavailable');
+  expect(controlSnapshots.getSnapshot()?.rules[0].title).toBeUndefined();
+});
+
+test('progress-only onboarding reads cannot displace the snapshot read that owns reconfirmation', async () => {
+  controlSnapshots.integrate(make(), controlSnapshots.beginRequest()); controlSnapshots.invalidatePrivate();
+  const pending = deferred<ScreenTimeResponse>();
+  const client = withControlSnapshots({ run: async (action: 'snapshot' | 'onboardingRead'): Promise<ScreenTimeResponse> => action === 'snapshot'
+    ? pending.promise : { status: 'ok', impacts: [] } });
+  const read = client.run('snapshot');
+  await client.run('onboardingRead');
+  pending.resolve({ status: 'error', code: 'unavailable', impacts: [] }); await read;
+  expect(getRuleDetailsState(controlSnapshots.getSnapshot())).toBe('unavailable');
+});
+
+test('a snapshot read that completes without its required payload cannot leave checking stuck', async () => {
+  controlSnapshots.integrate(make(), controlSnapshots.beginRequest()); controlSnapshots.invalidatePrivate();
+  const client = withControlSnapshots({ run: async (_action: 'snapshot'): Promise<ScreenTimeResponse> => ({ status: 'ok', impacts: [] }) });
+  await client.run('snapshot');
+  expect(getRuleDetailsState(controlSnapshots.getSnapshot())).toBe('unavailable');
+});
+
+test('late rejected ports cannot end a newer reconfirmation or hide a recovered body', async () => {
+  controlSnapshots.integrate(make(), controlSnapshots.beginRequest());
+  let reject!: (error: Error) => void;
+  const client = withControlSnapshots({ run: (_action: 'snapshot'): Promise<ScreenTimeResponse> => new Promise((_resolve, fail) => { reject = fail; }) });
+  const old = client.run('snapshot').catch(error => error);
+  controlSnapshots.setActive(false); controlSnapshots.setActive(true);
+  reject(new Error('synthetic transport failure')); await old;
+  expect(getRuleDetailsState(controlSnapshots.getSnapshot())).toBe('checking');
+  controlSnapshots.integrate(make(), controlSnapshots.beginRequest());
+  expect(getRuleDetailsState(controlSnapshots.getSnapshot())).toBe('ready');
+});
+
+test('a known unsupported native metadata feature stays distinguishable from checking', () => {
+  const s = createControlSnapshotSession();
+  s.integrate({ ...make(), ruleDetailsStatus: undefined, ruleDetailsRevision: undefined, rules: [] }, s.beginRequest());
+  expect(getRuleDetailsState(s.getSnapshot())).toBeUndefined();
+});
 
 test.each(['ready', 'unavailable'] as const)('old %s cannot overwrite a newer private availability result', status => {
   const s = createControlSnapshotSession(), a = s.beginRequest(), b = s.beginRequest();

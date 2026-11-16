@@ -55,8 +55,9 @@ export function RuleDetailsScreen({ ruleID }: { ruleID?: string }) {
     <Body>このルールで、どんな時間を過ごしたいですか？ ご自身が大切にしたいことを残せます。</Body>
     {pendingCreation && <Notice title="時間のルールは保存済みです">名前と行動目標の保存を確認できていません。入力は残っています。現在の保存内容を確認してから、名前と行動目標だけを保存できます。</Notice>}
     {!state.loading && !rule && <Notice title="このルールを確認できません">設定へ戻って、現在のルールを確認してください。</Notice>}
-    {s?.ruleDetailsStatus === 'unavailable' && <Notice title="保存した内容を読み取れません">入力は残っています。もう一度、最新の状態を確認できます。</Notice>}
-    {!draft && s?.ruleDetailsStatus === 'unavailable' && <Button label="最新の保存内容を確認する" secondary disabled={!!state.busy} onPress={() => { void state.refresh(); }} />}
+    {state.ruleDetailsState === 'unavailable' && <Notice title="保存した内容を読み取れません">入力は残っています。もう一度、最新の状態を確認できます。</Notice>}
+    {state.ruleDetailsState === 'checking' && <Body muted>ルール名と行動目標を確認しています。</Body>}
+    {!draft && state.ruleDetailsState === 'unavailable' && <Button label="最新の保存内容を確認する" secondary disabled={!!state.busy} onPress={() => { void state.refresh(); }} />}
     {draft && <>
       <RuleIdentityFields title={draft.title} goal={draft.goal} disabled={!!state.busy} onChange={patch => {
         setDraft({ ...draft, ...patch });
