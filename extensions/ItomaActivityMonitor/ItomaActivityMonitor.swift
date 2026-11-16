@@ -4,6 +4,7 @@ import ItomaStorage
 import ItomaControl
 import ItomaScreenTime
 import Dispatch
+import Foundation
 
 // This target links no Expo/React/private history. DeviceActivity's callbacks are synchronous.
 // The detached native actor job performs only bounded synchronous database/own-store operations.
@@ -17,11 +18,17 @@ final class ItomaActivityMonitor: DeviceActivityMonitor {
     }
     private func reconcile(_ activity: DeviceActivityName, ended: Bool) {
         let name = activity.rawValue
+        let kind = ScreenTimeDiagnostics.activity(name)
+        let started = ProcessInfo.processInfo.systemUptime
+        ScreenTimeDiagnostics.record(.callbackEntry, activity: kind, ended: ended)
         let completed = DispatchSemaphore(value: 0)
         Task.detached { @ItomaControlActor in
+            ScreenTimeDiagnostics.record(.actorEntry, activity: kind, ended: ended)
             ScreenTimeRuntime.handleActivity(name, ended: ended)
             completed.signal()
         }
         completed.wait()
+        ScreenTimeDiagnostics.record(.callbackExit, activity: kind, ended: ended,
+            elapsedMilliseconds: Int((ProcessInfo.processInfo.systemUptime - started) * 1000))
     }
 }

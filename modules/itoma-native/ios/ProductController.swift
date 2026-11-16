@@ -478,6 +478,13 @@ struct ProductResponse: Encodable, Sendable {
     }
 
     @discardableResult private func refresh(_ r: ScreenTimeRuntime) async throws -> Bool {
+        let started = ProcessInfo.processInfo.systemUptime
+        var diagnosticResult: ScreenTimeDiagnostics.Result = .failed
+        ScreenTimeDiagnostics.record(.hostRefreshBegin)
+        defer {
+            ScreenTimeDiagnostics.record(.hostRefreshEnd, result: diagnosticResult,
+                elapsedMilliseconds: Int((ProcessInfo.processInfo.systemUptime - started) * 1000))
+        }
         displayRefreshGate.invalidate()
         let before = try r.repository.readSnapshot(), context = r.contexts.context(activation: before.activation)
         if context.authorization.status == .approved, before.activation == .enabled {
@@ -493,6 +500,11 @@ struct ProductResponse: Encodable, Sendable {
         try? r.recordDurationCheckpoint()
         try? await ProductHistoryController.shared.importForMaintenance()
         try r.protectFiles()
+        switch outcome.disposition {
+        case .committed: diagnosticResult = outcome.failure == nil ? .committed : .uncertain
+        case .requiresRecovery: diagnosticResult = .requiresRecovery
+        case .uncertain: diagnosticResult = .uncertain
+        }
         return outcome.disposition == .committed && outcome.failure == nil
     }
 

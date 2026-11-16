@@ -56,7 +56,7 @@
     "lint": "expo lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:ios-tools": "node --test tests/ios-qa.test.mjs tests/screen-time-cng.test.mjs",
+    "test:ios-tools": "node --test tests/ios-qa.test.mjs tests/screen-time-cng.test.mjs tests/screen-time-diagnostics.test.mjs",
     "test:ai-review": "node --test tests/ai-review*.test.mjs"
   },
   "private": true

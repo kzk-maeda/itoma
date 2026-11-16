@@ -105,18 +105,38 @@ import ItomaStorage
 
     /// Called only by the synchronous OS callback bridge, on ItomaControlActor.
     public static func handleActivity(_ name: String, ended: Bool) {
-        guard name.hasPrefix("itoma.rule.") || name.hasPrefix("itoma.deadline.") else { return }
+        let kind = ScreenTimeDiagnostics.activity(name)
+        guard kind != .unrecognized else {
+            ScreenTimeDiagnostics.record(.reconciliationResult, activity: kind, ended: ended, result: .ignored)
+            return
+        }
         // An interval already in progress can start immediately after registration. It must not
         // consume a deadline receipt before the grant's end.
-        if name.hasPrefix("itoma.deadline."), !ended { return }
+        if name.hasPrefix("itoma.deadline."), !ended {
+            ScreenTimeDiagnostics.record(.reconciliationResult, activity: kind, result: .ignored)
+            return
+        }
         do {
             let runtime = try ScreenTimeRuntime(createIfMissing: false)
+            ScreenTimeDiagnostics.record(.runtimeOpen, activity: kind, ended: ended, result: .accepted)
             let service = try runtime.makeService()
+            ScreenTimeDiagnostics.record(.serviceReady, activity: kind, ended: ended)
+            let result: ReconciliationResult
             if let (id, generation) = AppleDeadlineScheduler.identity(name) {
-                _ = service.reconcileSynchronously(registrationID: id, generation: generation)
-            } else { _ = service.reconcileSynchronously() }
+                result = service.reconcileSynchronously(registrationID: id, generation: generation)
+            } else { result = service.reconcileSynchronously() }
+            let disposition: ScreenTimeDiagnostics.Result
+            switch result.disposition {
+            case .committed: disposition = .committed
+            case .requiresRecovery: disposition = .requiresRecovery
+            case .uncertain: disposition = .uncertain
+            }
+            ScreenTimeDiagnostics.record(.reconciliationResult, activity: kind, ended: ended,
+                result: disposition, failure: ScreenTimeDiagnostics.failure(result.failure))
             try runtime.protectFiles()
         } catch {
+            ScreenTimeDiagnostics.record(.callbackError, activity: kind, ended: ended,
+                result: .failed, failure: ScreenTimeDiagnostics.error(error))
             // No database recreation, stale plan, empty-store fallback or user-data logging.
             // The durable last intent and any existing own-store restrictions remain available.
         }
