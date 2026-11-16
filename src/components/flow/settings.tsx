@@ -92,8 +92,8 @@ export function ScheduleDetailScreen() {
         <Button label={`${ruleTitle(rule, index)}の名前と行動目標を編集`} secondary disabled={!!state.busy || s.ruleDetailsStatus !== 'ready'} onPress={() => router.navigate({ pathname: '/rule-details', params: { ruleID: rule.id } })} />
         <Button label={`${ruleTitle(rule, index)}を編集`} secondary disabled={!!state.busy} onPress={() => edit(rule)} />
       </Panel>
-      {s.ruleDetailsStatus !== 'ready' && <Body muted>{s.ruleDetailsStatus === 'unavailable' ? '名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。' : '名前と行動目標の編集にはアプリの更新が必要です。'}</Body>}
-      {s.ruleDetailsStatus === 'unavailable' && <Button label="保存した名前と行動目標を読み直す" secondary disabled={!device || !!state.busy} onPress={() => { void state.refresh(); }} />}
+      {state.ruleDetailsState !== 'ready' && <Body muted>{state.ruleDetailsState === 'checking' ? 'ルール名と行動目標を確認しています。' : state.ruleDetailsState === 'unavailable' ? '名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。' : '名前と行動目標の編集にはアプリの更新が必要です。'}</Body>}
+      {state.ruleDetailsState === 'unavailable' && <Button label="保存した名前と行動目標を読み直す" secondary disabled={!device || !!state.busy} onPress={() => { void state.refresh(); }} />}
       <Panel><Heading>このルールの削除</Heading><Body>削除する内容と一時解除への影響は、次の画面で確認できます。他のルールと記録は残ります。</Body>
         <Button label={`${ruleTitle(rule, index)}を削除する内容を確認`} secondary disabled={!!state.busy} onPress={() => withDraftChoice(() => { void prepareRemoval(rule); })} />
       </Panel>

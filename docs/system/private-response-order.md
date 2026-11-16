@@ -34,6 +34,16 @@ private部分が古くても新しいcontrol sequenceは採用する。逆に、
 
 ## 編集入力と表示の分離
 
+### 再確認待ちと取得失敗の表示（#218）
+
+本人が了承した方針に従い、JS内のprivate状態に`checking / ready / unavailable`を持つ。起動時の未取得、lifecycle無効化後、より高い保存revisionが判明して本文を隠した時点は`checking`。ホーム・スケジュール詳細・名前/目標編集では穏やかな確認中の文言を表示し、取得失敗の警告を出さない。新しい適格な応答の`ready`で現在の本文へ戻り、実際の`unavailable`では警告と既存の再取得操作を表示する。
+
+`checking`はnative DTOに追加しない。既存の順序情報（WeakMap）に保持し、`getRuleDetailsState`をProviderから表示へ渡す。snapshotの`ruleDetailsStatus`は従来どおり`ready / unavailable`で、再確認中は`unavailable`として本文を落とす。コピー済みsnapshotや旧epochの応答で本文を復活させず、revision下限も維持する。旧nativeでmetadata feature自体が未対応の状態は、確認中に変換せず既存の更新案内を保つ。
+
+Screen Timeの`snapshot` read開始時は、未確認/取得不能のprivate部分だけを新しい要求tokenの`checking`にする。既に確認済みの本文は通常のpoll開始だけで隠さない。readが必要なsnapshotを返さず完了した場合やport例外で終わった場合は、そのtokenが現在の待機を所有するときだけ`unavailable`へ進める。確認済み本文を追加で消す根拠にはせず、古い失敗で新しい待機・正常結果を上書きしない。取得応答が既知のrevision下限を満たさなければ、確認できなかった状態を表示する。`onboardingRead`はprogressだけを正常に返し得るため、この待機を開始/終了せず、snapshotを伴う応答だけを従来どおり統合する。
+
+この区別はJSの表示契約であり、OS制限の成功、データ保護の成立、保存データの削除を表さない。Swift/bridge ABI/schemaは変更しない。RAM編集中入力と遅着応答の保護は以下の既存契約を維持する。
+
 保存済み文章の非表示と、本人が編集中のRAM draftは別。失敗/epoch変更でRuleDetails編集画面、rule/unlock draft、Onboardingの未保存入力を消さない。Onboardingのdraft revision・submitted・安定IDとcoalescing writerの契約は既存の[初回設定](onboarding.md)に従う。本変更は`response.onboarding`を保存済みrule本文として統合しない。
 
 UIの目的/保存状態は本人のデータと確認できた状態に限る（DESIGN §1/§3/§5、U01/U04/U05、UI01/UI16/UI21/UI26）。表示不能時は既存notice/再読取操作を使い、保存エラー時の入力を残す。画面構成・文言・操作順は変更しない。

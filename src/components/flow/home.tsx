@@ -51,7 +51,8 @@ export function ProductHome() {
     { text: '戻る', style: 'cancel' }, { text: '手動検証の制限を停止', onPress: () => { void state.run('stopLegacy'); } },
   ]);
   return <FlowScreen title="いとま" tab="home">
-    {s?.ruleDetailsStatus === 'unavailable' && <Notice title="ルール名と行動目標を確認できません">制限の設定は引き続き確認できます。設定タブからもう一度読み直せます。</Notice>}
+    {state.ruleDetailsState === 'unavailable' && <Notice title="ルール名と行動目標を確認できません">制限の設定は引き続き確認できます。設定タブからもう一度読み直せます。</Notice>}
+    {state.ruleDetailsState === 'checking' && !state.loading && !!s?.rules.length && <Body muted>ルール名と行動目標を確認しています。</Body>}
     {state.loading && <Body muted>現在の設定を確認しています。</Body>}
     {device && setup?.draft && setup.busy && <Notice title="初回設定の結果を確認しています">受け付けた操作は、画面を離れても続きます。同じ操作を重ねず、処理結果を確認してください。</Notice>}
     {!state.loading && !device && <Notice title="iPhoneのITOMAで設定できます">
