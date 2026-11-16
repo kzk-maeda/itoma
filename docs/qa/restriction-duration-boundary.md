@@ -23,8 +23,15 @@
 - 終了後のown-store確認失敗、途中の確認失敗、時計不連続: 不明区間を加算しない。
 - 終了後に初めて観測: 過去の設定10分を埋めない。
 - 認可不明のcallback: 以前に確定した54秒だけを返し、10分の成功へ変換しない。
+- 同じ対象を保ってpolicy revisionを変更し終了時刻を短縮/延長: 古い適用成功で新しい終了境界を閉じず、変更後を不明のままにする。`acknowledged`の既存revision一致条件を回帰検証する。
 
 red/greenの原本はrepo内 `.tmp/qa/restriction-duration-20261116/` に保持する。自動テストは制御・SQLite・DTOの検証であり、実際のShieldやExtensionの成功ではない。修正を含むnative buildのSHA/build ID/構成・テスト結果は対応PRに記録する。
+
+### PR223のrevision一致に関するレビュー
+
+終了境界の条件は `acknowledged` を必須とし、その中で既に適用時と現在のpolicy revisionの一致を検査している。このため、同じ対象が残っていてもrevision変更後は古い適用成功を使わない。条件の重複追加はせず、実Repository APIで対象を保ったまま終了を短縮/延長する2ケースを追加した。変更後の成功確認もunknown checkpointのままで、policy変更までの100秒だけが残る。
+
+隔離したコードコピーで既存のrevision一致条件だけを除くと、この回帰テストが失敗することを確認した。製品コードは変更していない。検証原本は `.tmp/qa/pr223-review-20261116/` に保持する。
 
 ## 実機の残件
 
