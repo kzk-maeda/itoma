@@ -1,3 +1,4 @@
+import { useAppNavigation } from '@/state/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useScreenTime } from '@/state/screen-time';
 import { back, useDraftGuard } from './navigation';
@@ -5,7 +6,7 @@ import { Body, Button, Field, FlowScreen, Heading, Notice, Panel } from './ui';
 
 type Draft = { ruleID: string; title: string; goal: string; originalTitle: string; originalGoal: string; revision: string; policyRevision: string };
 export function RuleDetailsScreen({ ruleID }: { ruleID?: string }) {
-  const state = useScreenTime(), s = state.snapshot, rule = s?.rules.find(r => r.id === ruleID);
+  const state = useScreenTime(), navigation = useAppNavigation(), s = state.snapshot, rule = s?.rules.find(r => r.id === ruleID);
   const [draft, setDraft] = useState<Draft>();
   const [reviewRequired, setReviewRequired] = useState(false), [reviewedLatest, setReviewedLatest] = useState(false);
   // Saved text follows current private availability; editable RAM input stays separate.
@@ -32,7 +33,7 @@ export function RuleDetailsScreen({ ruleID }: { ruleID?: string }) {
     pending.current = false;
     if (!mounted.current) return;
     if (result.status === 'ok' && result.snapshot?.ruleDetailsStatus === 'ready') {
-      allowed.current = true; setExitAllowed(true); back();
+      allowed.current = true; setExitAllowed(true); navigation.finish({ screen: 'settings-schedule', ruleID: draft.ruleID });
     } else {
       allowed.current = false; setExitAllowed(false);
       if (result.code === 'changed' || result.status === 'ok') setReviewRequired(true);

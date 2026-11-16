@@ -1,15 +1,16 @@
+import { useAppNavigation } from '@/state/navigation';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Platform, Pressable, Switch, Text, View } from 'react-native';
 import { ruleInput, useScreenTime, type RuleDraft } from '@/state/screen-time';
 import { Applications } from './applications';
 import { ScheduleFields } from './schedule-fields';
-import { back, home, useDraftGuard } from './navigation';
+import { back, useDraftGuard } from './navigation';
 import { weekdayNames, ruleText, endTime } from './presentation';
 import { Body, Button, FlowScreen, Heading, Notice, Panel, flowStyles, useFlowTheme } from './ui';
 
 // UI-only confirmation binding; ruleInput allowlists fields sent to native.
-export type RulePreviewDraft = RuleDraft & { previewBaseRevision?: string };
+export type RulePreviewDraft = RuleDraft & { previewBaseRevision?: string; previewRuleIDs?: string[] };
 
 function useDiscardRule() {
   const state = useScreenTime(), discarding = useRef(false);
@@ -30,7 +31,7 @@ function useDiscardRule() {
 }
 
 export function RuleEditorScreen() {
-  const state = useScreenTime(), theme = useFlowTheme(), draft = state.ruleDraft as RulePreviewDraft | undefined;
+  const state = useScreenTime(), navigation = useAppNavigation(), theme = useFlowTheme(), draft = state.ruleDraft as RulePreviewDraft | undefined;
   const [unchanged, setUnchanged] = useState(false);
   // react-native-web 0.21 uses a separate on-state thumb prop. Native iOS uses thumbColor.
   const webSwitchColors = Platform.OS === 'web' ? { activeThumbColor: theme.onAccent } : {};
@@ -44,7 +45,7 @@ export function RuleEditorScreen() {
   const pick = async () => { const result = await state.run('pickApplications'); if (result.ref) update({ selectionRef: result.ref }); };
   const preview = async () => {
     if (!input) return;
-    const submitted: RulePreviewDraft = { ...draft, previewBaseRevision: input.expectedRevision };
+    const submitted: RulePreviewDraft = { ...draft, previewBaseRevision: input.expectedRevision, previewRuleIDs: state.snapshot?.rules.map(rule => rule.id) };
     state.setRuleDraft(submitted); state.setRuleReview(undefined);
     const ref = state.rulePreviewRef ?? state.ruleReview?.ref;
     const result = await state.run('previewRule', { rule: input, ...(ref ? { ref } : {}) });
@@ -64,7 +65,7 @@ export function RuleEditorScreen() {
       <Body muted>選ぶだけでは制限は始まりません。最後に内容を確認して保存します。</Body>
       {count > 0 && <Panel><Applications selectionRef={draft.selectionRef} count={count} refreshKey={state.refreshKey} /><Body muted>{count}件を選択</Body></Panel>}
       <Button label={draft.selectionRef ? '対象アプリを選び直す' : '対象アプリを選ぶ'} secondary disabled={!!state.busy || state.snapshot?.authorization !== 'approved'} onPress={() => { void pick(); }} />
-      {state.snapshot?.authorization !== 'approved' && <Button label="許可を確認する" secondary onPress={() => router.push('/onboarding')} />}
+      {state.snapshot?.authorization !== 'approved' && <Button label="許可を確認する" secondary onPress={() => navigation.start({ screen: 'onboarding' })} />}
     </View>
     <View style={flowStyles.row}><Body>このルールを有効にする</Body><Switch {...webSwitchColors} accessibilityLabel="このルールを有効にする" accessibilityState={{ disabled: !!state.busy }} disabled={!!state.busy} value={draft.enabled} onValueChange={(enabled) => update({ enabled })} trackColor={{ false: theme.muted, true: theme.accent }} thumbColor={theme.onAccent} hitSlop={8} /></View>
     <View style={flowStyles.section}><Heading>2. 曜日</Heading><View style={flowStyles.row}>
@@ -82,22 +83,26 @@ export function RuleEditorScreen() {
     {unchanged && <Notice title="変更はありません">保存済みのルールと同じ内容です。一時解除の期限は変更していません。</Notice>}
     <Button label="内容を確認する" disabled={!input || !!state.busy} onPress={() => { void preview(); }} />
     {unchanged && <Button label="保存したルールに戻る" secondary onPress={() => {
-      state.setRuleExitAllowed(true); state.setRuleDraft(undefined); router.dismissTo('/settings-schedules');
+      state.setRuleExitAllowed(true); state.setRuleDraft(undefined); navigation.finish({ screen: 'settings-schedules' });
     }} />}
   </FlowScreen>;
 }
 
 export function RuleConfirmationScreen() {
-  const state = useScreenTime(), draft = state.ruleDraft as RulePreviewDraft | undefined, review = state.ruleReview;
+  const state = useScreenTime(), navigation = useAppNavigation(), draft = state.ruleDraft as RulePreviewDraft | undefined, review = state.ruleReview;
   const [failed, setFailed] = useState(false);
   const [openedAt] = useState(Date.now);
   const discardRule = useDiscardRule();
+  useDraftGuard(!!draft?.dirty && !state.ruleExitAllowed, state.canExitRule, () => state.setRuleExitAllowed(true), discardRule);
   const input = draft && ruleInput(draft, review?.snapshot?.revision ?? state.snapshot?.revision ?? '0');
   const submit = async () => {
     if (!review?.ref) return;
     state.setRuleExitAllowed(true);
     const result = await state.run(review.retryable ? 'retryRule' : 'commitRule', { ref: review.ref });
-    if (result.status === 'ok') { state.setRuleDraft(undefined); state.setRuleReview(undefined); state.setRulePreviewRef(undefined); home(); }
+    if (result.status === 'ok') { state.setRuleDraft(undefined); state.setRuleReview(undefined); state.setRulePreviewRef(undefined);
+      const created = result.snapshot?.rules.filter(rule => !draft?.previewRuleIDs?.includes(rule.id));
+      const id = draft?.remove ? undefined : draft?.id ?? (created?.length === 1 && draft?.previewBaseRevision !== undefined && result.snapshot && BigInt(result.snapshot.revision) === BigInt(draft.previewBaseRevision) + 1n ? created[0].id : undefined);
+      navigation.finish(id ? { screen: 'settings-schedule', ruleID: id } : { screen: 'settings-schedules' }); }
     else {
       // Settings may have committed even when OS application failed. That old candidate's
       // base revision cannot be confirmed again; keep the draft and recheck the saved policy.
@@ -133,6 +138,6 @@ export function RuleConfirmationScreen() {
     {!failed && <Button label={review?.retryable ? '変更を確認して登録を再試行' : draft?.remove ? 'このルールを削除する' : 'この内容で保存する'} disabled={!review?.ref || !!state.busy} onPress={() => { void submit(); }} />}
     {failed && <Button label="最新の変更内容を確認し直す" disabled={!!state.busy} onPress={() => { void recheck(); }} />}
     <Button label={draft?.remove ? '削除せず戻る' : '編集へ戻る'} secondary disabled={!!state.busy} onPress={goBack} />
-    <Button label="保存したルールを確認する" secondary onPress={() => { state.setRuleExitAllowed(true); router.dismissTo('/settings-schedules'); }} />
+    <Button label="保存したルールを確認する" secondary onPress={() => navigation.finish({ screen: 'settings-schedules' })} />
   </FlowScreen>;
 }

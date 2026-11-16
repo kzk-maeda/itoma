@@ -1,12 +1,13 @@
+import { useAppNavigation } from '@/state/navigation';
 import { Alert } from 'react-native';
 import { useVisibleClock } from '@/hooks/use-visible-clock';
 import { useScreenTime } from '@/state/screen-time';
 import { Applications } from './applications';
-import { home } from './navigation';
 import { endTime, grantRemaining } from './presentation';
 import { Body, Button, FlowScreen, Heading, Notice, Panel } from './ui';
 
 export function GrantScreen() {
+  const navigation = useAppNavigation(), home = () => navigation.open({ screen: 'index' });
   const state = useScreenTime(), now = useVisibleClock();
   const targets = state.snapshot?.targets.filter((t) => t.grantCommandID) ?? [];
   const observed = state.snapshot?.authorization === 'approved' && state.snapshot.activation === 'enabled'
@@ -14,7 +15,7 @@ export function GrantScreen() {
   const end = (ref: string) => Alert.alert('この一時解除を終了しますか', '選んだアプリの一時解除だけを終了します。ほかの一時解除やルールは変更しません。', [
     { text: '戻る', style: 'cancel' }, { text: '終了して制限へ戻す', onPress: () => { void state.run('endGrant', { ref }); } },
   ]);
-  return <FlowScreen title="一時解除の状況" onBack={home}>
+  return <FlowScreen title="一時解除の状況" backLabel="‹ ホーム" onBack={home}>
     {!targets.length && <Panel><Heading>進行中の一時解除はありません</Heading><Body>解除の期限や要求が終了しています。現在のルールと制限の状態は、ホームで確認できます。</Body></Panel>}
     {targets.map((target, index) => <Panel key={target.ref}>
       <Heading>対象 {index + 1}</Heading><Applications selectionRef={target.selectionRef} targetRef={target.ref} refreshKey={state.refreshKey} />

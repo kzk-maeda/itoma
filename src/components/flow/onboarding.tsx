@@ -1,3 +1,4 @@
+import { useAppNavigation } from '@/state/navigation';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useOnboarding } from '@/state/onboarding';
@@ -18,13 +19,13 @@ function LoadedOnboarding({ recovery }: { recovery: boolean }) {
 
 /** Existing rules retain the explicit reauthorization/selection/restart flow. */
 function PermissionRecovery() {
-  const state = useScreenTime();
+  const state = useScreenTime(), navigation = useAppNavigation();
   const authorize = async () => {
     const permission = await state.run('authorize');
     if (permission.snapshot?.authorization !== 'approved') return;
     const initialized = await state.run('initialize');
     if (initialized.snapshot?.storage === 'ready') {
-      if (initialized.snapshot.rules.length && !state.ruleDraft) { router.dismissTo('/settings'); return; }
+      if (initialized.snapshot.rules.length && !state.ruleDraft) { navigation.close(); return; }
       if (!state.ruleDraft) state.beginRule();
       router.dismissTo('/rule');
     }

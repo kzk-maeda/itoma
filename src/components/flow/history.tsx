@@ -1,10 +1,10 @@
-import { router, useFocusEffect, useIsFocused } from 'expo-router';
+import { useFocusEffect, useIsFocused } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useHistoryRecords } from '@/state/history';
 import { completeNativeHistorySmoke } from '@/qa/native-smoke';
 import type { HistoryCode, HistoryRow } from '../../../modules/itoma-native';
-import { back } from './navigation';
+import { useAppNavigation } from '@/state/navigation';
 import { Body, Button, FlowScreen, Heading, LinkRow, Notice, Panel, flowStyles, useFlowTheme } from './ui';
 import { HistoryCalendar } from './history-calendar';
 import { canReadChoiceReason, choiceStatus, choiceTitle, dateLabel, dayAt, moveDay, timeLabel } from './history-presentation';
@@ -25,6 +25,7 @@ function Disclosure({ label, children }: { label: string; children: ReactNode })
   </Pressable>{open && <View style={flowStyles.section}>{children}</View>}</View>;
 }
 export function HistoryScreen() {
+  const navigation = useAppNavigation();
   const state = useHistoryRecords(), theme = useFlowTheme();
   const [calendar, setCalendar] = useState(false), [viewedAt, setViewedAt] = useState(Date.now);
   const { ensureLoaded, pauseOlder } = state;
@@ -50,11 +51,11 @@ export function HistoryScreen() {
     <Disclosure label="記録について・保存状況">
       <Body muted>これは選択や処理の記録です。実際の利用時間や集中の成果、現在の制限を示すものではありません。線の長さや間隔は利用時間を表しません。</Body>
       {page && <Body muted>取得時点：{new Date(page.asOf * 1000).toLocaleString('ja-JP', { timeZone: zone })} · {zone}。最大40件ずつ。{page.grouping === 'command' ? '同じ要求の経過は1件にまとめています。' : '保存した操作を表示しています。'}</Body>}
-      <LinkRow label="記録の保存状況を確認する" onPress={() => router.navigate('/settings-storage')} />
+      <LinkRow label="記録の保存状況を確認する" detail="設定で保存状況と取込を開く" onPress={() => navigation.open({ screen: 'settings-storage' })} />
     </Disclosure>
     <Button label="最新の記録を確認する" secondary disabled={state.busy} onPress={state.restart} />
   </>;
-  return <FlowScreen<HistoryRow> title="あなたの選択の記録" onBack={back} footer={footer}
+  return <FlowScreen<HistoryRow> title="あなたの選択の記録" backLabel="‹ 振り返り" onBack={() => navigation.open({ screen: 'reflection' })} footer={footer}
     list={{
       viewKey: `${state.kind}:${state.day}:${state.viewGeneration}`, data: rows, keyExtractor: row => row.key, extraData: [zone, today, state.busy],
       getInitialOffset: state.getScrollOffset, onScrollOffset: offset => { if (focused) state.rememberScroll(offset); },
@@ -62,7 +63,7 @@ export function HistoryScreen() {
       renderItem: ({ item: row, index }) => <HistoryTimelineEntry row={row} zone={zone} today={today} busy={state.busy}
         first={index === 0 || dayAt(rows[index - 1].at, zone) !== dayAt(row.at, zone)}
         continues={index + 1 < rows.length && dayAt(rows[index + 1].at, zone) === dayAt(row.at, zone)}
-        onOpen={item => { if (state.openRecord(item)) router.push('/history-reason'); }} />,
+        onOpen={item => { if (state.openRecord(item)) navigation.open({ screen: 'history-reason' }); }} />,
     }}>
     <Body muted>そのとき、何を選んだか。理由と結果を、一つずつ見直せます。</Body>
     <View style={[styles.segments, { backgroundColor: theme.background }]}>
@@ -93,13 +94,14 @@ export function HistoryScreen() {
 }
 
 export function HistoryReasonScreen() {
+  const navigation = useAppNavigation();
   const state = useHistoryRecords(), theme = useFlowTheme(), row = state.selectedRow, reason = state.reason;
   const zone = state.page?.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const expected = !!state.selectedCommandID || (row && canReadChoiceReason(row));
   const { closeReason } = state;
-  const close = () => { closeReason(); back(); };
+  const close = () => { closeReason(); navigation.open({ screen: 'history' }); };
   useFocusEffect(useCallback(() => () => closeReason(), [closeReason]));
-  return <FlowScreen title="選択の詳細" onBack={close}>
+  return <FlowScreen title="選択の詳細" backLabel="‹ 選択の記録" onBack={close}>
     {row && <View style={flowStyles.section}><Heading>{choiceTitle(row)}</Heading>
       <Body muted>{dateLabel(dayAt(row.at, zone))} {timeLabel(row.at, zone)} の記録</Body>
       {row.updatedAt !== undefined && row.updatedAt !== row.at && <Body muted>最後の記録：{dateLabel(dayAt(row.updatedAt, zone))} {timeLabel(row.updatedAt, zone)}</Body>}

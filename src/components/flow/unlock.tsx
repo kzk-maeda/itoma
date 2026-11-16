@@ -1,21 +1,22 @@
+import { useAppNavigation } from '@/state/navigation';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useScreenTime } from '@/state/screen-time';
 import { Applications } from './applications';
-import { back, home, useDraftGuard } from './navigation';
+import { back, useDraftGuard } from './navigation';
 import { endTime, ruleText } from './presentation';
 import { ruleTitle } from './rule-identity';
 import { Body, Button, Field, FlowScreen, Heading, Notice, Panel, flowStyles } from './ui';
 import { Alert, View } from 'react-native';
 
 function useContinueRestrictions() {
-  const state = useScreenTime(), draft = state.unlockDraft;
+  const state = useScreenTime(), navigation = useAppNavigation(), draft = state.unlockDraft;
   return () => {
     if (state.busy) return;
     const discard = async () => {
       const result = await state.run('cancelUnlock');
       if (result.status !== 'ok') return;
-      state.resetUnlock(); state.setUnlockExitAllowed(true); home();
+      state.resetUnlock(); state.setUnlockExitAllowed(true); navigation.finish({ screen: 'index' });
     };
     if (draft.reason || draft.targetRef || draft.minutes !== '5') {
       Alert.alert('入力を破棄して制限を続けますか', '理由の保存や一時解除は行いません。入力を続けることもできます。', [
@@ -27,11 +28,11 @@ function useContinueRestrictions() {
 }
 
 export function UnlockScreen() {
-  const state = useScreenTime(), draft = state.unlockDraft;
+  const state = useScreenTime(), navigation = useAppNavigation(), draft = state.unlockDraft;
   const continueRestrictions = useContinueRestrictions();
   const { setUnlockExitAllowed } = state;
   useFocusEffect(useCallback(() => { setUnlockExitAllowed(false); }, [setUnlockExitAllowed]));
-  useDraftGuard((!!draft.reason || !!draft.targetRef || draft.minutes !== '5') && !state.unlockExitAllowed, state.canExitUnlock, () => state.setUnlockExitAllowed(true), () => { void state.run('cancelUnlock'); state.resetUnlock(); });
+  useDraftGuard((!!draft.reason || !!draft.targetRef || draft.minutes !== '5') && !state.unlockExitAllowed, state.canExitUnlock, () => state.setUnlockExitAllowed(true), async () => { const result = await state.run('cancelUnlock'); if (result.status !== 'ok') return false; state.resetUnlock(); return true; });
   const selected = state.snapshot?.targets.find((t) => t.ref === draft.targetRef);
   const available = state.snapshot?.authorization === 'approved' && state.snapshot.activation === 'enabled' && state.snapshot.schedulesReady;
   const valid = available && !!selected?.unlockable && !!draft.reason.trim() && /^(?:[1-9]|[12][0-9]|30)$/.test(draft.minutes);
@@ -61,12 +62,12 @@ export function UnlockScreen() {
     {!valid && <Body muted>対象のアプリ・空白以外の理由・1〜30分の時間を指定してください。</Body>}
     <Button label="制限を続ける" disabled={!!state.busy} onPress={continueRestrictions} />
     <Button label="解除内容を確認する" testID="unlock-review" secondary disabled={!valid || !!state.busy} onPress={() => { void preview(); }} />
-    <Button label="進行中の解除を確認する" secondary onPress={() => router.push('/grant')} />
+    <Button label="進行中の解除を確認する" secondary onPress={() => navigation.open({ screen: 'grant' })} />
   </FlowScreen>;
 }
 
 export function UnlockConfirmationScreen() {
-  const state = useScreenTime(), draft = state.unlockDraft, review = state.unlockReview;
+  const state = useScreenTime(), navigation = useAppNavigation(), draft = state.unlockDraft, review = state.unlockReview;
   const continueRestrictions = useContinueRestrictions();
   const [failed, setFailed] = useState(false);
   const [openedAt] = useState(Date.now);
@@ -80,7 +81,7 @@ export function UnlockConfirmationScreen() {
     const accepted = !!result.ref && result.snapshot?.targets.some((t) => t.grantCommandID === result.ref);
     if (result.status === 'ok' || accepted) {
       state.resetUnlock(); state.setUnlockExitAllowed(true);
-      router.dismissTo('/grant');
+      navigation.finish({ screen: 'grant' });
     } else setFailed(true);
   };
   return <FlowScreen title="この内容で一時解除しますか" onBack={back}>
@@ -99,6 +100,6 @@ export function UnlockConfirmationScreen() {
     {failed && <Notice title="解除の完了を確認できません">入力は残っています。条件を確認し直せます。</Notice>}
     {failed && (state.error === 'busy' || state.error === 'storage-failed') && <Button label="同じ上限のまま受理を再試行する" disabled={!!state.busy} onPress={() => { void submit(); }} />}
     <Button label="入力に戻る" secondary disabled={!!state.busy} onPress={back} />
-    <Button label="現在の解除状況を確認する" secondary onPress={() => { state.setUnlockExitAllowed(true); router.dismissTo('/grant'); }} />
+    <Button label="現在の解除状況を確認する" secondary onPress={() => navigation.finish({ screen: 'grant' })} />
   </FlowScreen>;
 }
