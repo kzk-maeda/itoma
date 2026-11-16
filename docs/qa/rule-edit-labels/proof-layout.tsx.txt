@@ -1,0 +1,4 @@
+import { Stack } from 'expo-router';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { RuleLabelProof } from '@/qa/rule-label-proof';
+export default function Layout() { return <SafeAreaProvider><RuleLabelProof><Stack screenOptions={{headerShown: false}} /></RuleLabelProof></SafeAreaProvider>; }

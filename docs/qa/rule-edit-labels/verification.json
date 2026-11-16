@@ -1,0 +1,115 @@
+{
+  "browser": "155.0.8059.79",
+  "fixture": "synthetic native snapshots",
+  "physicalDevice": false,
+  "cases": [
+    {
+      "name": "long-name-light",
+      "width": 390,
+      "colorScheme": "light",
+      "artificialTextScale": 1,
+      "horizontalOverflow": false,
+      "actions": [
+        {
+          "label": "名前と行動目標を編集",
+          "width": 300,
+          "height": 52
+        },
+        {
+          "label": "対象アプリと時間を編集",
+          "width": 300,
+          "height": 75
+        }
+      ],
+      "errors": [],
+      "sha256": "be92ff5929615d7a8a716a87b84fcbba19ef1857f8adb593393b6591b128da21"
+    },
+    {
+      "name": "actions-narrow",
+      "width": 320,
+      "colorScheme": "light",
+      "artificialTextScale": 1,
+      "horizontalOverflow": false,
+      "actions": [
+        {
+          "label": "名前と行動目標を編集",
+          "width": 230,
+          "height": 52
+        },
+        {
+          "label": "対象アプリと時間を編集",
+          "width": 230,
+          "height": 75
+        }
+      ],
+      "errors": [],
+      "sha256": "3b96b564f370b95842527095ab096162038197e0244a783e17e6180ec852c2a7"
+    },
+    {
+      "name": "actions-dark",
+      "width": 390,
+      "colorScheme": "dark",
+      "artificialTextScale": 1,
+      "horizontalOverflow": false,
+      "actions": [
+        {
+          "label": "名前と行動目標を編集",
+          "width": 300,
+          "height": 52
+        },
+        {
+          "label": "対象アプリと時間を編集",
+          "width": 300,
+          "height": 75
+        }
+      ],
+      "errors": [],
+      "sha256": "6e2dd1cc1477855097541a922e97e5f7d17bfe14bd841337645c7eb8b0071c7f"
+    },
+    {
+      "name": "actions-large-text",
+      "width": 320,
+      "colorScheme": "light",
+      "artificialTextScale": 2,
+      "horizontalOverflow": false,
+      "actions": [
+        {
+          "label": "名前と行動目標を編集",
+          "width": 230,
+          "height": 129
+        },
+        {
+          "label": "対象アプリと時間を編集",
+          "width": 230,
+          "height": 253
+        }
+      ],
+      "errors": [],
+      "sha256": "951f5ac97b352b77eeb514c66fe4782987dffebd487b9753e952d576e860139e"
+    },
+    {
+      "name": "actions-wide",
+      "width": 768,
+      "colorScheme": "light",
+      "artificialTextScale": 1,
+      "horizontalOverflow": false,
+      "actions": [
+        {
+          "label": "名前と行動目標を編集",
+          "width": 390,
+          "height": 52
+        },
+        {
+          "label": "対象アプリと時間を編集",
+          "width": 390,
+          "height": 75
+        }
+      ],
+      "errors": [],
+      "sha256": "4583ceb1d349f470cf6f35671ffb03fc2bffab35baf76e04bf172d0f31abce65"
+    }
+  ],
+  "nameGoalRoute": "/rule-details",
+  "appTimeRoute": "/rule",
+  "privateUnavailableGuard": "name/goal disabled; app/time enabled"
+}
