@@ -1,3 +1,4 @@
+import { BrowseTestShell } from './fixtures/browse-shell';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -70,14 +71,14 @@ function Pages() {
     jest.mocked(router.back).mockImplementation(() => setStack(previous => previous.slice(0, -1)));
   }, []);
   const current = stack.at(-1);
-  return <>{current === '/' ? <ProductHome /> : current === '/settings' ? <SettingsScreen /> : current === '/settings-records' ? <RecordSettingsScreen /> : current === '/settings-delete' ? <RecordDeletionScreen /> : current === '/settings-storage' ? <RecordStorageScreen /> : current === '/history' ? <HistoryScreen /> : current === '/history-reason' ? <HistoryReasonScreen /> : <ReflectionScreen />}</>;
+  return <BrowseTestShell route={current ?? '/reflection'} navigate={path => router.navigate(path)}>{current === '/' ? <ProductHome /> : current === '/settings' ? <SettingsScreen /> : current === '/settings-records' ? <RecordSettingsScreen /> : current === '/settings-delete' ? <RecordDeletionScreen /> : current === '/settings-storage' ? <RecordStorageScreen /> : current === '/history' ? <HistoryScreen /> : current === '/history-reason' ? <HistoryReasonScreen /> : <ReflectionScreen />}</BrowseTestShell>;
 }
 async function mount(b: ReturnType<typeof backend>) {
   return render(<ScreenTimeProvider client={controlClient}><HistoryProvider client={b.historyClient}>
     <ReflectionProvider client={b.client}><HeldReason /><Pages /></ReflectionProvider>
   </HistoryProvider></ScreenTimeProvider>);
 }
-const press = async (label: string) => fireEvent.press(screen.getByRole('button', { name: label }));
+const press = async (label: string) => fireEvent.press(screen.getByRole('button', { name: label === '‹ 戻る' ? /^‹ / : label }));
 const observed = () => screen.findByText('制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。');
 
 test('native restriction duration reaches the real provider, total and period UI with measurement scope', async () => {
@@ -208,14 +209,15 @@ test('navigation and foreground refresh retain one lifetime subscription per pro
   const initial = listeners.size;
   for (let n = 0; n < 10; n += 1) {
     await press('選択の記録を見る'); await screen.findByText('あなたの選択の記録');
-    await press('‹ 戻る'); await screen.findByText('記録とプライバシー');
+    await press('‹ 戻る'); await screen.findByRole('header', { name: '振り返り' });
+    await fireEvent.press(screen.getByRole('tab', { name: '設定' })); await press('記録とプライバシー');
   }
   await press('‹ 戻る');
   await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
   await act(async () => { listeners.forEach(listener => listener('background')); });
   await act(async () => { listeners.forEach(listener => listener('active')); });
   await observed();
-  expect(listeners.size).toBe(initial); expect(initial).toBe(3);
+  expect(listeners.size).toBe(initial); expect(initial).toBe(4);
   await mounted.unmount(); expect(listeners.size).toBe(0);
   subscription.mockRestore();
   if (originalSubscribe) jest.mocked(AppState.addEventListener).mockImplementation(originalSubscribe);
@@ -239,7 +241,9 @@ test('settings/history are reachable through the tab while the selected reflecti
   await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
   expect(screen.getByRole('header', { name: '設定' })).toBeTruthy();
   await press('記録とプライバシー'); await press('選択の記録を見る'); await screen.findByText('あなたの選択の記録');
-  await press('‹ 戻る'); await press('‹ 戻る');
+  await press('‹ 戻る');
+  expect(screen.getByRole('tab', { name: '振り返り' })).toBeSelected();
+  await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
   expect(screen.getByRole('tab', { name: '設定' })).toBeSelected();
   await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
   await screen.findByText('2026年12月');

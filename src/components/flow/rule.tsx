@@ -1,3 +1,5 @@
+import { useWorkScope } from '@/state/work-scope';
+import { useWorkLifetime } from '@/hooks/use-work-lifetime';
 import { useAppNavigation } from '@/state/navigation';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
@@ -31,7 +33,7 @@ function createdRuleID(draft: RulePreviewDraft, snapshot?: ScreenTimeSnapshot) {
 function useDiscardRule() {
   const state = useScreenTime(), discarding = useRef(false);
   return async () => {
-    if (discarding.current) return false;
+    if (discarding.current || state.busy) return false;
     discarding.current = true;
     try {
       const ref = state.rulePreviewRef ?? state.ruleReview?.ref;
@@ -47,6 +49,8 @@ function useDiscardRule() {
 }
 
 export function RuleEditorScreen() {
+  const alive = useWorkLifetime();
+  const work = useWorkScope(), previous = work?.back ?? back;
   const state = useScreenTime(), navigation = useAppNavigation(), theme = useFlowTheme(), draft = state.ruleDraft as RulePreviewDraft | undefined;
   const [unchanged, setUnchanged] = useState(false);
   // react-native-web 0.21 uses a separate on-state thumb prop. Native iOS uses thumbColor.
@@ -57,7 +61,7 @@ export function RuleEditorScreen() {
   useDraftGuard(!!draft?.dirty && !state.ruleExitAllowed, state.canExitRule, () => state.setRuleExitAllowed(true), discardRule,
     draft?.creationCommitted ? '名前と行動目標の未保存入力を破棄します。保存済みの時間のルールは残ります。' : undefined);
   if (!draft) return <FlowScreen title="ルールを確認しています"><Body>保存した設定を確認しています。</Body></FlowScreen>;
-  if (draft.creationCommitted) return <FlowScreen title="名前と行動目標の保存" onBack={back}>
+  if (draft.creationCommitted) return <FlowScreen title="名前と行動目標の保存" onBack={previous}>
     <Notice title="時間のルールは保存済みです">名前と行動目標の入力は残っています。ルールを再作成せず、保存内容を確認できます。</Notice>
     {!draft.createdRuleID && <>
       <Body>{draft.title}</Body><RuleGoal goal={draft.goal} />
@@ -75,13 +79,15 @@ export function RuleEditorScreen() {
   const hasIdentity = !!(draft.title?.trim() || draft.goal?.trim());
   const identityUnavailable = !draft.id && hasIdentity && state.ruleDetailsState !== 'ready';
   const input = !identityInvalid && !identityUnavailable ? ruleInput(draft, state.snapshot?.revision ?? '0') : undefined;
-  const pick = async () => { const result = await state.run('pickApplications'); if (result.ref) update({ selectionRef: result.ref }); };
+  const pick = async () => { const session = state.ruleSession(), result = await state.run('pickApplications'); if (result.ref && alive() && state.ownsRuleSession(session)) update({ selectionRef: result.ref }); };
   const preview = async () => {
     if (!input) return;
+    const session = state.ruleSession();
     const submitted: RulePreviewDraft = { ...draft, previewBaseRevision: input.expectedRevision, previewRuleIDs: state.snapshot?.rules.map(rule => rule.id) };
     state.setRuleDraft(submitted); state.setRuleReview(undefined);
     const ref = state.rulePreviewRef ?? state.ruleReview?.ref;
     const result = await state.run('previewRule', { rule: input, ...(ref ? { ref } : {}) });
+    if (!alive() || !state.ownsRuleSession(session)) return;
     if (result.status === 'confirmation-required') { state.setRulePreviewRef(result.ref); state.setRuleReview(result); router.push('/rule-confirm'); }
     else if (result.status === 'ok' && !result.ref) {
       const saved = result.snapshot?.rules.find((rule) => rule.id === draft.id);
@@ -93,7 +99,7 @@ export function RuleEditorScreen() {
     }
   };
   const count = state.snapshot?.selections.find((s) => s.ref === draft.selectionRef)?.count ?? 0;
-  return <FlowScreen title={draft.id ? '時間のルールを編集' : '時間のルールをつくる'} onBack={back}>
+  return <FlowScreen title={draft.id ? '時間のルールを編集' : '時間のルールをつくる'} onBack={previous}>
     {!draft.id && <View style={flowStyles.section}><Heading>この時間に大切にしたいこと</Heading>
       <Body>このルールで、どんな時間を過ごしたいですか？ 名前と行動目標は任意です。</Body>
       <RuleIdentityFields title={draft.title ?? ''} goal={draft.goal ?? ''} disabled={!!state.busy} onChange={update} />
@@ -129,19 +135,23 @@ export function RuleEditorScreen() {
 }
 
 export function RuleConfirmationScreen() {
+  const alive = useWorkLifetime();
+  const work = useWorkScope();
   const state = useScreenTime(), navigation = useAppNavigation(), draft = state.ruleDraft as RulePreviewDraft | undefined, review = state.ruleReview;
   const [failed, setFailed] = useState(false);
   const [openedAt] = useState(Date.now);
   const submitting = useRef(false);
   const discardRule = useDiscardRule();
-  useDraftGuard(!!draft?.dirty && !state.ruleExitAllowed, state.canExitRule, () => state.setRuleExitAllowed(true), discardRule);
+  useDraftGuard((!!work || !!draft?.remove) && !!draft?.dirty && !state.ruleExitAllowed, state.canExitRule, () => state.setRuleExitAllowed(true), discardRule);
   const input = draft && ruleInput(draft, review?.snapshot?.revision ?? state.snapshot?.revision ?? '0');
   const submit = async () => {
     if (!review?.ref || submitting.current || draft?.creationCommitted) return;
     submitting.current = true;
+    const session = state.ruleSession();
     try {
       state.setRuleExitAllowed(true);
       const result = await state.run(review.retryable ? 'retryRule' : 'commitRule', { ref: review.ref });
+      if (!state.ownsRuleSession(session)) return;
       if (result.status === 'ok') {
         state.setRuleReview(undefined); state.setRulePreviewRef(undefined);
         if (draft && !draft.id && (draft.title?.trim() || draft.goal?.trim())) {
@@ -149,15 +159,18 @@ export function RuleConfirmationScreen() {
           state.setRuleDraft({ ...draft, creationCommitted: true, createdRuleID: id, dirty: true } as RulePreviewDraft);
           if (id && snapshot?.ruleDetailsStatus === 'ready' && snapshot.ruleDetailsRevision !== undefined) {
             const saved = await state.run('saveRuleDetails', { details: { ruleID: id, title: draft.title ?? '', goal: draft.goal ?? '', expectedRevision: snapshot.ruleDetailsRevision, expectedPolicyRevision: snapshot.revision } });
-            if (saved.status === 'ok' && saved.snapshot?.ruleDetailsStatus === 'ready') { state.setRuleDraft(undefined); navigation.finish({ screen: 'settings-schedule', ruleID: id }); return; }
+            if (!state.ownsRuleSession(session)) return;
+            if (saved.status === 'ok' && saved.snapshot?.ruleDetailsStatus === 'ready') { state.setRuleDraft(undefined); if (alive()) navigation.finish({ screen: 'settings-schedule', ruleID: id }); return; }
           }
+          state.setRuleExitAllowed(false);
+          if (!alive()) return;
           if (id) router.replace({ pathname: '/rule-details', params: { ruleID: id } });
           else router.replace('/rule');
           return;
         }
         state.setRuleDraft(undefined);
         const id = draft?.remove ? undefined : draft?.id ?? (draft ? createdRuleID(draft, result.snapshot) : undefined);
-        navigation.finish(id ? { screen: 'settings-schedule', ruleID: id } : { screen: 'settings-schedules' });
+        if (alive()) navigation.finish(id ? { screen: 'settings-schedule', ruleID: id } : { screen: 'settings-schedules' });
       }
       else {
         // Settings may have committed even when OS application failed. That old candidate's
@@ -166,7 +179,7 @@ export function RuleConfirmationScreen() {
         if (result.snapshot && baseRevision !== undefined && result.snapshot.revision !== baseRevision) {
           state.setRuleReview(undefined); state.setRulePreviewRef(undefined);
         }
-        setFailed(true);
+        if (alive()) setFailed(true);
       }
     } finally { submitting.current = false; }
   };
@@ -180,7 +193,7 @@ export function RuleConfirmationScreen() {
       if (!await discardRule()) return;
       state.setRuleExitAllowed(true);
     }
-    back();
+    if (work) work.back(); else back();
   })(); };
   return <FlowScreen title={draft?.remove ? 'このルールを削除しますか' : 'このルールで保存しますか'} onBack={goBack}>
     {draft && !draft.id && <Panel><Heading>名前と行動目標</Heading><Body>{draft.title?.trim() || 'ルール名は未入力です'}</Body>

@@ -97,7 +97,7 @@ export function ProductHome() {
     </Panel>}
     {!s?.rules.length && <Button label={firstRun ? setup.draft ? setup.busy || setup.draft.submitted ? '初回設定の結果を確認する' : '初回設定を続ける' : '初回設定を始める' : 'ルールをつくる'} disabled={!device || !!state.busy || !!setup?.busy || !!setup?.loading} onPress={create} />}
     {device && !!s?.rules.length && !!setup?.draft && <Button label="初回設定の結果を確認する" secondary onPress={() => navigation.start({ screen: 'onboarding' }, { screen: 'index' })} />}
-    {!!s?.rules.length && state.ruleDraft?.dirty && <Button label="編集中のルールに戻る" secondary onPress={() => navigation.start({ screen: 'rule' }, { screen: 'index' })} />}
+    {!!s?.rules.length && state.ruleDraft?.dirty && <Button label="編集中のルールに戻る" secondary onPress={() => navigation.start(state.ruleDraft?.createdRuleID ? { screen: 'rule-details', ruleID: state.ruleDraft.createdRuleID } : { screen: 'rule' }, { screen: 'index' })} />}
     {!!s?.rules.length && <View style={styles.targets}><Heading>対象のアプリ</Heading>
       {s.authorization === 'approved' ? s.targets.map((target) => <View key={target.ref} style={[styles.target, { borderColor: theme.line }]}>
         <View style={styles.targetLine}>

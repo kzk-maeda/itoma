@@ -1,6 +1,8 @@
+import type { HistoryResponse } from '../../../modules/itoma-native';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, AppState, View } from 'react-native';
+import { useScreenTime } from '@/state/screen-time';
 import { useHistoryRecords } from '@/state/history';
 import { useReflection } from '@/state/reflection';
 import { useAppNavigation } from '@/state/navigation';
@@ -9,7 +11,7 @@ import { Body, Button, FlowScreen, Heading, LinkRow, Notice, Panel } from './ui'
 
 export function RecordSettingsScreen() {
   const navigation = useAppNavigation(), history = useHistoryRecords();
-  return <FlowScreen title="記録とプライバシー" backLabel="‹ 設定" onBack={() => navigation.open({ screen: 'settings' })}>
+  return <FlowScreen title="記録とプライバシー" backLabel="‹ 設定" onBack={() => navigation.finish({ screen: 'settings' })}>
     <Body muted>記録は端末内で確認・管理できます。</Body>
     <Panel>
       <LinkRow label="選択の記録を見る" detail="振り返りで全期間の記録を開く" onPress={() => { history.choose('event', ''); navigation.open({ screen: 'history' }); }} />
@@ -19,9 +21,25 @@ export function RecordSettingsScreen() {
   </FlowScreen>;
 }
 export function RecordStorageScreen() {
-  const history = useHistoryRecords(), reflection = useReflection(), { refresh } = history, navigation = useAppNavigation();
-  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
-  return <FlowScreen title="保存状況と取込" backLabel="‹ 記録とプライバシー" onBack={() => navigation.open({ screen: 'settings-records' })}>
+  const source = useHistoryRecords(), reflection = useReflection(), navigation = useAppNavigation(), { historyEpoch } = useScreenTime();
+  const { readStorage } = source;
+  const [view, setView] = useState<{ response?: HistoryResponse; epoch: number; reader: typeof readStorage; busy: boolean }>();
+  const refreshRef = useRef<() => void>(() => {});
+  useFocusEffect(useCallback(() => {
+    let mounted = true, generation = 0;
+    const read = () => {
+      const ticket = ++generation;
+      setView(previous => ({ ...previous, epoch: historyEpoch, reader: readStorage, busy: true }));
+      void readStorage().then(response => { if (mounted && ticket === generation) setView({ response, epoch: historyEpoch, reader: readStorage, busy: false }); });
+    };
+    refreshRef.current = read; read();
+    const listener = AppState.addEventListener('change', state => { if (state === 'active') read(); else generation++; });
+    return () => { mounted = false; generation++; listener.remove(); refreshRef.current = () => {}; };
+  }, [readStorage, historyEpoch]));
+  const response = view?.epoch === historyEpoch && view.reader === readStorage ? view.response : undefined;
+  const history = { page: response?.page, storage: response?.storage, error: response?.code, busy: !!view?.busy || source.busy };
+  const refresh = () => refreshRef.current();
+  return <FlowScreen title="保存状況と取込" backLabel="‹ 記録とプライバシー" onBack={() => navigation.finish({ screen: 'settings-records' })}>
     {history.busy && <Body muted>保存状況を確認しています。</Body>}
     {history.error && <Notice title="保存状況を確認できません">{history.error === 'unavailable' ? 'この環境では記録の保存状況を利用できません。iPhone版で確認できます。' : '端末のロックを解除してから、もう一度確認できます。'}確認できない量を0 MBとは扱いません。</Notice>}
     {history.storage === 'not-created' && !history.error && <Body>まだ記録の保存先が作られていません。容量と上限は保存先を確認できると表示します。</Body>}
@@ -63,7 +81,7 @@ export function RecordDeletionScreen() {
     ]);
   };
   const busy = history.busy || reflection.busy;
-  return <FlowScreen title="記録を削除する" backLabel="‹ 記録とプライバシー" onBack={() => navigation.open({ screen: 'settings-records' })}>
+  return <FlowScreen title="記録を削除する" backLabel="‹ 記録とプライバシー" onBack={() => navigation.finish({ screen: 'settings-records' })}>
     <Body>削除する範囲を選んだ後、最後に確認します。どの範囲でもルールと現在の一時解除は残ります。</Body>
     {result && <View accessibilityLiveRegion="polite"><Body>{result}</Body></View>}
     {(history.error || reflection.response?.status === 'error') && <Notice title="操作結果を確認してください">完了したとは扱わず、保存状況や記録を確認してから再試行できます。</Notice>}

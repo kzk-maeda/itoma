@@ -1,4 +1,4 @@
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 import { Alert } from 'react-native';
 import { ruleInput, useScreenTime } from '@/state/screen-time';
@@ -20,7 +20,7 @@ function useSettings() {
     if (!state.ruleDraft?.dirty) { proceed(); return; }
     Alert.alert('編集中の入力があります', '入力を続けるか、破棄して別の操作へ進むかを選べます。', [
       { text: '入力を続ける', style: 'cancel', onPress: () => state.ruleDraft?.createdRuleID
-        ? router.navigate({ pathname: '/rule-details', params: { ruleID: state.ruleDraft.createdRuleID } }) : router.navigate('/rule') },
+        ? navigation.start({ screen: 'rule-details', ruleID: state.ruleDraft.createdRuleID }, { screen: 'settings-schedule', ruleID: state.ruleDraft.createdRuleID }) : navigation.start({ screen: 'rule' }, state.ruleDraft?.id ? { screen: 'settings-schedule', ruleID: state.ruleDraft.id } : { screen: 'settings-schedules' }) },
       { text: '破棄して進む', style: 'destructive', onPress: () => {
         if (state.ruleDraft?.creationCommitted) { state.setRuleDraft(undefined); proceed(); return; }
         void state.run('cancelCandidate', { ref: state.rulePreviewRef ?? state.ruleReview?.ref }).then((r) => {
@@ -66,7 +66,7 @@ export function SettingsScreen() {
 export function ScheduleListScreen() {
   const { state, setup, s, device, firstRun, edit, stop, resume, navigation } = useSettings();
   const known = device && !['storage-failed', 'unavailable'].includes(state.error ?? '');
-  return <FlowScreen title="スケジュール" backLabel="‹ 設定" onBack={() => navigation.open({ screen: 'settings' })}>
+  return <FlowScreen title="スケジュール" backLabel="‹ 設定" onBack={() => navigation.finish({ screen: 'settings' })}>
     <Body muted>各行は保存した曜日・時間・対象の設定です。現在の反映状態は「スクリーンタイム」で確認できます。</Body>
     {s?.rules.map((rule, index) => <LinkRow key={rule.id} label={ruleTitle(rule, index)} detail={`${ruleText(rule)} · ${rule.enabled ? '有効' : '無効'}`}
       onPress={() => navigation.open({ screen: 'settings-schedule', ruleID: rule.id })} />)}
@@ -85,7 +85,7 @@ export function ScheduleDetailScreen() {
   const { ruleID } = useLocalSearchParams<{ ruleID: string }>();
   const { state, s, device, edit, prepareRemoval, withDraftChoice, navigation } = useSettings();
   const index = s?.rules.findIndex(rule => rule.id === ruleID) ?? -1, rule = s?.rules[index];
-  return <FlowScreen title={rule ? ruleTitle(rule, index) : 'スケジュールの詳細'} backLabel="‹ スケジュール" onBack={() => navigation.open({ screen: 'settings-schedules' })}>
+  return <FlowScreen title={rule ? ruleTitle(rule, index) : 'スケジュールの詳細'} backLabel="‹ スケジュール" onBack={() => navigation.finish({ screen: 'settings-schedules' })}>
     {rule && s ? <>
       <RuleGoal goal={rule.goal} /><Body>{ruleText(rule)}</Body><Body muted>{rule.enabled ? '有効なルール' : '無効なルール'}</Body>
       {s.authorization === 'approved' && <Applications selectionRef={rule.selectionRef} count={s.selections.find(selection => selection.ref === rule.selectionRef)?.count ?? 1} refreshKey={state.refreshKey} />}
@@ -105,7 +105,7 @@ export function ScheduleDetailScreen() {
 
 export function ScreenTimeSettingsScreen() {
   const { state, s, device, navigation } = useSettings();
-  return <FlowScreen title="スクリーンタイム" backLabel="‹ 設定" onBack={() => navigation.open({ screen: 'settings' })}>
+  return <FlowScreen title="スクリーンタイム" backLabel="‹ 設定" onBack={() => navigation.finish({ screen: 'settings' })}>
     <Panel><Heading>許可と反映</Heading>
       <Body>{!device ? 'この環境では制限機能を利用できません' : s?.authorization === 'approved' ? 'スクリーンタイムは許可されています' : 'スクリーンタイムの許可を確認してください'}</Body>
       <Body>{s?.activation === 'paused' ? '全体の停止を保存しています' : s?.activation === 'awaitingReauthorizationConfirmation' ? '再開前の確認待ちです' : '保存した設定と、OSへの反映は別の状態です。'}</Body>
@@ -126,7 +126,7 @@ export function ScreenTimeSettingsScreen() {
 
 export function AboutSettingsScreen() {
   const navigation = useAppNavigation();
-  return <FlowScreen title="使い方とこのアプリ" backLabel="‹ 設定" onBack={() => navigation.open({ screen: 'settings' })}>
+  return <FlowScreen title="使い方とこのアプリ" backLabel="‹ 設定" onBack={() => navigation.finish({ screen: 'settings' })}>
     <Panel><Heading>自分の時間へ戻るために</Heading><Body>曜日・時間帯・対象アプリを自分で決めて制限します。必要なときは、使う理由を自分の言葉で確かめて一時解除できます。</Body></Panel>
     <Panel><Heading>記録とプライバシー</Heading><Body>理由と操作の記録は、この端末内に保存します。設定から確認・削除できます。記録は実際のアプリ利用時間や集中の成果を測るものではありません。</Body></Panel>
     <LinkRow label="スケジュールを確認する" onPress={() => navigation.open({ screen: 'settings-schedules' })} />

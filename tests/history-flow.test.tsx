@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, AppState, type AppStateStatus, Text, Pressable } from 'react-native';
 import { HistoryProvider, useHistoryRecords } from '../src/state/history';
 import { ScreenTimeProvider, useScreenTime } from '../src/state/screen-time';
-import { RecordStorageScreen, RecordDeletionScreen } from '../src/components/flow/settings-records';
+import { RecordSettingsScreen, RecordStorageScreen, RecordDeletionScreen } from '../src/components/flow/settings-records';
 import { HistoryScreen, HistoryReasonScreen } from '../src/components/flow/history';
 import { unavailableSnapshot } from '../modules/itoma-native/src/screen-time';
 import type { HistoryAction, HistoryRequest, HistoryResponse, HistoryPage, ScreenTimeAction, ScreenTimeResponse } from '../modules/itoma-native';
@@ -11,7 +11,7 @@ import type { HistoryAction, HistoryRequest, HistoryResponse, HistoryPage, Scree
 const id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', nextID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const body = '【架空の理由】\n確認したい情報がひとつあります。';
 let mockRoutes = ['/history'], mockNavigate: (route: string) => void = () => {};
-jest.mock('expo-router', () => ({ router: { navigate: (route: string) => { const index = mockRoutes.indexOf(route); mockRoutes = index < 0 ? [...mockRoutes, route] : mockRoutes.slice(0, index + 1); mockNavigate(route); }, push: (route: string) => { mockRoutes.push(route); mockNavigate(route); }, canGoBack: () => mockRoutes.length > 1,
+jest.mock('expo-router', () => ({ router: { dismissTo: (route: string) => { const index = mockRoutes.indexOf(route); mockRoutes = index < 0 ? [...mockRoutes.slice(0, -1), route] : mockRoutes.slice(0, index + 1); mockNavigate(route); }, navigate: (route: string) => { const index = mockRoutes.indexOf(route); mockRoutes = index < 0 ? [...mockRoutes, route] : mockRoutes.slice(0, index + 1); mockNavigate(route); }, push: (route: string) => { mockRoutes.push(route); mockNavigate(route); }, canGoBack: () => mockRoutes.length > 1,
   back: () => { mockRoutes.pop(); mockNavigate(mockRoutes.at(-1) ?? '/history'); }, replace: (route: string) => mockNavigate(route) },
   useIsFocused: () => true, useFocusEffect: (callback: () => void) => require('react').useEffect(callback, [callback]),
 }));
@@ -38,7 +38,7 @@ function backend() {
 function Pages() {
   const [route, setRoute] = useState('/history');
   useEffect(() => { mockNavigate = setRoute; return () => { mockNavigate = () => {}; }; }, []);
-  return route === '/history-reason' ? <HistoryReasonScreen /> : route === '/settings-storage' ? <RecordStorageScreen /> : route === '/settings-delete' ? <RecordDeletionScreen /> : <HistoryScreen />;
+  return route === '/settings-records' ? <RecordSettingsScreen /> : route === '/history-reason' ? <HistoryReasonScreen /> : route === '/settings-storage' ? <RecordStorageScreen /> : route === '/settings-delete' ? <RecordDeletionScreen /> : <HistoryScreen />;
 }
 function Probe() {
   const h = useHistoryRecords(), s = useScreenTime();
@@ -57,7 +57,7 @@ function wrap(b: ReturnType<typeof backend>, child: React.ReactNode = <Pages />)
 }
 const press = async (name: string) => {
   if (name === '記録の保存状況を確認する' && !screen.queryByRole('button', { name })) await fireEvent.press(screen.getByRole('button', { name: '記録について・保存状況' }));
-  await fireEvent.press(screen.getByRole('button', { name }));
+  await fireEvent.press(screen.getByRole('button', { name: name === '‹ 戻る' ? /^‹ / : name }));
 };
 beforeEach(() => { mockRoutes = ['/history']; });
 afterEach(() => jest.restoreAllMocks());
@@ -89,7 +89,7 @@ test('deletion needs explicit confirmation, keeps policy operations separate, an
   expect(b.run.mock.calls.some(([action]) => action === 'deleteReasons')).toBe(false);
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
   expect(screen.getByText('理由本文の削除を確認しました。')).toBeTruthy();
-  await press('‹ 戻る'); await press('‹ 戻る');
+  await press('‹ 戻る'); await press('選択の記録を見る'); await press('保存した理由');
   expect(screen.getByText(/理由は削除済み/)).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'この記録の理由を読む' })).toBeNull();
   expect(b.run.mock.calls.every(([action]) => ['page', 'deleteReasons'].includes(action))).toBe(true);
@@ -138,7 +138,7 @@ test('storage and deletion navigation reuse earlier routes instead of growing a 
     await press('保存状況を確認する');
     expect(mockRoutes).toEqual(['/history', '/settings-storage']);
   }
-  await press('‹ 戻る'); expect(screen.getByRole('header', { name: 'あなたの選択の記録' })).toBeTruthy();
+  await press('‹ 記録とプライバシー'); expect(screen.getByRole('header', { name: '記録とプライバシー' })).toBeTruthy();
 });
 
 test('a deletion response failure remains unknown instead of claiming completion', async () => {
@@ -369,4 +369,20 @@ test('rapid repeated selection opens one detail and reads the private reason onc
   await press('open older twice');
   expect(b.run.mock.calls.filter(([action]) => action === 'reason')).toHaveLength(1);
   expect(screen.getByText(body)).toBeTruthy();
+});
+
+test('reading storage preserves the timeline query, loaded pages and offset until its data generation changes', async () => {
+  const { b, head } = pagedBackend(); let state!: ReturnType<typeof useHistoryRecords>;
+  function Capture() { const value = useHistoryRecords(); useEffect(() => { state = value; }, [value]); return null; }
+  await render(wrap(b, <Capture />));
+  await act(async () => state.choose('reason', '2026-11-09'));
+  await act(async () => state.loadOlder());
+  await act(async () => state.rememberScroll(875));
+  const pages = state.pages, rows = state.rows, generation = state.viewGeneration;
+  await act(async () => { const response = await state.readStorage(); expect(response?.page?.logicalBytes).toBe(head.logicalBytes); });
+  expect(state.pages).toBe(pages); expect(state.rows).toBe(rows); expect(state.viewGeneration).toBe(generation);
+  expect(state.kind).toBe('reason'); expect(state.day).toBe('2026-11-09'); expect(state.getScrollOffset()).toBe(875);
+  b.run.mockResolvedValueOnce({ status: 'ok', storage: 'ready', page: { ...head, revision: '2' } });
+  await act(async () => { await state.readStorage(); });
+  expect(state.rows).toHaveLength(0); expect(state.error).toBe('changed');
 });

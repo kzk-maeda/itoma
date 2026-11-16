@@ -5,7 +5,7 @@ import { GraphiteColors, HomeLayout } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useScreenTime } from '@/state/screen-time';
 import { useProductTabs } from '@/state/product-tabs';
-import { useWorkScope } from '@/state/work-flow';
+import { useWorkScope } from '@/state/work-scope';
 import type { ScreenTimeCode } from '../../../modules/itoma-native';
 import { OpenCircle } from '../home/open-circle';
 import { ProductNavigation, type ProductTab } from './product-navigation';

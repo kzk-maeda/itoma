@@ -32,13 +32,18 @@ export function RuleDetailsScreen({ ruleID }: { ruleID?: string }) {
     if (!draft || invalid || !rule || reviewRequired || pending.current) return;
     // Save is explicit acceptance; leaving now does not cancel the native write.
     pending.current = true; allowed.current = true; setExitAllowed(true);
+    const session = state.ruleSession();
+    if (pendingCreation) state.setRuleExitAllowed(true);
     const result = await state.run('saveRuleDetails', { details: { ruleID: draft.ruleID, title: draft.title, goal: draft.goal,
       expectedRevision: draft.revision, expectedPolicyRevision: draft.policyRevision } });
     pending.current = false;
+    if (pendingCreation && state.ownsRuleSession(session)) {
+      if (result.status === 'ok' && result.snapshot?.ruleDetailsStatus === 'ready') state.setRuleDraft(undefined);
+      else state.setRuleExitAllowed(false);
+    }
     if (!mounted.current) return;
     if (result.status === 'ok' && result.snapshot?.ruleDetailsStatus === 'ready') {
       allowed.current = true; setExitAllowed(true);
-      if (pendingCreation) state.setRuleDraft(undefined);
       navigation.finish({ screen: 'settings-schedule', ruleID: draft.ruleID });
     } else {
       allowed.current = false; setExitAllowed(false);
@@ -70,6 +75,6 @@ export function RuleDetailsScreen({ ruleID }: { ruleID?: string }) {
       <Button label="最新の保存内容を確認する" secondary disabled={!!state.busy} onPress={() => { void reviewLatest(); }} />
       <Button label={latest ? '入力した内容で保存する' : '保存する'} disabled={!dirty || invalid || !!state.busy || !rule || reviewRequired || s?.ruleDetailsStatus !== 'ready'} onPress={() => { void save(); }} />
     </>}
-    <Button label={pendingCreation ? '名前と行動目標を保存せずホームへ' : 'キャンセル'} secondary disabled={!!state.busy} onPress={leave} />
+    <Button label={pendingCreation ? '名前と行動目標を保存せず戻る' : 'キャンセル'} secondary disabled={!!state.busy} onPress={leave} />
   </FlowScreen>;
 }

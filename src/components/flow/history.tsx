@@ -55,7 +55,7 @@ export function HistoryScreen() {
     </Disclosure>
     <Button label="最新の記録を確認する" secondary disabled={state.busy} onPress={state.restart} />
   </>;
-  return <FlowScreen<HistoryRow> title="あなたの選択の記録" backLabel="‹ 振り返り" onBack={() => navigation.open({ screen: 'reflection' })} footer={footer}
+  return <FlowScreen<HistoryRow> title="あなたの選択の記録" backLabel="‹ 振り返り" onBack={() => navigation.finish({ screen: 'reflection' })} footer={footer}
     list={{
       viewKey: `${state.kind}:${state.day}:${state.viewGeneration}`, data: rows, keyExtractor: row => row.key, extraData: [zone, today, state.busy],
       getInitialOffset: state.getScrollOffset, onScrollOffset: offset => { if (focused) state.rememberScroll(offset); },
@@ -86,7 +86,7 @@ export function HistoryScreen() {
     {state.pages.some(p => p.incomplete) && <Notice title="記録が一部欠けている可能性があります">確認できる記録だけを表示しています。</Notice>}
     {page && state.pages.some(p => p.transfer !== 'current') && <Notice title={state.pages.some(p => p.transfer === 'pending') ? 'まだ取り込んでいない記録があります' : '新しい記録の取込状況は未確認です'}>保存済みの記録は下で確認できます。</Notice>}
     {state.reference && page && (state.reference.revision !== page.revision || state.reference.asOf !== page.asOf || state.reference.timeZone !== page.timeZone) && <Body muted>振り返りとは別の時点の記録です。時間の集計と一致する一覧とは限りません。</Body>}
-    {state.busy && <Body muted>記録を確認しています。</Body>}
+    {state.busy && !rows.length && <Body muted>記録を確認しています。</Body>}
     {state.storage === 'not-created' && !state.error && <Panel><Heading>これからの選択を、ここに。</Heading><Body>理由の保存や、設定を見直したときの記録を確認できます。</Body></Panel>}
     {!!page && !state.error && !state.busy && !rows.length && <Panel><Heading>{state.day ? 'この日の記録はありません' : 'この範囲に記録はありません'}</Heading><Body>{state.kind === 'event' ? '理由だけの保存は「保存した理由」から確認できます。' : 'ここで確認できる理由の記録はありません。'}</Body>{state.day && <Button label="すべての日の記録を見る" secondary onPress={() => chooseDay('')} />}</Panel>}
     {!!rows.length && <Body muted>新しい記録から</Body>}
@@ -99,7 +99,7 @@ export function HistoryReasonScreen() {
   const zone = state.page?.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const expected = !!state.selectedCommandID || (row && canReadChoiceReason(row));
   const { closeReason } = state;
-  const close = () => { closeReason(); navigation.open({ screen: 'history' }); };
+  const close = () => { closeReason(); navigation.finish({ screen: 'history' }); };
   useFocusEffect(useCallback(() => () => closeReason(), [closeReason]));
   return <FlowScreen title="選択の詳細" backLabel="‹ 選択の記録" onBack={close}>
     {row && <View style={flowStyles.section}><Heading>{choiceTitle(row)}</Heading>

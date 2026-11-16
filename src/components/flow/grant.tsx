@@ -7,7 +7,7 @@ import { endTime, grantRemaining } from './presentation';
 import { Body, Button, FlowScreen, Heading, Notice, Panel } from './ui';
 
 export function GrantScreen() {
-  const navigation = useAppNavigation(), home = () => navigation.open({ screen: 'index' });
+  const navigation = useAppNavigation(), home = () => navigation.finish({ screen: 'index' });
   const state = useScreenTime(), now = useVisibleClock();
   const targets = state.snapshot?.targets.filter((t) => t.grantCommandID) ?? [];
   const observed = state.snapshot?.authorization === 'approved' && state.snapshot.activation === 'enabled'

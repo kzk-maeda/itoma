@@ -21,13 +21,14 @@ function Trend({ buckets }: { buckets: ReflectionBucket[] }) {
   }).join(' ');
   const description = buckets.map(b => `${shortDay(b.day)}、${reflectionDuration(b.knownSeconds)}${b.coverage !== 'recorded' ? '、一部不明または未記録' : ''}`).join('。');
   return <View accessible accessibilityRole="image" accessibilityLabel={`これまでの推移。${description}。不明な区間は線をつないでいません。`}>
-    <Svg width="100%" height={52} viewBox="0 0 320 52" accessible={false}>
+    <View accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+    <Svg width="100%" height={52} viewBox="0 0 320 52" aria-hidden>
       <Path d="M0 51H320" stroke={theme.line} strokeWidth={1} />
       {path ? <Path d={path} fill="none" stroke={theme.accent} strokeWidth={2} /> : null}
       {buckets.map((b, n) => b.knownSeconds === undefined ? null : <Circle key={n}
         cx={buckets.length === 1 ? 160 : n * 320 / (buckets.length - 1)} cy={44 - b.knownSeconds / max * 38}
         r={2.5} fill={theme.accent} />)}
-    </Svg>
+    </Svg></View>
   </View>;
 }
 

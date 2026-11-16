@@ -8,7 +8,7 @@ type ReflectionReference = { revision: string; asOf: number; timeZone: string };
 type State = { kind: HistoryKind; day: string; page?: HistoryPage; pages: HistoryPage[]; rows: HistoryRow[]; viewGeneration: number; restart: () => void; next?: HistoryCursor; loadingOlder: boolean; olderError?: HistoryCode; loadOlder: (retry?: boolean) => Promise<void>; pauseOlder: () => void; ensureLoaded: () => void; reason?: HistoryReason; selectedCommandID?: string; selectedRow?: HistoryRow; openRecord: (row: HistoryRow) => boolean; getScrollOffset: () => number; rememberScroll: (offset: number) => void; storage: HistoryResponse['storage']; busy: boolean; error?: HistoryCode;
   choose: (kind: HistoryKind, day: string) => void; refresh: () => void; move: (cursor: HistoryCursor, direction: 'older' | 'newer') => void;
   reference?: ReflectionReference; chooseReflectionDay: (day: string, reference: ReflectionReference) => void;
-  readReason: (commandID: string) => void; closeReason: () => void; mutate: (action: 'import' | 'deleteReasons' | 'deleteHistory') => Promise<HistoryResponse | undefined> };
+  readStorage: () => Promise<HistoryResponse | undefined>; readReason: (commandID: string) => void; closeReason: () => void; mutate: (action: 'import' | 'deleteReasons' | 'deleteHistory') => Promise<HistoryResponse | undefined> };
 const Context = createContext<State | undefined>(undefined);
 type Client = Pick<typeof historyRecords, 'run'>;
 
@@ -110,6 +110,19 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
     } catch { if (generation === olderGeneration.current && ticket === sequence.current) fail('unavailable'); }
     finally { if (generation === olderGeneration.current) { olderPending.current = false; setLoadingOlder(false); } }
   }, [client, clear]);
+  // Capacity reads do not own the timeline's query/pages/position or private reason.
+  const readStorage = useCallback(async (): Promise<HistoryResponse | undefined> => {
+    if (mutation.current) return { status: 'error', code: 'busy', storage: 'unknown' };
+    try {
+      const response = await client.run('page', { kind: 'event' });
+      if (!active.current || identity.current.client !== client || identity.current.historyEpoch !== historyEpoch) return;
+      const current = pageRef.current;
+      if (response.page && current && (response.page.revision !== current.revision || response.page.timeZone !== current.timeZone)) {
+        clear(); setError('changed');
+      }
+      return response.page ? { ...response, page: { ...response.page, rows: [], next: undefined, previous: undefined } } : response;
+    } catch { return { status: 'error', code: 'unavailable', storage: 'unknown' }; }
+  }, [client, historyEpoch, clear]);
   const owned = seenEpoch === historyEpoch && seenClient === client;
   const pages = useMemo(() => owned && page ? [page, ...tailPages] : [], [owned, page, tailPages]);
   const rows = useMemo(() => {
@@ -129,7 +142,7 @@ export function HistoryProvider({ children, client = historyRecords }: { childre
     choose: (kind, day) => { setReference(undefined); query.current = { kind, day }; setSelection(query.current); position.current = undefined; clear(); void run('page'); },
     chooseReflectionDay: (day, value) => { setReference(value); query.current = { kind: 'event', day }; setSelection(query.current); position.current = undefined; clear(); void run('page'); },
     move: (cursor, direction) => { position.current = { cursor, direction }; void run('page', position.current); },
-    readReason: (commandID) => { setSelectedCommandID(commandID); void run('reason', { commandID }); }, closeReason,
+    readStorage, readReason: (commandID) => { setSelectedCommandID(commandID); void run('reason', { commandID }); }, closeReason,
     mutate: (action) => { position.current = undefined; return run(action); },
   }}>{children}</Context.Provider>;
 }
