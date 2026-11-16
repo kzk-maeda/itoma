@@ -1,0 +1,30 @@
+{
+  "settingsDetailOneTab": true,
+  "settingsStackKeysRetained": true,
+  "selectedTabNoOp": true,
+  "warmLinkClearsPreviousOrigin": true,
+  "modalTabsHidden": true,
+  "internalBackPreservesInput": true,
+  "closeDiscardFailureRetains": true,
+  "externalExitGuarded": true,
+  "editReturnsToDetail": true,
+  "newRuleReturnsToDetail": true,
+  "deletionReturnsToList": true,
+  "detailOffsetBefore": 21488,
+  "detailOffsetAfter": 21488,
+  "storageChain": [
+    "settings",
+    "settings-records",
+    "settings-storage"
+  ],
+  "offsetBefore": 21781,
+  "offsetAfter": 21781,
+  "loadedAfterReturn": 92,
+  "monthPreserved": true,
+  "clippedWeekAndAllReset": true,
+  "repeatCycles": 100,
+  "maxDepth": 2,
+  "grantOwnerHome": true,
+  "grantRequests": 1,
+  "errors": []
+}

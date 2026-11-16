@@ -1,0 +1,7 @@
+import { useRootNavigationState, router, type Href } from 'expo-router';
+import { useEffect } from 'react';
+export function NavigationProbe() {
+  const state = useRootNavigationState();
+  useEffect(() => { if (typeof window !== 'undefined') Object.assign(window, { itomaNavigationState: state, itomaNavigate: (path: string) => router.navigate(path as Href) }); }, [state]);
+  return null;
+}

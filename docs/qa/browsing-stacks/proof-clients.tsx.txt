@@ -1,0 +1,105 @@
+import { useEffect } from 'react';
+import { useHistoryRecords } from '@/state/history';
+import { createHistoryClient } from '../../modules/itoma-native/src/history';
+import { createReflectionClient } from '../../modules/itoma-native/src/reflection';
+import { createScreenTimeClient, unavailableSnapshot } from '../../modules/itoma-native/src/screen-time';
+import type { RuleInput, ScreenTimeRequest, ScreenTimeSnapshot, ScreenTimeAction, ScreenTimeResponse } from '../../modules/itoma-native';
+import { Alert, Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { dayAt } from '@/lib/history-date';
+import fixtures from '../../tests/fixtures/reflection-records.json';
+const asOf = fixtures.observed[0].response.asOf, zone = 'UTC';
+const qa = { loaded: 0, pages: 0, calls: [] as { action: string; request: Record<string, unknown> }[], historyRevision: 1, reasonDeleted: false, historyDeleted: false, reflectionDeleted: false,
+  failOlder: false, failRefresh: false, large: false, ready: false, dialogReady: false, failCancel: false };
+if (typeof window !== 'undefined') Object.assign(window, { itomaNavigationQA: qa });
+const uid = (n: number) => `00000000-0000-0000-0000-${String(n + 1).padStart(12, '0')}`;
+const oldID = 'dddddddd-dddd-dddd-dddd-dddddddddddd', newID = '11111111-1111-1111-1111-111111111111', selection = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', ref = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
+const now = Date.now() / 1000;
+let snapshot: ScreenTimeSnapshot = { ...unavailableSnapshot('device'), storage: 'ready', authorization: 'approved', revision: '1', sequence: '1', ruleDetailsStatus: 'ready', ruleDetailsRevision: '0', observation: 'applied', schedulesReady: true, validUntil: now + 3600,
+  rules: [{ id: oldID, selectionRef: selection, weekdays: [1, 2, 3, 4, 5], startMinute: 1260, endMinute: 1380, nextDay: false, enabled: true }], selections: [{ ref: selection, count: 2 }], periods: [{ ruleID: oldID, startsAt: now - 900, endsAt: now + 3600 }], targets: [{ ref: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', selectionRef: selection, ruleID: oldID, restricted: true, unlockable: true }] };
+let proposed: RuleInput | undefined;
+export const control = createScreenTimeClient('ios', () => ({ apiVersion: 1, screenTimeVersion: 1, screenTime: async (action, payload) => {
+  const request = JSON.parse(payload) as ScreenTimeRequest;
+  qa.calls.push({ action: `control:${action}`, request: { ...request } }); if (action === 'snapshot') qa.ready = true;
+  const response = (extra: Partial<ScreenTimeResponse> = {}) => JSON.stringify({ status: 'ok', impacts: [], snapshot, ...extra });
+  switch (action as ScreenTimeAction) {
+    case 'pickApplications': return response({ ref: selection });
+    case 'previewRule': proposed = request.rule; return response({ status: 'confirmation-required', ref });
+    case 'cancelCandidate': if (qa.failCancel) return response({ status: 'error', code: 'storage-failed' }); return response();
+    case 'previewUnlock': return response({ status: 'confirmation-required', ref, minutes: request.minutes, previewEndsAt: now + (request.minutes ?? 5) * 60, shortened: false });
+    case 'unlock': snapshot = { ...snapshot, sequence: String(Number(snapshot.sequence) + 1), targets: snapshot.targets.map(target => target.ref === request.targetRef || target.ref.startsWith('bbbb') ? { ...target, restricted: false, unlockable: false, grantCommandID: ref, grantStatus: 'active', grantEndsAt: now + 300 } : target) }; return response({ ref });
+    case 'commitRule': {
+      const id = proposed!.id ?? newID; const rule = { id, selectionRef: proposed!.selectionRef, weekdays: proposed!.weekdays, startMinute: proposed!.startMinute, endMinute: proposed!.endMinute, nextDay: proposed!.nextDay, enabled: proposed!.enabled };
+      snapshot = { ...snapshot, revision: String(Number(snapshot.revision) + 1), sequence: String(Number(snapshot.sequence) + 1), rules: proposed!.remove ? snapshot.rules.filter(rule => rule.id !== id) : [...snapshot.rules.filter(rule => rule.id !== id), rule], periods: proposed!.remove ? snapshot.periods.filter(period => period.ruleID !== id) : [...snapshot.periods.filter(period => period.ruleID !== id), { ruleID: id, startsAt: now - 900, endsAt: now + 3600 }] };
+      return response({ ref });
+    }
+    case 'saveRuleDetails': {
+      
+      const details = request.details!;
+      if (details.expectedRevision !== snapshot.ruleDetailsRevision || details.expectedPolicyRevision !== snapshot.revision) return response({ status: 'error', code: 'changed' });
+      snapshot = { ...snapshot, ruleDetailsRevision: String(Number(snapshot.ruleDetailsRevision) + 1), rules: snapshot.rules.map(rule => rule.id === details.ruleID ? { ...rule, title: details.title.trim(), goal: details.goal } : rule) };
+      return response();
+    }
+    default: return response();
+  }
+} }));
+export const setup = { run: async () => ({ status: 'ok' as const, impacts: [], onboarding: { revision: '1', seenIntro: true, completed: true, selectionReady: false, canEdit: true } }) };
+export const history = createHistoryClient('ios', () => ({ apiVersion: 1, historyVersion: 1, history: async (action, payload) => {
+  const request = JSON.parse(payload); qa.calls.push({ action, request });
+  if (action === 'reason') return JSON.stringify({ status: 'ok', storage: 'ready', reason: { revision: String(qa.historyRevision), state: qa.reasonDeleted ? 'deleted' : 'shared-accepted', body: qa.reasonDeleted ? undefined : '【架空の確認用】\n確認したい情報をひとつ確認します。\n\n自分で選んだ理由の全文です。' } });
+  if (action === 'deleteReasons') { qa.reasonDeleted = true; qa.historyRevision++; }
+  if (action === 'deleteHistory') { qa.historyDeleted = true; qa.reasonDeleted = true; qa.historyRevision++; }
+  if (request.revision && request.revision !== String(qa.historyRevision)) return JSON.stringify({ status: 'error', storage: 'unknown', code: 'changed' });
+  if (request.afterKey && qa.failOlder) return JSON.stringify({ status: 'error', storage: 'ready', code: 'storage-failed' });
+  let rows = Array.from({ length: qa.historyDeleted ? 0 : qa.large ? 2000 : 92 }, (_, n) => ({ key: uid(n), commandID: uid(n), at: asOf - 600 - n * 3600, updatedAt: asOf - 300 - n * 3600,
+    action: request.kind === 'reason' ? 'reason' : n % 9 === 2 ? 'cancelled' : n % 9 === 5 ? 'commitPolicy' : 'requestTemporaryGrant',
+    status: request.kind === 'reason' ? 'prepared' : n % 9 === 2 ? 'cancelled' : n % 9 === 6 ? 'uncertain' : 'succeeded',
+    grantStatus: request.kind === 'reason' || [2,5].includes(n % 9) ? undefined : n % 9 === 6 ? 'reblockPending' : 'reconciled', expiresAt: request.kind === 'reason' || [2,5].includes(n % 9) ? undefined : asOf - 300 - n * 3600,
+    reasonDeleted: qa.reasonDeleted && (request.kind === 'reason' || ![2,5].includes(n % 9)),
+  }));
+  if (request.day) rows = rows.filter(row => dayAt(row.at, zone) === request.day);
+  const start = request.afterKey ? rows.findIndex(row => row.key === request.afterKey) + 1 : 0, chunk = rows.slice(start, start + 40), last = chunk.at(-1);
+  return JSON.stringify({ status: 'ok', storage: 'ready', page: { revision: String(qa.historyRevision), asOf: asOf + 1, timeZone: zone, grouping: request.kind === 'reason' ? undefined : 'command', rows: chunk,
+    next: last && start + 40 < rows.length ? { key: last.key, at: last.at } : undefined,
+    logicalBytes: '40000', warningBytes: '83886080', maximumBytes: '104857600', warningReached: false, limitReached: false, incomplete: false, transfer: 'current' } });
+} }));
+export const reflection = createReflectionClient('ios', () => ({ apiVersion: 1, reflectionVersion: 1, reflection: async (action, payload) => {
+  const request = JSON.parse(payload); qa.calls.push({ action: `reflection:${action}`, request });
+  if (action === 'deleteAll') { qa.reflectionDeleted = true; qa.historyDeleted = true; qa.reasonDeleted = true; qa.historyRevision++; }
+  if (qa.failRefresh) return JSON.stringify({ status: 'error', code: 'storage-failed', storage: 'unknown', transfer: 'current' });
+  const original = fixtures[qa.reflectionDeleted ? 'deleted' : 'observed'].find(row => row.request.period === (request.period ?? 'week') && (!request.day || row.request.day === request.day)
+    && JSON.stringify((row.request as { clippedTo?: unknown }).clippedTo) === JSON.stringify(request.clippedTo));
+  if (!original) return JSON.stringify({ status: 'error', code: 'invalid-input', storage: 'unknown', transfer: 'current' });
+  const snapshot = structuredClone(original.response) as Record<string, any>;
+  snapshot.proofScope = 'nativeRecordedIntervals'; snapshot.metricVersion = 'native-restricted-excluding-unlocks-v2';
+  snapshot.historyRevision = String(qa.historyRevision); snapshot.token += `:qa-${qa.historyRevision}`;
+  if (!qa.reflectionDeleted) {
+    snapshot.total = { ...snapshot.total, from: Date.parse('2026-11-09T12:00:00Z') / 1000, until: asOf, knownSeconds: 6900, coverage: 'recorded' };
+    const marked = Date.parse('2026-11-09T12:00:00Z') / 1000;
+    snapshot.buckets = snapshot.buckets.map((bucket: Record<string, any>) => ({ ...bucket, knownSeconds: bucket.from > asOf ? undefined : bucket.from <= marked && bucket.until > marked ? 6900 : 0, coverage: bucket.from > asOf ? 'notRecorded' : 'recorded' }));
+    const known = snapshot.buckets.filter((b: Record<string, any>) => b.knownSeconds !== undefined);
+    snapshot.selected = { ...snapshot.selected, knownSeconds: known.length ? known.reduce((n: number, b: Record<string, any>) => n + b.knownSeconds, 0) : undefined, coverage: known.length ? 'partial' : 'notRecorded' };
+    snapshot.trend = [snapshot.total];
+  }
+  return JSON.stringify({ status: 'ok', storage: 'ready', transfer: 'current', sharedIncomplete: false, snapshot });
+} }));
+
+export function TimelineProbe() {
+  const state = useHistoryRecords();
+  useEffect(() => { qa.loaded = state.rows.length; qa.pages = state.pages.length; (qa as unknown as Record<string, unknown>).getScroll = state.getScrollOffset; }, [state.rows.length, state.pages.length]);
+  return null;
+}
+
+type Dialog = { title: string; message?: string; buttons?: { text?: string; onPress?: () => void }[] };
+let showDialog: (value: Dialog) => void = () => {};
+if (typeof window !== 'undefined') Alert.alert = (title, message, buttons) => showDialog({ title: title ?? '', message: message ?? undefined, buttons: buttons?.map(button => ({ text: button.text, onPress: () => { if (typeof button.onPress === 'function') button.onPress(); } })) });
+export function ProofDialog() {
+  const [dialog, setDialog] = useState<Dialog>();
+  useEffect(() => { showDialog = setDialog; qa.dialogReady = true; return () => { qa.dialogReady = false; showDialog = () => {}; }; }, []);
+  if (!dialog) return null;
+  return <View accessibilityRole="alert" style={{ position: 'absolute', zIndex: 999999, inset: 0, backgroundColor: '#0008', padding: 24, justifyContent: 'center' }}>
+    <View style={{ backgroundColor: 'white', padding: 24, gap: 16, borderRadius: 16 }}><Text style={{ color: 'black', fontSize: 20 }}>{dialog.title}</Text><Text style={{ color: 'black', fontSize: 16 }}>{dialog.message}</Text>
+      {dialog.buttons?.map((button, index) => <Pressable key={index} accessibilityRole="button" onPress={() => { setDialog(undefined); button.onPress?.(); }} style={{ padding: 16, borderWidth: 1, borderColor: 'black' }}><Text style={{ color: 'black', fontSize: 16 }}>{button.text}</Text></Pressable>)}
+    </View>
+  </View>;
+}
