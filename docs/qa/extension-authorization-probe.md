@@ -51,6 +51,8 @@ swiftc -swift-version 6 -parse-as-library \
 
 型/lint/Jest/demo/iOS tools/doctorを実行。CNGテストでprobe既定false→true→falseを両plistで確認。実ビルドでは新SwiftファイルがPodsへ取り込まれること、署名付きhost+Extension、同Group/entitlement、Infoのprobe=trueを照合してから更新installする。旧PoC/native smoke/demoは0の通常画面を使う。
 
+Podsの再生成時、既存CNGが本体用`ItomaHistory`のローカルpod参照を生成せず、`ItomaNative`の依存解決に失敗する不足も確認した。config pluginでhost target内だけへ参照を生成し、繰返しprebuildで重複しないこと、private HistoryがExtensionへ入らないことを検査する。既存lockの依存バージョンを維持し、生成ios/を正本として手編集しない。
+
 本人の実機確認:
 1. 他ルールと重ならないアプリAに、現在から3〜5分後の開始、開始から20分程度後の終了を保存。日付/曜日・日跨ぎに注意し、予定開始と終了を記録する。
 2. 本体は背景へ移す（初回はkillしない）。開始後、本体を開く前にAのShieldを確認し、時刻を記録する。

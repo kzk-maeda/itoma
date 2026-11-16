@@ -8,6 +8,8 @@ const plist = require('@expo/plist').default;
 const TARGET = 'ItomaActivityMonitor';
 const MARKER = '# ITOMA activity monitor pods';
 const END = '# End ITOMA activity monitor pods';
+const HOST_MARKER = '# ITOMA host private history pod';
+const HOST_END = '# End ITOMA host private history pod';
 
 function validateOptions(options, bundleID) {
   if (!/^group\.[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/.test(options?.appGroup ?? '')) {
@@ -45,7 +47,14 @@ function monitorPodfile(contents) {
     "  pod 'ItomaScreenTime', :path => '../packages/itoma-screen-time'",
     'end', END].join('\n');
   const existing = new RegExp(`${MARKER}[\\s\\S]*?${END}\\n?`, 'g');
-  return `${contents.replace(existing, '').trimEnd()}\n\n${block}\n`;
+  const hostExisting = new RegExp(`^[ \\t]*${HOST_MARKER}[\\s\\S]*?${HOST_END}\\r?\\n?`, 'gm');
+  const clean = contents.replace(existing, '').replace(hostExisting, '');
+  // Expo's generated app target precedes the isolated Extension. Keep private History out of it.
+  const host = [...clean.matchAll(/^target ['"]([^'"]+)['"] do\r?$/gm)].find((match) => match[1] !== TARGET);
+  if (!host) throw new Error('ITOMA requires a host Podfile target for its local private History pod.');
+  const at = host.index + host[0].length;
+  const history = `\n  ${HOST_MARKER}\n  pod 'ItomaHistory', :path => '../packages/itoma-storage'\n  ${HOST_END}`;
+  return `${(clean.slice(0, at) + history + clean.slice(at)).trimEnd()}\n\n${block}\n`;
 }
 
 function configureProject(project, bundleID) {

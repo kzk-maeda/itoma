@@ -59,6 +59,8 @@ test('fresh CNG and repeated regeneration embed one isolated Extension and prese
     assert.equal(copy.reduce((count, phase) => count + phase.files.filter((v) => v.comment?.includes('ItomaActivityMonitor.appex')).length, 0), 1);
     const podfile = readFileSync(path.join(directory, 'ios/Podfile'), 'utf8');
     assert.equal(podfile.match(/target 'ItomaActivityMonitor' do/g)?.length, 1);
+    assert.equal(podfile.match(/pod 'ItomaHistory', :path => '\.\.\/packages\/itoma-storage'/g)?.length, 1);
+    assert.match(podfile.split('# ITOMA activity monitor pods')[0], /target 'itoma' do\s+# ITOMA host private history pod/);
     const isolated = podfile.split('# ITOMA activity monitor pods')[1];
     assert.match(isolated, /pod 'ItomaControl'/);
     assert.doesNotMatch(isolated, /ItomaHistory|Expo|React|use_expo_modules/);
