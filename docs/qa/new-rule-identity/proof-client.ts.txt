@@ -1,0 +1,33 @@
+// Temporary browser evidence, never shipped in the product.
+import { createScreenTimeClient, unavailableSnapshot } from '../../modules/itoma-native/src/screen-time';
+import type { RuleInput, ScreenTimeAction, ScreenTimeRequest, ScreenTimeResponse, ScreenTimeSnapshot } from '../../modules/itoma-native';
+const oldID = 'dddddddd-dddd-dddd-dddd-dddddddddddd', newID = '11111111-1111-1111-1111-111111111111', selection = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', ref = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
+const now = Date.now() / 1000;
+let snapshot: ScreenTimeSnapshot = { ...unavailableSnapshot('device'), storage: 'ready', authorization: 'approved', revision: '1', sequence: '1', ruleDetailsStatus: 'ready', ruleDetailsRevision: '0', observation: 'applied', schedulesReady: true, validUntil: now + 3600,
+  rules: [{ id: oldID, selectionRef: selection, weekdays: [1, 2, 3, 4, 5], startMinute: 1260, endMinute: 1380, nextDay: false, enabled: true }], selections: [{ ref: selection, count: 2 }], periods: [{ ruleID: oldID, startsAt: now - 900, endsAt: now + 3600 }] };
+let proposed: RuleInput | undefined;
+const qa = { calls: [] as { action: string; request: ScreenTimeRequest }[], failDetails: false };
+if (typeof window !== 'undefined') Object.assign(window, { itomaNewRuleQA: qa });
+export const control = createScreenTimeClient('ios', () => ({ apiVersion: 1, screenTimeVersion: 1, screenTime: async (action, payload) => {
+  const request = JSON.parse(payload) as ScreenTimeRequest;
+  qa.calls.push({ action, request });
+  const response = (extra: Partial<ScreenTimeResponse> = {}) => JSON.stringify({ status: 'ok', impacts: [], snapshot, ...extra });
+  switch (action as ScreenTimeAction) {
+    case 'pickApplications': return response({ ref: selection });
+    case 'previewRule': proposed = request.rule; return response({ status: 'confirmation-required', ref });
+    case 'commitRule': {
+      const rule = { id: newID, selectionRef: proposed!.selectionRef, weekdays: proposed!.weekdays, startMinute: proposed!.startMinute, endMinute: proposed!.endMinute, nextDay: proposed!.nextDay, enabled: proposed!.enabled };
+      snapshot = { ...snapshot, revision: '2', sequence: '2', rules: [...snapshot.rules, rule], periods: [...snapshot.periods, { ruleID: newID, startsAt: now - 900, endsAt: now + 3600 }] };
+      return response({ ref });
+    }
+    case 'saveRuleDetails': {
+      if (qa.failDetails) { qa.failDetails = false; return response({ status: 'error', code: 'storage-failed' }); }
+      const details = request.details!;
+      if (details.expectedRevision !== snapshot.ruleDetailsRevision || details.expectedPolicyRevision !== snapshot.revision) return response({ status: 'error', code: 'changed' });
+      snapshot = { ...snapshot, ruleDetailsRevision: String(Number(snapshot.ruleDetailsRevision) + 1), rules: snapshot.rules.map(rule => rule.id === details.ruleID ? { ...rule, title: details.title.trim(), goal: details.goal } : rule) };
+      return response();
+    }
+    default: return response();
+  }
+} }));
+export const setup = { run: async () => ({ status: 'ok' as const, impacts: [], onboarding: { revision: '1', seenIntro: true, completed: true, selectionReady: false, canEdit: true } }) };

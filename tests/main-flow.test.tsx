@@ -7,6 +7,7 @@ import { OnboardingProvider } from '../src/state/onboarding';
 import { ProductHome } from '../src/components/flow/home';
 import { OnboardingScreen } from '../src/components/flow/onboarding';
 import { RuleEditorScreen, RuleConfirmationScreen } from '../src/components/flow/rule';
+import { RuleDetailsScreen } from '../src/components/flow/rule-details';
 import { UnlockScreen, UnlockConfirmationScreen } from '../src/components/flow/unlock';
 import { GrantScreen } from '../src/components/flow/grant';
 import { SettingsScreen, ScheduleListScreen, ScheduleDetailScreen, ScreenTimeSettingsScreen } from '../src/components/flow/settings';
@@ -18,6 +19,7 @@ const selection = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const appA = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const appB = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
 const ruleID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+const addedRuleID = '11111111-1111-1111-1111-111111111111';
 const previewID = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
 const commandID = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
 let mockParams: { ruleID?: string } = {};
@@ -37,7 +39,10 @@ function mockBack() {
 jest.mock('expo-router', () => ({
   router: { push: (path: string) => mockGo(path), replace: (path: string) => mockGo(path, true),
     navigate: (path: string) => mockGo(path, false, true), back: () => mockBack(), canGoBack: () => mockHistory.length > 1,
-    dismissTo: (path: string) => { const index = mockHistory.lastIndexOf(path); if (index >= 0) { mockHistory = mockHistory.slice(0, index + 1); mockNavigate(path); } else mockGo(path, true); } },
+    dismissTo: (path: string) => {
+      const repeat = () => { const index = mockHistory.lastIndexOf(path); if (index >= 0) { mockHistory = mockHistory.slice(0, index + 1); mockNavigate(path); } else mockGo(path, true); };
+      if (mockGuard?.dirty) mockGuard.callback({ repeat }); else repeat();
+    } },
   useLocalSearchParams: () => mockParams,
   useFocusEffect: (callback: () => void) => require('react').useEffect(callback, [callback]),
   usePreventRemove: (dirty: boolean, callback: (event: { repeat: () => void }) => void) => {
@@ -66,6 +71,7 @@ function Page({ route }: { route: string }) {
     case '/onboarding': return <OnboardingScreen />;
     case '/rule': return <RuleEditorScreen />;
     case '/rule-confirm': return <RuleConfirmationScreen />;
+    case '/rule-details': return <RuleDetailsScreen ruleID={mockParams.ruleID} />;
     case '/unlock': return <UnlockScreen />;
     case '/unlock-confirm': return <UnlockConfirmationScreen />;
     case '/grant': return <GrantScreen />;
@@ -80,6 +86,7 @@ function Page({ route }: { route: string }) {
 function backend(configured = true, failGrant = false, nativeNoChange = false) {
   let snapshot: ScreenTimeSnapshot = { ...unavailableSnapshot('device'), storage: configured ? 'ready' : 'not-created',
     authorization: configured ? 'approved' : 'unknown', schedulesReady: true, observation: 'applied', validUntil: now / 1000 + 1800,
+    ruleDetailsStatus: 'ready', ruleDetailsRevision: '0',
     rules: configured ? [{ id: ruleID, selectionRef: selection, weekdays: [1, 2, 3, 4, 5], startMinute: 1260, endMinute: 1380, nextDay: false, enabled: true }] : [],
     selections: configured ? [{ ref: selection, count: 2 }] : [],
     targets: configured ? [{ ref: appA, selectionRef: selection, ruleID, restricted: true, unlockable: true }, { ref: appB, selectionRef: selection, ruleID, restricted: true, unlockable: true }] : [],
@@ -102,10 +109,18 @@ function backend(configured = true, failGrant = false, nativeNoChange = false) {
           && [...saved.weekdays].sort().join() === [...proposed.weekdays].sort().join()) return response();
         return response({ status: 'confirmation-required', ref: previewID });
       }
-      case 'commitRule':
-        snapshot = { ...snapshot, revision: '1', sequence: '1', rules: [{ ...proposed!, id: ruleID }],
+      case 'commitRule': {
+        const id = proposed?.id ?? (snapshot.rules.length ? addedRuleID : ruleID);
+        const rules = proposed?.remove ? snapshot.rules.filter(rule => rule.id !== id) : [...snapshot.rules.filter(rule => rule.id !== id), { ...proposed!, id }];
+        snapshot = { ...snapshot, revision: '1', sequence: '1', rules,
           targets: [{ ref: appA, selectionRef: selection, ruleID, restricted: true, unlockable: true }, { ref: appB, selectionRef: selection, ruleID, restricted: true, unlockable: true }],
-          periods: [{ ruleID, startsAt: now / 1000 - 1800, endsAt: now / 1000 + 5400 }] }; break;
+          periods: rules.map(rule => ({ ruleID: rule.id, startsAt: now / 1000 - 1800, endsAt: now / 1000 + 5400 })) }; break;
+      }
+      case 'saveRuleDetails': {
+        const details = request.details!;
+        if (details.expectedRevision !== snapshot.ruleDetailsRevision || details.expectedPolicyRevision !== snapshot.revision) return response({ status: 'error', code: 'changed' });
+        snapshot = { ...snapshot, ruleDetailsRevision: String(Number(snapshot.ruleDetailsRevision) + 1), rules: snapshot.rules.map(rule => rule.id === details.ruleID ? { ...rule, title: details.title.trim(), goal: details.goal.trim() ? details.goal : undefined } : rule) }; break;
+      }
       case 'previewUnlock': target = request.targetRef!; return response({ status: 'confirmation-required', ref: previewID, minutes: request.minutes, previewEndsAt: expiry, shortened: false });
       case 'unlock': case 'retryGrant':
         snapshot = { ...snapshot, sequence: action === 'unlock' ? '2' : '3',
@@ -121,11 +136,188 @@ function backend(configured = true, failGrant = false, nativeNoChange = false) {
   return { client: { run }, current: () => snapshot, replace: (value: Partial<ScreenTimeSnapshot>) => { snapshot = { ...snapshot, ...value }; } };
 }
 
-beforeEach(() => { mockHistory = ['/']; mockGuard = undefined; jest.spyOn(Date, 'now').mockReturnValue(now); });
+beforeEach(() => { mockHistory = ['/']; mockParams = {}; mockGuard = undefined; jest.spyOn(Date, 'now').mockReturnValue(now); });
 afterEach(() => jest.restoreAllMocks());
 const press = async (name: string) => { await fireEvent.press(screen.getByRole('button', { name })); };
 const openSettings = async () => { await fireEvent.press(screen.getByRole('tab', { name: '設定' })); await press('スケジュール'); };
 const openRule = async (action: string) => { if (!screen.queryByRole('button', { name: action })) await press('時間帯 1'); await press(action); };
+
+const creationTitle = '夜の余白';
+const creationGoal = '合成の目標\n自分で選んだ時間を過ごす';
+async function startNamedRule() {
+  await openSettings(); await press('ルールを追加する');
+  await fireEvent.changeText(screen.getByLabelText('ルール名（任意）'), creationTitle);
+  await fireEvent.changeText(screen.getByLabelText('行動目標（任意）'), creationGoal);
+  await press('対象アプリを選ぶ');
+}
+
+test('settings adds a named rule and goal through review, preserves the existing rule, and saves private text only after consent', async () => {
+  const b = backend();
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule(); await press('内容を確認する');
+  expect(screen.getByText(creationTitle)).toBeTruthy(); expect(screen.getByText(creationGoal)).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([action]) => action === 'saveRuleDetails' || action === 'commitRule')).toBe(false);
+  expect(b.client.run.mock.calls.find(([action]) => action === 'previewRule')![1]?.rule).not.toHaveProperty('title');
+  expect(b.client.run.mock.calls.find(([action]) => action === 'previewRule')![1]?.rule).not.toHaveProperty('goal');
+  await press('編集へ戻る');
+  expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue(creationTitle);
+  expect(screen.getByLabelText('行動目標（任意）')).toHaveDisplayValue(creationGoal);
+  await press('内容を確認する'); await press('この内容で保存する');
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
+  expect(screen.getByText(creationTitle)).toBeTruthy(); expect(screen.getByText(creationGoal)).toBeTruthy();
+  expect(b.current().rules.find(rule => rule.id === addedRuleID)).toMatchObject({ title: creationTitle, goal: creationGoal });
+  expect(b.current().rules.find(rule => rule.id === ruleID)?.title).toBeUndefined();
+  expect(b.client.run).toHaveBeenCalledWith('saveRuleDetails', { details: { ruleID: addedRuleID, title: creationTitle, goal: creationGoal, expectedRevision: '0', expectedPolicyRevision: '1' } });
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+  expect(JSON.stringify(mockHistory)).not.toContain(creationGoal);
+  await openSettings(); await press(creationTitle);
+  expect(screen.getByText(creationGoal)).toBeTruthy();
+});
+
+test('empty optional name and goal still create a rule without a private write', async () => {
+  const b = backend(); await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('ルールを追加する'); await press('対象アプリを選ぶ');
+  await press('内容を確認する'); expect(screen.getByText('行動目標は未入力です。')).toBeTruthy();
+  await press('この内容で保存する');
+  expect(b.current().rules).toHaveLength(2);
+  expect(b.client.run.mock.calls.some(([action]) => action === 'saveRuleDetails')).toBe(false);
+});
+
+test('identity-only input triggers discard confirmation, and invalid input cannot prepare a rule', async () => {
+  const b = backend(), alert = jest.spyOn(Alert, 'alert');
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('ルールを追加する');
+  await fireEvent.changeText(screen.getByLabelText('ルール名（任意）'), 'あ'.repeat(81));
+  await press('対象アプリを選ぶ'); expect(screen.getByRole('button', { name: '内容を確認する' })).toBeDisabled();
+  await fireEvent.changeText(screen.getByLabelText('ルール名（任意）'), creationTitle);
+  await fireEvent.changeText(screen.getByLabelText('行動目標（任意）'), 'あ'.repeat(1001));
+  expect(screen.getByRole('button', { name: '内容を確認する' })).toBeDisabled();
+  await fireEvent.changeText(screen.getByLabelText('行動目標（任意）'), '不可\0');
+  expect(screen.getByRole('button', { name: '内容を確認する' })).toBeDisabled();
+  await press('‹ 戻る'); expect(alert).toHaveBeenCalled();
+  await act(async () => alert.mock.calls.at(-1)?.[2]?.[1].onPress?.());
+  expect(screen.getByRole('header', { name: 'スケジュール' })).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([action]) => ['saveRuleDetails', 'previewRule', 'commitRule'].includes(action))).toBe(false);
+});
+
+test.each(['storage-failed', 'changed'] as const)('private %s after rule creation keeps input and retries only private text after reviewing current values', async code => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  let fail = true;
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'saveRuleDetails' && fail) {
+      fail = false;
+      b.replace({ ruleDetailsRevision: '1', rules: b.current().rules.map(rule => rule.id === addedRuleID ? { ...rule, title: '別の保存内容' } : rule) });
+      return { status: 'error', code, impacts: [], snapshot: b.current() };
+    }
+    return original(action, request);
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule(); await press('内容を確認する'); await press('この内容で保存する');
+  expect(screen.getByRole('header', { name: 'ルール名と行動目標' })).toBeTruthy();
+  expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue(creationTitle);
+  expect(screen.getByLabelText('行動目標（任意）')).toHaveDisplayValue(creationGoal);
+  expect(screen.getByRole('button', { name: '保存する' })).toBeDisabled();
+  await press('最新の保存内容を確認する'); expect(screen.getByText('別の保存内容')).toBeTruthy();
+  await press('入力した内容で保存する');
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
+  expect(b.current().rules).toHaveLength(2);
+  expect(b.current().rules.find(rule => rule.id === addedRuleID)?.goal).toBe(creationGoal);
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'saveRuleDetails')).toHaveLength(2);
+});
+
+test('an acknowledged rule save without its snapshot can recover its exact rule without a second commit', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  b.client.run.mockImplementation(async (action, request) => {
+    const response = await original(action, request);
+    return action === 'commitRule' ? { ...response, snapshot: undefined } : response;
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule(); await press('内容を確認する'); await press('この内容で保存する');
+  expect(screen.queryByRole('button', { name: '内容を確認する' })).toBeNull();
+  await press('保存したルールとの対応を確認する'); await press('最新の保存内容を確認する'); await press('入力した内容で保存する');
+  expect(b.current().rules.find(rule => rule.id === addedRuleID)?.title).toBe(creationTitle);
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+});
+
+test('a newer policy cannot bind creation text to an unrelated matching rule', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  b.client.run.mockImplementation(async (action, request) => {
+    const response = await original(action, request);
+    if (action === 'commitRule') { b.replace({ revision: '2', sequence: '2' }); return { ...response, snapshot: b.current() }; }
+    return response;
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule(); await press('内容を確認する'); await press('この内容で保存する');
+  await press('保存したルールとの対応を確認する');
+  expect(screen.getByText(creationGoal)).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([action]) => action === 'saveRuleDetails')).toBe(false);
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+});
+
+test('abandoning private text after creation explains that the saved rule remains and does not recreate or delete it', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!, alert = jest.spyOn(Alert, 'alert');
+  b.client.run.mockImplementation(async (action, request) => action === 'saveRuleDetails'
+    ? { status: 'error', code: 'storage-failed', impacts: [], snapshot: b.current() } : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule(); await press('内容を確認する'); await press('この内容で保存する');
+  await press('名前と行動目標を保存せずホームへ');
+  expect(alert.mock.calls.at(-1)?.[1]).toContain('保存済みの時間のルールは残ります');
+  await act(async () => alert.mock.calls.at(-1)?.[2]?.[1].onPress?.());
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy(); expect(b.current().rules).toHaveLength(2);
+  await openSettings(); await press('ルールを追加する');
+  expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue('');
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+  expect(b.client.run.mock.calls.some(([action]) => action === 'cancelCandidate')).toBe(false);
+});
+
+test('a repeated save press while private text is pending sends one policy commit and one text write', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  let finish: (() => void) | undefined;
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'saveRuleDetails') await new Promise<void>(resolve => { finish = resolve; });
+    return original(action, request);
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule(); await press('内容を確認する');
+  await press('この内容で保存する'); await press('この内容で保存する');
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'saveRuleDetails')).toHaveLength(1);
+  await act(async () => finish?.());
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
+});
+
+test.each(['ready', 'unavailable'] as const)('new rule input survives a foreground private recheck before %s without showing a premature failure', async outcome => {
+  let emit!: (state: AppStateStatus) => void;
+  jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, callback) => { emit = callback; return { remove: jest.fn() }; });
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  let hold = false, finish!: (result: ScreenTimeResponse) => void;
+  b.client.run.mockImplementation((action, request) => action === 'snapshot' && hold
+    ? new Promise(resolve => { finish = resolve; }) : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule();
+  await act(async () => { emit('inactive'); }); hold = true;
+  await act(async () => { emit('active'); });
+  expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+  expect(screen.queryByText('名前と行動目標を保存できません')).toBeNull();
+  expect(screen.queryByRole('button', { name: '名前と行動目標の保存状態を確認する' })).toBeNull();
+  expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue(creationTitle);
+  expect(screen.getByLabelText('行動目標（任意）')).toHaveDisplayValue(creationGoal);
+  expect(screen.getByRole('button', { name: '内容を確認する' })).toBeDisabled();
+  await act(async () => { finish({ status: 'ok', impacts: [], snapshot: { ...b.current(), ruleDetailsStatus: outcome } }); });
+  expect(screen.queryByText('ルール名と行動目標を確認しています。')).toBeNull();
+  if (outcome === 'unavailable') {
+    expect(screen.getByText('名前と行動目標を保存できません')).toBeTruthy();
+    await press('名前と行動目標の保存状態を確認する');
+    expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+    expect(screen.queryByText('名前と行動目標を保存できません')).toBeNull();
+    await act(async () => { finish({ status: 'ok', impacts: [], snapshot: b.current() }); });
+  }
+  expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue(creationTitle);
+  expect(screen.getByLabelText('行動目標（任意）')).toHaveDisplayValue(creationGoal);
+  expect(screen.getByRole('button', { name: '内容を確認する' })).toBeEnabled();
+  expect(b.client.run.mock.calls.some(([action]) => action === 'previewRule' || action === 'commitRule' || action === 'saveRuleDetails')).toBe(false);
+});
 
 test.each(['ready', 'unavailable', 'transport'] as const)('foreground private read shows checking before %s without flashing the failure notice', async outcome => {
   let emit!: (state: AppStateStatus) => void;
