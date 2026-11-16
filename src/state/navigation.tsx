@@ -15,6 +15,8 @@ export function AppNavigationProvider({ children }: { children: ReactNode }) {
   const navigation = useNavigationContainerRef(), root = useRootNavigationState(), [returnContext, setReturnContext] = useState<ReturnContext>();
   useEffect(() => {
     if (!root || !navigation.current?.isReady()) return;
+    const stack = appStack(root as unknown as NavigationTree);
+    if (stack && !stack.routes.some(route => route.name === '(work)')) setReturnContext(undefined);
     const current = activeBrowse(root as unknown as NavigationTree);
     if (!current) return;
     const next = canonicalStack(current.stack, current.destination);
