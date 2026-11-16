@@ -49,7 +49,8 @@ export function RuleDetailsScreen({ ruleID }: { ruleID?: string }) {
   return <FlowScreen title="ルール名と行動目標" onBack={back}>
     <Body>このルールで、どんな時間を過ごしたいですか？ ご自身が大切にしたいことを残せます。</Body>
     {!state.loading && !rule && <Notice title="このルールを確認できません">設定へ戻って、現在のルールを確認してください。</Notice>}
-    {s?.ruleDetailsStatus === 'unavailable' && <Notice title="保存した内容を読み取れません">入力は残っています。もう一度、最新の状態を確認できます。</Notice>}
+    {state.ruleDetailsState === 'unavailable' && <Notice title="保存した内容を読み取れません">入力は残っています。もう一度、最新の状態を確認できます。</Notice>}
+    {state.ruleDetailsState === 'checking' && <Body muted>ルール名と行動目標を確認しています。</Body>}
     {draft && <>
       <Field label="ルール名（任意）" value={draft.title} editable={!state.busy} onChangeText={title => setDraft({ ...draft, title })} />
       <Body muted>未入力なら「時間帯」の名前を表示します。80文字以内で入力してください。</Body>

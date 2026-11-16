@@ -1,6 +1,6 @@
 import { AppState } from 'react-native';
 import { controlSnapshots } from '../../modules/itoma-native/src/control-snapshot';
-export { controlSnapshots, currentControlSnapshot, withControlSnapshots } from '../../modules/itoma-native/src/control-snapshot';
+export { controlSnapshots, currentControlSnapshot, getRuleDetailsState, withControlSnapshots, type RuleDetailsState } from '../../modules/itoma-native/src/control-snapshot';
 
 let consumers = 0;
 const foreground = new Set<() => void>();
