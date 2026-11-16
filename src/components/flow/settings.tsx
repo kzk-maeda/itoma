@@ -19,8 +19,10 @@ function useSettings() {
   const withDraftChoice = (proceed: () => void) => {
     if (!state.ruleDraft?.dirty) { proceed(); return; }
     Alert.alert('編集中の入力があります', '入力を続けるか、破棄して別の操作へ進むかを選べます。', [
-      { text: '入力を続ける', style: 'cancel', onPress: () => router.navigate('/rule') },
+      { text: '入力を続ける', style: 'cancel', onPress: () => state.ruleDraft?.createdRuleID
+        ? router.navigate({ pathname: '/rule-details', params: { ruleID: state.ruleDraft.createdRuleID } }) : router.navigate('/rule') },
       { text: '破棄して進む', style: 'destructive', onPress: () => {
+        if (state.ruleDraft?.creationCommitted) { state.setRuleDraft(undefined); proceed(); return; }
         void state.run('cancelCandidate', { ref: state.rulePreviewRef ?? state.ruleReview?.ref }).then((r) => {
           if (r.status === 'ok') { state.setRuleDraft(undefined); state.setRuleReview(undefined); state.setRulePreviewRef(undefined); proceed(); }
         });
