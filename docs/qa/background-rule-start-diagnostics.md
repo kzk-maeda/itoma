@@ -52,8 +52,7 @@ OS管理のbest-effortログなので容量/保持期間/完全性は保証し�
 ```sh
 mkdir -p .tmp/qa/screen-time-log
 chmod 700 .tmp/qa/screen-time-log
-sudo /usr/bin/log collect --device-name SRE05 --last 30m --size 8m \
-  --predicate 'subsystem == "com.itoma.screentime"' \
+sudo /usr/bin/log collect --device-name SRE05 --last 30m \
   --output .tmp/qa/screen-time-log/itoma.logarchive
 /usr/bin/log show --archive .tmp/qa/screen-time-log/itoma.logarchive \
   --style ndjson --predicate 'subsystem == "com.itoma.screentime" AND category == "lifecycle"' \
@@ -67,3 +66,28 @@ sudo /usr/bin/log collect --device-name SRE05 --last 30m --size 8m \
 ## この変更の検証
 
 検証結果・source/build情報はローカルQA記録に残し、レビュー用本文へ転記する。Simulator/UI QA、実機での新loggerのcallback、Shield開始/終了は今回未実施のまま別判定する。#222/#131や時間集計の親Issueを完了にしない。
+
+## 新logger入りbuildでの23:30再現と復帰
+
+上記の未実施は最初のcompile-only時点。続く本人依頼でsource `b549f9b54d3cc064e2b01b21d77e38067044d94c`、local native build ID `0b3d3a5f-7d2d-4b47-acdf-57d28a3df6ba`、JS SHA256 `d4525c6defc9f62cefdbe60c3bbf9ea85004a80237587c09c36e63e8981135b8`をSRE05へ更新install・通常root起動した。署名/entitlement照合PASS。Xcode27.2(27B52)/iphoneos27.2、Release arm64、製品Screen Time=1、旧PoC/native smoke/demo=0、App Group/容量/pendingは前述と同じ。制御・認可判定のコードは変更していない。
+
+本人が23:30開始のルールを設定し、本体を背景へ移した（強制終了なし）。約23:35にもホーム上のShieldがなく、実際に対象アプリを開けたと報告。agentは端末UIを直接操作していない。その状態で本人がOSログを採取し、採取後のITOMA復帰で制限が始まったと報告した。復帰後も本人が再採取し、agentが2つのarchiveからallowlist scriptで固定診断行を抽出した。
+
+| 2026-11-16 JST | agentがログから直接確認した事実 |
+| --- | --- |
+| 23:30:02.639 | Extensionのrule開始callbackEntry、actorEntry |
+| 23:30:02.651〜.670 | runtimeOpen accepted、serviceReady |
+| 23:30:02.672 | 認可の生値notDetermined、Activation enabled、main-thread false |
+| 23:30:02.682 | reconciliationResult uncertain / authorizationRequired |
+| 23:30:02.686 | callbackExit、全体46ms。制限適用の記録なし |
+| 23:42:07.350 | hostRefreshBegin |
+| 23:42:07.361〜.377 | hostがrevision6、対象1件を適用し、restrictionResult accepted。main-thread false |
+| 23:42:07.416 | hostRefreshEnd committed、全体66ms |
+
+両archiveのExtension 7行は一致し、復帰後archiveにはhost 4行が加わった。host/ExtensionのprocessImageUUIDが、上記install成果物の各Mach-O UUIDと一致した。生の認可がnotDeterminedだったこと、rule callbackが届いてactor/open/serviceを通過したこと、認可ゲートで制限適用を見送ったことを、このbuildの証跡として切り分けられた。callback未配信・actor job未実行・DB open例外が今回の直接の停止箇所という仮説は支持されない。
+
+hostの認可生値は今回の時間範囲に出ていない。loggerは同じ値の繰返しを省くので、各行のauth=notReadをOSの認可値と扱わない。本体復帰後の成功と本人のShield観測は対応するが、raw approvedを直接採取したという記録にはしない。
+
+次の限定PoCは#222でcold初期化とmain queue上の取得を分けて調べる。hostも非メインスレッドで成功しているため、非メインスレッドだけを今回の単独原因と断定しない。Appleのmain queue要件違反は別途解消すべき候補だが、そこへ単純なsyncを足す前に、同期callback/semaphoreとのdeadlock・初回status・時間予算を検証する。未知を過去approvedで上書きせず、denied/取消の安全性を保つ。これは新loggerの実機出力を確認した結果で、不具合修正・予定開始のQA合格ではない。#222/#131や時間集計の親Issueは未完了。
+
+採取時に`--predicate is ignored when collecting from attached device`と警告された。**attached deviceのcollectではsubsystem絞り込みが効かず、raw archiveは広い端末ログを含む**。collect例からpredicateを除いた。`--size 8m`付きでも今回のarchiveの実容量は267MiBだったため、物理的な容量上限として保証しない。以後はローカルarchiveを`log show --predicate ...`で絞り、allowlist exporterを通す。raw archive・private DB・生のfiltered metadataを外部へ送らない。固定診断の時刻等をGitHubに掲載することも、現時点では本人の承認待ち。
