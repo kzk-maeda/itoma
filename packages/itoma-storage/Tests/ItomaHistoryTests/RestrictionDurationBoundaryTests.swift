@@ -49,6 +49,27 @@ private final class TenMinuteDurationFixture {
     func checkpoint(_ offset: Double, confirmed: Bool) throws {
         try move(offset); try control.recordReflectionBaseline(durationConfirmed: confirmed)
     }
+    func replacePolicyKeepingTheSameTarget(_ offset: Double, endMinute: Int) throws {
+        try move(offset)
+        let current = try control.readSnapshot(), oldRule = try #require(current.policy.rules.first)
+        let rule = try Rule(id: oldRule.id, version: RuleVersion(oldRule.version.rawValue + 1), enabled: true,
+            selectionRef: oldRule.selectionRef,
+            schedule: WeeklySchedule(weekdays: [.sunday], startMinute: 600, endMinute: endMinute, endDayOffset: .sameDay), unlockMode: .reason)
+        let revision = try PolicyRevision(current.policy.revision.rawValue + 1)
+        let proposed = try PolicySnapshot(revision: revision, rules: [rule], priorityOrder: [rule.id])
+        let commandID = CommandID(UUID())
+        func command(_ status: CommandStatus) throws -> Command {
+            try Command(id: commandID, kind: .commitPolicy, status: status, expectedPolicyRevision: current.policy.revision,
+                candidatePolicyRevision: revision, attempt: AttemptNumber(0))
+        }
+        let candidate = try PolicyCandidate(commandID: commandID, expectedRevision: current.policy.revision, proposedPolicy: proposed)
+        try control.write { tx in
+            _ = try tx.acceptCandidate(command: command(.pending), candidate: candidate, expectedSequence: current.snapshotSequence)
+            _ = try tx.recordCommand(command(.applying), expected: command(.pending))
+            _ = try tx.activateCandidate(commandID: commandID, expectedSequence: tx.snapshot().snapshotSequence)
+            _ = try tx.recordCommand(command(.succeeded), expected: command(.applying))
+        }
+    }
     func view(_ offset: Double) throws -> ReflectionReadSnapshot {
         try control.transferReflection(to: history)
         return try history.readReflection(period: .week, day: "2026-11-15", timeZone: TimeZone.current.identifier, now: at(offset))
@@ -120,11 +141,34 @@ func firstConfirmedReadAfterTenMinuteRuleEndRetainsTheCompletedInterval(_ readAt
     let f = try TenMinuteDurationFixture(); defer { f.remove() }
     try f.apply(0, status: .applied, restricted: true)
     try f.checkpoint(54, confirmed: true)
-    // Sanitized shape of the device trace: the Extension cannot authorize its next plan.
+    // Sanitized shape of the device trace: the boundary operation cannot authorize its next plan.
     try f.apply(603, status: .uncertain, restricted: false, failure: .authorizationRequired)
     try f.apply(780, status: .applying, restricted: false)
     try f.apply(780, status: .applied, restricted: false)
     let view = try f.view(781)
     #expect(view.total.knownSeconds == 54)
+    #expect(view.total.coverage == .partial)
+}
+
+@Test(arguments: [605, 615])
+func changingPolicyWithTheSameTargetCannotUseTheOldApplicationToCompleteItsNewBoundary(_ endMinute: Int) throws {
+    let f = try TenMinuteDurationFixture(); defer { f.remove() }
+    try f.apply(0, status: .applied, restricted: true)
+    try f.checkpoint(20, confirmed: true)
+    try f.replacePolicyKeepingTheSameTarget(100, endMinute: endMinute)
+    let changed = try f.control.readSnapshot()
+    #expect(changed.policy.revision.rawValue == 1)
+    #expect(changed.application?.evaluation.policyRevision.rawValue == 0)
+    #expect(changed.application?.evaluation.desiredTargets == [f.target])
+
+    let readAt = Double((endMinute - 600) * 60 + 5)
+    try f.checkpoint(readAt, confirmed: true)
+    let fact = try #require(try f.control.reflectionBatch()?.facts.last)
+    // Matching targets and own-store success cannot substitute for revision equality.
+    #expect(fact.durationObservation?.state == .unknown)
+    #expect(fact.durationObservation?.boundary == .checkpoint)
+    let view = try f.view(readAt + 1)
+    #expect(view.total.knownSeconds == 100)
+    #expect(view.selected.knownSeconds == 100)
     #expect(view.total.coverage == .partial)
 }
