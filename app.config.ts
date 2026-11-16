@@ -12,6 +12,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         historyWarningBytes: Number(process.env.ITOMA_HISTORY_WARNING_BYTES),
         historyMaximumBytes: Number(process.env.ITOMA_HISTORY_MAXIMUM_BYTES),
         pendingEventLimit: Number(process.env.ITOMA_PENDING_EVENT_LIMIT),
+        authorizationProbe: process.env.ITOMA_AUTHORIZATION_PROBE === '1' ? 1 : 0,
       }] as [string, Record<string, string | number | undefined>]]
       : []),
   ],

@@ -2,6 +2,7 @@ import DeviceActivity
 import FamilyControls
 import Foundation
 import OSLog
+import Combine
 import ManagedSettings
 import ItomaCore
 import ItomaControl
@@ -219,6 +220,7 @@ public enum ScreenTimeDiagnostics {
         case authorizationRead, policyRegistrationBegin, policyRegistrationResult
         case deadlineRegistrationBegin, deadlineRegistrationResult, deadlineCancellationResult
         case restrictionBegin, restrictionResult, hostRefreshBegin, hostRefreshEnd
+        case authorizationProbeBegin, authorizationProbeInitial, authorizationProbeNotification, authorizationProbeEnd
     }
     public enum Activity: String, Sendable { case none, rule, deadline, unrecognized }
     public enum Authorization: String, Sendable { case notRead, approved, denied, notDetermined, unrecognized }
@@ -228,6 +230,7 @@ public enum ScreenTimeDiagnostics {
         case storageMissing, storageBusy, storageCorrupt, storageSchema, storageUnavailable, storageOther
         case invalidSelection, runtimeUnavailable, scheduleUnavailable, runtimeBusy, otherError
         case authorizationRequired, registrationFailure, storageFailure, osOperationFailure, interrupted, unknownFailure
+        case probeResolved, probeTimedOut, probeSkippedMainThread
     }
     private static let logger = Logger(subsystem: "com.itoma.screentime", category: "lifecycle")
     private static let role = Bundle.main.bundleURL.pathExtension == "appex" ? "extension" : "host"
@@ -275,5 +278,60 @@ public enum ScreenTimeDiagnostics {
         case ScreenTimeRuntimeError.busy: .runtimeBusy
         default: .otherError
         }
+    }
+}
+
+/// Opt-in, read-only Extension experiment. Its result is never an authorization authority.
+public enum MainQueueAuthorizationProbe {
+    private final class Subscription: @unchecked Sendable {
+        // Created on main, accessed/cancelled only by the main-queue closure below.
+        let value: AnyCancellable
+        init(_ value: AnyCancellable) { self.value = value }
+        func cancelOnMain() { DispatchQueue.main.async { self.value.cancel() } }
+    }
+
+    private static func status(_ value: FamilyControls.AuthorizationStatus) -> ProbeAuthorization {
+        switch value {
+        case .approved: .approved
+        case .denied: .denied
+        case .notDetermined: .notDetermined
+        @unknown default: .unrecognized
+        }
+    }
+
+    public static func runIfEnabled(activity: ScreenTimeDiagnostics.Activity, ended: Bool) {
+        guard Bundle.main.object(forInfoDictionaryKey: "ITOMAAuthorizationProbe") as? Bool == true else { return }
+        let started = ProcessInfo.processInfo.systemUptime
+        ScreenTimeDiagnostics.record(.authorizationProbeBegin, activity: activity, ended: ended)
+        let outcome = AuthorizationProbeWindow.run(isMainThread: Thread.isMainThread, timeout: .milliseconds(250),
+            enqueue: { work in DispatchQueue.main.async(execute: work) },
+            observe: { window in
+                dispatchPrecondition(condition: .onQueue(.main))
+                let center = AuthorizationCenter.shared
+                window.observe(status(center.authorizationStatus), initial: true)
+                let subscription = Subscription(center.$authorizationStatus
+                    .receive(on: DispatchQueue.main)
+                    .sink { value in
+                        dispatchPrecondition(condition: .onQueue(.main))
+                        // Use the delivered value; do not re-read a @Published willSet property.
+                        window.observe(status(value), initial: false)
+                    })
+                window.installCancellation { subscription.cancelOnMain() }
+            }, trace: { value, initial, index in
+                ScreenTimeDiagnostics.record(initial ? .authorizationProbeInitial : .authorizationProbeNotification,
+                    activity: activity, ended: ended,
+                    authorization: ScreenTimeDiagnostics.Authorization(rawValue: value.rawValue) ?? .unrecognized,
+                    count: index)
+            })
+        let result: ScreenTimeDiagnostics.Result
+        switch outcome.end {
+        case .skippedMainThread: result = .probeSkippedMainThread
+        case .resolved: result = .probeResolved
+        case .timedOut: result = .probeTimedOut
+        }
+        ScreenTimeDiagnostics.record(.authorizationProbeEnd, activity: activity, ended: ended,
+            authorization: outcome.last.flatMap { ScreenTimeDiagnostics.Authorization(rawValue: $0.rawValue) } ?? .notRead,
+            result: result, count: outcome.events,
+            elapsedMilliseconds: Int((ProcessInfo.processInfo.systemUptime - started) * 1000))
     }
 }

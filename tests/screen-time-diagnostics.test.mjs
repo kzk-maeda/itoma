@@ -44,3 +44,19 @@ test('CLI ignores malformed input and outputs only approved entries', () => {
   assert.equal(result.stdout.trim().split('\n').length, 1);
   assert.doesNotMatch(result.stdout, /PRIVATE_REASON|eventMessage/);
 });
+
+test('exports probe initial and notification separately without reclassifying unknown/denied', () => {
+  for (const [stage, auth, result] of [
+    ['authorizationProbeInitial', 'notDetermined', 'none'],
+    ['authorizationProbeNotification', 'approved', 'none'],
+    ['authorizationProbeEnd', 'denied', 'probeResolved'],
+    ['authorizationProbeEnd', 'notDetermined', 'probeTimedOut'],
+    ['authorizationProbeEnd', 'notRead', 'probeSkippedMainThread'],
+  ]) {
+    const entry = sample();
+    entry.eventMessage = entry.eventMessage.replace('stage=authorizationRead', `stage=${stage}`)
+      .replace('auth=notDetermined', `auth=${auth}`).replace('result=enabled', `result=${result}`);
+    const safe = sanitizeScreenTimeDiagnostic(entry);
+    assert.equal(safe.stage, stage); assert.equal(safe.auth, auth); assert.equal(safe.result, result);
+  }
+});
