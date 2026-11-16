@@ -1,0 +1,5 @@
+const { getDefaultConfig } = require('expo/metro-config');
+const config = getDefaultConfig(__dirname);
+config.watchFolders = ['/workspace/itoma/node_modules'];
+config.resolver.nodeModulesPaths = ['/workspace/itoma/node_modules'];
+module.exports = config;
