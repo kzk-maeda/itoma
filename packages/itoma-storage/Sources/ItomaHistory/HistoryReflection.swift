@@ -104,7 +104,7 @@ extension HistoryRepository: ReflectionFactSink {
     }
 
     /// A single private read transaction pins both revisions and the calendar/as-of.
-    /// Legacy point facts never become durations. Native operation intervals use a separate scope.
+    /// Recalculates historical rule time; it is distinct from native enforcement measurement.
     public func readReflection(period: ReflectionPrototypePeriod, day: String, timeZone: String,
                                expectedToken: String? = nil, clippedTo: ReflectionPrototypeInterval? = nil,
                                now: Instant = try! Instant(secondsSince1970: Date().timeIntervalSince1970)) throws -> ReflectionReadSnapshot {
@@ -132,9 +132,9 @@ extension HistoryRepository: ReflectionFactSink {
                 ? try ReflectionPrototypeInterval(from: Instant(secondsSince1970: start), until: token.asOf) : nil }
             let coverage: ReflectionPrototypeCoverage = count > 0 ? .partial : state.deleted ? .deleted : .notRecorded
             let legacy = try ReflectionPrototypeDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf,
-                timeZone: timeZone, scope: .pointObservations, coverage: coverage, recordedRange: range)
-            let input = try nativeRestrictionDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf, timeZone: timeZone) ?? legacy
-            let metric = input.scope == .nativeRecordedIntervals ? "native-restricted-excluding-unlocks-v2" : nil
+                timeZone: timeZone, scope: .ruleScheduleLogs, coverage: coverage, recordedRange: range)
+            let input = try ruleLogRestrictionDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf, timeZone: timeZone) ?? legacy
+            let metric: String? = "rule-schedule-excluding-unlocks-v1"
             if expectedToken != nil {
                 guard token.metricVersion == metric else { throw HistoryError.conflict }
             } else { token.metricVersion = metric }
@@ -156,16 +156,17 @@ extension HistoryRepository: ReflectionFactSink {
         }
     }
 
-    /// Only bounded pages are decoded. The derived cache is connection-local and keyed by the
-    /// pinned SQLite version, ledger revision and as-of, so deletion/another writer cannot revive it.
-    private func nativeRestrictionDataset(sourceID: UUID, revision: Int64, asOf: Instant, timeZone: String) throws -> ReflectionPrototypeDataset? {
+    /// Reuses immutable log projections, but calculates the open last policy through pinned as-of.
+    /// Metric identity prevents old native/point tokens from being reused after this change.
+    private func ruleLogRestrictionDataset(sourceID: UUID, revision: Int64, asOf: Instant, timeZone: String) throws -> ReflectionPrototypeDataset? {
         guard case let .integer(dataVersion) = try database.rows("PRAGMA main.data_version").first?.first else { throw HistoryError.corrupt }
-        let builder: RestrictionTimelineBuilder
-        if let cached = restrictionTimelineCache, cached.revision == revision, cached.dataVersion == dataVersion,
+        let builders: [UUID: RuleLogTimelineBuilder]
+        if let cached = ruleLogTimelineCache, cached.revision == revision, cached.dataVersion == dataVersion,
            cached.asOf == asOf || (!cached.hasFutureRecords && cached.asOf <= asOf) {
-            builder = cached.builder
+            builders = cached.builders
         } else {
-            var projection = RestrictionTimelineBuilder(), source = "", sequence: Int64 = 0, hasFutureRecords = false
+            var projections: [UUID: RuleLogTimelineBuilder] = [:]
+            var source = "", sequence: Int64 = 0, hasFutureRecords = false
             while true {
                 let rows = try database.rows("""
                     SELECT source_id,sequence,record FROM reflection_facts
@@ -177,19 +178,60 @@ extension HistoryRepository: ReflectionFactSink {
                     guard case let .text(id) = row[0], let uuid = UUID(uuidString: id),
                           case let .integer(seq) = row[1], case let .blob(data) = row[2] else { throw HistoryError.corrupt }
                     let fact = try decodeReflectionFact(data)
-                    hasFutureRecords = hasFutureRecords || fact.committedAt > asOf
-                    try projection.append(source: uuid, sequence: seq, sample: fact.durationObservation, asOf: asOf, unobservedAt: fact.committedAt)
+                    if fact.committedAt <= asOf {
+                        guard projections[uuid] != nil || projections.count < 20_000 else { throw HistoryError.invalidPage }
+                        try projections[uuid, default: RuleLogTimelineBuilder()].append(fact)
+                    }
+                    else { hasFutureRecords = true }
                     source = id; sequence = seq
                 }
             }
-            restrictionTimelineCache = (revision, dataVersion, asOf, hasFutureRecords, projection)
-            builder = projection
+            ruleLogTimelineCache = (revision, dataVersion, asOf, hasFutureRecords, projections)
+            builders = projections
         }
-        guard let dataset = try builder.dataset(sourceID: sourceID, revision: revision, asOf: asOf, timeZone: timeZone) else { return nil }
+        let ordered = builders.filter { $0.value.firstAt != nil }.sorted {
+            $0.value.firstAt! == $1.value.firstAt! ? $0.key.uuidString < $1.key.uuidString : $0.value.firstAt! < $1.value.firstAt!
+        }
+        var restricted: [ReflectionPrototypeInterval] = [], unlocked: [ReflectionPrototypeInterval] = [], gaps: [ReflectionPrototypeInterval] = []
+        var first: Instant?, partial = false
+        let unrepresentedPending = try !database.rows("""
+            SELECT 1 FROM reflection_sources s WHERE max(s.imported_through,s.deleted_through)<s.high_water
+              AND NOT EXISTS(SELECT 1 FROM reflection_facts f WHERE f.source_id=s.source_id AND f.record IS NOT NULL) LIMIT 1
+            """).isEmpty
+        for (index, item) in ordered.enumerated() {
+            let windowEnd = min(asOf, index + 1 < ordered.count ? ordered[index + 1].value.firstAt! : asOf)
+            var end = windowEnd
+            first = min(first ?? item.value.firstAt!, item.value.firstAt!)
+            let tied = (index > 0 && ordered[index - 1].value.firstAt == item.value.firstAt)
+                || (index + 1 < ordered.count && ordered[index + 1].value.firstAt == item.value.firstAt)
+            if tied {
+                if item.value.firstAt! < windowEnd { gaps.append(try .init(from: item.value.firstAt!, until: windowEnd)) }
+                partial = true // Equal source start times cannot establish which intent is newer.
+                continue
+            }
+            let source = try reflectionSource(item.key)
+            let pending = source.map { max($0.imported, $0.deleted) < $0.high } == true
+                || (unrepresentedPending && index == ordered.count - 1)
+            if pending, let last = item.value.lastAt {
+                end = min(end, last)
+                if end < windowEnd { gaps.append(try .init(from: end, until: windowEnd)) }
+                partial = true // A pending/lost stop or unlock must not be extrapolated away.
+            }
+            guard let dataset = try item.value.dataset(sourceID: sourceID, revision: revision, asOf: end, timeZone: timeZone),
+                  let range = dataset.recordedRange else { continue }
+            first = min(first ?? range.from, range.from)
+            restricted += dataset.restricted.compactMap { ReflectionPrototypeCalculator.intersection($0, range) }
+            unlocked += dataset.unlocked.compactMap { ReflectionPrototypeCalculator.intersection($0, range) }
+            gaps += dataset.gaps.compactMap { ReflectionPrototypeCalculator.intersection($0, range) }
+            partial = partial || dataset.coverage == .partial
+            guard restricted.count + unlocked.count + gaps.count <= 20_000 else { throw HistoryError.invalidPage }
+        }
+        guard let first, first < asOf else { return nil }
         let incomplete = try !database.rows("SELECT 1 FROM reflection_sources WHERE incomplete=1 LIMIT 1").isEmpty
         return try ReflectionPrototypeDataset(sourceID: sourceID, revision: revision, asOf: asOf, timeZone: timeZone,
-            scope: .nativeRecordedIntervals, coverage: incomplete ? .partial : dataset.coverage,
-            recordedRange: dataset.recordedRange, restricted: dataset.restricted, unlocked: dataset.unlocked, gaps: dataset.gaps)
+            scope: .ruleScheduleLogs, coverage: incomplete || partial ? .partial : .recorded,
+            recordedRange: .init(from: first, until: asOf), restricted: ReflectionPrototypeCalculator.union(restricted),
+            unlocked: ReflectionPrototypeCalculator.union(unlocked), gaps: ReflectionPrototypeCalculator.union(gaps))
     }
 
     /// Captures shared cutoffs before opening the private writer. First import is not required.

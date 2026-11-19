@@ -279,3 +279,25 @@ test('all-history entry clears the prior graph day, reason filter and reflection
   await press('今日'); expect(screen.getByText('日付で絞り込み中')).toBeTruthy();
   await press('絞り込みを解除'); expect(screen.getByRole('button', { name: '日付を選ぶ' })).toHaveTextContent(/すべての日/);
 });
+
+test('rule-log totals reach normal reflection with an accurate label and survive period switching', async () => {
+  const b = backend();
+  b.native.mockImplementation(async (_action, payload) => {
+    const request = JSON.parse(payload);
+    const entry = fixtures.observed.find(row => row.request.period === (request.period ?? 'week'))!;
+    const snapshot = structuredClone(entry.response);
+    snapshot.proofScope = 'ruleScheduleLogs'; snapshot.metricVersion = 'rule-schedule-excluding-unlocks-v1';
+    snapshot.total = { ...snapshot.total, from: snapshot.asOf - 14400, until: snapshot.asOf, knownSeconds: 14100, coverage: 'recorded' };
+    snapshot.selected = { ...snapshot.selected, knownSeconds: 14100, coverage: 'partial' };
+    snapshot.trend = [snapshot.total];
+    return wrap(snapshot);
+  });
+  await mount(b);
+  await screen.findByText('ルールから計算した時間');
+  expect(screen.getByTestId('reflection-total').props.children).toBe('3時間55分');
+  expect(screen.getByTestId('reflection-period-total').props.children).toBe('3時間55分');
+  expect(screen.getByText('設定したルールの時間から、一時解除と停止の時間を除いて集計しています。')).toBeTruthy();
+  expect(screen.queryByText('時間の記録を確認できていません')).toBeNull();
+  await press('月次'); await screen.findByText('2026年11月');
+  expect(screen.getByTestId('reflection-total').props.children).toBe('3時間55分');
+});

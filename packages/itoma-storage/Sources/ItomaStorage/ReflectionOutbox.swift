@@ -40,7 +40,8 @@ public struct ReflectionControlFact: Codable, Equatable, Sendable {
         }
         for grant in grants {
             guard grant.ruleVersion >= 0, TimeZone(identifier: grant.timeZone) != nil,
-                  grant.acceptedAt < grant.expiresAt else { throw StorageError.corrupt }
+                  grant.acceptedAt < grant.expiresAt,
+                  grant.expiresAt.secondsSince1970 - grant.acceptedAt.secondsSince1970 <= 1800 else { throw StorageError.corrupt }
         }
         if let application {
             guard TimeZone(identifier: application.timeZone) != nil,

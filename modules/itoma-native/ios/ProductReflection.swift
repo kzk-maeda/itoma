@@ -85,8 +85,8 @@ extension ProductUI {
         }
         Task {
             if action == "read", request.expectedToken == nil {
-                // Optional failure stays visible as a gap/pending sample; never changes control.
-                try? await ProductController.shared.checkpointRestrictionDuration()
+                // Best-effort rule baseline; importing logs retains any existing missing/pending markers.
+                try? await ProductController.shared.checkpointReflectionRules()
             }
             let result = await ProductHistoryController.shared.performReflection(action, request: request)
             complete(result.json())

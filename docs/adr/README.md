@@ -23,3 +23,4 @@ ADR 0002はPR #31のmainマージ（2026-11-04 JST）、0003〜0006はPR #36のm
 | [0007: 一時解除を除いた制限時間を振り返る](0007-recorded-setting-time-reflection.md) | Accepted（本人がPR134を採用・マージ、実機未検証） | [#96](https://github.com/kzk-maeda/itoma/issues/96) |
 | [0010: native操作を追跡した制限区間を接続する](0010-native-recorded-restriction-intervals.md) | Proposed（実装を含むレビュー対象） | [#97](https://github.com/kzk-maeda/itoma/issues/97) / [#98](https://github.com/kzk-maeda/itoma/issues/98) |
 | [0011: host確認済みpolicyのExtension実行資格](0011-host-confirmed-rule-execution.md) | Proposed（実装を含むレビュー対象） | [#222](https://github.com/kzk-maeda/itoma/issues/222) / [#227](https://github.com/kzk-maeda/itoma/issues/227) |
+| [0012: ルール設定・解除ログによる再計算](0012-rule-log-time-aggregation.md) | 本人指定に基づく実装レビュー対象 | [#98](https://github.com/kzk-maeda/itoma/issues/98) |

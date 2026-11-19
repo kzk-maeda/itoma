@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import ItomaCore
+import ItomaHistory
 @testable import ItomaStorage
 @testable import ItomaControl
 
@@ -78,4 +79,35 @@ import ItomaCore
     #expect(try builder.dataset(sourceID: UUID(), revision: 1,
         asOf: Instant(secondsSince1970: base + 601), timeZone: "UTC") == nil)
     // No measured interval was produced; the unknown span was not reconstructed from the rule.
+}
+
+@Test @ItomaControlActor func ruleLogsRecalculateFourHoursWithAnExpiredUnlockWithoutAReblockCheckpoint() async throws {
+    let f = try Fixture(); defer { f.remove() }
+    var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone.current
+    let base = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 16, hour: 12))).timeIntervalSince1970
+    f.contexts.zone = try TimeZoneID(TimeZone.current.identifier)
+    func move(_ offset: Double) throws {
+        let now = try Instant(secondsSince1970: base + offset)
+        f.contexts.now = now
+        f.repository.durationClock = { (now, 10000 + offset) }
+    }
+    try move(0)
+    try f.repository.installReflectionCapture(capacity: HistoryOutboxCapacity(maximumPendingEvents: 100))
+    try f.repository.installDurationCapture()
+    f.restriction.response = .accepted(.ownStoreReadback)
+    #expect(await f.service.reconcile().failure == nil)
+    try move(3600)
+    let grant = try f.accept(1)
+    #expect(try await f.service.executeAcceptedGrant(commandID: grant.commandID).failure == nil)
+    let history = try HistoryRepository.create(at: f.directory.appendingPathComponent("history.sqlite"),
+        capacity: HistoryCapacityPolicy(warningBytes: 500000, maximumBytes: 1000000))
+    defer { try? history.close() }
+    try f.repository.transferReflection(to: history)
+    f.contexts.authorization = .unknown
+    let writes = f.restriction.plans.count, registrations = f.scheduler.requests.count
+    let view = try history.readReflection(period: .week, day: "2026-11-16", timeZone: TimeZone.current.identifier,
+        now: Instant(secondsSince1970: base + 14400))
+    #expect(view.proofScope == "ruleScheduleLogs" && view.total.knownSeconds == 14100)
+    #expect(view.selected.knownSeconds == 14100)
+    #expect(f.restriction.plans.count == writes && f.scheduler.requests.count == registrations)
 }

@@ -99,11 +99,12 @@ struct ProductResponse: Encodable, Sendable {
         return opened
     }
 
-    func checkpointRestrictionDuration() throws {
+    func checkpointReflectionRules() throws {
         let r = try open()
         try r.repository.installReflectionCapture(capacity: r.outboxCapacity)
-        try r.repository.installDurationCapture()
-        try r.recordDurationCheckpoint()
+        // Capture current rule/activation/grant logs atomically; no live OS measurement is needed.
+        try r.repository.recordReflectionBaseline(durationConfirmed: false)
+        try r.protectFiles()
     }
 
     func selectionSaved(_ data: Data, authorizationEpoch: Int) throws -> String {
