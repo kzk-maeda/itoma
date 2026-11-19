@@ -1,21 +1,18 @@
 import { useAppNavigation } from '@/state/navigation';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert } from 'react-native';
 import { useVisibleClock } from '@/hooks/use-visible-clock';
 import { useScreenTime } from '@/state/screen-time';
 import { useOptionalOnboarding } from '@/state/onboarding';
 import { completeNativeHomeSmoke } from '@/qa/native-smoke';
-import { PeriodRing } from '../home/period-ring';
-import { presentPeriod } from '../home/period-presentation';
 import { PoCRecoveryEntry } from '../home/poc-recovery-entry';
-import { RuleGoal, ruleTitle } from './rule-identity';
-import { Applications } from './applications';
-import { Body, Button, FlowScreen, Heading, LinkRow, Notice, Panel, useFlowTheme } from './ui';
-import { endTime, grantRemaining, ruleText } from './presentation';
+import { Body, Button, FlowScreen, Heading, Notice, Panel } from './ui';
+import { CurrentRules } from '../home/rule-status-view';
+import { hasFreshRestrictionState, targetScope, unlockCandidates } from '../home/rule-status';
 
 export function ProductHome() {
-  const state = useScreenTime(), setup = useOptionalOnboarding(), theme = useFlowTheme(), now = useVisibleClock(), navigation = useAppNavigation();
+  const state = useScreenTime(), setup = useOptionalOnboarding(), now = useVisibleClock(), navigation = useAppNavigation();
   const s = state.snapshot;
   const { refresh } = state;
   const boundary = useRef('');
@@ -36,18 +33,28 @@ export function ProductHome() {
   useFocusEffect(useCallback(() => { focused.current = true; completeNativeHomeSmoke(); return () => { focused.current = false; }; }, []));
   useEffect(() => {
     if (!s) return;
-    const times = [s.validUntil, ...s.periods.map((p) => p.endsAt), ...s.targets.map((t) => t.grantEndsAt)].filter((n): n is number => n !== undefined);
+    const times = [s.validUntil, s.nextPeriod?.startsAt, ...s.periods.map((p) => p.endsAt), ...s.targets.map((t) => t.grantEndsAt)].filter((n): n is number => n !== undefined);
     const passed = times.filter((n) => n * 1000 <= now);
     const key = `${s.sequence}:${passed.join(',')}`;
     if (passed.length && boundary.current !== key) { boundary.current = key; void refresh(); }
   }, [now, s, refresh]);
   const device = s?.availability === 'device';
-  const current = s?.periods.filter((p) => p.startsAt * 1000 <= now && p.endsAt * 1000 > now) ?? [];
-  const observed = s?.authorization === 'approved' && s.activation === 'enabled'
-    && s.observation === 'applied' && !!s.validUntil && s.validUntil * 1000 > now && !state.error;
+  const observed = hasFreshRestrictionState(s, now) && !state.error;
   const firstRun = !!setup && !setup.progress?.completed;
   const create = () => { if (firstRun) { navigation.start({ screen: 'onboarding' }, { screen: 'index' }); return; } if (!state.ruleDraft?.dirty) state.beginRule(); navigation.start({ screen: s?.authorization === 'approved' ? 'rule' : 'onboarding' }, { screen: 'index' }); };
-  const unlock = () => { if (!state.unlockDraft.reason && !state.unlockDraft.targetRef) state.resetUnlock(); navigation.start({ screen: 'unlock' }, { screen: 'index' }); };
+  const unlock = async (ruleID: string) => {
+    if (state.busy || state.legacyActive) return;
+    const session = state.unlockSession();
+    if (state.unlockPreviewRef && (await state.run('cancelUnlock')).status !== 'ok') return;
+    if (!focused.current || !state.ownsUnlockSession(session)) return;
+    const draft = state.currentUnlockDraft(), snapshot = state.currentSnapshot(), at = Date.now();
+    const target = unlockCandidates(snapshot, at, ruleID).find(t => t.ref === draft.targetRef);
+    const keep = draft.ruleID === ruleID && !!target && draft.targetScope === targetScope(snapshot, target, at);
+    state.resetUnlock(); // A new explicit entry owns late responses independently of earlier work.
+    state.setUnlockDraft({ ...draft, ruleID, targetRef: keep ? draft.targetRef : undefined, targetScope: keep ? draft.targetScope : undefined });
+    state.setUnlockExitAllowed(false);
+    navigation.start({ screen: 'unlock' }, { screen: 'index' });
+  };
   const stopLegacy = () => Alert.alert('手動検証の制限を停止しますか', '以前の手動検証で指定した制限だけを停止します。通常のルールと保存した対象は削除しません。', [
     { text: '戻る', style: 'cancel' }, { text: '手動検証の制限を停止', onPress: () => { void state.run('stopLegacy'); } },
   ]);
@@ -71,22 +78,8 @@ export function ProductHome() {
     {device && !!s.rules.length && s.activation === 'enabled' && (!s.schedulesReady || !observed) && <Notice title="制限の状態を確認してください">
       {s.schedulesReady ? '反映を確認できていません。以下の時間帯は保存した設定です。設定タブから現在の状態を確認できます。' : '自動切替の予定を確認できていません。設定タブから現在の状態を確認できます。'}
     </Notice>}
-    {current.map((p) => { const presentation = presentPeriod(p.startsAt * 1000, p.endsAt * 1000, now);
-      const rule = s?.rules.find(r => r.id === p.ruleID);
-      return <View key={`${p.ruleID}:${p.startsAt}`} style={styles.period}>
-      <View style={styles.periodHeading}>
-        <View style={styles.periodLabel}>
-          {rule && <Text style={[styles.caption, { color: theme.muted }]}>{ruleText(rule)}</Text>}
-          <Heading>{ruleTitle(rule, s?.rules.findIndex(r => r.id === p.ruleID) ?? 0)}</Heading>
-        </View>
-      </View>
-      {presentation.state === 'current' && <PeriodRing period={presentation} theme={theme} />}
-      <Text style={[styles.caption, styles.observation, { color: theme.muted }]}>{s?.activation === 'enabled' && observed ? '制限設定を反映しました' : '保存した設定上の時間'}</Text>
-      <RuleGoal goal={rule?.goal} />
-    </View>; })}
-    {!current.length && !!s?.rules.length && <Panel><Heading>次の時間まで</Heading>
-      <Body>{s.nextPeriod ? `${endTime(s.nextPeriod.startsAt, now)}から予定しています。` : '有効な次の時間帯はありません。ルールを確認できます。'}</Body>
-    </Panel>}
+    {!!state.unlockDraft.reason && <Body muted>一時解除の入力を残しています。ルールを選ぶと続きを入力できます。</Body>}
+    {!!s?.rules.length && <CurrentRules snapshot={s} now={now} onUnlock={ruleID => { void unlock(ruleID); }} />}
     {!s?.rules.length && <Heading>自分の時間を、ここから。</Heading>}
     {!s?.rules.length && setup?.draft && !setup.busy && <Notice title={setup.draft.submitted ? '初回設定の反映を確認してください' : '初回設定は途中です'}>{setup.draft.submitted
       ? '前の要求は完了を確認できていません。入力は残っています。設定を続けて、結果と再試行する内容を確認できます。'
@@ -98,32 +91,6 @@ export function ProductHome() {
     {!s?.rules.length && <Button label={firstRun ? setup.draft ? setup.busy || setup.draft.submitted ? '初回設定の結果を確認する' : '初回設定を続ける' : '初回設定を始める' : 'ルールをつくる'} disabled={!device || !!state.busy || !!setup?.busy || !!setup?.loading} onPress={create} />}
     {device && !!s?.rules.length && !!setup?.draft && <Button label="初回設定の結果を確認する" secondary onPress={() => navigation.start({ screen: 'onboarding' }, { screen: 'index' })} />}
     {!!s?.rules.length && state.ruleDraft?.dirty && <Button label="編集中のルールに戻る" secondary onPress={() => navigation.start(state.ruleDraft?.createdRuleID ? { screen: 'rule-details', ruleID: state.ruleDraft.createdRuleID } : { screen: 'rule' }, { screen: 'index' })} />}
-    {!!s?.rules.length && <View style={styles.targets}><Heading>対象のアプリ</Heading>
-      {s.authorization === 'approved' ? s.targets.map((target) => <View key={target.ref} style={[styles.target, { borderColor: theme.line }]}>
-        <View style={styles.targetLine}>
-          <View style={styles.appIdentity}><Applications selectionRef={target.selectionRef} targetRef={target.ref} refreshKey={state.refreshKey} /></View>
-          <Text style={[styles.targetStatus, { color: theme.muted }]}>{s.activation === 'paused' ? '停止を保存済み' : s.activation === 'awaitingReauthorizationConfirmation' ? '再開前の確認待ち' : target.grantCommandID ? target.grantStatus === 'active' && observed && (target.grantEndsAt ?? 0) * 1000 > now
-            ? '一時解除中' : '解除の状態を確認'
-            : target.restricted ? observed ? '制限設定を反映済み' : '設定上の制限対象' : '時間帯の対象外'}</Text>
-        </View>
-        {s.rules.length > 1 && target.ruleID && <Text style={[styles.caption, { color: theme.muted }]}>適用するルール：{ruleTitle(s.rules.find(rule => rule.id === target.ruleID), s.rules.findIndex(rule => rule.id === target.ruleID))}</Text>}
-        {target.grantCommandID && <Text style={[styles.caption, { color: theme.muted }]}>{target.grantStatus === 'active' && observed && (target.grantEndsAt ?? 0) * 1000 > now
-          ? `一時解除の残り ${grantRemaining(target.grantEndsAt!, now)} · ${endTime(target.grantEndsAt!, now)}まで`
-          : '解除の要求・再制限の状態を確認できます。'}</Text>}
-        {target.grantCommandID && <LinkRow label="解除の状況を見る" onPress={() => navigation.open({ screen: 'grant' })} />}
-      </View>) : <Body muted>許可を確認すると、保存した対象を確認できます。</Body>}
-      {s.targets.length === 0 && <Body muted>対象のアプリはありません。</Body>}
-    </View>}
-    {device && s.authorization === 'approved' && s.activation === 'enabled' && s.schedulesReady && s.targets.some((t) => t.unlockable)
-      && <Button label="一時解除する" testID="home-unlock-entry" disabled={!!state.busy} onPress={unlock} />}
     {!device && <PoCRecoveryEntry />}
   </FlowScreen>;
 }
-
-const styles = StyleSheet.create({
-  period: { gap: 12 }, periodHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, periodLabel: { flex: 1, gap: 4 },
-  caption: { fontSize: 13, lineHeight: 20 }, observation: { textAlign: 'center' },
-  targets: { gap: 8 }, target: { paddingVertical: 10, borderBottomWidth: 1, gap: 4 },
-  targetLine: { flexDirection: 'row', alignItems: 'center', gap: 12 }, appIdentity: { flex: 1, minWidth: 0 },
-  targetStatus: { maxWidth: '43%', flexShrink: 1, textAlign: 'right', fontSize: 13, lineHeight: 21 },
-});

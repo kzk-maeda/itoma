@@ -40,6 +40,9 @@ export type GraphiteTheme = (typeof GraphiteColors)['light' | 'dark'];
 export const HomeLayout = { maxWidth: 480, gutter: 24, sectionGap: 24 } as const;
 
 /** Brief responses to period selection; never used for domain deadlines. */
+/** #233 fixed-demo starting values; browsing never changes domain state. */
+export const RuleDeckMotion = { captureDistance: 12, horizontalRatio: 1.5, commitFraction: 0.22, flickDistance: 18, flickVelocity: 0.65, exitDuration: 170, maxRotation: 5 } as const;
+
 export const FlowMotion = { periodDuration: 180, periodOffset: 16, tabDuration: 240 } as const;
 
 export const Fonts = Platform.select({

@@ -6,7 +6,7 @@ import { screenTime, type RuleInput, type ScreenTimeAction, type ScreenTimeCode,
 
 export type RuleDraft = { id?: string; selectionRef: string; weekdays: number[]; start: string; end: string; nextDay: boolean; enabled: boolean; dirty: boolean; remove?: boolean;
   title?: string; goal?: string; createdRuleID?: string; creationCommitted?: boolean };
-export type UnlockDraft = { targetRef?: string; reason: string; minutes: string };
+export type UnlockDraft = { ruleID?: string; targetScope?: string; targetRef?: string; reason: string; minutes: string };
 type Client = Pick<typeof screenTime, 'run'>;
 type HistoryChangeOrigin = 'history' | 'reflection' | 'settings' | 'external';
 type State = {
@@ -18,7 +18,10 @@ type State = {
   ruleSession: () => number; ownsRuleSession: (session: number) => boolean; unlockSession: () => number; ownsUnlockSession: (session: number) => boolean;
   rulePreviewRef?: string; setRulePreviewRef: (ref: string | undefined) => void;
   ruleReview?: ScreenTimeResponse; setRuleReview: (review: ScreenTimeResponse | undefined) => void;
+  homeRuleKey?: string; setHomeRuleKey: (key: string) => void;
+  currentSnapshot: () => ScreenTimeSnapshot | undefined; currentUnlockDraft: () => UnlockDraft;
   unlockDraft: UnlockDraft; setUnlockDraft: (draft: UnlockDraft) => void;
+  unlockPreviewRef?: string; setUnlockPreviewRef: (ref: string | undefined) => void;
   unlockReview?: ScreenTimeResponse; setUnlockReview: (review: ScreenTimeResponse | undefined) => void;
   resetUnlock: () => void;
   canExitRule: () => boolean; canExitUnlock: () => boolean;
@@ -52,8 +55,12 @@ export function ScreenTimeProvider({ children, client = screenTime }: { children
   // Preview ownership survives draft edits/review invalidation until explicit cancellation.
   const [rulePreviewRef, setRulePreviewRef] = useState<string>();
   const [ruleReview, setRuleReview] = useState<ScreenTimeResponse>();
-  const [unlockDraft, setUnlockDraft] = useState<UnlockDraft>({ reason: '', minutes: '5' });
+  const [unlockDraft, setUnlockDraftState] = useState<UnlockDraft>({ reason: '', minutes: '5' });
+  const unlockDraftRef = useRef(unlockDraft);
+  const setUnlockDraft = useCallback((draft: UnlockDraft) => { unlockDraftRef.current = draft; setUnlockDraftState(draft); }, []);
+  const [homeRuleKey, setHomeRuleKey] = useState<string>();
   const [unlockReview, setUnlockReview] = useState<ScreenTimeResponse>();
+  const [unlockPreviewRef, setUnlockPreviewRef] = useState<string>();
   const ruleExitRef = useRef(false), unlockExitRef = useRef(false);
   const [ruleExitAllowed, setRuleExit] = useState(false), [unlockExitAllowed, setUnlockExit] = useState(false);
   const setRuleExitAllowed = useCallback((value: boolean) => { ruleExitRef.current = value; setRuleExit(value); }, []);
@@ -108,12 +115,13 @@ export function ScreenTimeProvider({ children, client = screenTime }: { children
       : { selectionRef: '', weekdays: [1, 2, 3, 4, 5], start: '21:00', end: '23:00', nextDay: false, enabled: true, dirty: false });
   }, [setRuleExitAllowed, setRuleDraft]);
   return <Context.Provider value={{ snapshot, ruleDetailsState: getRuleDetailsState(snapshot), error, loading, busy, legacyActive, refreshKey, historyEpoch, historyChangeOrigin, invalidateHistory, run, refresh, clearError: () => setError(undefined),
-    ruleDraft, setRuleDraft, beginRule, rulePreviewRef, setRulePreviewRef, ruleReview, setRuleReview, unlockDraft, setUnlockDraft, unlockReview, setUnlockReview,
+    homeRuleKey, setHomeRuleKey, currentSnapshot: () => latest.current, currentUnlockDraft: () => unlockDraftRef.current,
+    ruleDraft, setRuleDraft, beginRule, rulePreviewRef, setRulePreviewRef, ruleReview, setRuleReview, unlockDraft, setUnlockDraft, unlockPreviewRef, setUnlockPreviewRef, unlockReview, setUnlockReview,
     ruleSession: () => ruleGeneration.current, ownsRuleSession: session => ruleGeneration.current === session,
     unlockSession: () => unlockGeneration.current, ownsUnlockSession: session => unlockGeneration.current === session,
     ruleExitAllowed, unlockExitAllowed, canExitRule: () => ruleExitRef.current, canExitUnlock: () => unlockExitRef.current,
     setRuleExitAllowed, setUnlockExitAllowed,
-    resetUnlock: () => { unlockGeneration.current++; setUnlockExitAllowed(false); setUnlockDraft({ reason: '', minutes: String(latest.current?.defaultMinutes ?? 5) }); setUnlockReview(undefined); setError(undefined); } }}>{children}</Context.Provider>;
+    resetUnlock: () => { unlockGeneration.current++; setUnlockExitAllowed(false); setUnlockDraft({ reason: '', minutes: String(latest.current?.defaultMinutes ?? 5) }); setUnlockReview(undefined); setUnlockPreviewRef(undefined); setError(undefined); } }}>{children}</Context.Provider>;
 }
 
 export function useScreenTime() { const value = useContext(Context); if (!value) throw new Error('ScreenTimeProvider missing'); return value; }
