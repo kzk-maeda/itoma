@@ -73,6 +73,23 @@ test('failure and lifecycle messages identify the next operation without exposin
   }
 });
 
+test('context-only omissions name bounded concrete files instead of redirecting to generic logs', () => {
+  const report = completed();
+  report.review.omissions = [
+    ...Array.from({ length: 5 }, (_, i) => `scripts/context-${i}.mjs@${HEAD}: source unavailable or exceeds 20000 bytes`),
+    'scripts/context-0.mjs: surrounding source exceeds input budget',
+  ];
+  const body = renderPipelineComment(report);
+  assert.match(body, /確認する周辺ファイル（5件）/);
+  for (let i = 0; i < 3; i++) assert.ok(body.includes(`scripts/context-${i}.mjs`));
+  assert.ok(!body.includes('scripts/context-3.mjs'));
+  assert.match(body, /ほか2ファイル/);
+  assert.ok(!body.includes(`@${HEAD}`));
+  assert.ok(!body.includes('詳細・ログの未確認範囲'));
+  report.review.omissions = ['Direct local import lookup limited to 6 specifiers'];
+  assert.match(renderPipelineComment(report), /参照先の一部は確認できていません/);
+});
+
 test('omitted vector and modern image formats are assigned visual inspection, not source-code review', () => {
   const report = completed();
   const images = ['logo.svg', 'hero.AVIF', 'splash.bmp', 'scan.tiff', 'animated.apng', 'photo.heif'];

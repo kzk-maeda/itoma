@@ -38,7 +38,19 @@ function renderCoverage(report) {
     if (text.length > 3) lines.push(`- ほか${text.length - 3}ファイル（詳細・ログを参照）`);
   }
   if (media.length) lines.push('', `画像・動画等${media.length}ファイルの差分は、目視で確認してください。`);
-  if (!paths.length && omissions.length) lines.push('**周辺コード・資料の一部を取得できていません。** 詳細・ログの未確認範囲は、人手で確認してください。');
+  if (!paths.length && omissions.length) {
+    lines.push('**周辺コード・資料の一部を取得できていません。**');
+    const context = [...new Set(omissions.flatMap(value => {
+      const match = value.match(/^(.+): /);
+      return match ? [match[1].replace(/@[a-f0-9]{40}$/, '')] : [];
+    }))];
+    if (context.length) {
+      lines.push('', `<details>\n<summary>確認する周辺ファイル（${context.length}件）</summary>`, '',
+        ...context.slice(0, 3).map(path => `- ${markdown(path)}`));
+      if (context.length > 3) lines.push(`- ほか${context.length - 3}ファイル（詳細・ログを参照）`);
+      lines.push('', '取得できなかった全文・参照先を補って確認してください。', '', '</details>');
+    } else lines.push('収集上限のため、PR本文・チェック結果・参照先の一部は確認できていません。');
+  }
   if (report.review.limitations.length) lines.push('', `<details>\n<summary>確認が必要な点（${report.review.limitations.length}件）</summary>`, '', ...report.review.limitations.map(value => `- ${markdown(value)}`), '', '</details>');
   return lines.join('\n').trim();
 }
