@@ -4,7 +4,8 @@
 
 ## ソースと検証層
 
-- 実装ソースSHAと表示に関わる8ファイルのSHA-256は [browser-results.json](browser-results.json) に記録。
+- 画像/操作の実装ソースは `a27a41cc00fa782fbc675811018393a8df44254a`。[browser-results.json](browser-results.json) に表示に関わる8ファイルのSHA-256を記録。
+- その後mainのアイコン/CI/文書更新（#235/#241、`eed6973`）を `90fedb26045fc6cceeb549987eeb44e78173bfa5` へ取り込み、型/Lint/Jest313/demo32/Doctor20を再実行。表示8ファイルは画像時と完全一致し、統合後の通常bundle検査でも同じhashを照合した。
 - Chromium 155のWebで、本体のProductHome/Unlock/Confirmation、ScreenTimeProvider、Expo Routerの実Stack、WorkFlowBoundary、typed navigationを使用。
 - 一時的な [web-harness.patch](web-harness.patch) でテスト用native client/Appleラベル代替とAlert callback観測を接続した。架空のDTO・アプリ名・理由のみを使用。通常のアプリへの注入・署名・配布・公開は行っていない。
 - 時刻は合成DTOの2026-11-19 21:30/22:05 UTC、ブラウザ表示もUTC。これは曜日・OSスケジュール動作の検証ではない。
@@ -14,6 +15,7 @@
 
 | 層 | 結果・実行条件 |
 | --- | --- |
+| SDK互換性 | `EXPO_OFFLINE=1 CI=1 npx expo install --check` 合格（mainのquality CIと同じlock済みSDK表による確認） |
 | 型・Lint | `npx tsc --noEmit` / `npm run lint` 合格 |
 | Jest | 32 suites / 313 tests。native winners・鮮度・期間/selection境界、カードidentity/中断/100往復、冷起動scope、実Provider+root dirty guard、取消失敗、受付失敗/応答snapshotなし、遅延preview/受付/古い破棄ダイアログを含む |
 | demo tooling | `npm run test:demo` 32/32。デモ公開は行わない |
