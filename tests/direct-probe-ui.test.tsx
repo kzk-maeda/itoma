@@ -38,3 +38,11 @@ test('UI entry disabled build does not call native or promise restrictions', asy
   expect(screen.getByText('このビルドでは利用できません')).toBeTruthy();
   expect(directShieldProbe.run).not.toHaveBeenCalled();
 });
+test('pending native read remains unknown and leaves emergency stop available', async () => {
+  jest.mocked(directShieldProbe.run).mockImplementation(() => new Promise(() => {}));
+  await render(<DirectShieldProbeScreen />);
+  expect(screen.getByText('検証の状態を確認しています。')).toBeTruthy();
+  expect(screen.queryByText('検証の予定はありません。')).toBeNull();
+  await fireEvent.press(screen.getByText('今すぐ解除して検証を終了'));
+  expect(directShieldProbe.run).toHaveBeenCalledWith('stop', undefined);
+});

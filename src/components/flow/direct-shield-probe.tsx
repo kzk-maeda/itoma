@@ -73,7 +73,7 @@ export function DirectShieldProbeScreen() {
         <Button label="この内容で予定を登録する確認へ" disabled={busy || s?.phase !== 'prepared'} onPress={arm} />
       </Panel>
       <Panel><Heading>3. 取得した状態</Heading>
-        <Body>{s?.phase === 'armed' ? '予定登録済みです。実際の制限は対象アプリで確認してください。' : s?.phase === 'prepared' ? '準備済み・予定は未登録です。' : s?.phase === 'stopped' ? '検証の終了を保存しています。' : s?.phase === 'registering' ? '予定の登録結果を確認できていません。解除してから準備し直してください。' : '検証の予定はありません。'}</Body>
+        <Body>{!s ? busy ? '検証の状態を確認しています。' : '検証の状態は未確認です。' : s.phase === 'armed' ? '予定登録済みです。実際の制限は対象アプリで確認してください。' : s.phase === 'prepared' ? '準備済み・予定は未登録です。' : s.phase === 'stopped' ? '検証の終了を保存しています。' : s.phase === 'registering' ? '予定の登録結果を確認できていません。解除してから準備し直してください。' : '検証の予定はありません。'}</Body>
         <Body>専用ストアの設定：{s?.storeCount === 1 ? '対象1件の設定あり' : s ? '対象の設定なし' : '未確認'}</Body>
         <Body muted>これは読み取れた設定値です。OSの遮断が成立したことは、対象アプリを開いて確認します。</Body>
         {s?.observedAt !== undefined && <Body>最終記録：{time(s.observedAt)}（{s.origin === 'monitor' ? 'Extension' : s.origin === 'expiry' ? '本体復帰時の期限後解除' : '手動解除'} / {s.observation === 'applied' ? '設定の読戻し一致' : s.observation === 'cleared' ? '設定の消去を読戻し確認' : '結果不明'}）</Body>}
