@@ -66,3 +66,23 @@ Podsの再生成時、既存CNGが本体用`ItomaHistory`のローカルpod参�
 - [authorizationStatus](https://developer.apple.com/documentation/familycontrols/authorizationcenter/authorizationstatus): 初期値とmain queueアクセス要件。
 - [DispatchQueue.sync](https://developer.apple.com/documentation/dispatch/dispatchqueue/sync(execute:)-3segw): 同じqueueへの同期dispatchはdeadlock。このPoCはmain.syncを追加しない。
 - [Combine receive(on:)](https://developer.apple.com/documentation/combine/publisher/receive(on:options:)): 通知の受取queueを指定。willSet時の値を再読取せず、通知の値を使う。
+
+## 2026-11-19 09:23の実機結果
+
+SRE05/iPadOS27.2、source `2713db45f87a2fc844ca8df5ef359243129dea52`、local native build ID `b59148b4-a8e5-47d3-9f6c-1eb49a794155`、JS SHA256 `5afe19a977717a1c994dad4260c3e18a89f1c3e67176499f728be9f9be50a7ec`。host/Extension双方のprocessImageUUIDをinstall成果物のMach-O UUIDへ照合し一致。両plist probe=true、製品Screen Time=1、旧PoC/native smoke/demo=0。署名・実Group・容量/pending構成はbuild記録と同じ。
+
+本人は09:23開始のルールを設定し本体を背景へ移した。09:24に対象アプリが開けたと報告。本体を開く前に本人がOS archiveを取得し、agentが固定診断行だけをallowlist抽出した。agentによる実アプリUIの直接観測ではない。
+
+| JST | agentが診断ログから確認した事実 |
+| --- | --- |
+| 09:21:19 | hostの09:23境界登録APIがaccepted、開始前はrevision7/対象0件をown-storeへ反映 |
+| 09:23:02.431 | Extensionのrule開始callback到達、probe開始 |
+| 09:23:02.432 | **main queueの初回値notDetermined**。publisherから受け取った初回値もnotDetermined、main-thread true |
+| 09:23:02.687 | probeTimedOut、観測2件、実測255ms。main job未実行によるtimeoutではない |
+| 09:23:02.714〜.730 | actorのruntime open/service準備成功 |
+| 09:23:02.734 | 既存評価側の読取もnotDetermined、Activation enabled、main-thread false |
+| 09:23:02.743〜.747 | uncertain/authorizationRequired、callback全体316msで終了。制限適用ログなし |
+
+**このケースでは、先行するmain queueの読取と250msの通知観測だけでは背景中の開始は解消しなかった。** 観測できた通知はpublisherの初回notDeterminedだけで、approved/deniedへの変化はこのwindow内にはない。永久に未確定、別の待ち時間なら成功、Extensionで承認済みを取得不可能、という結論にはしない。callback・main job・actor・open/serviceが進んだことと、認可ゲートで適用に進まないことを確認した。
+
+次の調査対象はExtensionで認可状態が確定する条件/API契約。本PoCの待ち時間を根拠なく延長したり、過去approvedの流用・unknownの上書きで修正完了にしない。新しい認可要求や制御ゲートの変更は今回のPoCに含めず、別の限定設計/検証対象にする。本体復帰後の挙動は今回の取得windowには含まない。予定の登録API成功だけを実Shieldの成功にしない。生のarchiveはローカルのみで外部送信していない。
