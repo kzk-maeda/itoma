@@ -22,13 +22,14 @@ final class ItomaActivityMonitor: DeviceActivityMonitor {
         let started = ProcessInfo.processInfo.systemUptime
         ScreenTimeDiagnostics.record(.callbackEntry, activity: kind, ended: ended)
         // Before the actor job/join, with no Control transaction held. Probe owns no OS writes.
-        if kind == .rule || (kind == .deadline && ended) {
+        if kind == .rule || kind == .directProbe || (kind == .deadline && ended) {
             MainQueueAuthorizationProbe.runIfEnabled(activity: kind, ended: ended)
         }
         let completed = DispatchSemaphore(value: 0)
         Task.detached { @ItomaControlActor in
             ScreenTimeDiagnostics.record(.actorEntry, activity: kind, ended: ended)
-            ScreenTimeRuntime.handleActivity(name, ended: ended)
+            if kind == .directProbe { DirectShieldProbe.handle(name) }
+            else { ScreenTimeRuntime.handleActivity(name, ended: ended) }
             completed.signal()
         }
         completed.wait()

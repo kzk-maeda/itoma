@@ -7,6 +7,7 @@ import { createScreenTimeClient } from './src/screen-time';
 import { createHistoryClient } from './src/history';
 import { createReflectionClient } from './src/reflection';
 import { createOnboardingClient } from './src/onboarding';
+import { createDirectProbeClient } from './src/direct-probe';
 
 interface ItomaNativePort extends NativeModule {
   readonly apiVersion: number;
@@ -15,6 +16,8 @@ interface ItomaNativePort extends NativeModule {
   readonly historyVersion?: number;
   readonly reflectionVersion?: number;
   readonly onboardingVersion?: number;
+  readonly directShieldProbeVersion?: number;
+  directShieldProbe?(action: string, expectedID: string | null): Promise<string>;
   reflection?(action: string, payload: string): Promise<string>;
   history?(action: string, payload: string): Promise<string>;
   screenTime?(action: string, payload: string): Promise<string>;
@@ -30,6 +33,8 @@ export const screenTime = createScreenTimeClient(Platform.OS, load);
 export const historyRecords = createHistoryClient(Platform.OS, load);
 export const reflectionRecords = createReflectionClient(Platform.OS, load);
 export const onboardingRecords = createOnboardingClient(Platform.OS, load);
+export const directShieldProbe = createDirectProbeClient(Platform.OS, load);
+export type { DirectProbeResponse, DirectProbeSnapshot, DirectProbeAction } from './src/direct-probe';
 export type { OnboardingStep, OnboardingDraft, OnboardingProgress, OnboardingAction, OnboardingRequest, OnboardingResponse } from './src/onboarding';
 export type { ReflectionAction, ReflectionResponse } from './src/reflection';
 export type { ReflectionSnapshot, ReflectionRequest, ReflectionPeriod } from './src/reflection-model';

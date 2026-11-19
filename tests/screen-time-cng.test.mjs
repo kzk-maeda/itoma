@@ -32,7 +32,7 @@ test('fresh CNG and repeated regeneration embed one isolated Extension and prese
     for (const file of ['node_modules', 'assets']) symlinkSync(path.join(root, file), path.join(directory, file));
     const prebuild = (probe = '0') => execFileSync(process.execPath, [path.join(root, 'node_modules/expo/bin/cli'), 'prebuild', '--platform', 'ios', '--no-install', '--no-clean'], {
       cwd: directory, env: { ...process.env, EXPO_OFFLINE: '1', CI: '1', ITOMA_SCREEN_TIME: '1', ITOMA_APP_GROUP: group,
-        ITOMA_HISTORY_WARNING_BYTES: String(limits.historyWarningBytes), ITOMA_HISTORY_MAXIMUM_BYTES: String(limits.historyMaximumBytes), ITOMA_PENDING_EVENT_LIMIT: String(limits.pendingEventLimit), ITOMA_AUTHORIZATION_PROBE: probe },
+        ITOMA_HISTORY_WARNING_BYTES: String(limits.historyWarningBytes), ITOMA_HISTORY_MAXIMUM_BYTES: String(limits.historyMaximumBytes), ITOMA_PENDING_EVENT_LIMIT: String(limits.pendingEventLimit), ITOMA_AUTHORIZATION_PROBE: probe, ITOMA_DIRECT_SHIELD_PROBE: probe },
       stdio: 'pipe', timeout: 60_000,
     });
     prebuild();
@@ -69,6 +69,7 @@ test('fresh CNG and repeated regeneration embed one isolated Extension and prese
     assert.equal(info.NSExtension.NSExtensionPointIdentifier, 'com.apple.deviceactivity.monitor-extension');
     assert.equal(info.ITOMAAppGroup, group);
     assert.equal(info.ITOMAAuthorizationProbe, false);
+    assert.equal(info.ITOMADirectShieldProbe, false);
     const entitlements = plist.parse(readFileSync(path.join(base, 'ItomaActivityMonitor.entitlements'), 'utf8'));
     assert.deepEqual(entitlements['com.apple.security.application-groups'], [group]);
     const hostEntitlements = plist.parse(readFileSync(path.join(directory, 'ios/itoma/itoma.entitlements'), 'utf8'));
@@ -81,6 +82,8 @@ test('fresh CNG and repeated regeneration embed one isolated Extension and prese
       const extensionInfo = plist.parse(readFileSync(path.join(base, 'Info.plist'), 'utf8'));
       assert.equal(hostInfo.ITOMAAuthorizationProbe, probe === '1');
       assert.equal(extensionInfo.ITOMAAuthorizationProbe, probe === '1');
+      assert.equal(hostInfo.ITOMADirectShieldProbe, probe === '1');
+      assert.equal(extensionInfo.ITOMADirectShieldProbe, probe === '1');
     }
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });

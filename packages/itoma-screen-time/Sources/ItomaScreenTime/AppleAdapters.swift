@@ -221,8 +221,9 @@ public enum ScreenTimeDiagnostics {
         case deadlineRegistrationBegin, deadlineRegistrationResult, deadlineCancellationResult
         case restrictionBegin, restrictionResult, hostRefreshBegin, hostRefreshEnd
         case authorizationProbeBegin, authorizationProbeInitial, authorizationProbeNotification, authorizationProbeEnd
+        case directProbeSchedule, directProbeApply, directProbeClear
     }
-    public enum Activity: String, Sendable { case none, rule, deadline, unrecognized }
+    public enum Activity: String, Sendable { case none, rule, deadline, directProbe, unrecognized }
     public enum Authorization: String, Sendable { case notRead, approved, denied, notDetermined, unrecognized }
     public enum Result: String, Sendable {
         case none, accepted, rejected, uncertain, committed, requiresRecovery, failed, ignored
@@ -231,11 +232,13 @@ public enum ScreenTimeDiagnostics {
         case invalidSelection, runtimeUnavailable, scheduleUnavailable, runtimeBusy, otherError
         case authorizationRequired, registrationFailure, storageFailure, osOperationFailure, interrupted, unknownFailure
         case probeResolved, probeTimedOut, probeSkippedMainThread
+        case probeHostExpiry
     }
     private static let logger = Logger(subsystem: "com.itoma.screentime", category: "lifecycle")
     private static let role = Bundle.main.bundleURL.pathExtension == "appex" ? "extension" : "host"
 
     public static func activity(_ name: String) -> Activity {
+        if name.hasPrefix("itoma.directprobe.") { return .directProbe }
         if name.hasPrefix("itoma.rule.") { return .rule }
         if name.hasPrefix("itoma.deadline.") { return .deadline }
         return .unrecognized

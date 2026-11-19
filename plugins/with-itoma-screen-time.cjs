@@ -24,13 +24,14 @@ function validateOptions(options, bundleID) {
   }
 }
 
-function extensionInfo(appGroup, pendingEventLimit, authorizationProbe = 0) {
+function extensionInfo(appGroup, pendingEventLimit, authorizationProbe = 0, directShieldProbe = 0) {
   return {
     CFBundleDisplayName: 'ITOMA', CFBundleExecutable: '$(EXECUTABLE_NAME)',
     CFBundleIdentifier: '$(PRODUCT_BUNDLE_IDENTIFIER)', CFBundleName: '$(PRODUCT_NAME)',
     CFBundlePackageType: 'XPC!', CFBundleShortVersionString: '$(MARKETING_VERSION)',
     CFBundleVersion: '$(CURRENT_PROJECT_VERSION)', ITOMAAppGroup: appGroup, ITOMAPendingEventLimit: pendingEventLimit,
     ITOMAAuthorizationProbe: authorizationProbe === 1,
+    ITOMADirectShieldProbe: directShieldProbe === 1,
     NSExtension: {
       NSExtensionPointIdentifier: 'com.apple.deviceactivity.monitor-extension',
       NSExtensionPrincipalClass: `$(PRODUCT_MODULE_NAME).${TARGET}`,
@@ -125,13 +126,14 @@ function withItomaScreenTime(config, options) {
     mod.modResults.ITOMAHistoryMaximumBytes = options.historyMaximumBytes;
     mod.modResults.ITOMAPendingEventLimit = options.pendingEventLimit;
     mod.modResults.ITOMAAuthorizationProbe = options.authorizationProbe === 1;
+    mod.modResults.ITOMADirectShieldProbe = options.directShieldProbe === 1;
     return mod;
   });
   config = withDangerousMod(config, ['ios', async (mod) => {
     const directory = path.join(mod.modRequest.platformProjectRoot, TARGET);
     await fs.mkdir(directory, { recursive: true });
     await fs.copyFile(path.join(mod.modRequest.projectRoot, 'extensions', TARGET, `${TARGET}.swift`), path.join(directory, `${TARGET}.swift`));
-    await fs.writeFile(path.join(directory, 'Info.plist'), plist.build(extensionInfo(options.appGroup, options.pendingEventLimit, options.authorizationProbe)));
+    await fs.writeFile(path.join(directory, 'Info.plist'), plist.build(extensionInfo(options.appGroup, options.pendingEventLimit, options.authorizationProbe, options.directShieldProbe)));
     await fs.writeFile(path.join(directory, `${TARGET}.entitlements`), plist.build({
       'com.apple.developer.family-controls': true,
       'com.apple.security.application-groups': [options.appGroup],

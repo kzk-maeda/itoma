@@ -1,7 +1,7 @@
 import type { Href } from 'expo-router';
 import { productTabs, type ProductTab } from '@/components/flow/product-tab-model';
 
-export type BrowseDestination = { screen: 'index' | 'grant' | 'reflection' | 'history' | 'history-reason' | 'settings' | 'settings-schedules' | 'settings-screen-time' | 'settings-records' | 'settings-storage' | 'settings-delete' | 'settings-about' }
+export type BrowseDestination = { screen: 'index' | 'grant' | 'reflection' | 'history' | 'history-reason' | 'settings' | 'settings-schedules' | 'settings-screen-time' | 'settings-records' | 'settings-storage' | 'settings-delete' | 'settings-about' | 'settings-direct-probe' }
   | { screen: 'settings-schedule'; ruleID?: string };
 export type WorkDestination = { screen: 'rule' | 'rule-confirm' | 'unlock' | 'unlock-confirm' | 'onboarding' } | { screen: 'rule-details'; ruleID: string };
 export type ReturnContext = { destination: BrowseDestination };
@@ -17,7 +17,7 @@ export function appStack(root: NavigationTree): NavigationTree | undefined {
 }
 
 const route = (name: string): NavigationRoute => ({ name });
-const browseScreens: BrowseDestination['screen'][] = ['index', 'grant', 'reflection', 'history', 'history-reason', 'settings', 'settings-schedules', 'settings-schedule', 'settings-screen-time', 'settings-records', 'settings-storage', 'settings-delete', 'settings-about'];
+const browseScreens: BrowseDestination['screen'][] = ['index', 'grant', 'reflection', 'history', 'history-reason', 'settings', 'settings-schedules', 'settings-schedule', 'settings-screen-time', 'settings-records', 'settings-storage', 'settings-delete', 'settings-about', 'settings-direct-probe'];
 export function browsePath(destination: BrowseDestination) {
   const root = destination.screen === 'index' || destination.screen === 'grant' ? 'home'
     : ['reflection', 'history', 'history-reason'].includes(destination.screen) ? 'reflection' : 'settings';

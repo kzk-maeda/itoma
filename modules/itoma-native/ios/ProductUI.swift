@@ -6,6 +6,7 @@ import SwiftUI
 import UIKit
 import Combine
 import ItomaCore
+import ItomaScreenTime
 
 @available(iOS 16.0, *)
 @MainActor final class ProductUI {
@@ -25,7 +26,11 @@ import ItomaCore
         }
         AuthorizationCenter.shared.$authorizationStatus.receive(on: DispatchQueue.main).sink { [weak self] status in
             MainActor.assumeIsolated {
-                if status == .denied { self?.authorizationEpoch += 1 }
+                if status == .denied {
+                    self?.authorizationEpoch += 1
+                    DirectShieldProbeUI.shared.cancelPicker()
+                    Task { try? await DirectShieldProbe.stop() }
+                }
             }
         }.store(in: &subscriptions)
     }
@@ -85,12 +90,22 @@ import ItomaCore
         if mutates { busy = true }
         Task { @MainActor in
             defer { if mutates { self.busy = false } }
+            var probeStopFailed = false
+            if ["stop", "resume", "authorize", "commitRule", "retryRule", "onboardingCommit", "unlock", "retryGrant"].contains(action) {
+                DirectShieldProbeUI.shared.cancelPicker()
+                do { try await DirectShieldProbe.stop() }
+                catch {
+                    if action != "stop" { self.finish(ProductResponse(status: "error", code: "busy"), complete); return }
+                    probeStopFailed = true // Still stop the normal rules; report the incomplete global stop.
+                }
+            }
             if action == "authorize" {
                 do { try await AuthorizationCenter.shared.requestAuthorization(for: .individual) }
                 catch { self.finish(ProductResponse(status: "error", code: "authorization-required"), complete); return }
             }
-            let result = await ProductController.shared.perform(action == "authorize" ? "snapshot" : action, request: request,
+            var result = await ProductController.shared.perform(action == "authorize" ? "snapshot" : action, request: request,
                 authorizationEpoch: self.authorizationEpoch, lifecycleGeneration: self.lifecycleGeneration)
+            if probeStopFailed { result.status = "error"; result.code = "unavailable" }
             self.finish(result, complete)
         }
     }

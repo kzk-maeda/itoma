@@ -4,6 +4,7 @@ import FamilyControls
 import ManagedSettings
 import SwiftUI
 import UIKit
+import ItomaScreenTime
 
 /// Only Apple-rendered activity labels are visible; tokens/names never become RN props or events.
 final class SavedApplicationsView: ExpoView {
@@ -78,6 +79,17 @@ final class SavedApplicationsView: ExpoView {
         guard window != nil else { return }
         cachedApplications = nil
         generation &+= 1; productTask?.cancel(); productTask = nil
+        if source == "direct-probe" {
+            let current = generation
+            show(applications: nil)
+            productTask = Task { @MainActor [weak self] in
+                let data = try? await DirectShieldProbe.displayData()
+                guard let self, !Task.isCancelled, self.window != nil, self.generation == current else { return }
+                self.show(applications: AuthorizationCenter.shared.authorizationStatus == .approved
+                    ? data.flatMap { try? JSONDecoder().decode([ApplicationToken].self, from: $0) } : nil)
+            }
+            return
+        }
         if source == "product", #available(iOS 16.0, *) {
             let current = generation, ref = selectionRef, target = targetRef.isEmpty ? nil : targetRef
             show(applications: nil)

@@ -57,6 +57,8 @@ PR #36で状態・ルール・責務・保存の設計を採用しました。�
 
 本人依頼の[Extension認可main queue観測PoC](../qa/extension-authorization-probe.md)はopt-inの限定実験。製品の認可判定を採用変更したものではない。
 
+次の[直接Shield適用PoC](../qa/direct-extension-shield-probe.md)も本人依頼の隔離実験。通常ルール停止下で1アプリ・20分の専用storeを検証し、製品認可ゲートや時間集計の採用変更にはしない。
+
 - 提案・採用・棄却・検証状況を明記し、Issue・ADR・実装PRを相互リンクする。
 - handoverは背景と過去の仮説を保持し、現在の詳細仕様はここへ集約する。矛盾はIssueで解消し、暗黙に上書きしない。
 - OS/APIの挙動を決めるときは現行の公式資料と検証条件を記録する。外部記事だけで保証しない。

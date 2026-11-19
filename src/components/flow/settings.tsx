@@ -62,6 +62,7 @@ export function SettingsScreen() {
       <LinkRow label="記録とプライバシー" detail="選択の記録・保存容量・削除" onPress={() => navigation.open({ screen: 'settings-records' })} />
       <LinkRow label="使い方とこのアプリ" detail="制限と一時解除・端末内の保存" onPress={() => navigation.open({ screen: 'settings-about' })} />
     </Panel>
+    {process.env.EXPO_PUBLIC_DIRECT_SHIELD_PROBE === '1' && <LinkRow label="背景制限の検証" detail="検証用ビルド限定・アプリ1件" onPress={() => navigation.open({ screen: 'settings-direct-probe' })} />}
     {s?.needsSelectionReview && <Notice title="再開前の確認が必要です">スクリーンタイムから、許可・対象の選び直し・再開を順に確認できます。</Notice>}
   </FlowScreen>;
 }

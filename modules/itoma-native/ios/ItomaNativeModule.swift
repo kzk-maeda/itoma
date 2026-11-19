@@ -22,6 +22,7 @@ public final class ItomaNativeModule: Module {
         Constant("onboardingVersion") { 1 }
         Constant("historyVersion") { 1 }
         Constant("reflectionVersion") { 1 }
+        Constant("directShieldProbeVersion") { Bundle.main.object(forInfoDictionaryKey: "ITOMADirectShieldProbe") as? Bool == true ? 1 : 0 }
         View(SavedApplicationsView.self) {
             Events("onContentSize", "onSelect")
             Prop("selectionRef") { (view: SavedApplicationsView, ref: String) in
@@ -66,6 +67,13 @@ public final class ItomaNativeModule: Module {
                 ProductUI.shared.perform(action, payload: payload, presenter: context?.utilities?.currentViewController()) { json in
                     promise.resolve(json)
                 }
+            }
+        }.runOnQueue(.main)
+        AsyncFunction("directShieldProbe") { (action: String, expectedID: String?, promise: Promise) in
+            let context = self.appContext
+            MainActor.assumeIsolated {
+                DirectShieldProbeUI.shared.perform(action, expectedID: expectedID,
+                    presenter: context?.utilities?.currentViewController()) { promise.resolve($0) }
             }
         }.runOnQueue(.main)
         AsyncFunction("history") { (action: String, payload: String?, promise: Promise) in

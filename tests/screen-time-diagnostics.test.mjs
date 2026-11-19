@@ -60,3 +60,10 @@ test('exports probe initial and notification separately without reclassifying un
     assert.equal(safe.stage, stage); assert.equal(safe.auth, auth); assert.equal(safe.result, result);
   }
 });
+test('distinguishes direct experimental store from production and foreground expiry recovery', () => {
+  const entry = sample();
+  entry.eventMessage = entry.eventMessage.replace('stage=authorizationRead', 'stage=directProbeClear')
+    .replace('activity=none', 'activity=directProbe').replace('result=enabled', 'result=probeHostExpiry');
+  assert.equal(sanitizeScreenTimeDiagnostic(entry).result, 'probeHostExpiry');
+  assert.equal(sanitizeScreenTimeDiagnostic(entry).activity, 'directProbe');
+});
