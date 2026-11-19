@@ -123,3 +123,7 @@ R/D表の該当部分は合成したSwift入力で検証する。新しい期限
 | D12 | grantがUncertainの間に別IDで解除要求 | 新たな期限を付与しない。現grantの結果確認・同grantの明示再試行または期限後の新規確認へ |
 | D13 | 期限予定登録を拒否/不明にする | 新規解除なし。有効policyと旧保護予定を維持 |
 | D14 | 登録成功→有効化前、または解除後→結果commit前にkill | 候補/不明を区別。登録経路を残し、callbackで最新有効状態を評価 |
+
+## #222: 通常ルールの背景実行の変更提案
+
+[ADR0011](../adr/0011-host-confirmed-rule-execution.md)はProposed（実装を含むレビュー対象、実機未検証）。生の認可観測と、hostで確認した現在policyの実行資格を分ける。Extensionのunknownをapprovedへ変えず、新しい解除・resumeには従来の認可確認を要求する。任意journalはhostだけが導入し、停止/変更/deniedで失効させる。unknown区間の時間集計除外は維持する。採用済み設計・PR228の専用PoC実機結果とは区別する。

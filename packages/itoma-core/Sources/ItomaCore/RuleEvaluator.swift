@@ -61,7 +61,8 @@ public enum RuleEvaluator {
     /// An explicit UTC coverage limit prevents nil from meaning "no future event ever".
     /// At most 366 elapsed days per call; this is a query bound, not a schedule duration limit.
     public static func evaluate(
-        policy: PolicySnapshot, selections: [Selection], context: EvaluationContext, through: Instant
+        policy: PolicySnapshot, selections: [Selection], context: EvaluationContext, through: Instant,
+        executionAuthorization: RuleExecutionAuthorization = .liveObservation
     ) throws -> RuleEvaluation {
         let now = context.now
         guard now < through, through.secondsSince1970 - now.secondsSince1970 <= 366 * 86400 else {
@@ -142,7 +143,7 @@ public enum RuleEvaluator {
                 }
             }
         }
-        let canActivate = context.activation == .enabled && context.authorization.status == .approved
+        let canActivate = context.activation == .enabled && executionAuthorization.permits(context)
         let desired = canActivate ? Set(targetResults.compactMap { $0.value.winner == nil ? nil : $0.key }) : []
         return RuleEvaluation(
             policyRevision: policy.revision, context: context, evaluatedThrough: through,

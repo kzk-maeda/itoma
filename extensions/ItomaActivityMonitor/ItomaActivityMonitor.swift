@@ -17,9 +17,13 @@ final class ItomaActivityMonitor: DeviceActivityMonitor {
     }
     private func reconcile(_ activity: DeviceActivityName, ended: Bool) {
         let name = activity.rawValue
+        guard name.hasPrefix("itoma.rule.") || (name.hasPrefix("itoma.deadline.") && ended) else { return }
+        // Sample main before the synchronous actor join. Never main.sync from the actor.
+        let authorization = AppleAuthorizationObservations.readForActivityCallback()
+        NormalRuleDiagnostics.callback(name: name, ended: ended, authorization: authorization)
         let completed = DispatchSemaphore(value: 0)
         Task.detached { @ItomaControlActor in
-            ScreenTimeRuntime.handleActivity(name, ended: ended)
+            ScreenTimeRuntime.handleActivity(name, ended: ended, authorization: authorization)
             completed.signal()
         }
         completed.wait()

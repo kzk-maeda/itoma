@@ -130,7 +130,7 @@ extension CommandService {
                 applyingAction = owned
             }
             let current = try tx.snapshot(), plan = try reconciliationPlan(context: context, transaction: tx)
-            guard canApply(context) else {
+            guard canApply(context, executionAuthorization: try ruleExecutionAuthorization(context, transaction: tx)) else {
                 try observe(plan, result: .uncertain(.authorizationRequired), context: context, transaction: tx)
                 if let applyingAction {
                     _ = try tx.recordCommand(changing(applyingAction, status: .uncertain), expected: applyingAction)
@@ -139,7 +139,8 @@ extension CommandService {
                 return .blocked(ReconciliationResult(disposition: .uncertain, failure: .authorizationRequired))
             }
             let applying = try ApplicationObservation(evaluationID: plan.id, status: .applying, evidence: nil,
-                observedAt: context.now, validUntil: nil, error: nil)
+                observedAt: context.now, validUntil: nil,
+                error: context.authorization.status == .approved ? nil : .authorizationRequired)
             _ = try tx.recordApplication(StoredApplication(evaluation: plan, observation: applying), expectedSequence: tx.snapshot().snapshotSequence)
             return .ready(ReconciliationFrame(marker: plan.id, revision: current.policy.revision, activation: current.activation, startedAt: context.now, action: applyingAction))
         }
@@ -175,16 +176,16 @@ extension CommandService {
             return reconciliationCommit(.requiresRecovery, failure: .interrupted)
         }
         let plan = try reconciliationPlan(context: context, transaction: tx)
-        guard canApply(context) else {
+        guard canApply(context, executionAuthorization: try ruleExecutionAuthorization(context, transaction: tx)) else {
             try observe(plan, result: .uncertain(.authorizationRequired), context: context, transaction: tx)
             return reconciliationCommit(.uncertain, failure: .authorizationRequired)
         }
         let applied = restriction.apply(plan, purpose: .reconciliation)
         let after = try recordCurrentFacts(context: capture(current.activation), updateObservation: false, transaction: tx)
-        if validResult(plan, started: context, after: after) {
+        if try validResult(plan, started: context, after: after, transaction: tx) {
             return try commitReconciliation(plan, result: applied, context: after, transaction: tx)
         }
-        guard canApply(after), after.activation == context.activation else {
+        guard canApply(after, executionAuthorization: try ruleExecutionAuthorization(after, transaction: tx)), after.activation == context.activation else {
             try observe(plan, result: .uncertain(.authorizationRequired), context: after, transaction: tx)
             return reconciliationCommit(.uncertain, failure: .authorizationRequired)
         }
@@ -193,21 +194,22 @@ extension CommandService {
         let baseline = try reconciliationPlan(context: after, transaction: tx)
         let recovery = restriction.apply(baseline, purpose: .reconciliation)
         let recoveredAt = try recordCurrentFacts(context: capture(after.activation), updateObservation: false, transaction: tx)
-        guard validResult(baseline, started: after, after: recoveredAt) else {
+        guard try validResult(baseline, started: after, after: recoveredAt, transaction: tx) else {
             try observe(baseline, result: .uncertain(.interrupted), context: recoveredAt, transaction: tx)
             return reconciliationCommit(.uncertain, failure: .interrupted)
         }
         return try commitReconciliation(baseline, result: recovery, context: recoveredAt, transaction: tx)
     }
 
-    func canApply(_ context: EvaluationContext) -> Bool {
+    func canApply(_ context: EvaluationContext, executionAuthorization: RuleExecutionAuthorization = .liveObservation) -> Bool {
         // Paused is durable, explicit user intent to clear ITOMA's store. Unknown authorization
-        // with an enabled/confirmation-waiting intent never turns Core's empty plan into a clear.
-        context.activation == .paused || context.authorization.status == .approved
+        // blocks an enabled/confirmation-waiting intent unless the Extension has checked its
+        // current-policy execution authority (including a natural rule-end clear).
+        context.activation == .paused || executionAuthorization.permits(context)
     }
 
-    func validResult(_ plan: Evaluation, started: EvaluationContext, after: EvaluationContext) -> Bool {
-        canApply(after) && after.activation == started.activation && after.timeZone == started.timeZone
+    func validResult(_ plan: Evaluation, started: EvaluationContext, after: EvaluationContext, transaction tx: ControlTransaction) throws -> Bool {
+        canApply(after, executionAuthorization: try ruleExecutionAuthorization(after, transaction: tx)) && after.activation == started.activation && after.timeZone == started.timeZone
             && after.now >= started.now && after.now < (plan.nextBoundary ?? started.now)
     }
 
@@ -215,7 +217,7 @@ extension CommandService {
         let grants = try protectedGrants(context: context, transaction: tx), snapshot = try tx.snapshot()
         // Core provides the finite validity boundary even for a paused/unapproved observation.
         let evaluation = try GrantEvaluator.evaluate(policy: snapshot.policy, selections: snapshot.selections.map(\.selection),
-            context: context, grants: grants)
+            context: context, grants: grants, executionAuthorization: ruleExecutionAuthorization(context, transaction: tx))
         return Evaluation(id: identifiers.evaluationID(), policyRevision: snapshot.policy.revision,
             snapshotSequence: snapshot.snapshotSequence, evaluatedAt: context.now, timeZone: context.timeZone,
             nextBoundary: evaluation.nextEvaluationAt, desiredTargets: evaluation.desiredTargets)

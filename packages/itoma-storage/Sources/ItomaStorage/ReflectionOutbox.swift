@@ -304,7 +304,10 @@ extension ControlRepository {
                     let a = snapshot.application
                     let hasUnreconciledUnlock = grants.contains { [.active, .applying, .uncertain, .expired, .invalidated].contains($0.status) }
                     let confirmedUnlock = grants.contains { $0.status == .active }
-                    let acknowledged = durationConfirmed != false && a?.observation.status == .applied
+                    let authorizationConfirmed: Bool
+                    if durationConfirmed == true { authorizationConfirmed = true }
+                    else { authorizationConfirmed = try durationAuthorizationConfirmed(for: a?.evaluation.id) }
+                    let acknowledged = durationConfirmed != false && authorizationConfirmed && a?.observation.status == .applied
                         && a?.observation.evidence == .ownStoreReadback && a?.evaluation.policyRevision == snapshot.policy.revision
                         && a?.evaluation.timeZone.identifier == TimeZone.current.identifier
                         && a.map { $0.observation.observedAt <= clock.0 } == true

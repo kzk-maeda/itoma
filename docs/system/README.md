@@ -63,3 +63,7 @@ PR #36で状態・ルール・責務・保存の設計を採用しました。�
 - [Screen Time native runtime](screen-time-runtime.md) — #125。CNG/署名不要ビルドと、実機の署名・OS成立を分けた実装境界。
 
 - [保存済み検証対象の表示と再制限](poc-saved-targets.md) — [#119](https://github.com/kzk-maeda/itoma/issues/119)。限定PoC提案。製品の再認可/再開仕様や実機合格を確定しない。
+
+## #222: 通常ルールの背景実行の変更提案
+
+[Extensionの通常ルール実行資格（ADR0011）](../adr/0011-host-confirmed-rule-execution.md)はProposed（実装を含むレビュー対象、実機未検証）。生の認可観測と、hostで確認した現在policyの実行資格を分ける。Extensionのunknownをapprovedへ変えず、新しい解除・resumeには従来の認可確認を要求する。任意journalはhostだけが導入し、停止/変更/deniedで失効させる。unknown区間の時間集計除外は維持する。採用済み設計・PR228の専用PoC実機結果とは区別する。

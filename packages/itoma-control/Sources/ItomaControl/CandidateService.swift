@@ -255,7 +255,7 @@ extension CommandService {
             let grants = try protectedGrants(context: context, transaction: tx)
             let plan = try evaluation(snapshot: tx.snapshot(), context: context, grants: grants)
             let applied = restriction.apply(plan, purpose: .policyCandidate)
-            let after = capture(snapshot.activation)
+            let after = try recordCurrentFacts(context: capture(snapshot.activation), transaction: tx)
             let changed = after.now < context.now || after.now >= (plan.nextBoundary ?? context.now)
                 || after.timeZone != context.timeZone || after.authorization.status != .approved || after.activation != context.activation
             if changed {

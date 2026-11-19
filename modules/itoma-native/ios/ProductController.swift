@@ -567,7 +567,7 @@ struct ProductResponse: Encodable, Sendable {
     }
 
     private func authorization() -> String {
-        switch AuthorizationCenter.shared.authorizationStatus { case .approved: return "approved"; case .denied: return "denied"; default: return "unknown" }
+        AppleAuthorizationObservations.shared.current().status.rawValue
     }
     private func commandResponse(_ result: CommandRunResult, in r: ScreenTimeRuntime) throws -> ProductResponse {
         let status = try r.repository.command(result.commandID)?.status
@@ -582,6 +582,13 @@ struct ProductResponse: Encodable, Sendable {
         if !approved || (snapshot.activation == .awaitingReauthorizationConfirmation && !reviewGateActive) { confirmedSelections.removeAll() }
         reviewGateActive = snapshot.activation == .awaitingReauthorizationConfirmation
     }
+    /// Persist a negative publisher event promptly, including when no JS request follows it.
+    /// A later Approved notification cannot erase the required explicit resume confirmation.
+    func authorizationDenied(epoch: Int) {
+        guard epoch > denialEpoch else { return }
+        if let r = try? open() { try? observeEpoch(epoch, in: r) }
+    }
+
     private func observeEpoch(_ epoch: Int, in r: ScreenTimeRuntime) throws {
         guard epoch > denialEpoch else { return }
         confirmedSelections.removeAll(); grantPreview = nil
