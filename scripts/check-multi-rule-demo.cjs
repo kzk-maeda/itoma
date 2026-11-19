@@ -45,7 +45,7 @@ async function candidates(page, names) {
       const context = await browser.newContext({ viewport: { width, height: 844 }, colorScheme, timezoneId: 'Asia/Tokyo', reducedMotion: 'reduce' });
       const page = await context.newPage(), errors = [];
       page.on('pageerror', error => errors.push(error.message));
-      page.on('dialog', dialog => dialog.accept());
+      page.on('dialog', dialog => { console.log('BROWSER DIALOG', dialog.message()); return dialog.accept(); });
       try {
         await page.goto(root, { waitUntil: 'networkidle' });
         await heading(page, 'いま、3つのアプリを制限中').waitFor();
@@ -84,6 +84,7 @@ async function candidates(page, names) {
           await page.screenshot({ path: path.join(output, 'switch-keeps-reason.png') });
           results.flows.push('Rule switch clears only the app selection, preserving the reason and time');
           await button(page, '制限を続ける').click();
+          await button(page, '破棄して制限を続ける').click();
           await heading(page, 'いとま').waitFor();
           await scenario(page, '重複中');
           await button(page, '一時解除する').click();
@@ -119,6 +120,7 @@ async function candidates(page, names) {
         }
         assert(errors.length === 0, 'Page errors: ' + errors.join('; '));
       } catch (error) {
+        console.error('BROWSER STATE', JSON.stringify({ url: page.url(), body: await page.locator('body').innerText(), errors }));
         await page.screenshot({ path: path.join(output, 'failure-' + name + '.png') });
         throw error;
       } finally { await context.close(); }
