@@ -8,10 +8,10 @@ import { Applications } from './applications';
 import { back, useDraftGuard } from './navigation';
 import { endTime, ruleText } from './presentation';
 import { ruleTitle } from './rule-identity';
-import { Body, Button, Field, FlowScreen, Heading, Notice, Panel, flowStyles } from './ui';
+import { Body, Button, Field, FlowScreen, Heading, LinkRow, Notice, Panel, flowStyles } from './ui';
 import { Alert, View } from 'react-native';
 import { useVisibleClock } from '@/hooks/use-visible-clock';
-import { hasFreshRestrictionState, targetPeriod, targetScope, unlockCandidates } from '../home/rule-status';
+import { hasFreshRestrictionState, targetScope, unlockCandidates } from '../home/rule-status';
 
 /** Finish only after the shared root discard guards have committed the clean draft.
  * Two commits separate acknowledgement from navigation; no timer changes domain state. */
@@ -54,10 +54,18 @@ export function UnlockScreen() {
   const previous = useWorkScope()?.back ?? back;
   const state = useScreenTime(), navigation = useAppNavigation(), draft = state.unlockDraft;
   const continueRestrictions = useContinueRestrictions();
+  const returnHome = useFinishUnlock('index');
   const { setUnlockExitAllowed } = state;
   useFocusEffect(useCallback(() => { setUnlockExitAllowed(false); }, [setUnlockExitAllowed]));
   useDraftGuard((!!draft.reason || !!draft.targetRef || draft.minutes !== '5') && !state.unlockExitAllowed, state.canExitUnlock, () => state.setUnlockExitAllowed(true), async () => { const result = await state.run('cancelUnlock'); if (result.status !== 'ok') return false; state.resetUnlock(); return true; });
-  const now = useVisibleClock(), candidates = unlockCandidates(state.snapshot, now);
+  const now = useVisibleClock();
+  const chosenRule = state.snapshot?.rules.find(rule => rule.id === draft.ruleID);
+  const candidates = draft.ruleID ? unlockCandidates(state.snapshot, now, draft.ruleID) : [];
+  const chooseRuleAgain = async () => {
+    const result = await state.run('cancelUnlock');
+    if (result.status !== 'ok') return;
+    state.setUnlockReview(undefined); state.setUnlockExitAllowed(true); returnHome();
+  };
   const selected = candidates.find(target => target.ref === draft.targetRef);
   const selectedScope = useRef('');
   const [changed, setChanged] = useState(false);
@@ -78,24 +86,22 @@ export function UnlockScreen() {
   };
   return <FlowScreen title="必要な分だけ、一時解除" onBack={previous}>
     <Body>使う目的と時間を、いったん言葉に。解除するかどうかは、内容を確認してから決められます。</Body>
+    {chosenRule && <Panel><Heading>{ruleTitle(chosenRule, state.snapshot?.rules.indexOf(chosenRule) ?? 0)}</Heading><Body muted>{ruleText(chosenRule)}</Body><Body muted>このルールで、いま制限中のアプリから選びます。</Body></Panel>}
     {changed && <Notice title="アプリを選び直してください">適用ルールまたは制限の状態が変わりました。入力した理由と時間は残しています。</Notice>}
     <View style={flowStyles.section}><Heading>いま制限中のアプリ</Heading>
-      <Body muted>現在、一時解除できるアプリだけを表示しています。解除中や時間外のアプリは含みません。</Body>
+      <Body muted>このルールで一時解除できるアプリだけを表示しています。</Body>
       {candidates.map(target => {
-        const period = targetPeriod(state.snapshot, target, now);
-        const rule = state.snapshot?.rules.find(rule => rule.id === target.ruleID);
         return <Panel key={target.ref}>
           <Applications selectionRef={target.selectionRef} targetRef={target.ref} refreshKey={state.refreshKey}
             selected={draft.targetRef === target.ref} onSelect={!state.busy ? () => {
               selectedScope.current = targetScope(state.snapshot, target, now); setChanged(false);
               state.setUnlockExitAllowed(false); state.setUnlockDraft({ ...draft, targetRef: target.ref }); state.setUnlockReview(undefined);
             } : undefined} />
-          <Body>{ruleTitle(rule, state.snapshot?.rules.findIndex(r => r.id === target.ruleID) ?? 0)}</Body>
-          {period && <Body muted>{endTime(period.startsAt, now)}〜{endTime(period.endsAt, now)}の制限</Body>}
           <Body muted>{draft.targetRef === target.ref ? '✓ このアプリを選択中' : 'このアプリだけを一時解除'}</Body>
         </Panel>;
       })}
-      {!candidates.length && <Notice title={hasFreshRestrictionState(state.snapshot, now) ? 'いま一時解除できるアプリはありません' : '現在の制限状態を確認してください'}>時間外・解除中のアプリは候補に表示しません。ホームで適用ルールと現在の状態を確認できます。</Notice>}
+      {!candidates.length && <Notice title={hasFreshRestrictionState(state.snapshot, now) ? 'このルールで一時解除できるアプリはありません' : '現在の制限状態を確認してください'}>ほかのルールのアプリは表示しません。入力した理由と時間を残して、ホームでルールを選び直せます。</Notice>}
+      <LinkRow label="ホームでルールを選び直す" disabled={!!state.busy} onPress={() => { void chooseRuleAgain(); }} />
     </View>
     <Field label="いま使う理由" testID="unlock-reason" value={draft.reason} multiline placeholder="自分の言葉で入力してください"
       onChangeText={(reason) => { state.setUnlockExitAllowed(false); state.setUnlockDraft({ ...draft, reason }); state.setUnlockReview(undefined); }} />
@@ -121,7 +127,7 @@ export function UnlockConfirmationScreen() {
   const confirmed = review?.snapshot ?? state.snapshot;
   const target = confirmed?.targets.find((t) => t.ref === draft.targetRef);
   const rule = confirmed?.rules.find((r) => r.id === target?.ruleID);
-  const current = unlockCandidates(state.snapshot, now).find(candidate => candidate.ref === draft.targetRef);
+  const current = (draft.ruleID ? unlockCandidates(state.snapshot, now, draft.ruleID) : []).find(candidate => candidate.ref === draft.targetRef);
   const stillValid = !!current && targetScope(confirmed, target, now) === targetScope(state.snapshot, current, now)
     && (review?.previewEndsAt ?? 0) * 1000 > now;
   const submit = async () => {

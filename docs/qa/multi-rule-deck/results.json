@@ -1,0 +1,75 @@
+{
+  "commit": "working-tree",
+  "kind": "fictional-native-ports-rule-deck",
+  "physicalDevice": false,
+  "cases": [
+    {
+      "name": "light-motion",
+      "width": 390,
+      "colorScheme": "light",
+      "artificialTextScale": 1,
+      "reducedMotion": "no-preference",
+      "dragTransform": "matrix(0.999282, -0.0378829, 0.0378829, 0.999282, -148.5, 0)",
+      "horizontalOverflow": false,
+      "action": {
+        "x": 51,
+        "y": 614,
+        "width": 288,
+        "height": 52
+      },
+      "errors": []
+    },
+    {
+      "name": "narrow",
+      "width": 320,
+      "colorScheme": "light",
+      "artificialTextScale": 1,
+      "reducedMotion": "reduce",
+      "dragTransform": "none",
+      "horizontalOverflow": false,
+      "action": {
+        "x": 51,
+        "y": 916,
+        "width": 218,
+        "height": 52
+      },
+      "errors": []
+    },
+    {
+      "name": "dark",
+      "width": 390,
+      "colorScheme": "dark",
+      "artificialTextScale": 1,
+      "reducedMotion": "reduce",
+      "dragTransform": "none",
+      "horizontalOverflow": false,
+      "action": {
+        "x": 51,
+        "y": 614,
+        "width": 288,
+        "height": 52
+      },
+      "errors": []
+    },
+    {
+      "name": "large-text",
+      "width": 320,
+      "colorScheme": "light",
+      "artificialTextScale": 2,
+      "reducedMotion": "reduce",
+      "dragTransform": "none",
+      "horizontalOverflow": false,
+      "action": {
+        "x": 51,
+        "y": 1765,
+        "width": 218,
+        "height": 130
+      },
+      "errors": []
+    }
+  ],
+  "flows": [
+    "Rule-scoped candidates; no automatic widening after rule expiry; reason retained on explicit rule change; single X grant; discard returns home; unavailable/single/overnight states"
+  ],
+  "browser": "155.0.8059.79"
+}

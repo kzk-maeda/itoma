@@ -628,6 +628,31 @@ test('one entry → initially unselected app → free text → editable full rev
   expect(mockHistory.every((path) => !path.includes('synthetic'))).toBe(true);
 });
 
+test('rule-scoped unlock never expands to another winner and keeps the reason for choosing a rule again', async () => {
+  const b = backend(), other = '99999999-9999-4999-8999-999999999999';
+  const first = b.current().rules[0], period = b.current().periods[0];
+  b.replace({ rules: [first, { ...first, id: other }], periods: [period, { ...period, ruleID: other }],
+    targets: b.current().targets.map(target => target.ref === appB ? { ...target, ruleID: other } : target) });
+  let value!: ReturnType<typeof useScreenTime>;
+  function Capture() { const state = useScreenTime(); useEffect(() => { value = state; }, [state]); return null; }
+  await render(<ScreenTimeProvider client={b.client}><Capture /><Pages /></ScreenTimeProvider>);
+  await press('一時解除する');
+  expect(screen.getByRole('button', { name: 'テスト用アプリA' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'テスト用アプリB' })).toBeNull();
+  await press('テスト用アプリA');
+  await fireEvent.changeText(screen.getByLabelText('いま使う理由'), 'synthetic retained purpose');
+  b.replace({ targets: b.current().targets.map(target => ({ ...target, ruleID: other })) });
+  await act(async () => { await value.refresh(); });
+  expect(screen.getByLabelText('いま使う理由')).toHaveDisplayValue('synthetic retained purpose');
+  expect(screen.queryByRole('button', { name: 'テスト用アプリA' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'テスト用アプリB' })).toBeNull();
+  expect(screen.getByRole('button', { name: '解除内容を確認する' })).toBeDisabled();
+  await press('ホームでルールを選び直す');
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
+  expect(value.unlockDraft.reason).toBe('synthetic retained purpose');
+  expect(b.client.run.mock.calls.some(([action]) => action === 'unlock')).toBe(false);
+});
+
 test('dirty cancellation keeps text on Keep, and confirmed discard does not request a grant', async () => {
   const b = backend(), alert = jest.spyOn(Alert, 'alert');
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);

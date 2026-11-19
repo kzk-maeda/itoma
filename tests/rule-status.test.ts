@@ -44,10 +44,14 @@ test('fictional overlap and switch expose the correct candidate set without unre
     const overlap = (await demo.client.run('snapshot')).snapshot!;
     expect(unlockCandidates(overlap, demo.now()).map(t => t.ref)).toEqual([appIDs.x, appIDs.instagram, appIDs.youtube]);
     expect(overlap.targets.find(t => t.ref === appIDs.x)?.ruleID).toBe(rules[2].id);
+    expect(unlockCandidates(overlap, demo.now(), rules[1].id).map(t => t.ref)).toEqual([appIDs.instagram]);
+    expect(unlockCandidates(overlap, demo.now(), rules[2].id).map(t => t.ref)).toEqual([appIDs.x, appIDs.youtube]);
     demo.select('switch');
     const switched = (await demo.client.run('snapshot')).snapshot!;
     expect(unlockCandidates(switched, demo.now()).map(t => t.ref)).toEqual([appIDs.x, appIDs.instagram, appIDs.tiktok]);
     expect(switched.targets.find(t => t.ref === appIDs.x)?.ruleID).toBe(rules[3].id);
+    expect(unlockCandidates(switched, demo.now(), rules[2].id)).toEqual([]);
+    expect(unlockCandidates(switched, demo.now(), rules[3].id).map(t => t.ref)).toEqual([appIDs.x, appIDs.tiktok]);
   } finally { jest.useRealTimers(); }
 });
 test('fictional grant applies only to the selected app, keeps its deadline and excludes it from selection', async () => {

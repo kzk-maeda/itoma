@@ -16,9 +16,9 @@ export function currentRuleTargets(s: ScreenTimeSnapshot | undefined, now: numbe
     seen.add(target.ref); return true;
   }) ?? [];
 }
-export function unlockCandidates(s: ScreenTimeSnapshot | undefined, now: number) {
+export function unlockCandidates(s: ScreenTimeSnapshot | undefined, now: number, ruleID?: string) {
   if (!hasFreshRestrictionState(s, now)) return [];
-  return currentRuleTargets(s, now).filter(target => target.restricted && target.unlockable && !target.grantCommandID);
+  return currentRuleTargets(s, now).filter(target => target.restricted && target.unlockable && !target.grantCommandID && (!ruleID || target.ruleID === ruleID));
 }
 export function targetPeriod(s: ScreenTimeSnapshot | undefined, target: ScreenTimeTarget | undefined, now: number) {
   return currentRulePeriods(s, now).find(period => period.ruleID === target?.ruleID);

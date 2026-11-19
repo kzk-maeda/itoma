@@ -6,7 +6,7 @@ import { screenTime, type RuleInput, type ScreenTimeAction, type ScreenTimeCode,
 
 export type RuleDraft = { id?: string; selectionRef: string; weekdays: number[]; start: string; end: string; nextDay: boolean; enabled: boolean; dirty: boolean; remove?: boolean;
   title?: string; goal?: string; createdRuleID?: string; creationCommitted?: boolean };
-export type UnlockDraft = { targetRef?: string; reason: string; minutes: string };
+export type UnlockDraft = { ruleID?: string; targetRef?: string; reason: string; minutes: string };
 type Client = Pick<typeof screenTime, 'run'>;
 type HistoryChangeOrigin = 'history' | 'reflection' | 'settings' | 'external';
 type State = {

@@ -8,8 +8,8 @@ import { useOptionalOnboarding } from '@/state/onboarding';
 import { completeNativeHomeSmoke } from '@/qa/native-smoke';
 import { PoCRecoveryEntry } from '../home/poc-recovery-entry';
 import { Body, Button, FlowScreen, Heading, Notice, Panel } from './ui';
-import { CurrentRules, DaySchedule } from '../home/rule-status-view';
-import { hasFreshRestrictionState, unlockCandidates } from '../home/rule-status';
+import { CurrentRules } from '../home/rule-status-view';
+import { hasFreshRestrictionState } from '../home/rule-status';
 
 export function ProductHome() {
   const state = useScreenTime(), setup = useOptionalOnboarding(), now = useVisibleClock(), navigation = useAppNavigation();
@@ -42,7 +42,12 @@ export function ProductHome() {
   const observed = hasFreshRestrictionState(s, now) && !state.error;
   const firstRun = !!setup && !setup.progress?.completed;
   const create = () => { if (firstRun) { navigation.start({ screen: 'onboarding' }, { screen: 'index' }); return; } if (!state.ruleDraft?.dirty) state.beginRule(); navigation.start({ screen: s?.authorization === 'approved' ? 'rule' : 'onboarding' }, { screen: 'index' }); };
-  const unlock = () => { if (!state.unlockDraft.reason && !state.unlockDraft.targetRef) state.resetUnlock(); navigation.start({ screen: 'unlock' }, { screen: 'index' }); };
+  const unlock = (ruleID: string) => {
+    const draft = state.unlockDraft;
+    state.setUnlockExitAllowed(false); state.setUnlockReview(undefined);
+    state.setUnlockDraft({ ...draft, ruleID, targetRef: draft.ruleID === ruleID ? draft.targetRef : undefined });
+    navigation.start({ screen: 'unlock' }, { screen: 'index' });
+  };
   const stopLegacy = () => Alert.alert('手動検証の制限を停止しますか', '以前の手動検証で指定した制限だけを停止します。通常のルールと保存した対象は削除しません。', [
     { text: '戻る', style: 'cancel' }, { text: '手動検証の制限を停止', onPress: () => { void state.run('stopLegacy'); } },
   ]);
@@ -66,10 +71,8 @@ export function ProductHome() {
     {device && !!s.rules.length && s.activation === 'enabled' && (!s.schedulesReady || !observed) && <Notice title="制限の状態を確認してください">
       {s.schedulesReady ? '反映を確認できていません。以下の時間帯は保存した設定です。設定タブから現在の状態を確認できます。' : '自動切替の予定を確認できていません。設定タブから現在の状態を確認できます。'}
     </Notice>}
-    {!!s?.rules.length && <CurrentRules snapshot={s} now={now} action={
-      device && !state.error && unlockCandidates(s, now).length > 0
-        ? <Button label="一時解除する" testID="home-unlock-entry" disabled={!!state.busy} onPress={unlock} /> : undefined
-    } />}
+    {!!state.unlockDraft.reason && <Body muted>一時解除の入力を残しています。ルールを選ぶと続きを入力できます。</Body>}
+    {!!s?.rules.length && <CurrentRules snapshot={s} now={now} onUnlock={unlock} />}
     {!s?.rules.length && <Heading>自分の時間を、ここから。</Heading>}
     {!s?.rules.length && setup?.draft && !setup.busy && <Notice title={setup.draft.submitted ? '初回設定の反映を確認してください' : '初回設定は途中です'}>{setup.draft.submitted
       ? '前の要求は完了を確認できていません。入力は残っています。設定を続けて、結果と再試行する内容を確認できます。'
@@ -81,7 +84,6 @@ export function ProductHome() {
     {!s?.rules.length && <Button label={firstRun ? setup.draft ? setup.busy || setup.draft.submitted ? '初回設定の結果を確認する' : '初回設定を続ける' : '初回設定を始める' : 'ルールをつくる'} disabled={!device || !!state.busy || !!setup?.busy || !!setup?.loading} onPress={create} />}
     {device && !!s?.rules.length && !!setup?.draft && <Button label="初回設定の結果を確認する" secondary onPress={() => navigation.start({ screen: 'onboarding' }, { screen: 'index' })} />}
     {!!s?.rules.length && state.ruleDraft?.dirty && <Button label="編集中のルールに戻る" secondary onPress={() => navigation.start(state.ruleDraft?.createdRuleID ? { screen: 'rule-details', ruleID: state.ruleDraft.createdRuleID } : { screen: 'rule' }, { screen: 'index' })} />}
-    {!!s?.rules.length && <DaySchedule snapshot={s} now={now} />}
     {!device && <PoCRecoveryEntry />}
   </FlowScreen>;
 }
