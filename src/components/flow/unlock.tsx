@@ -13,14 +13,28 @@ import { Alert, View } from 'react-native';
 import { useVisibleClock } from '@/hooks/use-visible-clock';
 import { hasFreshRestrictionState, targetPeriod, targetScope, unlockCandidates } from '../home/rule-status';
 
+/** Finish only after the shared root discard guards have committed the clean draft.
+ * Two commits separate acknowledgement from navigation; no timer changes domain state. */
+function useFinishUnlock(screen: 'index' | 'grant') {
+  const state = useScreenTime(), navigation = useAppNavigation();
+  const [pending, setPending] = useState(false), [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (pending && state.unlockExitAllowed && !state.busy) setReady(true);
+  }, [pending, state.unlockExitAllowed, state.busy]);
+  useEffect(() => {
+    if (ready && state.unlockExitAllowed && !state.busy) navigation.finish({ screen });
+  }, [ready, state.unlockExitAllowed, state.busy, navigation, screen]);
+  return useCallback(() => setPending(true), []);
+}
+
 function useContinueRestrictions() {
-  const state = useScreenTime(), navigation = useAppNavigation(), draft = state.unlockDraft;
+  const state = useScreenTime(), draft = state.unlockDraft, finish = useFinishUnlock('index');
   return () => {
     if (state.busy) return;
     const discard = async () => {
       const result = await state.run('cancelUnlock');
       if (result.status !== 'ok') return;
-      state.resetUnlock(); state.setUnlockExitAllowed(true); navigation.finish({ screen: 'index' });
+      state.resetUnlock(); state.setUnlockExitAllowed(true); finish();
     };
     if (draft.reason || draft.targetRef || draft.minutes !== '5') {
       Alert.alert('入力を破棄して制限を続けますか', '理由の保存や一時解除は行いません。入力を続けることもできます。', [
@@ -96,6 +110,7 @@ export function UnlockConfirmationScreen() {
   const previous = useWorkScope()?.back ?? back;
   const state = useScreenTime(), navigation = useAppNavigation(), draft = state.unlockDraft, review = state.unlockReview;
   const continueRestrictions = useContinueRestrictions();
+  const finish = useFinishUnlock('grant');
   const [failed, setFailed] = useState(false);
   const now = useVisibleClock();
   const [openedAt] = useState(now);
@@ -114,7 +129,7 @@ export function UnlockConfirmationScreen() {
     const accepted = !!result.ref && result.snapshot?.targets.some((t) => t.grantCommandID === result.ref);
     if (result.status === 'ok' || accepted) {
       state.resetUnlock(); state.setUnlockExitAllowed(true);
-      if (alive()) navigation.finish({ screen: 'grant' });
+      if (alive()) finish();
     } else if (alive()) setFailed(true);
   };
   return <FlowScreen title="この内容で一時解除しますか" onBack={previous}>
