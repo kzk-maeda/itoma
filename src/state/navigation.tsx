@@ -27,7 +27,7 @@ export function AppNavigationProvider({ children }: { children: ReactNode }) {
     if (state?.routes.some(route => route.name === '(work)')) router.dismissTo(destinationHref(destination), { withAnchor: true });
     else router.navigate(destinationHref(destination), { withAnchor: true });
   }, [navigation]);
-  const actions = useMemo<Actions>(() => ({ open, finish: destination => router.dismissTo(destinationHref(destination), { withAnchor: true }),
+  const actions = useMemo<Actions>(() => ({ open, finish: destination => router.navigate(destinationHref(destination), { withAnchor: true }),
     start: (destination, origin) => {
       if (origin) returnContext.current = { destination: origin };
       else {

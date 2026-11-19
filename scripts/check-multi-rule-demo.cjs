@@ -43,8 +43,9 @@ async function candidates(page, names) {
       ['light', 390, 'light', 1], ['narrow', 320, 'light', 1], ['dark', 390, 'dark', 1], ['large-text', 320, 'light', 2],
     ]) {
       const context = await browser.newContext({ viewport: { width, height: 844 }, colorScheme, timezoneId: 'Asia/Tokyo', reducedMotion: 'reduce' });
-      const page = await context.newPage(), errors = [];
+      const page = await context.newPage(), errors = [], messages = [];
       page.on('pageerror', error => errors.push(error.message));
+      page.on('console', message => { if (['warning', 'error'].includes(message.type())) messages.push(message.text()); });
       page.on('dialog', dialog => { console.log('BROWSER DIALOG', dialog.message()); return dialog.accept(); });
       try {
         await page.goto(root, { waitUntil: 'networkidle' });
@@ -120,7 +121,7 @@ async function candidates(page, names) {
         }
         assert(errors.length === 0, 'Page errors: ' + errors.join('; '));
       } catch (error) {
-        console.error('BROWSER STATE', JSON.stringify({ url: page.url(), body: await page.locator('body').innerText(), errors }));
+        console.error('BROWSER STATE', JSON.stringify({ url: page.url(), body: await page.locator('body').innerText(), errors, messages, reason: await page.getByLabel('いま使う理由', { exact: true }).inputValue().catch(() => undefined) }));
         await page.screenshot({ path: path.join(output, 'failure-' + name + '.png') });
         throw error;
       } finally { await context.close(); }

@@ -40,3 +40,7 @@ fixture/provider/toolbar は src/demo/multi-rule に分離。ITOMA_DEMO_BUILD=1 
 作業環境が接続不能となったため、最終版は接続済みGitHub APIで同じmainから復元し、既存CIに加え本ブランチ限定の静的exportのブラウザ検証を配信前に実行する。型/lint/Jest/demo tools/Web exportと各コマンドの結果、配信SHA・URL・Version IDはPR/Issueに記録する。expo-doctorの外部照合は別結果として記録する。
 
 ブラウザ検証の画像/JSONはActions artifact multi-rule-demo-qa に添付する。Light/Dark、狭幅、DOMの文字2倍、候補集合、単一アプリ解除、入力中のルール切替を確認する。DOM拡大はnative Dynamic Typeの代用合格ではない。Simulator/実機/VoiceOver/実際のgesture/Screen Time・Extension/永続化は未検証。自動画像の生成を人による目視レビューと同一視しない。
+
+## サブパス内でのフロー完了
+
+静的デモの非ルートbasePathで、入力を破棄してもdismissTo('/')では作業画面に留まる経路をブラウザ検証で検出した。完了は既存RootRouterのNAVIGATE/popによるmain再利用へ揃え、破棄/解除受付の両方でホームへ帰れることを配信前に検証する。Rootの未保存guardは残す。nativeの実gesture/帰還は引き続き未検証。
