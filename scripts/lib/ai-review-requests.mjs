@@ -1,5 +1,6 @@
 import { COMMENT_MARKER, findReviewComment, ineligibleReason } from './ai-review.mjs';
 import { renderRequestStatus } from './ai-review-comment.mjs';
+import { adoptLegacyReview, extractReviewBody, matchesReviewBody, validReviewSnapshot, REVIEW_START, REVIEW_END, REVIEW_AGAIN } from './ai-review-history.mjs';
 
 const requireValue = (ok, message) => { if (!ok) throw new Error(message); };
 const integer = value => Number.isSafeInteger(Number(value)) && Number(value) > 0;
@@ -90,24 +91,42 @@ export function parseState(comment, options, pr) {
   requireValue(typeof state.initial?.consumed === 'boolean' && typeof state.initial?.pending === 'boolean', 'Invalid initial review state');
   for (const key of ['last_run_id', 'last_command_id']) requireValue(Number.isSafeInteger(state[key]) && state[key] >= 0, 'Invalid request watermark');
   requireValue(state.current && typeof state.current.id === 'string' && typeof state.current.status === 'string' && sha(state.current.head_sha) && sha(state.current.base_sha), 'Invalid current request state');
+  requireValue(!state.last_review || validReviewSnapshot(state.last_review), 'Invalid saved review metadata');
   return state;
 }
 
 export async function readState(options, pr, github) {
   const comment = await findReviewComment(options.number, github);
-  return { comment, state: parseState(comment, options, pr) };
+  const state = parseState(comment, options, pr);
+  adoptLegacyReview(state, comment);
+  return { comment, state };
 }
 
-export function renderState(state, options, visible = '') {
+export function renderState(state, options, { resultBody = null, statusText = null } = {}) {
   const current = state.current;
+  const previous = state.last_review;
+  const sameRevision = previous && previous.head_sha === current.head_sha && previous.base_sha === current.base_sha;
+  const currentResult = sameRevision && current.status === 'reviewed';
+  const reviewUrl = previous ? `https://github.com/${options.repository}/actions/runs/${previous.run_id}` : null;
   const target = `対象: [\`${current.head_sha.slice(0, 7)}\`](https://github.com/${options.repository}/commit/${current.head_sha})`;
-  const lines = [COMMENT_MARKER, '## AIレビュー', '', visible || renderRequestStatus(current), '', `${target}${current.run_url ? ` · [詳細・ログ](${current.run_url})` : ''}`,
-    '', `<!-- itoma-ai-state:${Buffer.from(JSON.stringify(state)).toString('base64url')} -->`];
+  const lines = [COMMENT_MARKER, '## AIレビュー'];
+  if (!currentResult) {
+    lines.push('', sameRevision && current.status === 'stale' ? '**前回と同じ差分のレビュー結果を保持しています。**' : statusText || renderRequestStatus(current));
+    if (previous && !sameRevision && ['merged', 'closed'].includes(current.status)) lines.push('', '**最終差分へのAIレビューは未実行です。**');
+  }
+  if (previous) {
+    if (!currentResult) lines.push('', `### 前回の本レビュー（[\`${previous.head_sha.slice(0, 7)}\`](https://github.com/${options.repository}/commit/${previous.head_sha})）`, '', `[レビュー時のログ](${reviewUrl})`);
+    if (resultBody && matchesReviewBody(resultBody, previous)) lines.push('', REVIEW_START, resultBody.trim(), REVIEW_END);
+    else lines.push('', '前回のレビュー本文は復元できません。レビュー時のログで確認してください。');
+    if (currentResult && previous.finding_count > 0) lines.push('', REVIEW_AGAIN);
+  }
+  const log = currentResult ? reviewUrl : ['merged', 'closed'].includes(current.status) ? null : current.run_url;
+  lines.push('', `${target}${log ? ` · [詳細・ログ](${log})` : ''}`, '', `<!-- itoma-ai-state:${Buffer.from(JSON.stringify(state)).toString('base64url')} -->`);
   return lines.join('\n');
 }
 
-export async function writeState(state, comment, options, github, visible = '') {
-  const body = renderState(state, options, visible);
+export async function writeState(state, comment, options, github, rendering = {}) {
+  const body = renderState(state, options, { ...rendering, resultBody: rendering.resultBody ?? extractReviewBody(comment, state) });
   requireValue(body.length <= 60_000, 'Review comment exceeds size limit');
   return github(comment ? `/issues/comments/${comment.id}` : `/issues/${options.number}/comments`, {
     method: comment ? 'PATCH' : 'POST', body: { body },
@@ -177,8 +196,9 @@ export async function prepareRequest(event, options, github) {
     const unsupported = pr.head?.repo?.full_name !== options.repository || pr.base?.repo?.full_name !== options.repository || pr.base.ref !== options.defaultBranch;
     if (unsupported || pr.state !== 'open' || unlabeled) {
       state.initial = { consumed: true, pending: false };
-      state.current.status = unsupported ? 'unsupported' : 'cancelled';
+      state.current.status = pr.merged ? 'merged' : pr.state !== 'open' ? 'closed' : unsupported ? 'unsupported' : 'cancelled';
     } else if (state.initial.pending && !state.initial.consumed && pr.draft) state.current.status = 'pending_draft';
+    else if (pr.draft) state.current.status = 'paused_draft';
     else if (initialEvent) state.initial = { consumed: true, pending: false };
     if (previous?.run_url) state.current.reason += `; previous evidence: ${previous.run_url}`;
     if (initialEvent && pr.base.ref === options.defaultBranch && pr.state === 'open') await github(`/issues/${options.number}/labels`, { method: 'POST', body: { labels: [LABEL] } });

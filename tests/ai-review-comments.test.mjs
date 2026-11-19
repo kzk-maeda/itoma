@@ -24,7 +24,7 @@ test('actionable findings keep severity, all corrections and exact old/new revis
   assert.ok(body.includes(`/blob/${BASE}/src/old%20name.ts#L2`));
   assert.ok(body.includes(`/blob/${HEAD}/src/new%20name.ts#L2`));
   assert.ok(!body.includes(report.review.review.summary));
-  assert.match(body, /修正後.*`\/ai-review`/);
+  assert.ok(!body.includes('/ai-review')); // Actions belong to the current lifecycle, not the archived result.
 });
 
 test('zero findings remain distinct from skipped or failed review and do not demand unnecessary reruns', () => {
@@ -62,7 +62,7 @@ test('missing text patches stay actionable ahead of media, without repeating eve
 
 test('failure and lifecycle messages identify the next operation without exposing diagnostic internals', () => {
   for (const [status, expected] of [
-    ['claimed', /実行中/], ['pending_draft', /Readyに/], ['cancelled', /open・非Draft/],
+    ['claimed', /実行中/], ['pending_draft', /Readyに/], ['cancelled', /再開する場合/],
     ['unsupported', /人手でレビュー/], ['stale', /以前の結果.*現在の差分には使えません/],
     ['triage_failed', /`\/ai-review reassess`/], ['review_failed', /`\/ai-review`/],
   ]) assert.match(renderRequestStatus({ status, reason: 'internal diagnostic' }), expected);
@@ -79,7 +79,7 @@ test('omitted vector and modern image formats are assigned visual inspection, no
   report.review.omissions = images.map(path => `${path}: diff unavailable (binary, oversized, or no textual changes)`);
   const body = renderPipelineComment(report);
   assert.match(body, /画像・動画等6ファイル.*目視/);
-  assert.ok(!body.includes('テキスト'));
+  assert.ok(!body.includes('未確認・不完全な差分'));
   assert.ok(!body.includes('人手でレビュー'));
 });
 
@@ -105,6 +105,7 @@ test('publishing uses a compact comment while preserving full diagnostic evidenc
   assert.match(visible, /修正候補 1件/);
   assert.match(visible, /src\/unreviewed/);
   assert.match(visible, /詳細・ログ/);
+  assert.match(visible, /修正後.*`\/ai-review`/);
   for (const value of ['gpt-', 'manual_force', 'ポリシー', '対象SHAのCI', 'fixture review', 'base:']) assert.ok(!visible.includes(value));
   const evidence = renderPipelineReport(report);
   for (const value of ['gpt-5.6-sol', 'manual\\_force', 'ポリシー', '対象SHAのCI', 'quality', 'fixture review', 'src/unreviewed.ts']) assert.ok(evidence.includes(value));

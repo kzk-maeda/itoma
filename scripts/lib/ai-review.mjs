@@ -152,10 +152,35 @@ export async function collectInput(pr, github) {
     const content = await readFile(file.path, ref, Math.min(20_000, remaining));
     if (content !== null) add('source', { path: file.path, revision, content }, `${file.path}: surrounding source exceeds input budget`);
   }
+  // CI/dependency changes need the manifests and build definitions they operate on.
+  // These are immutable API data; package managers and PR configuration are never run.
+  if (files.some(file => /^(\.github\/(workflows\/|docker\/|dependabot\.ya?ml$)|package(-lock)?\.json$)/.test(file.filename))) {
+    for (const path of ['package.json', '.github/workflows/ci.yml', '.github/docker/swift-tests.Dockerfile']) {
+      if (input.source.some(source => source.path === path && source.revision === 'head')) continue;
+      if (remaining < 1000) { input.omissions.push(`${path}: related configuration omitted (budget)`); continue; }
+      const content = await readFile(path, pr.head.sha, Math.min(20_000, remaining));
+      if (content !== null) add('source', { path, revision: 'head', related_config: true, content }, `${path}: related configuration exceeds input budget`);
+      else input.omissions.push(`${path}: related configuration could not be supplied`);
+    }
+    if (!input.source.some(source => source.path === 'package-lock.json') && remaining >= 1000) {
+      const content = await readFile('package-lock.json', pr.head.sha, 1_000_000);
+      if (content !== null) {
+        try {
+          const lock = JSON.parse(content);
+          const root = lock.packages?.[''];
+          requireValue(root && lock.lockfileVersion >= 2, 'Unsupported lockfile summary');
+          const dependencies = { ...root.dependencies, ...root.devDependencies, ...root.optionalDependencies };
+          const resolved = Object.fromEntries(Object.keys(dependencies).map(name => [name, lock.packages[`node_modules/${name}`]?.version ?? null]));
+          add('source', { path: 'package-lock.json', revision: 'head', related_config: true, summary: true,
+            content: JSON.stringify({ lockfileVersion: lock.lockfileVersion, declared_dependencies: dependencies, resolved_direct_versions: resolved }) }, 'package-lock.json: direct dependency summary exceeds input budget');
+        } catch { input.omissions.push('package-lock.json: direct dependency summary could not be supplied'); }
+      } else input.omissions.push('package-lock.json: related configuration could not be supplied');
+    }
+  }
   // Read a bounded set of direct local imports as context, without loading modules.
   const imports = new Set();
   for (const source of input.source) {
-    if (source.revision !== 'head') continue;
+    if (source.revision !== 'head' || source.related_config) continue;
     for (const match of source.content.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s*)['"]([^'"]+)['"]/g)) {
       const specifier = match[1];
       const target = specifier.startsWith('@/') ? `src/${specifier.slice(2)}`

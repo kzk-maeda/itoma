@@ -2,6 +2,7 @@ import { COMMENT_MARKER, markdown, renderReport, runReview, safeError } from './
 import { assessPR, policyHash } from './ai-review-triage.mjs';
 import { currentRequest, readState, writeState } from './ai-review-requests.mjs';
 import { renderPipelineComment } from './ai-review-comment.mjs';
+import { reviewSnapshot } from './ai-review-history.mjs';
 
 const requireValue = (ok, message) => { if (!ok) throw new Error(message); };
 const statuses = ['reviewed', 'skipped_low', 'triage_failed', 'review_failed', 'manual_required', 'stale'];
@@ -63,16 +64,18 @@ export async function publishPipeline(report, options, github) {
     if (state.current.status === report.status) return { status: 'already_published' };
     state.current.status = report.status;
     state.current.reason = report.error || null;
+    const text = renderPipelineComment(report);
+    if (report.status === 'reviewed') state.last_review = reviewSnapshot(report.request, text, report.review.review.findings.length);
     // Recheck after constructing the result, immediately before the write.
     await currentRequest(report.request, options, github);
-    await writeState(state, comment, options, github, renderPipelineComment(report));
+    await writeState(state, comment, options, github, report.status === 'reviewed' ? { resultBody: text } : { statusText: text });
     return { status: 'published' };
   } catch (error) {
     if (error.name !== 'StaleRequestError') throw error;
     const pr = await github(`/pulls/${options.number}`);
     const { state, comment } = await readState(options, pr, github);
     if (state?.current.id === report.request.id && state.current.run_id === report.request.run_id && state.current.status === 'claimed') {
-      state.current.status = 'stale';
+      state.current.status = pr.merged ? 'merged' : pr.state !== 'open' ? 'closed' : pr.draft ? 'paused_draft' : 'stale';
       state.current.reason = `Request changed before completion; no review published. Current head: ${pr.head.sha}`;
       await writeState(state, comment, options, github);
     }
