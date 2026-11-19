@@ -75,8 +75,7 @@ import ItomaCore
     var builder = RestrictionTimelineBuilder()
     for fact in batch.facts { try builder.append(source: fact.sourceID, sequence: fact.sequence, sample: fact.durationObservation,
         asOf: Instant(secondsSince1970: base + 601)) }
-    let dataset = try #require(try builder.dataset(sourceID: UUID(), revision: 1,
-        asOf: Instant(secondsSince1970: base + 601), timeZone: "UTC"))
-    let view = try ReflectionPrototypeCalculator.snapshot(dataset, period: .week, day: "2026-11-15")
-    #expect(view.total.knownSeconds == 0) // The unknown interval was not reconstructed from the rule.
+    #expect(try builder.dataset(sourceID: UUID(), revision: 1,
+        asOf: Instant(secondsSince1970: base + 601), timeZone: "UTC") == nil)
+    // No measured interval was produced; the unknown span was not reconstructed from the rule.
 }

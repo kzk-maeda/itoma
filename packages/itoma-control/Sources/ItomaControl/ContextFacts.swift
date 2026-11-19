@@ -56,10 +56,11 @@ extension CommandService {
         let before = try tx.unfinishedGrants().filter { including?.contains($0.grant.id) ?? true }.map(\.grant)
         try recordDenied(context: context, transaction: tx)
         let snapshot = try tx.snapshot(), captured = rebinding(context, activation: snapshot.activation)
-        if allowRuleConfirmation && origin == .host && captured.authorization.status == .approved && captured.activation == .enabled {
+        if allowRuleConfirmation && origin == .host && captured.authorization.status == .approved
+            && captured.activation == .enabled && captured.authorization.observedAt <= captured.now {
             // Optional authority failure cannot disable a host stop/recovery operation.
             // Extension reads still validate and fail closed.
-            try? tx.confirmRuleExecution(context: captured)
+            try tx.confirmRuleExecution(context: captured)
         }
         let execution = try ruleExecutionAuthorization(captured, transaction: tx)
         let normalized = try protectedGrants(context: captured, including: including, transaction: tx)

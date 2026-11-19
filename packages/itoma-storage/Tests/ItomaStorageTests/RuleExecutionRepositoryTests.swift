@@ -89,3 +89,30 @@ func unknownOrDeniedCannotIssueAnExecutionConfirmation(_ status: AuthorizationSt
     }
     #expect(try !f.repository.write { try $0.hasCurrentRuleExecutionConfirmation(at: context().now) })
 }
+
+@Test func optionalAuthorityWriteAbortDoesNotPoisonTheHostControlTransaction() throws {
+    let f = try Fixture(); defer { f.remove() }
+    try f.repository.installRuleExecutionAuthorization()
+    try execute(f.url, """
+        CREATE TRIGGER synthetic_authority_abort BEFORE UPDATE OF record ON rule_execution_authorization
+        WHEN NEW.record IS NOT NULL BEGIN SELECT RAISE(ABORT,'synthetic authority failure'); END
+        """)
+    try f.repository.write { tx in
+        try tx.confirmRuleExecution(context: context())
+        _ = try tx.setActivation(.paused, expectedSequence: tx.snapshot().snapshotSequence)
+    }
+    #expect(try f.repository.readSnapshot().activation == .paused)
+    #expect(try !f.repository.write { try $0.hasCurrentRuleExecutionConfirmation(at: context().now) })
+}
+
+@Test func failedAuxiliarySavepointRollbackStillAbortsTheEntireWriter() throws {
+    let f = try Fixture(); defer { f.remove() }
+    try f.repository.installRuleExecutionAuthorization()
+    try execute(f.url, """
+        CREATE TRIGGER synthetic_authority_rollback BEFORE UPDATE OF record ON rule_execution_authorization
+        WHEN NEW.record IS NOT NULL BEGIN SELECT RAISE(ROLLBACK,'synthetic rollback'); END
+        """)
+    #expect(throws: StorageError.rollbackRequired) { try f.repository.write { try $0.confirmRuleExecution(context: context()) } }
+    #expect(try f.repository.readSnapshot().activation == .enabled)
+    #expect(try !f.repository.write { try $0.hasCurrentRuleExecutionConfirmation(at: context().now) })
+}

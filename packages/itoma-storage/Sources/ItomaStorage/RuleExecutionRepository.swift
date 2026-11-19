@@ -70,10 +70,12 @@ extension ControlRepository {
     }
 
     fileprivate func recordRuleAuthorization(evaluationID: EvaluationID, authorization: AuthorizationStatus) throws {
-        guard try hasRuleExecutionAuthorization() else { return }
-        try validateRuleExecutionAuthorization()
-        try database.execute("UPDATE rule_execution_authorization SET evaluation_id=?,authorization=? WHERE singleton=1",
-            [.text(evaluationID.rawValue.uuidString), .text(authorization.rawValue)])
+        try optionalRuleExecutionWrite {
+            guard try hasRuleExecutionAuthorization() else { return }
+            try validateRuleExecutionAuthorization()
+            try database.execute("UPDATE rule_execution_authorization SET evaluation_id=?,authorization=? WHERE singleton=1",
+                [.text(evaluationID.rawValue.uuidString), .text(authorization.rawValue)])
+        }
     }
 
     fileprivate func ruleExecutionRecord() throws -> Data? {
@@ -87,10 +89,21 @@ extension ControlRepository {
     }
 
     fileprivate func storeRuleExecutionRecord(_ data: Data?) throws {
-        guard try hasRuleExecutionAuthorization() else { return }
-        try validateRuleExecutionAuthorization()
-        try database.execute("UPDATE rule_execution_authorization SET record=? WHERE singleton=1", [data.map(SQLValue.blob) ?? .null])
+        try optionalRuleExecutionWrite {
+            guard try hasRuleExecutionAuthorization() else { return }
+            try validateRuleExecutionAuthorization()
+            try database.execute("UPDATE rule_execution_authorization SET record=? WHERE singleton=1", [data.map(SQLValue.blob) ?? .null])
+        }
     }
+
+    /// Isolate auxiliary failures without poisoning ControlTransaction. A failed savepoint
+    /// rollback still aborts the whole writer; callers must never swallow that failure.
+    private func optionalRuleExecutionWrite(_ body: () throws -> Void) throws {
+        do { try database.savepoint(body) }
+        catch SQLiteFailure.rollbackFailure { throw StorageError.rollbackRequired }
+        catch { /* No new authority/qualification was stored. Reads remain fail closed. */ }
+    }
+
 }
 
 extension ControlTransaction {

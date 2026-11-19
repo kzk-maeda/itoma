@@ -313,7 +313,7 @@ public enum ControlOrigin: Sendable { case host, activityExtension }
 
     func recordDenied(context: EvaluationContext, transaction tx: ControlTransaction) throws {
         let snapshot = try tx.snapshot()
-        if context.authorization.status == .denied { try? tx.revokeRuleExecutionConfirmation() }
+        if context.authorization.status == .denied { try tx.revokeRuleExecutionConfirmation() }
         if context.authorization.status == .denied && snapshot.activation == .enabled {
             _ = try tx.setActivation(.awaitingReauthorizationConfirmation, expectedSequence: snapshot.snapshotSequence)
         }
@@ -337,7 +337,7 @@ public enum ControlOrigin: Sendable { case host, activityExtension }
             observedAt: context.now, validUntil: status == .applied ? evaluation.nextBoundary : nil, error: failure)
         let stored = try StoredApplication(evaluation: evaluation, observation: observation)
         // Missing/mismatched metadata fails duration qualification; it cannot prevent stop.
-        try? tx.recordRuleAuthorizationObservation(evaluationID: evaluation.id, authorization: context.authorization.status)
+        try tx.recordRuleAuthorizationObservation(evaluationID: evaluation.id, authorization: context.authorization.status)
         _ = try tx.recordApplication(stored, expectedSequence: tx.snapshot().snapshotSequence)
     }
 
