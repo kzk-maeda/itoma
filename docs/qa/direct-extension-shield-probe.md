@@ -27,7 +27,7 @@ host/Extension共通の1回nonblocking flockで最新記録の照合から短い
 
 通常の認可取消を本体が観測したら、専用Picker/検証を取消する。背景中の認可取消/再許可をExtensionが確実に検出することは未確認で、OSの許可・失効動作と、実Shieldを別caseで検証する。readback一致を認可済みや端末全体の遮断成功へ読み替えない。
 
-固定loggerのactivity=directProbe、directProbeSchedule/Apply/Clearを追加。本体復帰後の期限clearはprobeHostExpiry。生archiveはattached device採取のpredicateが無視されるためローカルのみで扱い、allowlist exporterを通した必要行だけを後日承認された共有へ使う。Issue作成・claim・PR/pushは以前の自動承認レビュー拒否に対する本人承認待ちで、今回はローカル作業のみ。
+固定loggerのactivity=directProbe、directProbeSchedule/Apply/Clearを追加。本体復帰後の期限clearはprobeHostExpiry。生archiveはattached device採取のpredicateが無視されるためローカルのみで扱い、allowlist exporterを通して確認した必要な事実のみを共有する。ローカル作業時は外部共有の承認待ちだったが、2026-11-19に本人がコードと個人情報を除いた検証結果のGitHub共有を承認した。追跡・引継ぎは[#227](https://github.com/kzk-maeda/itoma/issues/227)。
 
 ## 本人による実機確認
 
@@ -75,4 +75,4 @@ SRE05/iPad第9世代/iPadOS27.2、source `f017adee83f432e4e7ac3e26117bbe73cdd09f
 
 残る実機ゲートは、稼働中の専用手動解除/全体停止、認可取消中/再許可、kill、再起動/初回unlock、時計/TZ変更、古いcallbackとhost/Extension競合、File Protection、UIのLight/Dark/文字拡大/VoiceOver/画像。単体fixtureの合格をこれらの合格にしない。通常フロー/一時解除/時間集計の親Issueは未完了。製品の認可ゲートはこのbranchでは未修正。
 
-raw OS archiveは他の端末ログも含み、ローカル以外へ送信していない。今回の抽出済み事実・コード・資料のGitHub掲載も、前段の自動承認レビュー拒否に対する本人の明示承認待ち。実装agentが参照できるIssue/PRはまだ作成していない。
+raw OS archiveは他の端末ログも含み、ローカル以外へ送信していない。2026-11-19に本人がコードと個人情報を除いた検証結果のGitHub共有・Issue/PR作成を明示承認した。実装agentは[#227](https://github.com/kzk-maeda/itoma/issues/227)と関連PRを入口にする。通常経路の設計・修正は#222に残す。
