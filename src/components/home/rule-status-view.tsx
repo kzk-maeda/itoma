@@ -82,7 +82,7 @@ export function DaySchedule({ snapshot: s, now }: { snapshot: ScreenTimeSnapshot
       <Text style={[styles.caption, { color: theme.muted }]}>{s.activation !== 'enabled' ? '停止中' : row.status === 'past' ? '時間終了' : row.status === 'current' ? '時間内' : '開始前'}</Text>
     </View>)}
     {!rows.length && <Body muted>今日の予定はありません。</Body>}
-    <LinkRow label="スケジュールを確認する" detail="曜日・対象アプリ・優先順の確認" onPress={() => navigation.open({ screen: 'settings-schedules' })} />
+    <LinkRow label="スケジュールを確認する" detail="曜日・対象アプリ・時間の確認" onPress={() => navigation.open({ screen: 'settings-schedules' })} />
   </View>;
 }
 const styles = StyleSheet.create({

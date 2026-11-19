@@ -20,7 +20,7 @@ export function MultiRuleDemoProvider({ children }: { children: ReactNode }) {
     // asynchronous in-page confirmation so the shared discard guard can acknowledge it.
     Alert.alert = (title, message, buttons) => {
       const actions: AlertButton[] = buttons ?? [{ text: 'OK' }];
-      setDialog({ title, message, actions });
+      setDialog({ title: title ?? '確認', message: message ?? undefined, actions });
     };
     return () => { Alert.alert = original; };
   }, [enabled]);
