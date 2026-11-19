@@ -1,0 +1,44 @@
+diff --git a/src/app/_layout.tsx b/src/app/_layout.tsx
+index 8828920..b43fda0 100644
+--- a/src/app/_layout.tsx
++++ b/src/app/_layout.tsx
+@@ -14,0 +15,2 @@ import { edgeBackOptions } from '@/lib/stack-options';
++import { qaClient, qaSetup, QAObserver } from '../../tests/fixtures/scoped-home-web-qa';
++
+@@ -24 +26 @@ export default function RootLayout() {
+-        <ScreenTimeProvider><OnboardingProvider><HistoryProvider><ReflectionProvider><AppNavigationProvider><Stack UNSTABLE_router={rootNavigationRouter} screenOptions={edgeBackOptions}>
++        <ScreenTimeProvider client={qaClient}><QAObserver /><OnboardingProvider client={qaSetup}><HistoryProvider><ReflectionProvider><AppNavigationProvider><Stack UNSTABLE_router={rootNavigationRouter} screenOptions={edgeBackOptions}>
+diff --git a/src/components/flow/applications.tsx b/src/components/flow/applications.tsx
+index ab12df1..3a4f7e4 100644
+--- a/src/components/flow/applications.tsx
++++ b/src/components/flow/applications.tsx
+@@ -1,3 +1,4 @@
+-import { requireNativeViewManager } from 'expo-modules-core';
+-import { type ComponentType, memo, useState } from 'react';
+-import { type ViewProps, Pressable, Text } from 'react-native';
++// TEMPORARY synthetic Apple-label adapter for local Web QA. Removed before commit.
++import { memo } from 'react';
++import { Pressable, Text } from 'react-native';
++import { names } from '../../../tests/fixtures/scoped-rules';
+@@ -5,18 +6,3 @@ import { useFlowTheme } from './ui';
+-
+-type Props = ViewProps & { selectionRef: string; targetRef: string; source: 'product'; refreshKey: number;
+-  selectable: boolean; selected: boolean; onSelect?: () => void; onContentSize: (event: { nativeEvent: { height: number } }) => void };
+-let native: ComponentType<Props> | undefined;
+-/** Apple provides both the visible app identity and its accessible button name. Events are bools. */
+-export const Applications = memo(function Applications({ selectionRef, targetRef = '', count = 1, refreshKey, selected = false, onSelect }: {
+-  selectionRef: string; targetRef?: string; count?: number; refreshKey: number; selected?: boolean; onSelect?: () => void;
+-}) {
+-  const theme = useFlowTheme();
+-  const [height, setHeight] = useState(Math.max(48, count * 56));
+-  try { native ??= requireNativeViewManager<Props>('ItomaNative'); } catch { /* Web/old binaries render a safe count only. */ }
+-  if (!native) return onSelect ? <Pressable accessibilityRole="radio" accessibilityState={{ selected }} onPress={onSelect} style={{ minHeight: 48, justifyContent: 'center' }}>
+-    <Text style={{ color: theme.text, fontSize: 17 }}>{selected ? '✓ ' : ''}選択したアプリ（{count}件）</Text>
+-  </Pressable> : <Text style={{ color: theme.text, fontSize: 17 }}>選択したアプリ（{count}件）</Text>;
+-  const Native = native;
+-  return <Native source="product" selectionRef={selectionRef} targetRef={targetRef} refreshKey={refreshKey}
+-    selectable={!!onSelect && !!targetRef} selected={selected} onSelect={onSelect} style={{ width: '100%', height }}
+-    onContentSize={({ nativeEvent }) => { if (Number.isFinite(nativeEvent.height) && nativeEvent.height > 0 && nativeEvent.height <= 30000) setHeight(Math.ceil(nativeEvent.height)); }} />;
++export const Applications = memo(function Applications({ targetRef = '', count = 1, selected = false, onSelect }: { selectionRef: string; targetRef?: string; count?: number; refreshKey: number; selected?: boolean; onSelect?: () => void }) {
++  const theme = useFlowTheme(), label = names[targetRef] ?? `選択したアプリ（${count}件）`;
++  return onSelect ? <Pressable accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ selected }} onPress={onSelect} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={{ color: theme.text, fontSize: 17 }}>{selected ? '✓ ' : ''}{label}</Text></Pressable> : <Text style={{ color: theme.text, fontSize: 17 }}>{label}</Text>;
