@@ -19,7 +19,11 @@ function useFinishUnlock(screen: 'index' | 'grant') {
   const state = useScreenTime(), navigation = useAppNavigation();
   const [pending, setPending] = useState(false), [ready, setReady] = useState(false);
   useEffect(() => {
-    if (pending && state.unlockExitAllowed && !state.busy) setReady(true);
+    if (!pending || !state.unlockExitAllowed || state.busy) return;
+    let active = true;
+    // Let this commit's guard registrations settle before scheduling the ready commit.
+    queueMicrotask(() => { if (active) setReady(true); });
+    return () => { active = false; };
   }, [pending, state.unlockExitAllowed, state.busy]);
   useEffect(() => {
     if (ready && state.unlockExitAllowed && !state.busy) navigation.finish({ screen });

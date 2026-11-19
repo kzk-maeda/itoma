@@ -37,7 +37,7 @@ async function candidates(page, names) {
       if (attempt === 49) throw Error('Static server did not start');
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true, channel: 'chrome' });
     results.browser = await browser.version();
     for (const [name, width, colorScheme, scale] of [
       ['light', 390, 'light', 1], ['narrow', 320, 'light', 1], ['dark', 390, 'dark', 1], ['large-text', 320, 'light', 2],

@@ -44,3 +44,5 @@ fixture/provider/toolbar は src/demo/multi-rule に分離。ITOMA_DEMO_BUILD=1 
 ## フロー完了と未保存ガード
 
 静的デモで、入力を破棄しても作業画面に留まる経路をブラウザ検証で検出した。戻り先の指定変更では解消しなかったため、既存のtyped帰還処理へ戻し、終了許可・clean draft・Rootの未保存ガード登録がReactのcommitへ反映された後に完了遷移する。破棄/解除受付の両方を配信前のブラウザ操作で検証する。保護を迂回せず、nativeの実gesture/帰還は引き続き未検証。
+
+ブラウザ検証はUbuntu24.04の既存Google Chromeを使い、Playwright本体だけを一時ディレクトリへ固定版で導入する。実際のChrome版はresults.jsonへ記録する。製品dependenciesは追加しない。
