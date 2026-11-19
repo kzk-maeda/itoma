@@ -65,3 +65,7 @@ commit後のbaselineは現在policyとactive/ended未reconciled grant・再制�
 全削除・取込の開始と終了で両providerのepochを失効し、private reasonも隠す。History自身のmutationは自分の新応答を保持し、外部の削除はticketを破棄して読み直す。native intentは画面の寿命を越えて続き、画面の破棄をOS操作の取消にしない。
 
 検証層・画像・再現方法は [QA記録](../qa/reflection-records.md)、対象head/CI/build/config/JS digestは対応PRへ記録する。
+
+## #98: ルール・解除ログによる集計への変更
+
+2026-11-19 JST、本人指定で当時のルール設定と解除ログから再計算する方式へ変更する。[ADR0012](../adr/0012-rule-log-time-aggregation.md) に式・旧metricとの区別・過去ログ/欠測/削除・UI契約を記載。新指標をOS遮断の実測とは扱わず、通常制御の認可/P1/P2を緩めない。実装レビューと新buildでの実機確認は別に行う。

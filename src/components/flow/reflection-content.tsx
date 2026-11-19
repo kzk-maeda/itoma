@@ -91,6 +91,8 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
     ? '制限を続けた時間は、まだ確定できません。' : coverageText(bucket);
   const max = Math.max(1, ...(snapshot?.buckets.map(b => b.knownSeconds ?? 0) ?? []));
   const refreshLabel = visibleError && !visibleError.empty ? '集計を再読み込み' : '集計を更新';
+  const calculated = snapshot?.proofScope === 'ruleScheduleLogs';
+  const hasTimeBasis = calculated || snapshot?.proofScope === 'nativeRecordedIntervals';
   const content = <>
     {prototype && <Notice title="検証用プレビュー">合成データまたは点の観測を使う実装検証です。実機の制限時間との接続はまだ行っていません。</Notice>}
     {!embedded && <Heading>これまでの自分の時間</Heading>}
@@ -104,7 +106,7 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
       </Pressable>
     </View>
     <View style={[styles.totalCard, { backgroundColor: theme.background }]}>
-      <Text style={[styles.caption, { color: theme.muted }]}>{snapshot?.proofScope === 'nativeRecordedIntervals' ? '制限の適用を記録した時間' : 'これまでに制限を続けた時間'}</Text>
+      <Text style={[styles.caption, { color: theme.muted }]}>{calculated ? 'ルールから計算した時間' : snapshot?.proofScope === 'nativeRecordedIntervals' ? '制限の適用を記録した時間' : 'これまでに制限を続けた時間'}</Text>
       <Text testID="reflection-total" style={[styles.total, { color: theme.text }]}>{reflectionDuration(snapshot?.total.knownSeconds)}</Text>
       <Text style={[styles.caption, { color: theme.muted }]}>記録全体の累計 · 一時解除を除く</Text>
       {snapshot && <>
@@ -112,7 +114,7 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
         {snapshot.total.knownSeconds !== undefined && snapshot.total.knownSeconds > 0 && <Body>自分の時間を、少しずつ積み重ねています。</Body>}
         <Trend buckets={snapshot.trend} />
       </>}
-      {!prototype && snapshot?.proofScope !== 'nativeRecordedIntervals' && <Text style={[styles.caption, { color: theme.text }]}>時間の記録を確認できていません</Text>}
+      {!prototype && !hasTimeBasis && <Text style={[styles.caption, { color: theme.text }]}>時間の記録を確認できていません</Text>}
     </View>
     {!prototype && <>
       {snapshot?.incomplete && <Body muted>記録の一部が欠けている可能性があります。</Body>}
@@ -157,13 +159,13 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
       </Pressable>)}</View>
     </PeriodTransition>}
     {!prototype && <View style={styles.metadata}>
-      {snapshot?.proofScope === 'nativeRecordedIntervals' && <Text style={[styles.caption, { color: theme.muted }]}>記録の確認時刻：{new Intl.DateTimeFormat('ja-JP', {
+      {hasTimeBasis && <Text style={[styles.caption, { color: theme.muted }]}>{calculated ? '集計時刻：' : '記録の確認時刻：'}{new Intl.DateTimeFormat('ja-JP', {
         timeZone: snapshot.timeZone, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
       }).format(snapshot.total.until * 1000)}</Text>}
-      <Text style={[styles.caption, { color: theme.muted }]}>{snapshot?.proofScope === 'nativeRecordedIntervals'
+      <Text style={[styles.caption, { color: theme.muted }]}>{calculated ? '設定したルールの時間から、一時解除と停止の時間を除いて集計しています。' : snapshot?.proofScope === 'nativeRecordedIntervals'
         ? '端末で制限の適用を確認してから、解除や停止までの記録です。OS内部の遮断状態を常時観測した値ではありません。'
         : '制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。'}</Text>
-      <Text style={[styles.caption, { color: theme.muted }]}>一時解除中と、制限を確認できない時間は加算しません。</Text>
+      <Text style={[styles.caption, { color: theme.muted }]}>{calculated ? '記録がない期間は集計に含みません。' : '一時解除中と、制限を確認できない時間は加算しません。'}</Text>
     </View>}
     {controls}
   </>;

@@ -77,3 +77,14 @@ test('not-created, deleted and capacity failure stay distinct through the real c
   native.mockResolvedValueOnce('{broken');
   expect((await client.run('read')).status).toBe('error');
 });
+
+test('rule-log calculation has its own scope and metric and cannot masquerade as a native measurement', () => {
+  const value = observed();
+  value.proofScope = 'ruleScheduleLogs'; value.metricVersion = 'rule-schedule-excluding-unlocks-v1';
+  value.total = { ...value.total, from: value.asOf - 14400, until: value.asOf, knownSeconds: 14100, coverage: 'recorded' };
+  expect(parseReflectionResponse(ok(value)).snapshot?.total.knownSeconds).toBe(14100);
+  for (const patch of [
+    { proofScope: 'nativeRecordedIntervals' }, { proofScope: 'pointObservations' },
+    { metricVersion: 'native-restricted-excluding-unlocks-v2' },
+  ]) expect(() => parseReflectionResponse(ok({ ...value, ...patch }))).toThrow();
+});

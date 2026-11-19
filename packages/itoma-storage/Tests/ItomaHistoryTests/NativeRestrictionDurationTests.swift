@@ -4,7 +4,7 @@ import ItomaCore
 @testable import ItomaStorage
 @testable import ItomaHistory
 
-@Test func nativeDurationSurvivesTransferReopenRetryAndIndependentHistoryDeletion() throws {
+@Test func ruleLogDurationSurvivesTransferReopenRetryAndIndependentHistoryDeletion() throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: root) }
@@ -50,12 +50,13 @@ import ItomaCore
     defer { try? reopened.close() }
     try control.transferReflection(to: reopened)
     let week = try reopened.readReflection(period: .week, day: "2026-11-15", timeZone: "UTC", now: at(7_201))
-    #expect(week.proofScope == "nativeRecordedIntervals")
-    #expect(week.metricVersion == "native-restricted-excluding-unlocks-v2")
-    #expect(week.total.knownSeconds == 6_900)
+    #expect(week.proofScope == "ruleScheduleLogs")
+    #expect(week.metricVersion == "rule-schedule-excluding-unlocks-v1")
+    // Own-store writes are not rule edits or unlock logs; configured time continues to as-of.
+    #expect(week.total.knownSeconds == 7_201)
     let tokenData = try #require(Data(base64Encoded: String(week.token.dropFirst("reflection-v1:".count))))
     var oldToken = try #require(try JSONSerialization.jsonObject(with: tokenData) as? [String: Any])
-    #expect(oldToken["metricVersion"] as? String == "native-restricted-excluding-unlocks-v2")
+    #expect(oldToken["metricVersion"] as? String == "rule-schedule-excluding-unlocks-v1")
     oldToken.removeValue(forKey: "metricVersion")
     let unscoped = "reflection-v1:" + (try JSONSerialization.data(withJSONObject: oldToken)).base64EncodedString()
     #expect(throws: HistoryError.conflict) {
@@ -67,7 +68,7 @@ import ItomaCore
     #expect(!json.contains("native-fixture-token") && !json.contains("durationObservation"))
     try reopened.deleteReasons()
     try reopened.deleteHistory(from: control)
-    #expect(try reopened.readReflection(period: .week, day: "2026-11-15", timeZone: "UTC", now: at(7_201)).total.knownSeconds == 6_900)
+    #expect(try reopened.readReflection(period: .week, day: "2026-11-15", timeZone: "UTC", now: at(7_201)).total.knownSeconds == 7_201)
     try reopened.deleteAllRecords(from: control)
     try reopened.commitReflectionBatch(batch)
     let deleted = try reopened.readReflection(period: .week, day: "2026-11-15", timeZone: "UTC", now: at(7_201))

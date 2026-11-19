@@ -1,8 +1,8 @@
 import Foundation
 
-/// Experimental arithmetic only. No OS adapter qualifies a continuous restriction interval yet.
+/// Shared interval/calendar arithmetic. Rule-log calculation and native observations retain distinct scopes.
 public enum ReflectionPrototypeError: Error, Equatable, Sendable { case invalidInterval, invalidInput, changed }
-public enum ReflectionPrototypeScope: String, Codable, Sendable { case syntheticFixture, pointObservations, nativeRecordedIntervals }
+public enum ReflectionPrototypeScope: String, Codable, Sendable { case syntheticFixture, pointObservations, nativeRecordedIntervals, ruleScheduleLogs }
 public enum ReflectionPrototypeCoverage: String, Codable, Sendable { case recorded, partial, notRecorded, deleted }
 public enum ReflectionPrototypePeriod: String, Codable, Sendable { case week, month }
 
@@ -170,10 +170,10 @@ public enum ReflectionPrototypeCalculator {
     static func clipAtAsOf(_ range: ReflectionPrototypeInterval, _ asOf: Instant) -> ReflectionPrototypeInterval? {
         try? .init(from: range.from, until: min(range.until, asOf))
     }
-    static func intersection(_ a: ReflectionPrototypeInterval, _ b: ReflectionPrototypeInterval) -> ReflectionPrototypeInterval? {
+    public static func intersection(_ a: ReflectionPrototypeInterval, _ b: ReflectionPrototypeInterval) -> ReflectionPrototypeInterval? {
         try? .init(from: max(a.from, b.from), until: min(a.until, b.until))
     }
-    static func union(_ ranges: [ReflectionPrototypeInterval]) -> [ReflectionPrototypeInterval] {
+    public static func union(_ ranges: [ReflectionPrototypeInterval]) -> [ReflectionPrototypeInterval] {
         var result: [ReflectionPrototypeInterval] = []
         for value in ranges.sorted(by: { $0.from < $1.from }) {
             if let last = result.last, value.from <= last.until {

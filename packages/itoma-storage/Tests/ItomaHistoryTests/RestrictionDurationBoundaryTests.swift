@@ -91,10 +91,10 @@ func firstConfirmedReadAfterTenMinuteRuleEndRetainsTheCompletedInterval(_ readAt
     #expect(view.total.knownSeconds == 600)
     #expect(view.selected.knownSeconds == 600)
     #expect(view.buckets.compactMap(\.knownSeconds).reduce(0, +) == 600)
-    if readAt > 600 { #expect(view.total.coverage == .partial) } // Delayed reconciliation is not counted.
+    #expect(view.total.coverage == .recorded) // Known inactive time after the rule end is recorded too.
 }
 
-@Test func aFailedStoreCheckpointAfterRuleEndDoesNotTurnTheUnknownSpanIntoSuccess() throws {
+@Test func failedOSCheckpointDoesNotEraseKnownScheduledRuleTime() throws {
     let f = try TenMinuteDurationFixture(); defer { f.remove() }
     try f.apply(0, status: .applied, restricted: true)
     try f.checkpoint(20, confirmed: true)
@@ -102,11 +102,11 @@ func firstConfirmedReadAfterTenMinuteRuleEndRetainsTheCompletedInterval(_ readAt
     try f.apply(605, status: .applying, restricted: false)
     try f.apply(605, status: .applied, restricted: false)
     let view = try f.view(606)
-    #expect(view.total.knownSeconds == 20)
-    #expect(view.total.coverage == .partial)
+    #expect(view.total.knownSeconds == 600)
+    #expect(view.total.coverage == .recorded)
 }
 
-@Test func aFailedEarlierCheckpointIsNotBridgedByALaterCompletedRuleBoundary() throws {
+@Test func earlierOSCheckpointFailureDoesNotEraseScheduledRuleTime() throws {
     let f = try TenMinuteDurationFixture(); defer { f.remove() }
     try f.apply(0, status: .applied, restricted: true)
     try f.checkpoint(20, confirmed: true)
@@ -114,10 +114,10 @@ func firstConfirmedReadAfterTenMinuteRuleEndRetainsTheCompletedInterval(_ readAt
     try f.checkpoint(605, confirmed: true)
     try f.apply(605, status: .applying, restricted: false)
     try f.apply(605, status: .applied, restricted: false)
-    #expect(try f.view(606).total.knownSeconds == 20)
+    #expect(try f.view(606).total.knownSeconds == 600)
 }
 
-@Test func aClockDiscontinuityAtCompletedRuleBoundaryStillLeavesAGap() throws {
+@Test func aMonotonicCheckpointDiscontinuityDoesNotChangeLoggedRuleTime() throws {
     let f = try TenMinuteDurationFixture(); defer { f.remove() }
     try f.apply(0, status: .applied, restricted: true)
     try f.checkpoint(20, confirmed: true)
@@ -126,18 +126,18 @@ func firstConfirmedReadAfterTenMinuteRuleEndRetainsTheCompletedInterval(_ readAt
     try f.control.recordReflectionBaseline(durationConfirmed: true)
     try f.apply(605, status: .applying, restricted: false)
     try f.apply(605, status: .applied, restricted: false)
-    #expect(try f.view(606).total.knownSeconds == 20)
+    #expect(try f.view(606).total.knownSeconds == 600)
 }
 
-@Test func beginningObservationAfterTheRuleEndedNeverBackfillsItsScheduledTenMinutes() throws {
+@Test func aRuleLoggedBeforeItsStartCountsEvenIfTheFirstOSReadbackArrivesAfterItsEnd() throws {
     let f = try TenMinuteDurationFixture(); defer { f.remove() }
     // The first applied empty store is observed only after the window has ended.
     try f.apply(605, status: .applied, restricted: false)
     try f.checkpoint(610, confirmed: true)
-    #expect(try f.view(611).total.knownSeconds == 0)
+    #expect(try f.view(611).total.knownSeconds == 600)
 }
 
-@Test func anAuthorizationUnknownCallbackAfterRuleEndRetainsOnlyPreviouslyConfirmedTime() throws {
+@Test func authorizationUnknownDoesNotEraseTheLoggedTenMinuteRule() throws {
     let f = try TenMinuteDurationFixture(); defer { f.remove() }
     try f.apply(0, status: .applied, restricted: true)
     try f.checkpoint(54, confirmed: true)
@@ -146,12 +146,12 @@ func firstConfirmedReadAfterTenMinuteRuleEndRetainsTheCompletedInterval(_ readAt
     try f.apply(780, status: .applying, restricted: false)
     try f.apply(780, status: .applied, restricted: false)
     let view = try f.view(781)
-    #expect(view.total.knownSeconds == 54)
-    #expect(view.total.coverage == .partial)
+    #expect(view.total.knownSeconds == 600)
+    #expect(view.total.coverage == .recorded)
 }
 
 @Test(arguments: [605, 615])
-func changingPolicyWithTheSameTargetCannotUseTheOldApplicationToCompleteItsNewBoundary(_ endMinute: Int) throws {
+func historicalPolicyChangeUsesEachScheduleOnlyAfterItsOwnCommit(_ endMinute: Int) throws {
     let f = try TenMinuteDurationFixture(); defer { f.remove() }
     try f.apply(0, status: .applied, restricted: true)
     try f.checkpoint(20, confirmed: true)
@@ -168,7 +168,7 @@ func changingPolicyWithTheSameTargetCannotUseTheOldApplicationToCompleteItsNewBo
     #expect(fact.durationObservation?.state == .unknown)
     #expect(fact.durationObservation?.boundary == .checkpoint)
     let view = try f.view(readAt + 1)
-    #expect(view.total.knownSeconds == 100)
-    #expect(view.selected.knownSeconds == 100)
-    #expect(view.total.coverage == .partial)
+    #expect(view.total.knownSeconds == Double((endMinute - 600) * 60))
+    #expect(view.selected.knownSeconds == Double((endMinute - 600) * 60))
+    #expect(view.total.coverage == .recorded)
 }
