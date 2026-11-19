@@ -45,3 +45,34 @@ host/Extension共通の1回nonblocking flockで最新記録の照合から短い
 利用者のタスクは「対象・期限を確認して、背景中の遮断を試し、いつでも解除する」。手順順に停止→準備→登録/状態を配置し、成功の断定を避けてreadback/実Shieldを区別する。既存Graphite/FlowScreen/Button/Apple labelを再利用。DESIGN原則1/3/4/5、U06/U07、UI06〜08/UI14〜16/UI21〜26/UI29を適用。新しい色/モーションは追加しない。
 
 型/lint/Jest/demo/doctor、CNG opt-in/on→off、native compile/link/署名/両flagを検査する。Swift fixtureで固定期限、prepared/registering非適用、停止後・旧generation拒否、実flock競合、ファイル上限を確認。client/component検査で誤応答・取消・登録確認・解除導線を確認。fake token/OSを使う単体検査は実機のShield証明ではない。Light/Dark/最大文字サイズ/VoiceOver/gestureと画面画像は、matching buildで別途記録する。未確認のUI/OS結果を合格にしない。
+
+## 2026-11-19の開始・終了1case
+
+SRE05/iPad第9世代/iPadOS27.2、source `f017adee83f432e4e7ac3e26117bbe73cdd09f9f`、local native build ID `59f554b3-55a9-4e2d-bcad-09e8801a0899`、JS SHA256 `8af3e93554037af44b66c85214fd878bdec36dc4d8088eb489ab577b7f22e7f9`。Xcode27.2(27B52)/iphoneos27.2、Release arm64、既存署名/実Group、製品Screen Time/Auth probe/Direct probe/JS入口=1、旧PoC/native smoke/demo=0。history warning80MiB/max100MiB、pending10000。全ての抽出診断行についてhost/ExtensionのprocessImageUUIDと対応するinstall成果物のMach-O UUIDが一致した。
+
+本人は選択したアプリを前面で表示したまま、本体は背景へ移していた。アプリを開き直さずにShieldが表示され、その後13:56頃に本体を開かず自動で利用可能へ戻ったと報告。これは本人による実アプリの観測であり、agentのUI直接操作・連続録画ではない。agentは本人が採取したraw archiveから固定診断28行だけを抽出し、以下を確認した。時刻はJST。
+
+| 時刻 | ログから直接確認した事実 |
+| --- | --- |
+| 13:31:56.123 | hostの専用clear accepted/count0。実験前の空store整理であり、稼働中の手動解除合格ではない |
+| 13:32:12.080 | hostの専用予定登録 accepted |
+| 13:36:01.762 | ExtensionのdirectProbe開始callback到達 |
+| 13:36:02.018 | main queue probeが254msでtimeout、観測件数0、auth=notRead。**開始時の認可の生値は未取得** |
+| 13:36:02.156 | ExtensionのdirectProbeApply accepted、対象1件。callback全体395ms |
+| 13:56:02.282 | ExtensionのdirectProbe終了callback到達、ended=true |
+| 13:56:02.283〜.538 | main queue初回値/通知ともnotDetermined。255msで観測終了 |
+| 13:56:02.606 | ExtensionのdirectProbeClear accepted、対象0件。callback全体324ms |
+
+判定: **専用storeの背景中開始・終了について、この1caseは本人報告とmatching nativeログの組合せでPASS**。開始時auth=notReadはOS enumではなく診断用の既定値であり、notDeterminedと同一視しない。件数0のtimeoutからmain jobが未開始だったかgetter途中だったかも断定しない。終了時のnotDeterminedは実際に取得した値。generic directProbeClear行のended=falseは既定値でcallback種別を表さず、同じPID/image/time内のcallbackEntry/Exit ended=trueとともに読む。
+
+本体復帰によるprobeHostExpiryの解除記録は今回の範囲にない。記録されたclearはExtensionの終了callbackに含まれる。単なるAPI受理だけでなく本人のShield/利用再開の報告と対応するが、両端の観測だけから連続20分の実制限時間を作り、#98へ加算しない。
+
+## 実装agentへの引継ぎ
+
+通常経路は直前の対照caseで認可ゲートに止まった一方、この専用経路はOS側の開始・解除まで動いた。これにより、ExtensionでpositiveなauthorizationStatusを取得することを通常reconcileの必須条件にしている設計が、背景実行を妨げている有力候補になった。ただし別store・通常ルール停止・単一対象の実験なので、gateを外すだけで通常の全caseが成立するという証明ではない。
+
+次の修正レビューは#222へつなげる。unknownをapprovedへ偽装せず、hostが確認した認可/本人意図と、Extensionが取得できなかった観測を区別する。新規解除や権限拡大の判断を、制限の適用/期限終了の復旧と混ぜない。実際のdenied、本人停止、旧policy revision/古いcallback、失効した解除・receipt、P1/P2の条件を保持する。変更されたモデル/責務と重要な判断はsystem/ADRへ提案し、人間レビュー前にAcceptedへ変えない。
+
+残る実機ゲートは、稼働中の専用手動解除/全体停止、認可取消中/再許可、kill、再起動/初回unlock、時計/TZ変更、古いcallbackとhost/Extension競合、File Protection、UIのLight/Dark/文字拡大/VoiceOver/画像。単体fixtureの合格をこれらの合格にしない。通常フロー/一時解除/時間集計の親Issueは未完了。製品の認可ゲートはこのbranchでは未修正。
+
+raw OS archiveは他の端末ログも含み、ローカル以外へ送信していない。今回の抽出済み事実・コード・資料のGitHub掲載も、前段の自動承認レビュー拒否に対する本人の明示承認待ち。実装agentが参照できるIssue/PRはまだ作成していない。
