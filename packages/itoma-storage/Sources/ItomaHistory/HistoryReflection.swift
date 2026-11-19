@@ -132,7 +132,8 @@ extension HistoryRepository: ReflectionFactSink {
                 ? try ReflectionPrototypeInterval(from: Instant(secondsSince1970: start), until: token.asOf) : nil }
             let coverage: ReflectionPrototypeCoverage = count > 0 ? .partial : state.deleted ? .deleted : .notRecorded
             let legacy = try ReflectionPrototypeDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf,
-                timeZone: timeZone, scope: .ruleScheduleLogs, coverage: coverage, recordedRange: range)
+                timeZone: timeZone, scope: .ruleScheduleLogs, coverage: coverage, recordedRange: range,
+                gaps: range.map { [$0] } ?? []) // Reconstruction failure is missing data, never known zero.
             let input = try ruleLogRestrictionDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf, timeZone: timeZone) ?? legacy
             let metric: String? = "rule-schedule-excluding-unlocks-v1"
             if expectedToken != nil {

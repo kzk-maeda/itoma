@@ -290,3 +290,50 @@ func ruleLogTimeUsesRealDSTBoundaries(example: (String, Double)) throws {
     let recovered = try history.readReflection(period: .week, day: "2026-11-16", timeZone: "UTC", now: old.at(7200))
     #expect(recovered.total.knownSeconds == 3600)
 }
+
+@Test func aLogExactlyAtAsOfHasNoElapsedTimeAndCannotBecomeKnownZeroThroughFallback() throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let f = try Logs()
+    let history = try HistoryRepository.create(at: directory.appendingPathComponent("history.sqlite"),
+        capacity: HistoryCapacityPolicy(warningBytes: 500000, maximumBytes: 1000000)); defer { try? history.close() }
+    try history.commitReflectionBatch(ReflectionFactBatch(
+        boundary: ReflectionBoundary(sourceID: f.source, highWatermark: 1, acknowledgedThrough: 0, incomplete: false),
+        facts: [f.fact(1, 0)]))
+    let instant = try history.readReflection(period: .week, day: "2026-11-16", timeZone: "UTC", now: f.at(0))
+    #expect(instant.observationCount == 1 && instant.total.knownSeconds == nil)
+    #expect(instant.buckets.allSatisfy { $0.knownSeconds == nil })
+    let later = try history.readReflection(period: .week, day: "2026-11-16", timeZone: "UTC", now: f.at(60))
+    #expect(later.total.knownSeconds == 60) // A valid historical policy can be reconstructed.
+    // Reach the nonempty fallback range: sequence starts at 13:00, then wall time returns to
+    // 12:00. At as-of 13:00 the retained first baseline has no forward reconstructable span.
+    let rewound = try HistoryRepository.create(at: directory.appendingPathComponent("rewound.sqlite"),
+        capacity: HistoryCapacityPolicy(warningBytes: 500000, maximumBytes: 1000000)); defer { try? rewound.close() }
+    try rewound.commitReflectionBatch(ReflectionFactBatch(
+        boundary: ReflectionBoundary(sourceID: f.source, highWatermark: 2, acknowledgedThrough: 0, incomplete: false),
+        facts: [f.fact(1, 3600), f.fact(2, 0)]))
+    let noRange = try rewound.readReflection(period: .week, day: "2026-11-16", timeZone: "UTC", now: f.at(3600))
+    #expect(noRange.total.knownSeconds == nil) // The former empty-interval fallback returned 0.
+}
+
+@Test(arguments: ["policy", "activation", "grants"])
+func aLegacyPayloadMissingRequiredReconstructionInputsCannotReturnKnownZero(_ missing: String) throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let f = try Logs(), fact = try f.fact(1, 0)
+    let history = try HistoryRepository.create(at: directory.appendingPathComponent("history.sqlite"),
+        capacity: HistoryCapacityPolicy(warningBytes: 500000, maximumBytes: 1000000)); defer { try? history.close() }
+    try history.commitReflectionBatch(ReflectionFactBatch(
+        boundary: ReflectionBoundary(sourceID: f.source, highWatermark: 1, acknowledgedThrough: 0, incomplete: false), facts: [fact]))
+    var raw = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(fact)) as? [String: Any])
+    raw.removeValue(forKey: missing)
+    let broken = try JSONSerialization.data(withJSONObject: raw)
+    try history.transaction(writer: true) {
+        try history.database.execute("UPDATE reflection_facts SET record=?,payload_bytes=?", [.blob(broken), .integer(Int64(broken.count))])
+    }
+    #expect(throws: HistoryError.corrupt) {
+        try history.readReflection(period: .week, day: "2026-11-16", timeZone: "UTC", now: f.at(14400))
+    }
+}
