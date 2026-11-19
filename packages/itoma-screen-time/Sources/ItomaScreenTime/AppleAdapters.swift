@@ -41,20 +41,23 @@ public struct ProductSelectionPayload: Codable {
 
 @ItomaControlActor public final class AppleEvaluationContexts: EvaluationContextProvider {
     public private(set) var lastActivation: Activation = .paused
-    public init() {}
+    private let origin: ControlOrigin
+    private let callbackAuthorization: AuthorizationObservation?
+    public init(origin: ControlOrigin = .host, callbackAuthorization: AuthorizationObservation? = nil) {
+        self.origin = origin; self.callbackAuthorization = callbackAuthorization
+    }
     public func context(activation: Activation) -> EvaluationContext {
         lastActivation = activation
-        let status: ItomaCore.AuthorizationStatus
-        switch AuthorizationCenter.shared.authorizationStatus {
-        case .approved: status = .approved
-        case .denied: status = .denied
-        case .notDetermined: status = .unknown
-        @unknown default: status = .unknown
+        let authorization: AuthorizationObservation
+        if origin == .host { authorization = AppleAuthorizationObservations.shared.current() }
+        else {
+            authorization = callbackAuthorization ?? AuthorizationObservation(status: .unknown,
+                observedAt: try! NativeScheduleClock.instant(Date()))
         }
         // Date and TimeZone.current are finite/valid Foundation values.
         let now = try! NativeScheduleClock.instant(Date())
         return EvaluationContext(now: now, timeZone: try! TimeZoneID(TimeZone.current.identifier),
-            authorization: AuthorizationObservation(status: status, observedAt: now), activation: activation)
+            authorization: authorization, activation: activation)
     }
 }
 

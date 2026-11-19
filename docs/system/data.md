@@ -116,3 +116,7 @@ Preparing、外部受理/発火事実、最終適用のcommit境界を分け、�
 ## ルール名・行動目標（#147）
 
 本人の文章をhost-onlyの独立`RuleDetailsRepository` / `rule-details.sqlite`へ保存する。共有Ruleや既存control/history schemaは変更せず、名前/目標だけの保存でOS予定やgrant期限を変えない。native `saveRuleDetails`とsnapshotの`ruleDetailsStatus`/`ruleDetailsRevision`を使用し、旧nativeでは編集を有効化しない。詳細は [保存契約](rule-details.md) を参照。新しいnative buildでのiOSリンク/Complete保護/端末UIは別に確認する。
+
+## #222: 通常ルールの背景実行の変更提案
+
+[ADR0011](../adr/0011-host-confirmed-rule-execution.md)はProposed（実装を含むレビュー対象、実機未検証）。生の認可観測と、hostで確認した現在policyの実行資格を分ける。Extensionのunknownをapprovedへ変えず、新しい解除・resumeには従来の認可確認を要求する。任意journalはhostだけが導入し、停止/変更/deniedで失効させる。unknown区間の時間集計除外は維持する。採用済み設計・PR228の専用PoC実機結果とは区別する。

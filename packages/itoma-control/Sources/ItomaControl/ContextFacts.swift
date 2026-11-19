@@ -24,6 +24,17 @@ extension CommandService {
         }
     }
 
+    /// Extension-only continuation of committed intent. Never changes the raw observation and
+    /// never grants authority to accept/retry a new exemption or resume operation.
+    func ruleExecutionAuthorization(_ context: EvaluationContext, transaction tx: ControlTransaction) throws -> RuleExecutionAuthorization {
+        if origin == .activityExtension, context.activation == .enabled,
+           context.authorization.status == .unknown,
+           try tx.hasCurrentRuleExecutionConfirmation(at: context.now) {
+            return .hostConfirmedPolicy
+        }
+        return .liveObservation
+    }
+
     func refreshCurrentFacts() throws -> EvaluationContext {
         try repository.requireOutsideTransaction()
         return try observedTransaction { tx, capture in
@@ -39,14 +50,22 @@ extension CommandService {
     /// Current-policy facts only. Never evaluate the unactivated candidate here. Reuse the same
     /// captured OS context for confirmation so a second observation cannot disappear on rollback.
     func recordCurrentFacts(
-        context: EvaluationContext, including: Set<GrantID>? = nil, updateObservation: Bool = true, transaction tx: ControlTransaction
+        context: EvaluationContext, including: Set<GrantID>? = nil, updateObservation: Bool = true,
+        allowRuleConfirmation: Bool = true, transaction tx: ControlTransaction
     ) throws -> EvaluationContext {
         let before = try tx.unfinishedGrants().filter { including?.contains($0.grant.id) ?? true }.map(\.grant)
         try recordDenied(context: context, transaction: tx)
         let snapshot = try tx.snapshot(), captured = rebinding(context, activation: snapshot.activation)
+        if allowRuleConfirmation && origin == .host && captured.authorization.status == .approved
+            && captured.activation == .enabled && captured.authorization.observedAt <= captured.now {
+            // Optional authority failure cannot disable a host stop/recovery operation.
+            // Extension reads still validate and fail closed.
+            try tx.confirmRuleExecution(context: captured)
+        }
+        let execution = try ruleExecutionAuthorization(captured, transaction: tx)
         let normalized = try protectedGrants(context: captured, including: including, transaction: tx)
         let pausedEmptyStore = captured.activation == .paused && snapshot.application?.evaluation.desiredTargets.isEmpty == true
-        if updateObservation && (before != normalized || (captured.authorization.status != .approved && !pausedEmptyStore)
+        if updateObservation && (before != normalized || (!execution.permits(captured) && !pausedEmptyStore)
             || (snapshot.application.map { captured.now < $0.evaluation.evaluatedAt } ?? false)
             || (snapshot.application?.evaluation.timeZone != nil && snapshot.application?.evaluation.timeZone != captured.timeZone)) {
             try markObservationUncertain(at: captured.now,
@@ -81,7 +100,7 @@ extension CommandService {
                 do {
                     changed = try repository.write { tx in
                         let sequence = try tx.snapshot().snapshotSequence
-                        _ = try recordCurrentFacts(context: fact.context, including: fact.grants, updateObservation: false, transaction: tx)
+                        _ = try recordCurrentFacts(context: fact.context, including: fact.grants, updateObservation: false, allowRuleConfirmation: false, transaction: tx)
                         return try tx.snapshot().snapshotSequence != sequence
                     }
                 } catch { /* The caller still returns Uncertain, never a successful OS rollback. */ }

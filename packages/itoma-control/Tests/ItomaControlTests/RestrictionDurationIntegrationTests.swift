@@ -44,3 +44,38 @@ import ItomaCore
     let view = try ReflectionPrototypeCalculator.snapshot(input, period: .week, day: "2026-11-15")
     #expect(view.total.knownSeconds == 6_780) // Seven-minute union.
 }
+
+
+@Test @ItomaControlActor func delegatedRuleWriteDoesNotFillUnknownAuthorizationTimeInReflection() async throws {
+    let f = try Fixture(); defer { f.remove() }
+    var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone.current
+    let base = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 15, hour: 12))).timeIntervalSince1970
+    f.contexts.zone = try TimeZoneID(TimeZone.current.identifier)
+    f.contexts.now = try Instant(secondsSince1970: base)
+    f.repository.durationClock = { (try Instant(secondsSince1970: base), 10_000) }
+    try f.repository.installReflectionCapture(capacity: HistoryOutboxCapacity(maximumPendingEvents: 100))
+    try f.repository.installDurationCapture()
+    try f.repository.installRuleExecutionAuthorization()
+    f.restriction.response = .accepted(.ownStoreReadback)
+    #expect(await f.service.reconcile().failure == nil)
+    #expect(try f.repository.reflectionBatch()?.facts.last?.durationObservation?.state == .restricted)
+    f.contexts.authorization = .unknown
+    f.contexts.now = try Instant(secondsSince1970: base + 600)
+    f.repository.durationClock = { (try Instant(secondsSince1970: base + 600), 10_600) }
+    let callback = try CommandService(repository: f.repository, scheduler: f.scheduler, restriction: f.restriction,
+        contexts: f.contexts, historyCapacity: HistoryOutboxCapacity(maximumPendingEvents: 100), origin: .activityExtension)
+    #expect(callback.reconcileSynchronously().failure == nil) // Own store applied, raw OS status still unknown.
+    #expect(try f.repository.readSnapshot().application?.observation.status == .applied)
+    #expect(try f.repository.reflectionBatch()?.facts.last?.durationObservation?.state == .unknown)
+    try f.repository.recordReflectionBaseline() // A derived read cannot qualify it.
+    #expect(try f.repository.reflectionBatch()?.facts.last?.durationObservation?.state == .unknown)
+    try f.repository.recordReflectionBaseline(durationConfirmed: true) // Fresh native host check only.
+    #expect(try f.repository.reflectionBatch()?.facts.last?.durationObservation?.state == .restricted)
+    let batch = try #require(try f.repository.reflectionBatch())
+    var builder = RestrictionTimelineBuilder()
+    for fact in batch.facts { try builder.append(source: fact.sourceID, sequence: fact.sequence, sample: fact.durationObservation,
+        asOf: Instant(secondsSince1970: base + 601)) }
+    #expect(try builder.dataset(sourceID: UUID(), revision: 1,
+        asOf: Instant(secondsSince1970: base + 601), timeZone: "UTC") == nil)
+    // No measured interval was produced; the unknown span was not reconstructed from the rule.
+}

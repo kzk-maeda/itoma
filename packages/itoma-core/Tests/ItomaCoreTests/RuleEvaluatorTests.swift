@@ -256,3 +256,18 @@ func missingAuthorizationDoesNotProduceAnEnforcementPlan(value: AuthorizationSta
                                      selections: [Selection(ref: ref(1), targets: [])])
     #expect(emptySelection.desiredTargets.isEmpty)
 }
+
+@Test(arguments: [AuthorizationStatus.unknown, .denied, .approved])
+func delegatedExecutionKeepsRawAuthorizationAndCannotOverrideDenialOrPausedIntent(_ status: AuthorizationStatus) throws {
+    let now = try instant("2026-11-06T03:00:00Z"), rule = try scheduled()
+    let policy = try PolicySnapshot(revision: PolicyRevision(7), rules: [rule], priorityOrder: [rule.id])
+    for activation in [Activation.enabled, .paused, .awaitingReauthorizationConfirmation] {
+        let context = try EvaluationContext(now: now, timeZone: TimeZoneID("Asia/Tokyo"),
+            authorization: AuthorizationObservation(status: status, observedAt: now), activation: activation)
+        let result = try RuleEvaluator.evaluate(policy: policy,
+            selections: [Selection(ref: rule.selectionRef, targets: [ref(1)])], context: context,
+            through: Instant(secondsSince1970: now.secondsSince1970 + 1800), executionAuthorization: .hostConfirmedPolicy)
+        #expect(result.context.authorization.status == status)
+        #expect(result.desiredTargets.isEmpty == (status == .denied || activation != .enabled))
+    }
+}

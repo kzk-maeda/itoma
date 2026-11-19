@@ -151,3 +151,7 @@ OS前にApplying観測を独立commitし、最終writerで同じevaluationIDを�
 [#90](https://github.com/kzk-maeda/itoma/issues/90)のReconcilerは登録ID/世代と発火事実を保存し、通知の旧planではなく最新有効状態を反映する。解除commandを自動再試行せず、中断したScheduling/Applyingの回収はnative lifecycleの明示入口だけで行う。元の解除成功と有効化済み候補の保護receiptを根拠にし、保護未確認のgrantは解除から除く。再制限失敗はUncertain、不要予定の取消は最新store反映の成功commit後。処理はSwift/SQLite/fake I/Oで検証し、実OSゲートを代替しない。本人の停止・明示再開commandは[#91](https://github.com/kzk-maeda/itoma/issues/91)へ続く。
 
 [#91](https://github.com/kzk-maeda/itoma/issues/91)は停止/明示再開をdurable commandとして受理し、最新の本人操作IDをcontrol schema6へ保存する。停止のpaused/全grant失効はOS前にcommit。再開はfresh Approved＋本人操作を必要とし、旧grantは戻さない。Applying・最終適用・結果はReconcilerへ接続し、古い本人操作/attempt/markerは新しい意図を上書きしない。明示再試行は最新設定を評価し、失敗/中断時も保存済み停止意図を維持する。schema1〜5からの本体の明示移行は既存データ/観測を維持して操作IDだけnilにし、Extensionの暗黙移行を行わない。
+
+## #222: 通常ルールの背景実行の変更提案
+
+[ADR0011](../adr/0011-host-confirmed-rule-execution.md)はProposed（実装を含むレビュー対象、実機未検証）。生の認可観測と、hostで確認した現在policyの実行資格を分ける。Extensionのunknownをapprovedへ変えず、新しい解除・resumeには従来の認可確認を要求する。任意journalはhostだけが導入し、停止/変更/deniedで失効させる。unknown区間の時間集計除外は維持する。採用済み設計・PR228の専用PoC実機結果とは区別する。

@@ -6,6 +6,7 @@ import SwiftUI
 import UIKit
 import Combine
 import ItomaCore
+import ItomaScreenTime
 
 @available(iOS 16.0, *)
 @MainActor final class ProductUI {
@@ -16,6 +17,7 @@ import ItomaCore
     private var lifecycleGeneration = 0
     private var subscriptions: Set<AnyCancellable> = []
     private init() {
+        AppleAuthorizationObservations.shared.refresh()
         // These native notifications invalidate reuse even if JS did not observe the transition.
         for name in [UIApplication.willEnterForegroundNotification, UIApplication.significantTimeChangeNotification,
                      NSNotification.Name.NSSystemTimeZoneDidChange] {
@@ -25,12 +27,18 @@ import ItomaCore
         }
         AuthorizationCenter.shared.$authorizationStatus.receive(on: DispatchQueue.main).sink { [weak self] status in
             MainActor.assumeIsolated {
-                if status == .denied { self?.authorizationEpoch += 1 }
+                AppleAuthorizationObservations.shared.record(status)
+                if status == .denied, let self {
+                    self.authorizationEpoch += 1
+                    let epoch = self.authorizationEpoch
+                    Task { await ProductController.shared.authorizationDenied(epoch: epoch) }
+                }
             }
         }.store(in: &subscriptions)
     }
 
     func perform(_ action: String, payload: String?, presenter: UIViewController?, complete: @escaping (String) -> Void) {
+        AppleAuthorizationObservations.shared.refresh()
         guard #available(iOS 16.0, *) else { unavailable("unsupported-os", complete); return }
         #if targetEnvironment(simulator)
         unavailable("simulator", complete); return
@@ -62,6 +70,7 @@ import ItomaCore
                     }
                     let response: ProductResponse
                     do {
+                        AppleAuthorizationObservations.shared.refresh()
                         let ref = try await ProductController.shared.selectionSaved(data, authorizationEpoch: pickerEpoch)
                         var saved = await ProductController.shared.perform("snapshot", request: ProductRequest(), authorizationEpoch: self.authorizationEpoch, lifecycleGeneration: self.lifecycleGeneration)
                         if self.authorizationEpoch == pickerEpoch { saved.ref = ref; response = saved }
@@ -89,6 +98,7 @@ import ItomaCore
                 do { try await AuthorizationCenter.shared.requestAuthorization(for: .individual) }
                 catch { self.finish(ProductResponse(status: "error", code: "authorization-required"), complete); return }
             }
+            AppleAuthorizationObservations.shared.refresh()
             let result = await ProductController.shared.perform(action == "authorize" ? "snapshot" : action, request: request,
                 authorizationEpoch: self.authorizationEpoch, lifecycleGeneration: self.lifecycleGeneration)
             self.finish(result, complete)

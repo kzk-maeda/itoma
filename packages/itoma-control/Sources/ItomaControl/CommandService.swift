@@ -1,10 +1,13 @@
 import ItomaCore
 import ItomaStorage
 
+public enum ControlOrigin: Sendable { case host, activityExtension }
+
 /// Owns one connection on a native actor, independent of UI/JS. The main app privately saves the
 /// confirmed reason/choice before shared acceptance. Extensions never import ItomaHistory.
 @ItomaControlActor public final class CommandService {
     enum ApplicationStart { case ready(EvaluationID), resolved(CommandRunResult) }
+    let origin: ControlOrigin
     let repository: ControlRepository
     let scheduler: any DeadlineScheduler
     let restriction: any RestrictionAdapter
@@ -16,8 +19,9 @@ import ItomaStorage
     public init(
         repository: ControlRepository, scheduler: any DeadlineScheduler, restriction: any RestrictionAdapter,
         contexts: any EvaluationContextProvider, historyCapacity: HistoryOutboxCapacity,
-        identifiers: (any ControlIdentifiers)? = nil
+        identifiers: (any ControlIdentifiers)? = nil, origin: ControlOrigin = .host
     ) {
+        self.origin = origin
         self.repository = repository; self.scheduler = scheduler; self.restriction = restriction
         self.contexts = contexts; self.historyCapacity = historyCapacity
         self.identifiers = identifiers ?? RandomControlIdentifiers()
@@ -295,7 +299,7 @@ import ItomaStorage
             return try grant.recording(status: .uncertain)
         }
         let snapshot = try tx.snapshot()
-        let evaluated = try GrantEvaluator.evaluate(policy: policy, selections: snapshot.selections.map(\.selection), context: context, grants: checked)
+        let evaluated = try GrantEvaluator.evaluate(policy: policy, selections: snapshot.selections.map(\.selection), context: context, grants: checked, executionAuthorization: ruleExecutionAuthorization(context, transaction: tx))
         return try evaluated.assessments.map { assessment in
             guard let previous = originals.first(where: { $0.grant.id == assessment.grant.id })?.grant else { throw CommandServiceError.invalidState }
             let updated = assessment.disposition == .shorteningRequired ? try previous.recording(status: .uncertain) : assessment.grant
@@ -309,6 +313,7 @@ import ItomaStorage
 
     func recordDenied(context: EvaluationContext, transaction tx: ControlTransaction) throws {
         let snapshot = try tx.snapshot()
+        if context.authorization.status == .denied { try tx.revokeRuleExecutionConfirmation() }
         if context.authorization.status == .denied && snapshot.activation == .enabled {
             _ = try tx.setActivation(.awaitingReauthorizationConfirmation, expectedSequence: snapshot.snapshotSequence)
         }
@@ -331,6 +336,8 @@ import ItomaStorage
         let observation = try ApplicationObservation(evaluationID: evaluation.id, status: status, evidence: evidence,
             observedAt: context.now, validUntil: status == .applied ? evaluation.nextBoundary : nil, error: failure)
         let stored = try StoredApplication(evaluation: evaluation, observation: observation)
+        // Missing/mismatched metadata fails duration qualification; it cannot prevent stop.
+        try tx.recordRuleAuthorizationObservation(evaluationID: evaluation.id, authorization: context.authorization.status)
         _ = try tx.recordApplication(stored, expectedSequence: tx.snapshot().snapshotSequence)
     }
 

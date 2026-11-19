@@ -87,11 +87,12 @@ public struct GrantEvaluation: Equatable, Sendable {
 
 public enum GrantEvaluator {
     public static func evaluate(
-        policy: PolicySnapshot, selections: [Selection], context: EvaluationContext, grants: [TemporaryGrant]
+        policy: PolicySnapshot, selections: [Selection], context: EvaluationContext, grants: [TemporaryGrant],
+        executionAuthorization: RuleExecutionAuthorization = .liveObservation
     ) throws -> GrantEvaluation {
         try validate(grants)
-        let rules = try weekly(policy: policy, selections: selections, context: context)
-        let assessments = try ordered(grants).map { try assess($0, rules: rules) }
+        let rules = try weekly(policy: policy, selections: selections, context: context, executionAuthorization: executionAuthorization)
+        let assessments = try ordered(grants).map { try assess($0, rules: rules, executionAuthorization: executionAuthorization) }
         var desired = rules.desiredTargets
         for result in assessments where result.disposition == .effective { desired.remove(result.grant.targetRef) }
         // Pending/uncertain requests must also be reevaluated when their original deadline arrives.
@@ -153,15 +154,16 @@ public enum GrantEvaluator {
     }
 
     private static func weekly(
-        policy: PolicySnapshot, selections: [Selection], context: EvaluationContext
+        policy: PolicySnapshot, selections: [Selection], context: EvaluationContext,
+        executionAuthorization: RuleExecutionAuthorization = .liveObservation
     ) throws -> RuleEvaluation {
         // Every accepted grant is <=30 minutes; cover the complete possible expiry, never infer
         // "no change" from a shorter search window. Future acceptedAt is handled as clock uncertainty.
         let through = try Instant(secondsSince1970: context.now.secondsSince1970 + 1800)
-        return try RuleEvaluator.evaluate(policy: policy, selections: selections, context: context, through: through)
+        return try RuleEvaluator.evaluate(policy: policy, selections: selections, context: context, through: through, executionAuthorization: executionAuthorization)
     }
 
-    private static func assess(_ grant: TemporaryGrant, rules: RuleEvaluation) throws -> GrantAssessment {
+    private static func assess(_ grant: TemporaryGrant, rules: RuleEvaluation, executionAuthorization: RuleExecutionAuthorization) throws -> GrantAssessment {
         func result(_ disposition: GrantDisposition, _ reason: GrantAssessmentReason? = nil,
                     status: GrantStatus? = nil, proposed: Instant? = nil) throws -> GrantAssessment {
             let record = try status.map { try grant.recording(status: $0) } ?? grant
@@ -183,7 +185,7 @@ public enum GrantEvaluator {
         guard rules.context.now < grant.effectiveExpiresAt else {
             return try result(.expired, .deadline, status: .expired)
         }
-        guard rules.context.authorization.status == .approved else {
+        guard executionAuthorization.permits(rules.context) else {
             return try result(.invalidated, .authorization, status: .invalidated)
         }
         guard rules.context.activation == .enabled else {

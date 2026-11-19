@@ -131,3 +131,7 @@ dependency to the monitor Extension.
 Sources: [Expo SDK 58](https://docs.expo.dev/versions/v58.0.0/),
 [config plugins](https://docs.expo.dev/config-plugins/plugins/),
 [Apple DeviceActivityMonitor](https://developer.apple.com/documentation/deviceactivity/deviceactivitymonitor).
+
+## #222: 通常ルールの背景実行の変更提案
+
+[ADR0011](../adr/0011-host-confirmed-rule-execution.md)はProposed（実装を含むレビュー対象、実機未検証）。生の認可観測と、hostで確認した現在policyの実行資格を分ける。Extensionのunknownをapprovedへ変えず、新しい解除・resumeには従来の認可確認を要求する。任意journalはhostだけが導入し、停止/変更/deniedで失効させる。unknown区間の時間集計除外は維持する。採用済み設計・PR228の専用PoC実機結果とは区別する。

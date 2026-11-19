@@ -7,7 +7,8 @@ import ItomaStorage
 
 @ItomaControlActor public final class ScreenTimeRuntime {
     public let repository: ControlRepository
-    public let contexts = AppleEvaluationContexts()
+    public let contexts: AppleEvaluationContexts
+    private let origin: ControlOrigin
     public let directory: URL
     private var monitorRepository: PolicyMonitorRepository?
     private var coordinator: PolicyScheduleCoordinator?
@@ -28,7 +29,11 @@ import ItomaStorage
         }
     }
 
-    public init(createIfMissing: Bool, allowMonitorCreation: Bool = false) throws {
+    public init(createIfMissing: Bool, allowMonitorCreation: Bool = false, origin: ControlOrigin = .host,
+                callbackAuthorization: AuthorizationObservation? = nil) throws {
+        guard origin == .host || (!createIfMissing && !allowMonitorCreation) else { throw ScreenTimeRuntimeError.unavailable }
+        self.origin = origin
+        contexts = AppleEvaluationContexts(origin: origin, callbackAuthorization: callbackAuthorization)
         mayCreateMonitor = createIfMissing || allowMonitorCreation
         guard let limit = Bundle.main.object(forInfoDictionaryKey: "ITOMAPendingEventLimit") as? Int else { throw ScreenTimeRuntimeError.unavailable }
         outboxCapacity = try HistoryOutboxCapacity(maximumPendingEvents: limit)
@@ -42,6 +47,7 @@ import ItomaStorage
             // No destructive recovery; migrations belong to the host and must be explicit.
             repository = try ControlRepository.open(at: controlURL)
         }
+        if origin == .host && mayCreateMonitor { try? repository.installRuleExecutionAuthorization() }
         try protectFiles()
     }
 
@@ -76,7 +82,7 @@ import ItomaStorage
         }
         let restriction = AppleRestrictionAdapter(registry: registry, plans: plans, scheduler: policyScheduler, contexts: contexts)
         return CommandService(repository: repository, scheduler: AppleDeadlineScheduler(), restriction: restriction,
-            contexts: contexts, historyCapacity: outboxCapacity)
+            contexts: contexts, historyCapacity: outboxCapacity, origin: origin)
     }
 
     public func saveSelection(tokensData: Data) throws -> SelectionRef {
@@ -104,19 +110,22 @@ import ItomaStorage
     }
 
     /// Called only by the synchronous OS callback bridge, on ItomaControlActor.
-    public static func handleActivity(_ name: String, ended: Bool) {
+    public static func handleActivity(_ name: String, ended: Bool, authorization: AuthorizationObservation?) {
         guard name.hasPrefix("itoma.rule.") || name.hasPrefix("itoma.deadline.") else { return }
         // An interval already in progress can start immediately after registration. It must not
         // consume a deadline receipt before the grant's end.
         if name.hasPrefix("itoma.deadline."), !ended { return }
         do {
-            let runtime = try ScreenTimeRuntime(createIfMissing: false)
+            let runtime = try ScreenTimeRuntime(createIfMissing: false, origin: .activityExtension, callbackAuthorization: authorization)
             let service = try runtime.makeService()
+            let result: ReconciliationResult
             if let (id, generation) = AppleDeadlineScheduler.identity(name) {
-                _ = service.reconcileSynchronously(registrationID: id, generation: generation)
-            } else { _ = service.reconcileSynchronously() }
+                result = service.reconcileSynchronously(registrationID: id, generation: generation)
+            } else { result = service.reconcileSynchronously() }
+            NormalRuleDiagnostics.result(result)
             try runtime.protectFiles()
         } catch {
+            NormalRuleDiagnostics.unavailable()
             // No database recreation, stale plan, empty-store fallback or user-data logging.
             // The durable last intent and any existing own-store restrictions remain available.
         }
