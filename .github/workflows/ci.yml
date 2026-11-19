@@ -33,7 +33,10 @@ jobs:
 
       - run: npm ci
       - name: Check Expo SDK dependency compatibility
-        run: npx --yes expo-doctor
+        # Validate against the SDK pinned by the lockfile, not changing online recommendations.
+        run: npx --no-install expo install --check
+        env:
+          EXPO_OFFLINE: '1'
       - run: npx tsc --noEmit
       - run: npm run lint
       - run: npm test -- --ci --runInBand

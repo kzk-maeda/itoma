@@ -63,7 +63,7 @@ PR #36は2026-11-06 JSTに人間がmainへマージした。採用版は`6c17ac9
 
 Swift Packageは現在ローカルpath依存のみ、modules/itoma-native/package.jsonは外部依存を宣言していないため、個別の更新ジョブは作らない。外部依存や別のlockfileを追加したら設定の監視対象も見直す。
 
-npmの通常更新はminor/patchを対象に、Expo/React Native/関連テストツールとその他の依存へ分けてグループ化する。グループ化はSDK互換性の保証ではないため、quality CIのExpo Doctorと既存テストを確認する。不一致が出たら、利用中SDKの公式資料と`npx expo install --check`で対応版を確認し、必要な調整は`npx expo install`で行う。major/SDK更新は別の明示的な作業として扱う。Swiftのmajor更新も別作業とする。
+npmの通常更新はminor/patchを対象に、Expo/React Native/関連テストツールとその他の依存へ分けてグループ化する。グループ化はSDK互換性の保証ではないため、quality CIのSDK互換性チェックと既存テストを確認する。互換性チェックは`EXPO_OFFLINE=1 CI=1 npx expo install --check`で、lockfileが固定したインストール済みSDKの対応表を参照する。オンラインの最新推奨版との差分は、依存更新とは無関係なPRの必須条件にしない。不一致が出たら、利用中SDKの公式資料で対応版を確認し、必要な調整は`npx expo install`で行う。major/SDK更新は別の明示的な作業として扱う。Swiftのmajor更新も別作業とする。開発時のExpo Doctorによる全体診断は、AGENTS.mdの手順どおり別途実行する。
 
 初回確認・運用:
 
