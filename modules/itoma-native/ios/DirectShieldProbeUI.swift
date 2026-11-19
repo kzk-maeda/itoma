@@ -1,5 +1,6 @@
 import Foundation
 import FamilyControls
+import ManagedSettings
 import SwiftUI
 import UIKit
 import ItomaScreenTime
