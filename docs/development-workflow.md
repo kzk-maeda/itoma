@@ -50,3 +50,28 @@ PR #36は2026-11-06 JSTに人間がmainへマージした。採用版は`6c17ac9
 5. 未決定のUI条件をレビューしたうえで、理由/ダミー金額・ホーム状態・履歴を接続する。追加待機・回数制限・実課金は初版へ入れない。
 
 各段階のIssue番号、現在のラベル、進捗は#20に集約し、本書にコピーしない。
+
+## 依存関係の更新（Dependabot）
+
+設定の正本は[.github/dependabot.yml](../.github/dependabot.yml)。デフォルトブランチへマージすると、次のバージョン更新を毎週月曜09:00（Asia/Tokyo）にチェックし、デフォルトブランチ向けのPRを作成する。PRは通常どおりCI・レビューを確認して人間がマージする。
+
+| 対象 | 場所 | 通常更新PRの同時上限 |
+| --- | --- | --- |
+| npm | ルートのpackage.json/package-lock.json | 3 |
+| GitHub Actions | .github/workflows内のuses | 2 |
+| Docker | .github/docker/swift-tests.DockerfileのSwiftイメージ（タグ・digest） | 1 |
+
+Swift Packageは現在ローカルpath依存のみ、modules/itoma-native/package.jsonは外部依存を宣言していないため、個別の更新ジョブは作らない。外部依存や別のlockfileを追加したら設定の監視対象も見直す。
+
+npmの通常更新はminor/patchを対象に、Expo/React Native/関連テストツールとその他の依存へ分けてグループ化する。グループ化はSDK互換性の保証ではないため、quality CIのSDK互換性チェックと既存テストを確認する。互換性チェックは`EXPO_OFFLINE=1 CI=1 npx expo install --check`で、lockfileが固定したインストール済みSDKの対応表を参照する。オンラインの最新推奨版との差分は、依存更新とは無関係なPRの必須条件にしない。不一致が出たら、利用中SDKの公式資料で対応版を確認し、必要な調整は`npx expo install`で行う。major/SDK更新は別の明示的な作業として扱う。Swiftのmajor更新も別作業とする。開発時のExpo Doctorによる全体診断は、AGENTS.mdの手順どおり別途実行する。
+
+初回確認・運用:
+
+1. 設定PRをデフォルトブランチへマージする。作業ブランチ上の設定だけでは、定期ジョブの有効化は完了しない。
+2. リポジトリのInsights → Dependency graph → Dependabotで、3つの監視対象と初回チェックのログを確認する。必要なら対象ジョブの「Check for updates」を実行する。追加のAWS/OpenAI用SecretやPATは不要。
+3. 更新PRのCIを確認する。npmでは`package.json`とlockfileの両方、Actionsでは変更された全workflow、DockerではSwiftテストとイメージdigestを確認する。ネイティブ依存の変更は、その変更を含むiOSビルドで追加検証する。
+4. Dependabot PRの通常CIはread-only権限・Secretsなしで動く。エラーの解消のためにアプリのSecretをDependabotへ複製したり、PRコードを実行するjobへwrite権限を追加したりしない。
+
+バージョン更新と、脆弱性アラート/セキュリティ更新は別設定。Settings → Advanced Security（UIによってはCode security）でDependency graph、Dependabot alerts、Dependabot security updatesの有効状態を管理者が確認する。設定ファイルだけでセキュリティ更新も有効になったとは扱わない。セキュリティ更新PRは週次バージョン更新のグループ・件数とは別に扱い、修正版への更新にSDK/major変更が必要なケースも手動で確認する。
+
+公式資料: [バージョン更新の設定](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/configure-version-updates)、[設定リファレンス](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference)、[DependabotとActionsの権限](https://docs.github.com/en/code-security/reference/supply-chain-security/troubleshoot-dependabot/dependabot-on-actions)。
