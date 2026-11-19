@@ -25,6 +25,11 @@ Keep the summary to one short sentence. Limitations should name specific missing
 evidence that affects this review. Do not repeat collector omissions, CI check lists,
 or boilerplate that AI review is not approval or physical-device testing; those facts
 are recorded separately by the review pipeline.
+For each limitation, explain the specific uncertainty and what evidence would resolve
+it. Do not use a generic "see logs", "human review required", or a future post-merge
+execution as a routine limitation. Include follow-up checks only when they materially
+affect the changed behavior. A lockfile marked summary contains direct versions only;
+do not claim to have reviewed the full dependency tree from it.
 
 Use the exact changed-file path. Anchor the line in a supplied diff hunk: RIGHT refers to
 the new revision; LEFT refers to the old revision (for deletions). Prefer RIGHT for
