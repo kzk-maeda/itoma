@@ -1,0 +1,70 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 3
+    versioning-strategy: increase-if-necessary
+    # SDK/major upgrades need an explicit Expo compatibility review.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      expo-runtime:
+        patterns:
+          - "@expo/*"
+          - "expo"
+          - "expo-*"
+          - "react"
+          - "react-dom"
+          - "react-native"
+          - "react-native-*"
+          - "@react-native/*"
+          - "@types/react"
+          - "@types/react-native"
+          - "@testing-library/react-native"
+          - "jest"
+          - "jest-expo"
+          - "eslint-config-expo"
+        update-types: [minor, patch]
+      other-dependencies:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 2
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: docker
+    directory: /.github/docker
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: swift
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: chore
+      include: scope
