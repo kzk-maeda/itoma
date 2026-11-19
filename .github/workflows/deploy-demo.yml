@@ -38,7 +38,29 @@ jobs:
       - run: npm run lint
       - run: npm test -- --ci --runInBand
       - run: npm run test:demo
+      - name: Diagnose Expo dependencies
+        if: github.ref_name == 'demo/multi-rule-status'
+        continue-on-error: true
+        run: npx expo-doctor
       - run: npm run demo:package
+      - name: Install isolated demo browser tools
+        if: github.ref_name == 'demo/multi-rule-status'
+        run: |
+          npm install --prefix /tmp/itoma-demo-browser --no-save --package-lock=false playwright@1.58.2
+          /tmp/itoma-demo-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify multi-rule static demo before deployment
+        if: github.ref_name == 'demo/multi-rule-status'
+        env:
+          PLAYWRIGHT_MODULE: /tmp/itoma-demo-browser/node_modules/playwright
+        run: node scripts/check-multi-rule-demo.cjs
+      - name: Upload synthetic Web UI evidence
+        if: always() && github.ref_name == 'demo/multi-rule-status'
+        uses: actions/upload-artifact@v6
+        with:
+          name: multi-rule-demo-qa
+          path: dist/multi-rule-qa/
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Check current branch head
         id: head

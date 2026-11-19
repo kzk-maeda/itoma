@@ -2,18 +2,21 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { AppState } from 'react-native';
 import { useScreenTime } from '@/state/screen-time';
+import { useMultiRuleDemo } from '@/demo/multi-rule/context';
 
 /** Display-only clock; it never grants, extends or applies restrictions. One per focused screen. */
 export function useVisibleClock() {
-  const [now, setNow] = useState(Date.now), { refresh } = useScreenTime();
+  const demo = useMultiRuleDemo();
+  const clock = useCallback(() => demo ? demo.now() : Date.now(), [demo]);
+  const [now, setNow] = useState(clock), { refresh } = useScreenTime();
   useFocusEffect(useCallback(() => {
     let timer: ReturnType<typeof setInterval> | undefined;
-    let lastRefresh = Date.now();
+    let lastRefresh = clock();
     const start = () => {
       if (timer) clearInterval(timer);
-      setNow(Date.now());
+      setNow(clock());
       timer = setInterval(() => {
-        const at = Date.now(); setNow(at);
+        const at = clock(); setNow(at);
         if (at - lastRefresh >= 15_000) { lastRefresh = at; void refresh(); }
       }, 1000);
     };
@@ -23,6 +26,6 @@ export function useVisibleClock() {
       if (state === 'active') start(); else { if (timer) clearInterval(timer); timer = undefined; }
     });
     return () => { if (timer) clearInterval(timer); listener.remove(); };
-  }, [refresh]));
+  }, [refresh, clock]));
   return now;
 }

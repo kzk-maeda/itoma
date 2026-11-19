@@ -2,7 +2,7 @@ import { useAppNavigation } from '@/state/navigation';
 import { useWorkLifetime } from '@/hooks/use-work-lifetime';
 import { useWorkScope } from '@/state/work-scope';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useScreenTime } from '@/state/screen-time';
 import { Applications } from './applications';
 import { back, useDraftGuard } from './navigation';
@@ -10,6 +10,8 @@ import { endTime, ruleText } from './presentation';
 import { ruleTitle } from './rule-identity';
 import { Body, Button, Field, FlowScreen, Heading, Notice, Panel, flowStyles } from './ui';
 import { Alert, View } from 'react-native';
+import { useVisibleClock } from '@/hooks/use-visible-clock';
+import { hasFreshRestrictionState, targetPeriod, targetScope, unlockCandidates } from '../home/rule-status';
 
 function useContinueRestrictions() {
   const state = useScreenTime(), navigation = useAppNavigation(), draft = state.unlockDraft;
@@ -37,9 +39,19 @@ export function UnlockScreen() {
   const { setUnlockExitAllowed } = state;
   useFocusEffect(useCallback(() => { setUnlockExitAllowed(false); }, [setUnlockExitAllowed]));
   useDraftGuard((!!draft.reason || !!draft.targetRef || draft.minutes !== '5') && !state.unlockExitAllowed, state.canExitUnlock, () => state.setUnlockExitAllowed(true), async () => { const result = await state.run('cancelUnlock'); if (result.status !== 'ok') return false; state.resetUnlock(); return true; });
-  const selected = state.snapshot?.targets.find((t) => t.ref === draft.targetRef);
-  const available = state.snapshot?.authorization === 'approved' && state.snapshot.activation === 'enabled' && state.snapshot.schedulesReady;
-  const valid = available && !!selected?.unlockable && !!draft.reason.trim() && /^(?:[1-9]|[12][0-9]|30)$/.test(draft.minutes);
+  const now = useVisibleClock(), candidates = unlockCandidates(state.snapshot, now);
+  const selected = candidates.find(target => target.ref === draft.targetRef);
+  const selectedScope = useRef('');
+  const [changed, setChanged] = useState(false);
+  const scope = targetScope(state.snapshot, selected, now);
+  useEffect(() => {
+    if (!draft.targetRef || state.loading) return;
+    if (!selected || (selectedScope.current && selectedScope.current !== scope)) {
+      selectedScope.current = ''; setChanged(true);
+      state.setUnlockDraft({ ...draft, targetRef: undefined }); state.setUnlockReview(undefined);
+    } else selectedScope.current = scope;
+  }, [scope, selected, draft, state]);
+  const valid = !!selected && !!draft.reason.trim() && /^(?:[1-9]|[12][0-9]|30)$/.test(draft.minutes);
   const preview = async () => {
     if (!valid) return;
     const session = state.unlockSession();
@@ -48,16 +60,24 @@ export function UnlockScreen() {
   };
   return <FlowScreen title="必要な分だけ、一時解除" onBack={previous}>
     <Body>使う目的と時間を、いったん言葉に。解除するかどうかは、内容を確認してから決められます。</Body>
-    <View style={flowStyles.section}><Heading>解除するアプリ</Heading>
-      {state.snapshot?.targets.map((target) => <Panel key={target.ref}>
-        <Applications selectionRef={target.selectionRef} targetRef={target.ref} refreshKey={state.refreshKey}
-          selected={draft.targetRef === target.ref} onSelect={available && target.unlockable && !state.busy ? () => {
-            state.setUnlockExitAllowed(false); state.setUnlockDraft({ ...draft, targetRef: target.ref }); state.setUnlockReview(undefined);
-          } : undefined} />
-        <Body muted>{target.unlockable ? draft.targetRef === target.ref ? '✓ このアプリを選択中' : 'このアプリを選べます'
-          : target.grantCommandID ? 'このアプリには進行中の要求があります。状況を確認できます。' : '現在、一時解除できる制限対象ではありません。'}</Body>
-      </Panel>)}
-      {!state.snapshot?.targets.length && <Body muted>解除できる対象がありません。ホームで現在の時間帯と許可を確認できます。</Body>}
+    {changed && <Notice title="アプリを選び直してください">適用ルールまたは制限の状態が変わりました。入力した理由と時間は残しています。</Notice>}
+    <View style={flowStyles.section}><Heading>いま制限中のアプリ</Heading>
+      <Body muted>現在、一時解除できるアプリだけを表示しています。解除中や時間外のアプリは含みません。</Body>
+      {candidates.map(target => {
+        const period = targetPeriod(state.snapshot, target, now);
+        const rule = state.snapshot?.rules.find(rule => rule.id === target.ruleID);
+        return <Panel key={target.ref}>
+          <Applications selectionRef={target.selectionRef} targetRef={target.ref} refreshKey={state.refreshKey}
+            selected={draft.targetRef === target.ref} onSelect={!state.busy ? () => {
+              selectedScope.current = targetScope(state.snapshot, target, now); setChanged(false);
+              state.setUnlockExitAllowed(false); state.setUnlockDraft({ ...draft, targetRef: target.ref }); state.setUnlockReview(undefined);
+            } : undefined} />
+          <Body>{ruleTitle(rule, state.snapshot?.rules.findIndex(r => r.id === target.ruleID) ?? 0)}</Body>
+          {period && <Body muted>{endTime(period.startsAt, now)}〜{endTime(period.endsAt, now)}の制限</Body>}
+          <Body muted>{draft.targetRef === target.ref ? '✓ このアプリを選択中' : 'このアプリだけを一時解除'}</Body>
+        </Panel>;
+      })}
+      {!candidates.length && <Notice title={hasFreshRestrictionState(state.snapshot, now) ? 'いま一時解除できるアプリはありません' : '現在の制限状態を確認してください'}>時間外・解除中のアプリは候補に表示しません。ホームで適用ルールと現在の状態を確認できます。</Notice>}
     </View>
     <Field label="いま使う理由" testID="unlock-reason" value={draft.reason} multiline placeholder="自分の言葉で入力してください"
       onChangeText={(reason) => { state.setUnlockExitAllowed(false); state.setUnlockDraft({ ...draft, reason }); state.setUnlockReview(undefined); }} />
@@ -67,7 +87,7 @@ export function UnlockScreen() {
     {!valid && <Body muted>対象のアプリ・空白以外の理由・1〜30分の時間を指定してください。</Body>}
     <Button label="制限を続ける" disabled={!!state.busy} onPress={continueRestrictions} />
     <Button label="解除内容を確認する" testID="unlock-review" secondary disabled={!valid || !!state.busy} onPress={() => { void preview(); }} />
-    <Button label="進行中の解除を確認する" secondary onPress={() => navigation.open({ screen: 'grant' })} />
+    {state.snapshot?.targets.some(target => target.grantCommandID) && <Button label="進行中の解除を確認する" secondary onPress={() => navigation.open({ screen: 'grant' })} />}
   </FlowScreen>;
 }
 
@@ -77,12 +97,16 @@ export function UnlockConfirmationScreen() {
   const state = useScreenTime(), navigation = useAppNavigation(), draft = state.unlockDraft, review = state.unlockReview;
   const continueRestrictions = useContinueRestrictions();
   const [failed, setFailed] = useState(false);
-  const [openedAt] = useState(Date.now);
+  const now = useVisibleClock();
+  const [openedAt] = useState(now);
   const confirmed = review?.snapshot ?? state.snapshot;
   const target = confirmed?.targets.find((t) => t.ref === draft.targetRef);
   const rule = confirmed?.rules.find((r) => r.id === target?.ruleID);
+  const current = unlockCandidates(state.snapshot, now).find(candidate => candidate.ref === draft.targetRef);
+  const stillValid = !!current && targetScope(confirmed, target, now) === targetScope(state.snapshot, current, now)
+    && (review?.previewEndsAt ?? 0) * 1000 > now;
   const submit = async () => {
-    if (!review?.ref) return;
+    if (!review?.ref || !stillValid) return;
     const session = state.unlockSession();
     state.setUnlockExitAllowed(true);
     const result = await state.run('unlock', { ref: review.ref, reason: draft.reason });
@@ -105,7 +129,8 @@ export function UnlockConfirmationScreen() {
     </Panel>
     <Body muted>再制限の予定を登録できた場合だけ解除を進めます。反映の結果は次の画面で確認できます。</Body>
     <Button label="制限を続ける" disabled={!!state.busy} onPress={continueRestrictions} />
-    {!failed && <Button label="理由を保存して一時解除する" testID="unlock-submit" secondary disabled={!review?.ref || !rule || !!state.busy} onPress={() => { void submit(); }} />}
+    {!stillValid && <Notice title="解除内容を確認し直してください">適用ルールや期限が変わっています。入力に戻って、今の対象と解除時間を確認できます。</Notice>}
+    {!failed && <Button label="理由を保存して一時解除する" testID="unlock-submit" secondary disabled={!review?.ref || !rule || !stillValid || !!state.busy} onPress={() => { void submit(); }} />}
     {failed && <Notice title="解除の完了を確認できません">入力は残っています。条件を確認し直せます。</Notice>}
     {failed && (state.error === 'busy' || state.error === 'storage-failed') && <Button label="同じ上限のまま受理を再試行する" disabled={!!state.busy} onPress={() => { void submit(); }} />}
     <Button label="入力に戻る" secondary disabled={!!state.busy} onPress={previous} />

@@ -333,7 +333,7 @@ test.each(['ready', 'unavailable', 'transport'] as const)('foreground private re
   b.client.run.mockImplementation((action, request) => action === 'snapshot' && hold
     ? new Promise(resolve => { finish = resolve; }) : original(action, request));
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  expect(screen.getByText('saved synthetic title')).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'saved synthetic title' })).toBeTruthy();
   await act(async () => { emit('inactive'); });
   hold = true;
   await act(async () => { emit('active'); });
@@ -345,7 +345,7 @@ test.each(['ready', 'unavailable', 'transport'] as const)('foreground private re
     : { status: 'ok', impacts: [], snapshot: { ...b.current(), ruleDetailsStatus: outcome } }); });
   expect(screen.queryByText('ルール名と行動目標を確認しています。')).toBeNull();
   if (outcome === 'ready') {
-    expect(screen.getByText('saved synthetic title')).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'saved synthetic title' })).toBeTruthy();
     expect(screen.queryByText('ルール名と行動目標を確認できません')).toBeNull();
   } else {
     expect(screen.getByText('ルール名と行動目標を確認できません')).toBeTruthy();

@@ -4,6 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: config.name ?? 'itoma',
   slug: config.slug ?? 'itoma',
+  extra: { ...config.extra, ...(process.env.ITOMA_DEMO_BUILD === '1' ? { multiRuleDemo: true } : {}) },
   plugins: [
     ...(config.plugins ?? []),
     ...(process.env.ITOMA_SCREEN_TIME === '1'

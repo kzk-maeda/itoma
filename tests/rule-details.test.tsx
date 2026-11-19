@@ -47,7 +47,7 @@ test('saving personal text preserves policy/sequence, and a new screen restores 
   expect(b.client.run.mock.calls.every(([action]) => ['snapshot', 'saveRuleDetails'].includes(action))).toBe(true);
   await first.unmount();
   await render(<ScreenTimeProvider client={b.client}><ProductHome /></ScreenTimeProvider>);
-  expect(await screen.findByText('夜の余白')).toBeTruthy(); expect(screen.getByText('合成の行動目標\n自分の時間を大切にする')).toBeTruthy();
+  expect(await screen.findByRole('header', { name: '夜の余白' })).toBeTruthy(); expect(screen.getByText('合成の行動目標\n自分の時間を大切にする')).toBeTruthy();
 });
 test('a storage failure keeps the full input for retry; long input cannot be submitted', async () => {
   const b = backend(); b.fail('storage-failed');
