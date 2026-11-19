@@ -1,0 +1,151 @@
+{
+  "sourceCommit": "a27a41cc00fa782fbc675811018393a8df44254a",
+  "sourceHashes": {
+    "src/components/flow/home.tsx": "9025462cd12a6b7bf5308067460f3a31b37fa9fef75374a6ecc5f546ce66b8a0",
+    "src/components/flow/unlock.tsx": "e62bb8c850a6de6e2f09af9489dd06ee63e5cf9c20fd4348926bc14c483070ce",
+    "src/components/home/rule-deck.tsx": "0eb99f99072afc8b18a31429179c0382bda3e5fe69ebe1074f483c4c35f5a61e",
+    "src/components/home/rule-status.ts": "dc659226f14c231f154333f7645b984f0584a490f355bf6ca5f5b678f7234697",
+    "src/components/home/rule-status-view.tsx": "d4ef74012300668abc4d18345b3b1896065b69ece2e9c96aeffc61fa1186e073",
+    "src/components/home/period-ring.tsx": "11c0f7243cc2cdc54661af89cafaa0e9b13cec4ce28ab54bbe4dc442bbab98ab",
+    "src/state/screen-time.tsx": "278caea487f013c78f426d87cb8fe0c91eff9dbc2b9138dae55f9707948e32a1",
+    "src/constants/theme.ts": "5007ff58698f159a0ae7dda6786906a12ab60d1e761efa0bf0e07e26eaa1e980"
+  },
+  "kind": "product-components-real-router-with-temporary-synthetic-native-client",
+  "physicalDevice": false,
+  "cases": [
+    {
+      "name": "light-320",
+      "width": 320,
+      "height": 568,
+      "colorScheme": "light",
+      "reducedMotion": "reduce",
+      "dragTransform": "none",
+      "action": {
+        "x": 51,
+        "y": 719,
+        "width": 218,
+        "height": 52
+      },
+      "horizontalOverflow": false,
+      "errors": [],
+      "warningCount": 0,
+      "warnings": []
+    },
+    {
+      "name": "light-375",
+      "width": 375,
+      "height": 667,
+      "colorScheme": "light",
+      "reducedMotion": "reduce",
+      "dragTransform": "none",
+      "action": {
+        "x": 51,
+        "y": 505,
+        "width": 273,
+        "height": 52
+      },
+      "horizontalOverflow": false,
+      "errors": [],
+      "warningCount": 0,
+      "warnings": []
+    },
+    {
+      "name": "light-390",
+      "width": 390,
+      "height": 844,
+      "colorScheme": "light",
+      "reducedMotion": "no-preference",
+      "dragTransform": "matrix(0.999282, -0.0378829, 0.0378829, 0.999282, -148.5, 0)",
+      "action": {
+        "x": 51,
+        "y": 623,
+        "width": 288,
+        "height": 52
+      },
+      "horizontalOverflow": false,
+      "errors": [],
+      "warningCount": 0,
+      "warnings": []
+    },
+    {
+      "name": "dark-320",
+      "width": 320,
+      "height": 568,
+      "colorScheme": "dark",
+      "reducedMotion": "reduce",
+      "dragTransform": "none",
+      "action": {
+        "x": 51,
+        "y": 719,
+        "width": 218,
+        "height": 52
+      },
+      "horizontalOverflow": false,
+      "errors": [],
+      "warningCount": 0,
+      "warnings": []
+    },
+    {
+      "name": "dark-375",
+      "width": 375,
+      "height": 667,
+      "colorScheme": "dark",
+      "reducedMotion": "reduce",
+      "dragTransform": "none",
+      "action": {
+        "x": 51,
+        "y": 505,
+        "width": 273,
+        "height": 52
+      },
+      "horizontalOverflow": false,
+      "errors": [],
+      "warningCount": 0,
+      "warnings": []
+    },
+    {
+      "name": "dark-390",
+      "width": 390,
+      "height": 844,
+      "colorScheme": "dark",
+      "reducedMotion": "reduce",
+      "dragTransform": "none",
+      "action": {
+        "x": 51,
+        "y": 623,
+        "width": 288,
+        "height": 52
+      },
+      "horizontalOverflow": false,
+      "errors": [],
+      "warningCount": 0,
+      "warnings": []
+    },
+    {
+      "name": "large-long-320",
+      "width": 320,
+      "artificialTextScale": 2,
+      "horizontalOverflow": false,
+      "confirmationReachable": true
+    },
+    {
+      "name": "large-long-375",
+      "width": 375,
+      "artificialTextScale": 2,
+      "horizontalOverflow": false,
+      "confirmationReachable": true
+    }
+  ],
+  "flows": [
+    {
+      "flow": "reading-ends-explicit-bedtime-choice-X-only-grant",
+      "passed": true
+    },
+    {
+      "flow": "confirmed-discard-through-real-root-guard",
+      "passed": true
+    }
+  ],
+  "browser": "155.0.8059.79",
+  "passed": true
+}
