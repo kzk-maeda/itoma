@@ -80,7 +80,7 @@ test('cancelling dirty input asks before discard and never persists it', async (
 });
 test('an unregistered goal is omitted instead of generating a purpose', async () => {
   const b = backend(); await render(<ScreenTimeProvider client={b.client}><ProductHome /></ScreenTimeProvider>);
-  await screen.findByText('時間帯 1'); expect(screen.queryByTestId('rule-goal')).toBeNull();
+  await screen.findByRole('header', { name: '時間帯 1' }); expect(screen.queryByTestId('rule-goal')).toBeNull();
 });
 
 test('an accepted save finishes after departure without navigating another screen backwards', async () => {
