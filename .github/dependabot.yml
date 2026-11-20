@@ -48,6 +48,7 @@ updates:
     groups:
       cloudflare-toolchain:
         # Do not filter update-types: cf uses prereleases that must join this group.
+        # A single available update is possible; quality CI validates the actual pair.
         patterns: [cf, wrangler]
       other-dependencies:
         patterns: ["*"]

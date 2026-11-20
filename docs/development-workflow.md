@@ -68,7 +68,7 @@ npmは更新の単位を次のように分ける。通常のmajor更新とSwift�
 | 対象 | 更新方法 |
 | --- | --- |
 | Expo SDKが指定する依存・React関連の型定義 | 通常のDependabot更新から外す。`expo`、`@expo/*`、`expo-*`、React/React Native関連、`eslint-config-expo`・`jest-expo`をSDK対応版へ手動で揃える |
-| `cf` / `wrangler` | `cloudflare-toolchain`グループで同時更新する。`cf`のプレリリースも含めるため、グループの`update-types`は指定しない |
+| `cf` / `wrangler` | 更新候補を`cloudflare-toolchain`グループの同じPRへまとめる。`cf`のプレリリースも含めるため、グループの`update-types`は指定しない |
 | その他のnpm依存 | `other-dependencies`グループでminor/patchを継続。Jest、Testing Library、TypeScript等もCIで確認する |
 
 Expoの通常更新は、SemVerのminor/patchを無視する指定と共通のmajor除外を組み合わせる。依存名だけの全更新除外にはせず、セキュリティ更新を別途レビューできる状態にする。設定ファイルはSDKの対応表を自動追跡しないため、依存追加・SDK更新時に手動管理対象も見直す。
@@ -80,7 +80,9 @@ SDK関連の更新手順:
 3. quality CIのSDK互換性チェックを通す。`EXPO_OFFLINE=1 CI=1 npx --no-install expo install --check`は、lockfileが固定したインストール済みSDKの対応表を参照する。オンラインの最新推奨版への追随は、依存更新とは無関係なPRの必須条件にしない。
 4. AGENTS.mdのExpo Doctorを含む全体チェックと、依存変更を含むiOSビルド・該当する実機確認を行う。互換性ゲートを除外して更新を通さない。
 
-Cloudflareは現在Build Output v0を使用する。対応する更新の組み合わせは`cf 1.0.0-beta.32` / `wrangler 4.161.0`。Dependabotは`cf >=1.0.0-rc.0`と`wrangler >=4.163.0`を候補から外す。Wrangler 4.163.0が出力するv1は、beta.32の`cf build`と、v0を読む`scripts/deploy-demo.mjs`では扱えない。v1へ進むときは、両CLI・成果物の参照・配信前の照合をまとめて移行し、ビルドと配信手順を再検証してから除外範囲を見直す。グループ化だけで互換性が保証されるとは扱わない。
+Cloudflareは現在Build Output v0を使用する。対応する更新の組み合わせは`cf 1.0.0-beta.32` / `wrangler 4.161.0`。Dependabotは`cf >=1.0.0-rc.0`と`wrangler >=4.163.0`を候補から外す。Wrangler 4.163.0が出力するv1は、beta.32の`cf build`と、v0を読む`scripts/deploy-demo.mjs`では扱えない。v1へ進むときは、両CLI・成果物の参照・配信前の照合をまとめて移行し、ビルドと配信手順を再検証してから除外範囲を見直す。
+
+更新候補が片方だけの場合、グループPRに含まれる更新も1パッケージになる。グループ化は両方の変更を強制する機能ではない。最終的な組み合わせは既存quality CIの`npm ci`と`npm run demo:package`で検証する。許可範囲内の更新でも、実際のパッケージ作成が失敗したPRはマージせず、対応版へ揃え直す。
 
 Cloudflareの`versions`による範囲指定はセキュリティ更新にも適用される。範囲外に修正が必要な場合は、v1移行と合わせて個別に対応する。Expo等の`update-types`による通常更新の抑制とは区別する。
 
