@@ -56,6 +56,6 @@ LPは公開用の実装ですが、アプリは配信準備中と表示し、App
 
 プラポリは本人が「他は別途考える」としているため、未確定の原案全文を正式文として掲載しません。`/privacy/` には準備状況・確定済み窓口・配信事業者を案内し、正式配布前に#182の最新版と実態確認結果で本文を置換してください。この状態をApp Storeのポリシー要件達成として扱わないでください。
 
-配信アカウント/Custom Domain接続、Access設定と匿名302は確認済み。本人の認証後閲覧、拒否メールの認証試験、メールの実受信/返信、VoiceOver・iOS実機は別検証です。初回はMacのDNSに未作成時の応答が残ったため、権威DNSのAを指定し実hostnameのTLS検証を保って匿名302を確認。標準DNSでのguard成功と混同しません。
+配信アカウント/Custom Domain接続、Access設定と匿名302は確認済み。メール認証後のサイト本文表示は本人報告でPASS。拒否メールの認証試験、support窓口の実受信/返信、VoiceOver・iOS実機は未実施です。初回はMacのDNSに未作成時の応答が残ったため、権威DNSのAを指定し実hostnameのTLS検証を保って匿名302を確認。標準DNSでのguard成功と混同しません。
 
 Cloudflare参照: [HTML handling](https://developers.cloudflare.com/workers/static-assets/routing/advanced/html-handling/) / [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)（2026-11-15確認）。

@@ -5,7 +5,7 @@
 - 決定PR: [#192](https://github.com/kzk-maeda/itoma/pull/192)
 - 採用日: 未定（mainへの人間レビュー・マージ前）
 - 関連ADR: [0001](0001-cloudflare-web-demo.md)。認証が必要なデモと正式サイトを別リソースで管理する
-- 検証状況: 2026-11-20 JST、Cloudflare API設定・TLS/匿名拒否を確認。認証後閲覧等は別記録
+- 検証状況: 2026-11-20 JST、Cloudflare API設定・TLS/匿名拒否を確認。認証後の本文閲覧は本人報告PASS、拒否メール等は未検証
 
 ## 背景と解決する問い
 

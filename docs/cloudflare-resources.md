@@ -18,11 +18,11 @@ Accessは24hセッション、HTTP-only Cookie有効、preflight bypassなし。
 
 `support@itoma.app`は既存Email Routingがready、有効なforwardルール1件と認証済み転送先1件を確認。既存MX/SPF、転送ルール・転送先は変更していない。実受信と返信元アドレスの運用は未検証。
 
-初回はAccessを先に作成し、APIで単一メールallowと専用ポリシーを読戻してからローカルcf認証を用いて配信。トップ・privacy・CSS/SVG・未知パスはすべて、このAccessのaudに一致するログインへ302を確認した。通常DNS `172.20.10.1` はANSWER 0/SOA（負の応答TTL1800秒）を返した。一方、両権威NS・Cloudflare/Google DNSとDoHはAを返したため、権威DNSのAを指定し実hostnameでTLS証明書を検証した。標準DNSでの配信guard成功とは区別する。認証後閲覧と拒否メールでの実試験は別ゲート。
+初回はAccessを先に作成し、APIで単一メールallowと専用ポリシーを読戻してからローカルcf認証を用いて配信。トップ・privacy・CSS/SVG・未知パスはすべて、このAccessのaudに一致するログインへ302を確認した。通常DNS `172.20.10.1` はANSWER 0/SOA（負の応答TTL1800秒）を返した。一方、両権威NS・Cloudflare/Google DNSとDoHはAを返したため、権威DNSのAを指定し実hostnameでTLS証明書を検証した。標準DNSでの配信guard成功とは区別する。本人はメール認証を通過した後のサイト本文を表示できたと報告（本人確認PASS、agentのブラウザ直接観測ではない）。拒否メールでの実試験は未実施。
 
 CI/通常ローカル配信へ匿名Access確認を追加。mainへマージしても本人限定配信が継続する。GitHubの既存Secret/アカウント変数を維持し、値は取得していない。CIトークン権限とActions配信は別の確認事項で、ローカル認証成功を転用しない。一般公開への移行でこのサイト専用Accessを解除するまでは、認証を外して配信エラーを解消しない。
 
-検査結果: 型/Lint/Jest280件（29 suites）/demo32件/サイト7件/ローカルHTTPとWrangler dry-runはPASS。Expo Doctorは19/20（推奨依存との差分、更新なし）。標準DNSのlive guardはENOTFOUNDで失敗したが、QA限定で権威DNSのAを使い実hostnameのTLS検証を保った同じguardコードは6パス全てPASS。これらの差を残し、初回Actions成功や認証後閲覧を未確認のまま合格にしない。
+検査結果: 型/Lint/Jest280件（29 suites）/demo32件/サイト7件/ローカルHTTPとWrangler dry-runはPASS。Expo Doctorは19/20（推奨依存との差分、更新なし）。標準DNSのlive guardはENOTFOUNDで失敗したが、QA限定で権威DNSのAを使い実hostnameのTLS検証を保った同じguardコードは6パス全てPASS。これらの差を残し、初回Actions成功や未実施の拒否メール試験等を合格にしない。
 
 private原本・API応答・配信ログはGit管理外 `.tmp/qa/site-private-20261120/` に保存する。
 
