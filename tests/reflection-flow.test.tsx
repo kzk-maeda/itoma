@@ -1,3 +1,4 @@
+import { BrowseTestShell } from './fixtures/browse-shell';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -20,7 +21,7 @@ jest.mock('../src/global.css', () => ({}));
 jest.mock('../src/qa/native-smoke', () => ({ completeNativeHomeSmoke: jest.fn(), completeNativeHistorySmoke: jest.fn(), completeNativeReflectionSmoke: jest.fn() }));
 jest.mock('expo-router', () => ({
   router: { navigate: jest.fn(), push: jest.fn(), back: jest.fn(), canGoBack: jest.fn(() => true), replace: jest.fn(), dismissTo: jest.fn() },
-  useFocusEffect: (callback: () => void) => require('react').useEffect(callback, [callback]),
+  useIsFocused: () => true, useFocusEffect: (callback: () => void) => require('react').useEffect(callback, [callback]),
 }));
 const fixtures = JSON.parse(readFileSync(path.join(__dirname, 'fixtures/reflection-records.json'), 'utf8')) as Record<string, { request: ReflectionRequest; response: ReflectionSnapshot }[]>;
 const commandID = '00000000-0000-0000-0000-000000000001';
@@ -70,15 +71,37 @@ function Pages() {
     jest.mocked(router.back).mockImplementation(() => setStack(previous => previous.slice(0, -1)));
   }, []);
   const current = stack.at(-1);
-  return <>{current === '/' ? <ProductHome /> : current === '/settings' ? <SettingsScreen /> : current === '/settings-records' ? <RecordSettingsScreen /> : current === '/settings-delete' ? <RecordDeletionScreen /> : current === '/settings-storage' ? <RecordStorageScreen /> : current === '/history' ? <HistoryScreen /> : current === '/history-reason' ? <HistoryReasonScreen /> : <ReflectionScreen />}</>;
+  return <BrowseTestShell route={current ?? '/reflection'} navigate={path => router.navigate(path)}>{current === '/' ? <ProductHome /> : current === '/settings' ? <SettingsScreen /> : current === '/settings-records' ? <RecordSettingsScreen /> : current === '/settings-delete' ? <RecordDeletionScreen /> : current === '/settings-storage' ? <RecordStorageScreen /> : current === '/history' ? <HistoryScreen /> : current === '/history-reason' ? <HistoryReasonScreen /> : <ReflectionScreen />}</BrowseTestShell>;
 }
 async function mount(b: ReturnType<typeof backend>) {
   return render(<ScreenTimeProvider client={controlClient}><HistoryProvider client={b.historyClient}>
     <ReflectionProvider client={b.client}><HeldReason /><Pages /></ReflectionProvider>
   </HistoryProvider></ScreenTimeProvider>);
 }
-const press = async (label: string) => fireEvent.press(screen.getByRole('button', { name: label }));
+const press = async (label: string) => fireEvent.press((label === '‹ 戻る' ? screen.getByTestId('flow-back') : screen.getByRole('button', { name: label })));
 const observed = () => screen.findByText('制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。');
+
+test('native restriction duration reaches the real provider, total and period UI with measurement scope', async () => {
+  const b = backend();
+  b.native.mockImplementation(async (_action, payload) => {
+    const request = JSON.parse(payload);
+    const entry = fixtures.observed.find(row => row.request.period === (request.period ?? 'week'))!;
+    const snapshot = structuredClone(entry.response);
+    snapshot.proofScope = 'nativeRecordedIntervals'; snapshot.metricVersion = 'native-restricted-excluding-unlocks-v2';
+    snapshot.total = { ...snapshot.total, from: snapshot.asOf - 7200, until: snapshot.asOf, knownSeconds: 6900, coverage: 'recorded' };
+    snapshot.selected = { ...snapshot.selected, knownSeconds: 6900, coverage: 'partial' };
+    snapshot.trend = [snapshot.total];
+    return wrap(snapshot);
+  });
+  await mount(b);
+  await screen.findByText('制限の適用を記録した時間');
+  expect(screen.getByTestId('reflection-total').props.children).toBe('1時間55分');
+  expect(screen.getByTestId('reflection-period-total').props.children).toBe('1時間55分');
+  expect(screen.getByText(/OS内部の遮断状態を常時観測した値ではありません/)).toBeTruthy();
+  expect(screen.queryByText('時間の集計は準備中です')).toBeNull();
+  await press('月次'); await screen.findByText('2026年11月');
+  expect(screen.getByTestId('reflection-total').props.children).toBe('1時間55分');
+});
 function deletionButton(alert: jest.SpyInstance) {
   const choices = alert.mock.calls.at(-1)![2] as { text: string; onPress?: () => void }[];
   return choices.find(choice => choice.text === '全記録と累計を削除する')!;
@@ -100,7 +123,7 @@ test('normal route uses product DTOs, preserves fixed total/token and remembers 
   const day = screen.getAllByRole('button').find(node => String(node.props.accessibilityLabel).startsWith('12月2日、'))!;
   await fireEvent.press(day);
   await screen.findByText('あなたの選択の記録');
-  expect(screen.getByDisplayValue('2026-12-02')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '日付を選ぶ' })).toHaveTextContent(/2026年12月2日/);
   expect(screen.getByText(/振り返りとは別の時点/)).toBeTruthy();
   expect(b.historyClient.run).toHaveBeenCalledWith('page', expect.objectContaining({ day: '2026-12-02' }));
   expect(jest.mocked(router.navigate).mock.calls.every(call => call[0] === '/history')).toBe(true);
@@ -186,14 +209,15 @@ test('navigation and foreground refresh retain one lifetime subscription per pro
   const initial = listeners.size;
   for (let n = 0; n < 10; n += 1) {
     await press('選択の記録を見る'); await screen.findByText('あなたの選択の記録');
-    await press('‹ 戻る'); await screen.findByText('記録とプライバシー');
+    await press('‹ 戻る'); await screen.findByRole('header', { name: '振り返り' });
+    await fireEvent.press(screen.getByRole('tab', { name: '設定' })); await press('記録とプライバシー');
   }
   await press('‹ 戻る');
   await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
   await act(async () => { listeners.forEach(listener => listener('background')); });
   await act(async () => { listeners.forEach(listener => listener('active')); });
   await observed();
-  expect(listeners.size).toBe(initial); expect(initial).toBe(3);
+  expect(listeners.size).toBe(initial); expect(initial).toBe(4);
   await mounted.unmount(); expect(listeners.size).toBe(0);
   subscription.mockRestore();
   if (originalSubscribe) jest.mocked(AppState.addEventListener).mockImplementation(originalSubscribe);
@@ -217,7 +241,9 @@ test('settings/history are reachable through the tab while the selected reflecti
   await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
   expect(screen.getByRole('header', { name: '設定' })).toBeTruthy();
   await press('記録とプライバシー'); await press('選択の記録を見る'); await screen.findByText('あなたの選択の記録');
-  await press('‹ 戻る'); await press('‹ 戻る');
+  await press('‹ 戻る');
+  expect(screen.getByRole('tab', { name: '振り返り' })).toBeSelected();
+  await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
   expect(screen.getByRole('tab', { name: '設定' })).toBeSelected();
   await fireEvent.press(screen.getByRole('tab', { name: '振り返り' }));
   await screen.findByText('2026年12月');
@@ -235,4 +261,43 @@ test('settings storage shows measured MB, imports records explicitly and preserv
   await press('新しい記録を取り込む');
   expect(b.native.mock.calls.filter(([action]) => action === 'import')).toHaveLength(1);
   expect(controlClient.run.mock.calls.every(([action]) => action === 'snapshot')).toBe(true);
+});
+
+test('all-history entry clears the prior graph day, reason filter and reflection reference', async () => {
+  const b = backend(); await mount(b); await observed();
+  const day = screen.getAllByRole('button').find(node => String(node.props.accessibilityLabel).startsWith('11月9日、'))!;
+  await fireEvent.press(day); await screen.findByText('あなたの選択の記録');
+  expect(screen.getByText('日付で絞り込み中')).toBeTruthy();
+  expect(screen.getByText(/振り返りとは別の時点/)).toBeTruthy();
+  await press('保存した理由');
+  await press('‹ 戻る'); await observed();
+  await press('すべての選択の記録を見る'); await screen.findByText('あなたの選択の記録');
+  expect(b.historyClient.run).toHaveBeenLastCalledWith('page', expect.objectContaining({ kind: 'event', day: undefined }));
+  expect(screen.getByRole('button', { name: '日付を選ぶ' })).toHaveTextContent(/すべての日/);
+  expect(screen.queryByText('日付で絞り込み中')).toBeNull();
+  expect(screen.queryByText(/振り返りとは別の時点/)).toBeNull();
+  await press('今日'); expect(screen.getByText('日付で絞り込み中')).toBeTruthy();
+  await press('絞り込みを解除'); expect(screen.getByRole('button', { name: '日付を選ぶ' })).toHaveTextContent(/すべての日/);
+});
+
+test('rule-log totals reach normal reflection with an accurate label and survive period switching', async () => {
+  const b = backend();
+  b.native.mockImplementation(async (_action, payload) => {
+    const request = JSON.parse(payload);
+    const entry = fixtures.observed.find(row => row.request.period === (request.period ?? 'week'))!;
+    const snapshot = structuredClone(entry.response);
+    snapshot.proofScope = 'ruleScheduleLogs'; snapshot.metricVersion = 'rule-schedule-excluding-unlocks-v1';
+    snapshot.total = { ...snapshot.total, from: snapshot.asOf - 14400, until: snapshot.asOf, knownSeconds: 14100, coverage: 'recorded' };
+    snapshot.selected = { ...snapshot.selected, knownSeconds: 14100, coverage: 'partial' };
+    snapshot.trend = [snapshot.total];
+    return wrap(snapshot);
+  });
+  await mount(b);
+  await screen.findByText('ルールから計算した時間');
+  expect(screen.getByTestId('reflection-total').props.children).toBe('3時間55分');
+  expect(screen.getByTestId('reflection-period-total').props.children).toBe('3時間55分');
+  expect(screen.getByText('設定したルールの時間から、一時解除と停止の時間を除いて集計しています。')).toBeTruthy();
+  expect(screen.queryByText('時間の記録を確認できていません')).toBeNull();
+  await press('月次'); await screen.findByText('2026年11月');
+  expect(screen.getByTestId('reflection-total').props.children).toBe('3時間55分');
 });

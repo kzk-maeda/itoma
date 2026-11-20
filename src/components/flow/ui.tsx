@@ -1,10 +1,11 @@
-import { type ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
+import { type ReactNode, useRef } from 'react';
+import { FlatList, type FlatListProps, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GraphiteColors, HomeLayout } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useScreenTime } from '@/state/screen-time';
 import { useProductTabs } from '@/state/product-tabs';
+import { useWorkScope } from '@/state/work-scope';
 import type { ScreenTimeCode } from '../../../modules/itoma-native';
 import { OpenCircle } from '../home/open-circle';
 import { ProductNavigation, type ProductTab } from './product-navigation';
@@ -25,6 +26,14 @@ export function Button({ label, onPress, disabled = false, secondary = false, te
     style={({ pressed }) => [styles.button, { backgroundColor: disabled ? theme.soft : secondary ? 'transparent' : theme.accent,
       borderColor: secondary ? theme.muted : 'transparent', opacity: pressed ? 0.75 : 1 }]}>
     <Text style={[styles.buttonText, { color: disabled ? theme.muted : secondary ? theme.text : theme.onAccent }]}>{label}</Text>
+  </Pressable>;
+}
+/** Navigation stays quieter than actions; its actual target remains at least 44pt. */
+function BackButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const theme = useFlowTheme(), parent = label.replace(/^‹\s*/, '');
+  return <Pressable testID="flow-back" accessibilityRole="button" accessibilityLabel={parent === '戻る' ? '前の画面に戻る' : `${parent}に戻る`} onPress={onPress}
+    style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.6 : 1 }]}>
+    <Text accessible={false} allowFontScaling={false} style={[styles.backChevron, { color: theme.text }]}>‹</Text>
   </Pressable>;
 }
 /** Quiet secondary destinations, matching the demo's flat rows. */
@@ -63,29 +72,48 @@ export const errorText: Record<ScreenTimeCode, string> = {
   'legacy-active': '以前の手動検証の制限が残っています。確認のうえ、手動検証の制限を停止してください。',
   'retry-required': '前の要求は完了していません。内容を確認して、明示的に再試行できます。',
 };
-export function FlowScreen({ title, children, onBack, footer, tab, eyebrow }: { title: string; children: ReactNode; onBack?: () => void; footer?: ReactNode; tab?: ProductTab; eyebrow?: string }) {
-  const theme = useFlowTheme(), state = useScreenTime(), hosted = useProductTabs();
-  return <SafeAreaView edges={hosted ? [] : undefined} style={[styles.screen, { backgroundColor: tab ? theme.surface : theme.background }]}>
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView testID="flow-scroll" style={styles.screen} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, tab && styles.productContent]}>
-        {(!tab || onBack) && <View style={styles.top}>
-          {onBack ? <Button label="‹ 戻る" secondary onPress={onBack} /> : <View style={styles.brand}><OpenCircle color={theme.accent} /><Text style={[styles.brandName, { color: theme.text }]}>いとま</Text></View>}
-        </View>}
+type FlowList<T> = Pick<FlatListProps<T>, 'data' | 'renderItem' | 'keyExtractor' | 'onEndReached' | 'onEndReachedThreshold' | 'extraData'> & { viewKey: string; getInitialOffset?: () => number; onScrollOffset?: (offset: number) => void };
+function FlowRecordList<T>({ list, header, footer }: { list: FlowList<T>; header: ReactNode; footer: ReactNode }) {
+  const ref = useRef<FlatList<T>>(null), restored = useRef(false);
+  const { viewKey: _viewKey, getInitialOffset, onScrollOffset, ...props } = list;
+  return <FlatList {...props} ref={ref} testID="flow-scroll" style={styles.screen} keyboardShouldPersistTaps="handled"
+    contentContainerStyle={[styles.content, styles.listContent]} initialNumToRender={8} windowSize={5} maxToRenderPerBatch={8} removeClippedSubviews={false}
+    onContentSizeChange={(_, height) => {
+      if (!restored.current) { const offset = getInitialOffset?.() ?? 0; if (height > offset) { if (offset > 0) ref.current?.scrollToOffset({ offset, animated: false }); restored.current = true; } }
+    }}
+    scrollEventThrottle={16} onScroll={event => { if (restored.current) onScrollOffset?.(event.nativeEvent.contentOffset.y); }}
+    ListHeaderComponent={<View style={styles.listHeader}>{header}</View>} ListFooterComponent={<View style={styles.listFooter}>{footer}</View>} />;
+}
+export function FlowScreen<T>({ title, children, onBack, backLabel = '‹ 戻る', footer, tab, eyebrow, list }: { title: string; children: ReactNode; onBack?: () => void; backLabel?: string; footer?: ReactNode; tab?: ProductTab; eyebrow?: string; list?: FlowList<T> }) {
+  const theme = useFlowTheme(), state = useScreenTime(), hosted = useProductTabs(), work = useWorkScope();
+  const header = <>
         <View style={{ gap: 6 }}>
           {eyebrow && <Text style={[styles.caption, { color: theme.muted }]}>{eyebrow}</Text>}
           <View style={tab === 'home' ? styles.brand : undefined}>{tab === 'home' && <OpenCircle color={theme.accent} size={28} />}<Text accessibilityRole="header" style={[styles.title, tab && styles.productTitle, tab === 'home' && styles.homeTitle, { color: theme.text }]}>{title}</Text></View>
         </View>
         {state.error && <View accessibilityLiveRegion="polite"><Notice title="状態を確認してください">{errorText[state.error]}</Notice></View>}
         {state.busy && <Body muted>操作の結果を確認しています。画面を離れても、受け付けた処理は続きます。</Body>}
-        {children}{footer}
-      </ScrollView>
+        {children}
+  </>;
+  return <SafeAreaView edges={hosted ? [] : undefined} style={[styles.screen, { backgroundColor: tab ? theme.surface : theme.background }]}>
+    {(onBack || work) && <View style={styles.navigation}>
+      {onBack ? <BackButton label={backLabel} onPress={onBack} /> : <View />}
+      {work && <Button label="閉じる" secondary onPress={work.close} />}
+    </View>}
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {list ? <FlowRecordList key={list.viewKey} list={list} header={header} footer={footer} />
+        : <ScrollView testID="flow-scroll" style={styles.screen} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, tab && styles.productContent]}>{header}{footer}</ScrollView>}
       {tab && !hosted && <ProductNavigation current={tab} theme={theme} />}
     </KeyboardAvoidingView>
   </SafeAreaView>;
 }
 export const flowStyles = StyleSheet.create({ row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', minHeight: 44, gap: 8 }, section: { gap: 12 }, center: { alignItems: 'center', gap: 12 } });
 const styles = StyleSheet.create({
+  navigation: { width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center', paddingHorizontal: HomeLayout.gutter, paddingTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
+  backButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  backChevron: { fontSize: 30, lineHeight: 36, fontWeight: '400' },
   screen: { flex: 1 }, content: { flexGrow: 1, width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center', paddingHorizontal: HomeLayout.gutter, paddingTop: 20, paddingBottom: 40, gap: HomeLayout.sectionGap },
+  listContent: { gap: 0 }, listHeader: { gap: HomeLayout.sectionGap, marginBottom: HomeLayout.sectionGap }, listFooter: { gap: HomeLayout.sectionGap },
   productContent: { gap: 20, paddingBottom: 28 }, productTitle: { fontSize: 24, lineHeight: 36 }, homeTitle: { fontSize: 22, letterSpacing: 3 }, caption: { fontSize: 13, lineHeight: 20 },
   top: { minHeight: 44, alignItems: 'flex-start' }, brand: { flexDirection: 'row', gap: 12, alignItems: 'center' }, brandName: { fontSize: 22, fontWeight: '500', letterSpacing: 2 },
   title: { fontSize: 28, lineHeight: 40, fontWeight: '500' }, heading: { fontSize: 20, lineHeight: 30, fontWeight: '500' }, body: { fontSize: 16, lineHeight: 26 },

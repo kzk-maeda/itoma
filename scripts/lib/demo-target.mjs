@@ -3,6 +3,15 @@ import { createHash } from 'node:crypto';
 export const DEMO_HOST = 'itoma-demo.kzk-maeda.com';
 export const DEMO_ZONE = 'kzk-maeda.com';
 
+/** Recognize only the reserved branch Worker namespace, never the shared index. */
+export function demoTargetFromWorker(workerName) {
+  const match = typeof workerName === 'string' && workerName.match(/^itoma-demo-([a-z0-9](?:[a-z0-9-]{0,34}[a-z0-9])?-[a-f0-9]{12})$/);
+  if (!match || match[1].includes('--')) return null;
+  const key = match[1];
+  const basePath = `/demos/${key}`;
+  return { key, basePath, workerName, url: `https://${DEMO_HOST}${basePath}/`, routes: [`${DEMO_HOST}${basePath}`, `${DEMO_HOST}${basePath}/*`] };
+}
+
 /** Build/inspect any branch, but deploy only an explicit demo namespace. */
 export function isDemoDeploymentBranch(branch) {
   return typeof branch === 'string' && branch.startsWith('demo/') && branch.length > 'demo/'.length;

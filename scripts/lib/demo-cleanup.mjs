@@ -1,14 +1,22 @@
-import { demoTarget, DEMO_ZONE } from './demo-target.mjs';
+import { demoTarget, demoTargetFromWorker, DEMO_ZONE } from './demo-target.mjs';
+import { liveDemoWorkers } from './demo-inventory.mjs';
 
 /** Delete only a missing branch's dedicated resources. fetchImpl allows API contract tests. */
-export async function cleanupDemo({ branch, defaultBranch, repository, accountId, githubToken, cloudflareToken, apply = false, fetchImpl = fetch }) {
+export async function cleanupDemo({ branch, workerName, defaultBranch, repository, accountId, githubToken, cloudflareToken, apply = false, fetchImpl = fetch }) {
   if (!defaultBranch || branch === 'main' || branch === defaultBranch) throw new Error('Default/main branch cleanup is forbidden.');
-  const target = demoTarget(branch);
+  if ((branch === undefined) === (workerName === undefined)) throw new Error('Specify exactly one branch or Worker.');
+  const target = workerName === undefined ? demoTarget(branch) : demoTargetFromWorker(workerName);
+  if (!target || [demoTarget('main').workerName, demoTarget(defaultBranch).workerName].includes(target.workerName)) throw new Error('Not an isolated branch demo Worker.');
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository ?? '') || !/^[a-f0-9]{32}$/.test(accountId ?? '') || !githubToken || !cloudflareToken) {
     throw new Error('Repository, Cloudflare account ID, and GitHub/Cloudflare API tokens are required.');
   }
   const result = { target, status: 'planned', deletedRoutes: 0, deletedWorker: false };
   async function branchExists() {
+    // Legacy names cannot be reversed to a Git ref. Compare their complete hashed
+    // identity with ALL current branches, including historical non-demo prefixes.
+    if (workerName !== undefined) {
+      return (await liveDemoWorkers({ repository, githubToken, defaultBranch, fetchImpl })).has(target.workerName);
+    }
     const response = await fetchImpl(`https://api.github.com/repos/${repository}/git/ref/heads/${encodeURIComponent(branch)}`, {
       headers: { Authorization: `Bearer ${githubToken}`, Accept: 'application/vnd.github+json' },
       signal: AbortSignal.timeout(30_000),
@@ -39,7 +47,7 @@ export async function cleanupDemo({ branch, defaultBranch, repository, accountId
   const workerPath = `/accounts/${accountId}/workers/workers/${target.workerName}`;
   function checkWorker(worker) {
     if (worker === null) return;
-    if (worker.name !== target.workerName || !/^[a-f0-9]{32}$/.test(worker.id ?? '') || !worker.references ||
+    if (!worker || worker.name !== target.workerName || !/^[a-f0-9]{32}$/.test(worker.id ?? '') || !worker.references ||
         Object.values(worker.references).some(refs => !Array.isArray(refs) || refs.length > 0)) {
       throw new Error('Worker identity or references do not match an isolated branch demo.');
     }
@@ -85,5 +93,5 @@ export async function cleanupDemo({ branch, defaultBranch, repository, accountId
   if (await cf(workerPath, 'GET', true) !== null || checkRoutes(await cf(routesPath)).length > 0) {
     throw new Error('Cleanup verification failed; inspect resources and retry.');
   }
-  return { ...result, status: 'deleted' };
+  return { ...result, status: worker === null && routes.length === 0 ? 'absent' : 'deleted' };
 }

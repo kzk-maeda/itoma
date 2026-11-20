@@ -50,6 +50,8 @@ npx expo-doctor
 GitHub Actions の `quality` ジョブは main への push と PR で依存関係のインストール、型チェック、lint、テストを実行します。
 `expo-doctor` はローカルで実行し、結果を PR に記載します。オンライン照会の失敗と依存関係の不一致は区別してください。
 
+OpenAI APIによる参考レビューは、main向けPRの初回にDecisions APIで要否を判定し、必要な場合だけ本レビューへ進みます。以降はPRコメントの`/ai-review`、または`ai-review`ラベルの付け直しで再実行します。`OPENAI_API_KEY` Secretの設定・結果確認・ポリシー更新は[AIレビュー手順](docs/ai-review.md)を参照してください。通常CIや人間の承認とは別の工程です。
+
 ## 現在の実装と未設定事項
 
 - ホームは採用済みの「墨と白」・OPEN CIRCLEへ移行しました。旧サンプル選択は撤去し、時間帯ルールの未接続を明示します。PoC有効のiOSビルドでは検証画面へ戻り、手動制限を停止できます。[画面と検証範囲](docs/qa/adopted-home/README.md)。

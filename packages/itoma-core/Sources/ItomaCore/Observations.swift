@@ -15,6 +15,19 @@ public enum Activation: String, Codable, Sendable {
     case enabled, awaitingReauthorizationConfirmation, paused
 }
 
+/// Permission to execute an already committed policy, separate from the raw OS observation.
+/// Only Control may select the delegated case after checking its durable, current-policy proof.
+/// This never authorizes a new grant, retry, candidate exemption, or user resume.
+public enum RuleExecutionAuthorization: Sendable {
+    case liveObservation, hostConfirmedPolicy
+
+    public func permits(_ context: EvaluationContext) -> Bool {
+        context.authorization.status == .approved
+            || (self == .hostConfirmedPolicy && context.authorization.status == .unknown
+                && context.activation == .enabled)
+    }
+}
+
 /// All context is supplied by the caller. No current clock, locale, or time zone is read here.
 public struct EvaluationContext: Equatable, Sendable {
     public let now: Instant

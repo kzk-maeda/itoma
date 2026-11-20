@@ -35,6 +35,19 @@ public final class ControlRepository {
     static let applicationID: Int64 = 0x49544F4D
     let database: SQLiteDatabase
     private let lock = NSRecursiveLock()
+    var durationClock: () throws -> (Instant, Double) = {
+        let now = try Instant(secondsSince1970: Date().timeIntervalSince1970)
+        // Unlike systemUptime/mach_absolute_time, this clock includes system sleep. A locked
+        // phone must not look like a wall-clock jump and erase the user's offline interval.
+        #if canImport(Darwin)
+        let continuous = Double(clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW)) / 1_000_000_000
+        #else
+        var value = timespec()
+        guard clock_gettime(CLOCK_BOOTTIME, &value) == 0 else { throw StorageError.unavailable }
+        let continuous = Double(value.tv_sec) + Double(value.tv_nsec) / 1_000_000_000
+        #endif
+        return (now, continuous)
+    }
 
     public static func create(
         at url: URL, initialPolicy: PolicySnapshot, selections: [StoredSelection] = [],

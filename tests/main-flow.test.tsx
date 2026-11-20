@@ -1,12 +1,14 @@
+import { BrowseTestShell } from './fixtures/browse-shell';
 import { selectTime } from './fixtures/time-picker';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
-import { ScreenTimeProvider } from '../src/state/screen-time';
+import { Alert, AppState, type AppStateStatus } from 'react-native';
+import { ScreenTimeProvider, useScreenTime } from '../src/state/screen-time';
 import { OnboardingProvider } from '../src/state/onboarding';
 import { ProductHome } from '../src/components/flow/home';
 import { OnboardingScreen } from '../src/components/flow/onboarding';
 import { RuleEditorScreen, RuleConfirmationScreen } from '../src/components/flow/rule';
+import { RuleDetailsScreen } from '../src/components/flow/rule-details';
 import { UnlockScreen, UnlockConfirmationScreen } from '../src/components/flow/unlock';
 import { GrantScreen } from '../src/components/flow/grant';
 import { SettingsScreen, ScheduleListScreen, ScheduleDetailScreen, ScreenTimeSettingsScreen } from '../src/components/flow/settings';
@@ -18,6 +20,7 @@ const selection = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const appA = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const appB = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
 const ruleID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+const addedRuleID = '11111111-1111-1111-1111-111111111111';
 const previewID = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
 const commandID = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
 let mockParams: { ruleID?: string } = {};
@@ -37,7 +40,10 @@ function mockBack() {
 jest.mock('expo-router', () => ({
   router: { push: (path: string) => mockGo(path), replace: (path: string) => mockGo(path, true),
     navigate: (path: string) => mockGo(path, false, true), back: () => mockBack(), canGoBack: () => mockHistory.length > 1,
-    dismissTo: (path: string) => { const index = mockHistory.lastIndexOf(path); if (index >= 0) { mockHistory = mockHistory.slice(0, index + 1); mockNavigate(path); } else mockGo(path, true); } },
+    dismissTo: (path: string) => {
+      const repeat = () => { const index = mockHistory.lastIndexOf(path); if (index >= 0) { mockHistory = mockHistory.slice(0, index + 1); mockNavigate(path); } else mockGo(path, true); };
+      if (mockGuard?.dirty) mockGuard.callback({ repeat }); else repeat();
+    } },
   useLocalSearchParams: () => mockParams,
   useFocusEffect: (callback: () => void) => require('react').useEffect(callback, [callback]),
   usePreventRemove: (dirty: boolean, callback: (event: { repeat: () => void }) => void) => {
@@ -59,13 +65,14 @@ const completedSetup = { run: async () => ({ status: 'ok' as const, impacts: [],
 function Pages() {
   const [route, setRoute] = useState('/');
   useEffect(() => { mockNavigate = setRoute; return () => { mockNavigate = () => {}; }; }, []);
-  return <OnboardingProvider client={completedSetup}><Page route={route} /></OnboardingProvider>;
+  return <OnboardingProvider client={completedSetup}><BrowseTestShell route={route} navigate={path => mockGo(path, false, true)}><Page route={route} /></BrowseTestShell></OnboardingProvider>;
 }
 function Page({ route }: { route: string }) {
   switch (route) {
     case '/onboarding': return <OnboardingScreen />;
     case '/rule': return <RuleEditorScreen />;
     case '/rule-confirm': return <RuleConfirmationScreen />;
+    case '/rule-details': return <RuleDetailsScreen ruleID={mockParams.ruleID} />;
     case '/unlock': return <UnlockScreen />;
     case '/unlock-confirm': return <UnlockConfirmationScreen />;
     case '/grant': return <GrantScreen />;
@@ -80,6 +87,7 @@ function Page({ route }: { route: string }) {
 function backend(configured = true, failGrant = false, nativeNoChange = false) {
   let snapshot: ScreenTimeSnapshot = { ...unavailableSnapshot('device'), storage: configured ? 'ready' : 'not-created',
     authorization: configured ? 'approved' : 'unknown', schedulesReady: true, observation: 'applied', validUntil: now / 1000 + 1800,
+    ruleDetailsStatus: 'ready', ruleDetailsRevision: '0',
     rules: configured ? [{ id: ruleID, selectionRef: selection, weekdays: [1, 2, 3, 4, 5], startMinute: 1260, endMinute: 1380, nextDay: false, enabled: true }] : [],
     selections: configured ? [{ ref: selection, count: 2 }] : [],
     targets: configured ? [{ ref: appA, selectionRef: selection, ruleID, restricted: true, unlockable: true }, { ref: appB, selectionRef: selection, ruleID, restricted: true, unlockable: true }] : [],
@@ -102,10 +110,18 @@ function backend(configured = true, failGrant = false, nativeNoChange = false) {
           && [...saved.weekdays].sort().join() === [...proposed.weekdays].sort().join()) return response();
         return response({ status: 'confirmation-required', ref: previewID });
       }
-      case 'commitRule':
-        snapshot = { ...snapshot, revision: '1', sequence: '1', rules: [{ ...proposed!, id: ruleID }],
+      case 'commitRule': {
+        const id = proposed?.id ?? (snapshot.rules.length ? addedRuleID : ruleID);
+        const rules = proposed?.remove ? snapshot.rules.filter(rule => rule.id !== id) : [...snapshot.rules.filter(rule => rule.id !== id), { ...proposed!, id }];
+        snapshot = { ...snapshot, revision: '1', sequence: '1', rules,
           targets: [{ ref: appA, selectionRef: selection, ruleID, restricted: true, unlockable: true }, { ref: appB, selectionRef: selection, ruleID, restricted: true, unlockable: true }],
-          periods: [{ ruleID, startsAt: now / 1000 - 1800, endsAt: now / 1000 + 5400 }] }; break;
+          periods: rules.map(rule => ({ ruleID: rule.id, startsAt: now / 1000 - 1800, endsAt: now / 1000 + 5400 })) }; break;
+      }
+      case 'saveRuleDetails': {
+        const details = request.details!;
+        if (details.expectedRevision !== snapshot.ruleDetailsRevision || details.expectedPolicyRevision !== snapshot.revision) return response({ status: 'error', code: 'changed' });
+        snapshot = { ...snapshot, ruleDetailsRevision: String(Number(snapshot.ruleDetailsRevision) + 1), rules: snapshot.rules.map(rule => rule.id === details.ruleID ? { ...rule, title: details.title.trim(), goal: details.goal.trim() ? details.goal : undefined } : rule) }; break;
+      }
       case 'previewUnlock': target = request.targetRef!; return response({ status: 'confirmation-required', ref: previewID, minutes: request.minutes, previewEndsAt: expiry, shortened: false });
       case 'unlock': case 'retryGrant':
         snapshot = { ...snapshot, sequence: action === 'unlock' ? '2' : '3',
@@ -121,13 +137,257 @@ function backend(configured = true, failGrant = false, nativeNoChange = false) {
   return { client: { run }, current: () => snapshot, replace: (value: Partial<ScreenTimeSnapshot>) => { snapshot = { ...snapshot, ...value }; } };
 }
 
-beforeEach(() => { mockHistory = ['/']; mockGuard = undefined; jest.spyOn(Date, 'now').mockReturnValue(now); });
+beforeEach(() => { mockHistory = ['/']; mockParams = {}; mockGuard = undefined; jest.spyOn(Date, 'now').mockReturnValue(now); });
 afterEach(() => jest.restoreAllMocks());
-const press = async (name: string) => { await fireEvent.press(screen.getByRole('button', { name })); };
-const openSettings = async () => { await fireEvent.press(screen.getByRole('tab', { name: '設定' })); await press('スケジュール'); };
+const press = async (name: string) => { await fireEvent.press((name === '‹ 戻る' ? screen.getByTestId('flow-back') : screen.getByRole('button', { name: name.startsWith('‹ ') ? `${name.slice(2)}に戻る` : name }))); };
+const openSettings = async () => {
+  if (screen.queryByRole('header', { name: 'スケジュール' })) return;
+  if (screen.queryByRole('button', { name: 'スケジュールに戻る' })) { await press('‹ スケジュール'); return; }
+  await fireEvent.press(screen.getByRole('tab', { name: '設定' })); await press('スケジュール');
+};
 const openRule = async (action: string) => { if (!screen.queryByRole('button', { name: action })) await press('時間帯 1'); await press(action); };
 
-test('normal rule creation after initial setup → explicit permission → native selection → review → saved home, without PoC navigation', async () => {
+const creationTitle = '夜の余白';
+const creationGoal = '合成の目標\n自分で選んだ時間を過ごす';
+async function startNamedRule() {
+  await openSettings(); await press('ルールを追加する');
+  await fireEvent.changeText(screen.getByLabelText('ルール名（任意）'), creationTitle);
+  await fireEvent.changeText(screen.getByLabelText('行動目標（任意）'), creationGoal);
+  await press('対象アプリを選ぶ');
+}
+
+test('settings adds a named rule and goal through review, preserves the existing rule, and saves private text only after consent', async () => {
+  const b = backend();
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule(); await press('内容を確認する');
+  expect(screen.getByText(creationTitle)).toBeTruthy(); expect(screen.getByText(creationGoal)).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([action]) => action === 'saveRuleDetails' || action === 'commitRule')).toBe(false);
+  expect(b.client.run.mock.calls.find(([action]) => action === 'previewRule')![1]?.rule).not.toHaveProperty('title');
+  expect(b.client.run.mock.calls.find(([action]) => action === 'previewRule')![1]?.rule).not.toHaveProperty('goal');
+  await press('編集へ戻る');
+  expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue(creationTitle);
+  expect(screen.getByLabelText('行動目標（任意）')).toHaveDisplayValue(creationGoal);
+  await press('内容を確認する'); await press('この内容で保存する');
+  expect(screen.getByRole('header', { name: creationTitle })).toBeTruthy();
+  expect(screen.getByText(creationTitle)).toBeTruthy(); expect(screen.getByText(creationGoal)).toBeTruthy();
+  expect(b.current().rules.find(rule => rule.id === addedRuleID)).toMatchObject({ title: creationTitle, goal: creationGoal });
+  expect(b.current().rules.find(rule => rule.id === ruleID)?.title).toBeUndefined();
+  expect(b.client.run).toHaveBeenCalledWith('saveRuleDetails', { details: { ruleID: addedRuleID, title: creationTitle, goal: creationGoal, expectedRevision: '0', expectedPolicyRevision: '1' } });
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+  expect(JSON.stringify(mockHistory)).not.toContain(creationGoal);
+  await openSettings(); await press(creationTitle);
+  expect(screen.getByText(creationGoal)).toBeTruthy();
+});
+
+test('empty optional name and goal still create a rule without a private write', async () => {
+  const b = backend(); await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('ルールを追加する'); await press('対象アプリを選ぶ');
+  await press('内容を確認する'); expect(screen.getByText('行動目標は未入力です。')).toBeTruthy();
+  await press('この内容で保存する');
+  expect(b.current().rules).toHaveLength(2);
+  expect(b.client.run.mock.calls.some(([action]) => action === 'saveRuleDetails')).toBe(false);
+});
+
+test('identity-only input triggers discard confirmation, and invalid input cannot prepare a rule', async () => {
+  const b = backend(), alert = jest.spyOn(Alert, 'alert');
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('ルールを追加する');
+  await fireEvent.changeText(screen.getByLabelText('ルール名（任意）'), 'あ'.repeat(81));
+  await press('対象アプリを選ぶ'); expect(screen.getByRole('button', { name: '内容を確認する' })).toBeDisabled();
+  await fireEvent.changeText(screen.getByLabelText('ルール名（任意）'), creationTitle);
+  await fireEvent.changeText(screen.getByLabelText('行動目標（任意）'), 'あ'.repeat(1001));
+  expect(screen.getByRole('button', { name: '内容を確認する' })).toBeDisabled();
+  await fireEvent.changeText(screen.getByLabelText('行動目標（任意）'), '不可\0');
+  expect(screen.getByRole('button', { name: '内容を確認する' })).toBeDisabled();
+  await press('‹ 戻る'); expect(alert).toHaveBeenCalled();
+  await act(async () => alert.mock.calls.at(-1)?.[2]?.[1].onPress?.());
+  expect(screen.getByRole('header', { name: 'スケジュール' })).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([action]) => ['saveRuleDetails', 'previewRule', 'commitRule'].includes(action))).toBe(false);
+});
+
+test.each(['storage-failed', 'changed'] as const)('private %s after rule creation keeps input and retries only private text after reviewing current values', async code => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  let fail = true;
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'saveRuleDetails' && fail) {
+      fail = false;
+      b.replace({ ruleDetailsRevision: '1', rules: b.current().rules.map(rule => rule.id === addedRuleID ? { ...rule, title: '別の保存内容' } : rule) });
+      return { status: 'error', code, impacts: [], snapshot: b.current() };
+    }
+    return original(action, request);
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule(); await press('内容を確認する'); await press('この内容で保存する');
+  expect(screen.getByRole('header', { name: 'ルール名と行動目標' })).toBeTruthy();
+  expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue(creationTitle);
+  expect(screen.getByLabelText('行動目標（任意）')).toHaveDisplayValue(creationGoal);
+  expect(screen.getByRole('button', { name: '保存する' })).toBeDisabled();
+  await press('最新の保存内容を確認する'); expect(screen.getByText('別の保存内容')).toBeTruthy();
+  await press('入力した内容で保存する');
+  expect(screen.getByRole('header', { name: creationTitle })).toBeTruthy();
+  expect(b.current().rules).toHaveLength(2);
+  expect(b.current().rules.find(rule => rule.id === addedRuleID)?.goal).toBe(creationGoal);
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'saveRuleDetails')).toHaveLength(2);
+});
+
+test('an acknowledged rule save without its snapshot can recover its exact rule without a second commit', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  b.client.run.mockImplementation(async (action, request) => {
+    const response = await original(action, request);
+    return action === 'commitRule' ? { ...response, snapshot: undefined } : response;
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule(); await press('内容を確認する'); await press('この内容で保存する');
+  expect(screen.queryByRole('button', { name: '内容を確認する' })).toBeNull();
+  await press('保存したルールとの対応を確認する'); await press('最新の保存内容を確認する'); await press('入力した内容で保存する');
+  expect(b.current().rules.find(rule => rule.id === addedRuleID)?.title).toBe(creationTitle);
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+});
+
+test('a newer policy cannot bind creation text to an unrelated matching rule', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  b.client.run.mockImplementation(async (action, request) => {
+    const response = await original(action, request);
+    if (action === 'commitRule') { b.replace({ revision: '2', sequence: '2' }); return { ...response, snapshot: b.current() }; }
+    return response;
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule(); await press('内容を確認する'); await press('この内容で保存する');
+  await press('保存したルールとの対応を確認する');
+  expect(screen.getByText(creationGoal)).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([action]) => action === 'saveRuleDetails')).toBe(false);
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+});
+
+test('abandoning private text after creation explains that the saved rule remains and does not recreate or delete it', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!, alert = jest.spyOn(Alert, 'alert');
+  b.client.run.mockImplementation(async (action, request) => action === 'saveRuleDetails'
+    ? { status: 'error', code: 'storage-failed', impacts: [], snapshot: b.current() } : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule(); await press('内容を確認する'); await press('この内容で保存する');
+  await press('名前と行動目標を保存せず戻る');
+  expect(alert.mock.calls.at(-1)?.[1]).toContain('保存済みの時間のルールは残ります');
+  await act(async () => alert.mock.calls.at(-1)?.[2]?.[1].onPress?.());
+  expect(screen.getByRole('header', { name: '時間帯 2' })).toBeTruthy(); expect(b.current().rules).toHaveLength(2);
+  await openSettings(); await press('ルールを追加する');
+  expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue('');
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+  expect(b.client.run.mock.calls.some(([action]) => action === 'cancelCandidate')).toBe(false);
+});
+
+test('a repeated save press while private text is pending sends one policy commit and one text write', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  let finish: (() => void) | undefined;
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'saveRuleDetails') await new Promise<void>(resolve => { finish = resolve; });
+    return original(action, request);
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule(); await press('内容を確認する');
+  await press('この内容で保存する'); await press('この内容で保存する');
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'saveRuleDetails')).toHaveLength(1);
+  await act(async () => finish?.());
+  expect(screen.getByRole('header', { name: creationTitle })).toBeTruthy();
+});
+
+test.each(['ready', 'unavailable'] as const)('new rule input survives a foreground private recheck before %s without showing a premature failure', async outcome => {
+  let emit!: (state: AppStateStatus) => void;
+  jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, callback) => { emit = callback; return { remove: jest.fn() }; });
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  let hold = false, finish!: (result: ScreenTimeResponse) => void;
+  b.client.run.mockImplementation((action, request) => action === 'snapshot' && hold
+    ? new Promise(resolve => { finish = resolve; }) : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await startNamedRule();
+  await act(async () => { emit('inactive'); }); hold = true;
+  await act(async () => { emit('active'); });
+  expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+  expect(screen.queryByText('名前と行動目標を保存できません')).toBeNull();
+  expect(screen.queryByRole('button', { name: '名前と行動目標の保存状態を確認する' })).toBeNull();
+  expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue(creationTitle);
+  expect(screen.getByLabelText('行動目標（任意）')).toHaveDisplayValue(creationGoal);
+  expect(screen.getByRole('button', { name: '内容を確認する' })).toBeDisabled();
+  await act(async () => { finish({ status: 'ok', impacts: [], snapshot: { ...b.current(), ruleDetailsStatus: outcome } }); });
+  expect(screen.queryByText('ルール名と行動目標を確認しています。')).toBeNull();
+  if (outcome === 'unavailable') {
+    expect(screen.getByText('名前と行動目標を保存できません')).toBeTruthy();
+    await press('名前と行動目標の保存状態を確認する');
+    expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+    expect(screen.queryByText('名前と行動目標を保存できません')).toBeNull();
+    await act(async () => { finish({ status: 'ok', impacts: [], snapshot: b.current() }); });
+  }
+  expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue(creationTitle);
+  expect(screen.getByLabelText('行動目標（任意）')).toHaveDisplayValue(creationGoal);
+  expect(screen.getByRole('button', { name: '内容を確認する' })).toBeEnabled();
+  expect(b.client.run.mock.calls.some(([action]) => action === 'previewRule' || action === 'commitRule' || action === 'saveRuleDetails')).toBe(false);
+});
+
+test.each(['ready', 'unavailable', 'transport'] as const)('foreground private read shows checking before %s without flashing the failure notice', async outcome => {
+  let emit!: (state: AppStateStatus) => void;
+  jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, callback) => { emit = callback; return { remove: jest.fn() }; });
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  b.replace({ ruleDetailsStatus: 'ready', ruleDetailsRevision: '10', rules: b.current().rules.map(rule => ({ ...rule, title: 'saved synthetic title', goal: 'saved synthetic goal' })) });
+  let hold = false, finish!: (result: ScreenTimeResponse) => void;
+  b.client.run.mockImplementation((action, request) => action === 'snapshot' && hold
+    ? new Promise(resolve => { finish = resolve; }) : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  expect(screen.getByText('saved synthetic title')).toBeTruthy();
+  await act(async () => { emit('inactive'); });
+  hold = true;
+  await act(async () => { emit('active'); });
+  expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+  expect(screen.queryByText('ルール名と行動目標を確認できません')).toBeNull();
+  expect(screen.queryByText('saved synthetic title')).toBeNull();
+  expect(screen.queryByText('saved synthetic goal')).toBeNull();
+  await act(async () => { finish(outcome === 'transport' ? { status: 'error', code: 'unavailable', impacts: [] }
+    : { status: 'ok', impacts: [], snapshot: { ...b.current(), ruleDetailsStatus: outcome } }); });
+  expect(screen.queryByText('ルール名と行動目標を確認しています。')).toBeNull();
+  if (outcome === 'ready') {
+    expect(screen.getByText('saved synthetic title')).toBeTruthy();
+    expect(screen.queryByText('ルール名と行動目標を確認できません')).toBeNull();
+  } else {
+    expect(screen.getByText('ルール名と行動目標を確認できません')).toBeTruthy();
+    expect(screen.queryByText('saved synthetic title')).toBeNull();
+  }
+});
+
+test('an unconfirmed initial AppState waits for an active read without showing a private failure', async () => {
+  jest.replaceProperty(AppState, 'currentState', 'unknown');
+  const b = backend();
+  b.replace({ ruleDetailsStatus: 'ready', ruleDetailsRevision: '10', rules: b.current().rules.map(rule => ({ ...rule, title: 'unconfirmed synthetic title' })) });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+  expect(screen.queryByText('ルール名と行動目標を確認できません')).toBeNull();
+  expect(screen.queryByText('unconfirmed synthetic title')).toBeNull();
+});
+
+test('schedule detail separates checking from failure and offers a retry that can recover', async () => {
+  let emit!: (state: AppStateStatus) => void;
+  jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, callback) => { emit = callback; return { remove: jest.fn() }; });
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  b.replace({ ruleDetailsStatus: 'ready', ruleDetailsRevision: '10' });
+  let hold = false, finish!: (result: ScreenTimeResponse) => void;
+  b.client.run.mockImplementation((action, request) => action === 'snapshot' && hold
+    ? new Promise(resolve => { finish = resolve; }) : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await press('時間帯 1');
+  await act(async () => { emit('inactive'); }); hold = true;
+  await act(async () => { emit('active'); });
+  expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+  expect(screen.queryByText('名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。')).toBeNull();
+  await act(async () => { finish({ status: 'ok', impacts: [], snapshot: { ...b.current(), ruleDetailsStatus: 'unavailable' } }); });
+  expect(screen.getByText('名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。')).toBeTruthy();
+  await press('保存した名前と行動目標を読み直す');
+  expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeTruthy();
+  expect(screen.queryByText('名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。')).toBeNull();
+  await act(async () => { finish({ status: 'ok', impacts: [], snapshot: b.current() }); });
+  expect(screen.queryByText('ルール名と行動目標を確認しています。')).toBeNull();
+  expect(screen.getByRole('button', { name: '名前と行動目標を編集' })).toBeEnabled();
+});
+
+test('normal rule creation after initial setup → explicit permission → native selection → review → saved schedule detail, without PoC navigation', async () => {
   const b = backend(false);
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
   await press('ルールをつくる');
@@ -142,7 +402,7 @@ test('normal rule creation after initial setup → explicit permission → nativ
   await press('編集へ戻る');
   expect(screen.getByRole('button', { name: '開始時刻' }).props.accessibilityValue.text).toBe('21:00');
   await press('内容を確認する'); await press('この内容で保存する');
-  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
+  expect(screen.getByRole('header', { name: '時間帯 1' })).toBeTruthy();
   expect(screen.queryByText('時間帯ルールは準備中です')).toBeNull();
   expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
   expect(mockHistory).not.toContain('/native-poc');
@@ -153,7 +413,7 @@ test('native no-change ends review in the editor and preserves the visible fixed
   b.replace({ targets: b.current().targets.map((target) => target.ref === appA
     ? { ...target, restricted: false, unlockable: false, grantStatus: 'active', grantEndsAt: expiry, grantCommandID: commandID } : target) });
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await press('内容を確認する');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await press('内容を確認する');
   expect(screen.getByText('変更はありません')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'この内容で保存する' })).toBeNull();
   expect(mockHistory).not.toContain('/rule-confirm');
@@ -167,7 +427,7 @@ test('native no-change ends review in the editor and preserves the visible fixed
 test('change then revert retains the owned preview ref across editor remount while clearing stale confirmation', async () => {
   const b = backend(true, false, true);
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('編集へ戻る');
   await selectTime('開始時刻', '21:00');
   // The prior accepted reference survives, but editing invalidates the old confirmation.
@@ -188,7 +448,7 @@ test('a rejected native preview keeps the edited draft and cannot show no-change
   b.client.run.mockImplementation(async (action, request) => action === 'previewRule'
     ? { status: 'error', code: 'changed', impacts: [], snapshot: b.current() } : original(action, request));
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00'); await press('内容を確認する');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00'); await press('内容を確認する');
   expect(screen.getByRole('button', { name: '開始時刻' }).props.accessibilityValue.text).toBe('20:00');
   expect(screen.queryByText('変更はありません')).toBeNull();
   expect(screen.queryByRole('button', { name: 'この内容で保存する' })).toBeNull();
@@ -198,7 +458,7 @@ test('a rejected native preview keeps the edited draft and cannot show no-change
 test('settings explicitly discards only the preview owned by the retained rule editor', async () => {
   const b = backend(), alert = jest.spyOn(Alert, 'alert');
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('保存したルールを確認する'); await press('ルールを追加する');
   await act(async () => { alert.mock.calls.at(-1)?.[2]?.[1].onPress?.(); });
   expect(b.client.run).toHaveBeenCalledWith('cancelCandidate', { ref: previewID });
@@ -217,7 +477,7 @@ test.each(['editor', 'deletion', 'settings'] as const)('failed preview cancellat
     await openRule('時間帯 1を削除する内容を確認');
     await press('削除せず戻る');
   } else {
-    await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+    await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
     await press('内容を確認する');
     if (route === 'settings') {
       await press('保存したルールを確認する'); await press('ルールを追加する');
@@ -250,7 +510,7 @@ test.each([false, true])('a saved policy with an OS failure drops its old previe
     return action === 'commitRule' ? { ...response, status: 'error', code: 'application-uncertain', ref: previewID } : response;
   });
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('この内容で保存する');
   expect(b.current().revision).toBe('1');
   await press('最新の変更内容を確認し直す'); await press('内容を確認する');
@@ -276,7 +536,7 @@ test('settings can discard a stale ref after save completed but its response sna
     return response;
   });
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('この内容で保存する');
   expect(b.current().revision).toBe('1');
   await press('保存したルールを確認する'); await press('ルールを追加する');
@@ -296,7 +556,7 @@ test('post-accept assessment failure retains its new owned ref without allowing 
     return original(action, request);
   });
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await selectTime('開始時刻', '20:00');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('編集へ戻る'); await selectTime('開始時刻', '19:00');
   await press('内容を確認する');
   expect(screen.queryByRole('button', { name: 'この内容で保存する' })).toBeNull();
@@ -330,7 +590,7 @@ test('rule controls cannot change a draft while its native no-change preview is 
   b.client.run.mockImplementation(async (action, request) => action === 'previewRule'
     ? new Promise<ScreenTimeResponse>(resolve => { resolvePreview = resolve; }) : original(action, request));
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集'); await press('内容を確認する');
+  await openSettings(); await openRule('対象アプリと時間を編集'); await press('内容を確認する');
   expect(screen.getByRole('switch', { name: 'このルールを有効にする' })).toBeDisabled();
   for (const day of ['月', '火', '水', '木', '金', '土', '日']) expect(screen.getByRole('checkbox', { name: `${day}曜日` })).toBeDisabled();
   expect(screen.getByRole('button', { name: '開始時刻' })).toBeDisabled();
@@ -413,10 +673,10 @@ test('continuing restrictions from input and confirmation preserves text until e
   expect(screen.getByLabelText('いま使う理由')).toHaveDisplayValue('');
 });
 
-test.each(['ルールを追加する', '時間帯 1を編集', '時間帯 1を削除する内容を確認'])('settings cannot overwrite a retained dirty rule draft via %s', async (action) => {
+test.each(['ルールを追加する', '対象アプリと時間を編集', '時間帯 1を削除する内容を確認'])('settings cannot overwrite a retained dirty rule draft via %s', async (action) => {
   const b = backend(), alert = jest.spyOn(Alert, 'alert');
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
-  await openSettings(); await openRule('時間帯 1を編集');
+  await openSettings(); await openRule('対象アプリと時間を編集');
   await selectTime('開始時刻', '20:00');
   await press('内容を確認する'); await press('保存したルールを確認する');
   const before = b.client.run.mock.calls.length;
@@ -434,7 +694,7 @@ test('reauthorization keeps existing rules awaiting explicit review/resume and d
   expect(screen.queryByRole('button', { name: '一時解除する' })).toBeNull();
   expect(screen.queryByText('制限設定を反映しました')).toBeNull();
   await press('許可を確認する'); await press('スクリーンタイムを許可する');
-  await press('スケジュール');
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy(); await openSettings();
   expect(screen.getByRole('header', { name: 'スケジュール' })).toBeTruthy();
   expect(screen.getByRole('button', { name: '保存したルールの再開を確認' })).toBeDisabled();
   expect(b.client.run.mock.calls.some(([name]) => name === 'resume' || name === 'previewRule' || name === 'commitRule')).toBe(false);
@@ -445,7 +705,7 @@ test('home keeps its primary flow and settings expose explicit reconciliation in
   for (const name of ['ルールと設定', '選択の記録を見る', '現在の状態を確認する']) expect(screen.queryByRole('button', { name })).toBeNull();
   await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
   for (const name of ['スケジュール', 'スクリーンタイム', '記録とプライバシー', '使い方とこのアプリ']) expect(screen.getByRole('button', { name })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: '時間帯 1を編集' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '対象アプリと時間を編集' })).toBeNull();
   expect(b.client.run.mock.calls.some(([action]) => action === 'reconcile')).toBe(false);
   await press('スクリーンタイム');
   expect(screen.getByText('取得時点でITOMAの設定を反映した記録があります。')).toBeTruthy();
@@ -463,13 +723,13 @@ test('eight saved schedules keep settings top compact and expose one detail befo
   await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
   await fireEvent.press(screen.getByRole('tab', { name: '設定' }));
   expect(screen.getByText(/8件 ·/)).toBeTruthy();
-  expect(screen.queryByRole('button', { name: '架空の時間 1を編集' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '対象アプリと時間を編集' })).toBeNull();
   await press('スケジュール');
   for (let i = 1; i <= 8; i++) expect(screen.getByRole('button', { name: `架空の時間 ${i}` })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: '架空の時間 1を編集' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '対象アプリと時間を編集' })).toBeNull();
   await press('架空の時間 1');
-  expect(screen.getByRole('button', { name: '架空の時間 1を編集' })).toBeTruthy();
-  expect(screen.getByRole('button', { name: '架空の時間 1の名前と行動目標を編集' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '対象アプリと時間を編集' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '名前と行動目標を編集' })).toBeTruthy();
   expect(screen.getByRole('button', { name: '架空の時間 1を削除する内容を確認' })).toBeTruthy();
 });
 
@@ -483,4 +743,58 @@ test('settings distinguish unavailable schedule data from a known empty schedule
   await press('スケジュール');
   expect(screen.getByText('この環境では保存状態を確認できません。iPhoneアプリで確認できます。')).toBeTruthy();
   expect(screen.queryByText('保存したルールはありません。')).toBeNull();
+});
+
+test('a late accepted rule result cannot redirect a closed flow or overwrite a later draft', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  let finish!: () => void, state!: ReturnType<typeof useScreenTime>;
+  function Capture() { const value = useScreenTime(); useEffect(() => { state = value; }, [value]); return null; }
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'commitRule') await new Promise<void>(resolve => { finish = resolve; });
+    return original(action, request);
+  });
+  await render(<ScreenTimeProvider client={b.client}><Capture /><Pages /></ScreenTimeProvider>);
+  await openSettings(); await openRule('対象アプリと時間を編集'); await selectTime('開始時刻', '20:00');
+  await press('内容を確認する'); await press('この内容で保存する');
+  await act(async () => { mockGo('/', true); state.beginRule(); });
+  await act(async () => state.setRuleDraft({ ...state.ruleDraft!, title: '後から始めた架空の入力', dirty: true }));
+  await act(async () => finish());
+  expect(state.ruleDraft?.title).toBe('後から始めた架空の入力');
+  expect(mockHistory.at(-1)).toBe('/');
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'commitRule')).toHaveLength(1);
+});
+
+test('a deletion preview that finishes after leaving its detail does not reopen the modal', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  let finish!: () => void;
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'previewRule') await new Promise<void>(resolve => { finish = resolve; });
+    return original(action, request);
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await openSettings(); await openRule('時間帯 1を削除する内容を確認');
+  await act(async () => mockGo('/', true));
+  await act(async () => finish());
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
+  expect(mockHistory.at(-1)).toBe('/');
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'previewRule')).toHaveLength(1);
+  expect(b.client.run.mock.calls.some(([action]) => action === 'commitRule')).toBe(false);
+});
+
+test('an authorization result after closing recovery updates native state without redirecting the next screen', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  b.replace({ authorization: 'denied' });
+  let finish!: () => void;
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'authorize') await new Promise<void>(resolve => { finish = resolve; });
+    return original(action, request);
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  await press('許可を確認する'); await press('スクリーンタイムを許可する');
+  await act(async () => mockGo('/settings', true));
+  await act(async () => finish());
+  expect(screen.getByRole('header', { name: '設定' })).toBeTruthy();
+  expect(mockHistory.at(-1)).toBe('/settings');
+  expect(b.current().authorization).toBe('approved');
+  expect(b.client.run.mock.calls.some(([action]) => action === 'resume')).toBe(false);
 });

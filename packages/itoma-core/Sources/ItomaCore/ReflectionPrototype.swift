@@ -1,8 +1,8 @@
 import Foundation
 
-/// Experimental arithmetic only. No OS adapter qualifies a continuous restriction interval yet.
+/// Shared interval/calendar arithmetic. Rule-log calculation and native observations retain distinct scopes.
 public enum ReflectionPrototypeError: Error, Equatable, Sendable { case invalidInterval, invalidInput, changed }
-public enum ReflectionPrototypeScope: String, Codable, Sendable { case syntheticFixture, pointObservations }
+public enum ReflectionPrototypeScope: String, Codable, Sendable { case syntheticFixture, pointObservations, nativeRecordedIntervals, ruleScheduleLogs }
 public enum ReflectionPrototypeCoverage: String, Codable, Sendable { case recorded, partial, notRecorded, deleted }
 public enum ReflectionPrototypePeriod: String, Codable, Sendable { case week, month }
 
@@ -41,7 +41,7 @@ public struct ReflectionPrototypeDataset: Sendable {
         guard revision >= 0, TimeZone(identifier: timeZone) != nil, supported.contains(asOf.secondsSince1970),
               intervals.allSatisfy({ supported.contains($0.from.secondsSince1970) && supported.contains($0.until.secondsSince1970) }),
               restricted.count + unlocked.count + gaps.count <= 20_000,
-              scope == .syntheticFixture || (restricted.isEmpty && unlocked.isEmpty && gaps.isEmpty),
+              scope != .pointObservations || (restricted.isEmpty && unlocked.isEmpty && gaps.isEmpty),
               coverage != .recorded || recordedRange != nil,
               recordedRange != nil || (restricted.isEmpty && unlocked.isEmpty && gaps.isEmpty),
               (coverage != .deleted && coverage != .notRecorded) || recordedRange == nil else { throw ReflectionPrototypeError.invalidInput }
@@ -101,6 +101,7 @@ public enum ReflectionPrototypeCalculator {
         let effective = input.recordedRange.flatMap { clipAtAsOf($0, input.asOf) }
         let restricted = effective.map { range in union(input.restricted.compactMap { intersection($0, range) }) } ?? []
         let excluded = union(input.unlocked + input.gaps)
+        let gaps = union(input.gaps)
         let known = subtract(restricted, excluded)
         func bucket(_ range: ReflectionPrototypeInterval, label: String? = nil) -> ReflectionPrototypeBucket {
             let overlap = effective.flatMap { intersection(range, $0) }
@@ -110,7 +111,8 @@ public enum ReflectionPrototypeCalculator {
             else if overlap == nil { coverage = .notRecorded }
             else if input.scope == .pointObservations || input.coverage == .partial || overlap != range || input.gaps.contains(where: { intersection($0, range) != nil }) { coverage = .partial }
             else { coverage = .recorded }
-            let seconds: Double? = input.scope == .syntheticFixture && overlap != nil && input.coverage != .deleted
+            let hasKnownRange = overlap.map { !subtract([$0], gaps).isEmpty } ?? false
+            let seconds: Double? = input.scope != .pointObservations && hasKnownRange && input.coverage != .deleted
                 ? known.compactMap { intersection($0, range) }.reduce(0) { $0 + $1.until.secondsSince1970 - $1.from.secondsSince1970 } : nil
             return ReflectionPrototypeBucket(day: label ?? formatDay(range.from.date, calendar),
                 from: range.from.secondsSince1970, until: range.until.secondsSince1970, knownSeconds: seconds, coverage: coverage)
@@ -168,10 +170,10 @@ public enum ReflectionPrototypeCalculator {
     static func clipAtAsOf(_ range: ReflectionPrototypeInterval, _ asOf: Instant) -> ReflectionPrototypeInterval? {
         try? .init(from: range.from, until: min(range.until, asOf))
     }
-    static func intersection(_ a: ReflectionPrototypeInterval, _ b: ReflectionPrototypeInterval) -> ReflectionPrototypeInterval? {
+    public static func intersection(_ a: ReflectionPrototypeInterval, _ b: ReflectionPrototypeInterval) -> ReflectionPrototypeInterval? {
         try? .init(from: max(a.from, b.from), until: min(a.until, b.until))
     }
-    static func union(_ ranges: [ReflectionPrototypeInterval]) -> [ReflectionPrototypeInterval] {
+    public static func union(_ ranges: [ReflectionPrototypeInterval]) -> [ReflectionPrototypeInterval] {
         var result: [ReflectionPrototypeInterval] = []
         for value in ranges.sorted(by: { $0.from < $1.from }) {
             if let last = result.last, value.from <= last.until {

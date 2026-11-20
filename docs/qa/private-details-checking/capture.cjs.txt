@@ -1,0 +1,95 @@
+const { chromium } = require('playwright');
+const { mkdirSync, writeFileSync, readFileSync } = require('node:fs');
+const { createHash } = require('node:crypto');
+const { execFileSync } = require('node:child_process');
+const source = process.env.ITOMA_DETAILS_SOURCE || process.cwd(), fixture = process.env.ITOMA_DETAILS_FIXTURE || '/tmp/itoma-details-proof';
+const output = process.env.ITOMA_DETAILS_OUTPUT || '/tmp/itoma-details-visual';
+mkdirSync(output, { recursive: true });
+const digest = path => createHash('sha256').update(readFileSync(path)).digest('hex');
+const sourceFiles = ['modules/itoma-native/src/control-snapshot.ts','src/state/control-snapshot.ts','src/state/screen-time.tsx','src/components/flow/home.tsx','src/components/flow/settings.tsx','src/components/flow/rule-details.tsx'];
+const fixtureFiles = ['src/app/_layout.tsx','src/app/proof.tsx','src/qa/private-details-proof.tsx','src/components/flow/applications.tsx'];
+const report = { sourceCommit: execFileSync('git',['rev-parse','HEAD'],{cwd:source,encoding:'utf8'}).trim(), sourceFiles:Object.fromEntries(sourceFiles.map(f=>[f,digest(`${source}/${f}`)])),
+  fixtureFiles:Object.fromEntries(fixtureFiles.map(f=>[f,digest(`${fixture}/${f}`)])), nativeBuild:null, physicalDeviceVerified:false, simulatorVerified:false, cases:[] };
+async function scaleText(page, scale) {
+ if(scale===1)return;
+ await page.evaluate(scale=>{
+  for(const element of document.querySelectorAll('[dir="auto"],input,textarea')) {
+   const style=getComputedStyle(element);
+   element.dataset.proofFontSize ??= style.fontSize;
+   element.dataset.proofLineHeight ??= style.lineHeight;
+   element.style.fontSize=`${parseFloat(element.dataset.proofFontSize)*scale}px`;
+   const line=parseFloat(element.dataset.proofLineHeight);if(Number.isFinite(line))element.style.lineHeight=`${line*scale}px`;
+  }
+ },scale);
+}
+for(const file of sourceFiles)if(digest(`${source}/${file}`)!==digest(`${fixture}/${file}`))throw new Error(`Proof source drift: ${file}`);
+async function capture(page, name) {
+  const file = `${output}/${name}.png`;
+  await page.screenshot({path:file,fullPage:true});
+  return {file,sha256:digest(file)};
+}
+(async()=>{
+ const browser = await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+ report.browser=await browser.version();
+ try {
+  for(const [scheme,width,fontScale] of [['light',390,1],['dark',390,1],['light',320,1.5]]) {
+   const context=await browser.newContext({viewport:{width,height:844},colorScheme:scheme,reducedMotion:'reduce'});
+   await context.addInitScript(()=>{Date.now=()=>Date.parse('2026-11-16T21:30:00Z');});
+   const page=await context.newPage(),errors=[];
+   page.on('pageerror',error=>errors.push(error.message));
+   await page.goto('http://127.0.0.1:8143/proof?screen=home',{waitUntil:'networkidle'});
+   await page.getByText('テスト用ルール',{exact:true}).waitFor();
+   await scaleText(page,fontScale);
+   const name=`home-${scheme}-${width}`;
+   await page.evaluate(()=>{
+    window.privateWarningSeen=false;
+    window.privateWarningObserver=new MutationObserver(()=>{if(document.body.textContent.includes('ルール名と行動目標を確認できません'))window.privateWarningSeen=true;});
+    window.privateWarningObserver.observe(document.body,{subtree:true,childList:true,characterData:true});
+    window.privateDetailsProof.checking();
+   });
+   await page.getByText('ルール名と行動目標を確認しています。',{exact:true}).waitFor();
+   await scaleText(page,fontScale);
+   const checking=await page.evaluate(()=>({state:window.privateDetailsProof.state(),warningSeen:window.privateWarningSeen,overflow:document.documentElement.scrollWidth>innerWidth+1}));
+   if(checking.warningSeen||checking.state.phase!=='checking'||checking.state.title||checking.state.goal||checking.overflow)throw new Error(JSON.stringify(checking));
+   const checkingImage=await capture(page,`${name}-checking`);
+   await page.evaluate(()=>window.privateDetailsProof.finish('ready'));
+   await page.getByText('テスト用ルール',{exact:true}).waitFor();
+   if(await page.evaluate(()=>window.privateWarningSeen))throw new Error('Failure notice flashed during successful reconfirmation');
+   await page.evaluate(()=>{window.privateWarningObserver.disconnect();window.privateDetailsProof.checking();});
+   await page.getByText('ルール名と行動目標を確認しています。',{exact:true}).waitFor();
+   await page.evaluate(()=>window.privateDetailsProof.finish('unavailable'));
+   await page.getByText('ルール名と行動目標を確認できません',{exact:true}).waitFor();
+   await scaleText(page,fontScale);
+   const failedImage=await capture(page,`${name}-failed`);
+   const action=page.getByRole('button',{name:'一時解除する',exact:true});
+   await action.scrollIntoViewIfNeeded();
+   if(!await action.isVisible()||!await action.isEnabled())throw new Error('Current controls are unreachable');
+   await page.evaluate(()=>window.privateDetailsProof.checking());
+   await page.getByText('ルール名と行動目標を確認しています。',{exact:true}).waitFor();
+   await page.evaluate(()=>window.privateDetailsProof.finish('ready'));
+   await page.getByText('テスト用ルール',{exact:true}).waitFor();
+   if(errors.length)throw new Error(errors.join('\n'));
+   report.cases.push({screen:'home',scheme,width,fontScale,checking,checkingImage,failedImage,recovered:true,errors});
+   await context.close();
+  }
+  for(const screen of ['settings','editor']) {
+   const context=await browser.newContext({viewport:{width:390,height:844},colorScheme:'light'});
+   await context.addInitScript(()=>{Date.now=()=>Date.parse('2026-11-16T21:30:00Z');});
+   const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
+   await page.goto(`http://127.0.0.1:8143/proof?screen=${screen}&ruleID=dddddddd-dddd-dddd-dddd-dddddddddddd`,{waitUntil:'networkidle'});
+   if(screen==='editor') await page.getByLabel('ルール名（任意）',{exact:true}).fill('テスト用の未保存入力');
+   else await page.getByText('テスト用の行動目標',{exact:true}).waitFor();
+   await page.evaluate(()=>window.privateDetailsProof.checking());
+   await page.getByText('ルール名と行動目標を確認しています。',{exact:true}).waitFor();
+   const checkingImage=await capture(page,`${screen}-light-checking`);
+   if(screen==='editor'&&await page.getByLabel('ルール名（任意）',{exact:true}).inputValue()!=='テスト用の未保存入力')throw new Error('Editor draft lost');
+   await page.evaluate(()=>window.privateDetailsProof.finish('transport'));
+   await page.getByText(screen==='editor'?'保存した内容を読み取れません':'名前と行動目標を読み取れませんでした。最新の状態を確認し直せます。',{exact:true}).waitFor();
+   if(errors.length)throw new Error(errors.join('\n'));
+   report.cases.push({screen,checkingImage,transportFailureVisible:true,draftRetained:screen==='editor',errors});
+   await context.close();
+  }
+ }finally{await browser.close();}
+ writeFileSync(`${output}/manifest.json`,JSON.stringify(report,null,2)+'\n');
+ console.log(JSON.stringify({sourceCommit:report.sourceCommit,cases:report.cases.length,browser:report.browser,output}));
+})().catch(error=>{console.error(error);process.exitCode=1;});

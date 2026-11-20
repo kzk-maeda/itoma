@@ -1,0 +1,51 @@
+{
+  "source": "e802ca1034b11fc7df060aa18bb540aeb3d06547",
+  "previousHead": "946730545553f5e402a71186300b794abb26f3d4",
+  "runtime": "Linux Chromium / Node24.22.1",
+  "data": "synthetic native ports with production parser/Provider/Router/screens; Web Alert callback adapter",
+  "nativeGestureVerified": false,
+  "checks": {
+    "type": "PASS",
+    "lint": "PASS 0 warnings",
+    "jest": "29 suites / 278 tests PASS",
+    "demo": "32 PASS",
+    "doctor": "20/20 PASS via environment proxy"
+  },
+  "changedProductInputsSHA256": {
+    "src/app/_layout.tsx": "52676b4a81a5fd2aa3697e423103f68b23d7475697657d9a8a05658e4ee86deb",
+    "src/components/flow/browsing-stack.tsx": "5703a2da82a2eed01a9fe31249fdce38029966c6352badea5c5491af867018a7",
+    "src/components/flow/ui.tsx": "07d3518a1ebc29b3e92bab5ecbba0883e9589a1eae26fe1b36e2428269a11540",
+    "src/lib/stack-options.ts": "da33b3e9bb2cebac5fcb985fb0f2d86c584823ec179dd247475641b981f38575",
+    "src/state/work-flow.tsx": "b881b4977aaa234c7c3da3b4f7eba2bc4a95e4313c1e5214e4c4fadf13a2198a"
+  },
+  "proofSHA256": {
+    "navigation-probe.tsx.txt": "39d4a0752e140ccb9ba8b71a87c9b178e5ac8c045f03c7e91fd97c6676ccadb7",
+    "detail-dark-320.png": "d8b2d2fb5f591c5c6353b3ff3de4ae2f057990b32c174b8f485dbb5fdcc989d2",
+    "proof-layout.tsx.txt": "f3b61e9cb2c8d6f9bfeb944b3847aa7f0e8a8e1d628c63261220a31bd6f24505",
+    "detail-light-390.png": "c3a9ea7b76c81f3382d72cb59e3e10d90422b47f7b026a1ac393d77a73a1bde0",
+    "editor-light-390.png": "13542968f9fa15dbd9e4314c6ab7c401bfd4d74c95ba718e2b2a27bf1e7439bd",
+    "settings-root.png": "70332623321b51ac5645ccefe6424967b37e686c920f55e417e3dbeb6875e548",
+    "results.json": "023f9adbf62579ad56eaf3be60a849ead0cb26c93b9bf46ea91cac3e02089586",
+    "editor-dark-320.png": "1e502e74a8aade22e03c8acf26cb4d8bd0c8c75a5731c45cd4e5654a84247b63",
+    "native-pop-guard.png": "84fdb745e956e47908469199a091f5c5e1673ffebbdcd96ce671cd1f82526c1a",
+    "capture.cjs.txt": "61cd2201b3d7c01defa0d8c8290656cf1320be70e895f625376c79e5c287dcf4"
+  },
+  "nativePortFixture": {
+    "path": "../proof-clients.tsx.txt",
+    "sha256": "9b20844f77a6fd764a49279451abc05bdd7ebcaa15ce139f945bd4ff9aefcc0d"
+  },
+  "productionExports": {
+    "ios": {
+      "qaRuntimeMarkersAbsent": true,
+      "entrySHA256": {
+        "_expo/static/js/ios/entry-04789dd12d3019fd1fdc682ca2120fbc.hbc": "719e8d84ff794addbd24b3193bcada0f754ea12599c0313a442aa115bf07ce00"
+      }
+    },
+    "web": {
+      "qaRuntimeMarkersAbsent": true,
+      "entrySHA256": {
+        "client/_expo/static/js/web/entry-c280949d08f38fd02f44e782e2108b90.js": "ac39fc95b63c5b48615ead77212ca4b9333c24d2811c3f7ea39c6004645c827d"
+      }
+    }
+  }
+}

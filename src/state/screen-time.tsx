@@ -1,18 +1,21 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { controlSnapshots, retainControlSnapshotLifecycle, withControlSnapshots } from './control-snapshot';
+import { controlSnapshots, getRuleDetailsState, retainControlSnapshotLifecycle, withControlSnapshots, type RuleDetailsState } from './control-snapshot';
 import { timeRange } from '@/lib/schedule-time';
 
 import { screenTime, type RuleInput, type ScreenTimeAction, type ScreenTimeCode, type ScreenTimeRequest, type ScreenTimeResponse, type ScreenTimeRule, type ScreenTimeSnapshot } from '../../modules/itoma-native';
 
-export type RuleDraft = { id?: string; selectionRef: string; weekdays: number[]; start: string; end: string; nextDay: boolean; enabled: boolean; dirty: boolean; remove?: boolean };
+export type RuleDraft = { id?: string; selectionRef: string; weekdays: number[]; start: string; end: string; nextDay: boolean; enabled: boolean; dirty: boolean; remove?: boolean;
+  title?: string; goal?: string; createdRuleID?: string; creationCommitted?: boolean };
 export type UnlockDraft = { targetRef?: string; reason: string; minutes: string };
 type Client = Pick<typeof screenTime, 'run'>;
 type HistoryChangeOrigin = 'history' | 'reflection' | 'settings' | 'external';
 type State = {
   snapshot?: ScreenTimeSnapshot; error?: ScreenTimeCode; loading: boolean; busy?: ScreenTimeAction; legacyActive: boolean; refreshKey: number; historyEpoch: number;
+  ruleDetailsState: RuleDetailsState | undefined;
   historyChangeOrigin: HistoryChangeOrigin;
   run: Client['run']; refresh: () => Promise<ScreenTimeResponse>; clearError: () => void; invalidateHistory: (origin?: HistoryChangeOrigin) => void;
   ruleDraft?: RuleDraft; setRuleDraft: (draft: RuleDraft | undefined) => void; beginRule: (rule?: ScreenTimeRule) => void;
+  ruleSession: () => number; ownsRuleSession: (session: number) => boolean; unlockSession: () => number; ownsUnlockSession: (session: number) => boolean;
   rulePreviewRef?: string; setRulePreviewRef: (ref: string | undefined) => void;
   ruleReview?: ScreenTimeResponse; setRuleReview: (review: ScreenTimeResponse | undefined) => void;
   unlockDraft: UnlockDraft; setUnlockDraft: (draft: UnlockDraft) => void;
@@ -43,7 +46,9 @@ export function ScreenTimeProvider({ children, client = screenTime }: { children
   const invalidateHistory = useCallback((origin: HistoryChangeOrigin = 'external') => setHistoryChange(value => ({ epoch: value.epoch + 1, origin })), []);
   const mutation = useRef(false);
   const read = useRef<{ epoch: number; promise: Promise<ScreenTimeResponse> } | undefined>(undefined);
-  const [ruleDraft, setRuleDraft] = useState<RuleDraft>();
+  const [ruleDraft, setRuleDraftState] = useState<RuleDraft>();
+  const ruleGeneration = useRef(0), unlockGeneration = useRef(0);
+  const setRuleDraft = useCallback((draft: RuleDraft | undefined) => { if (!draft) ruleGeneration.current++; setRuleDraftState(draft); }, []);
   // Preview ownership survives draft edits/review invalidation until explicit cancellation.
   const [rulePreviewRef, setRulePreviewRef] = useState<string>();
   const [ruleReview, setRuleReview] = useState<ScreenTimeResponse>();
@@ -96,16 +101,19 @@ export function ScreenTimeProvider({ children, client = screenTime }: { children
     return release;
   }, [refresh]);
   const beginRule = useCallback((rule?: ScreenTimeRule) => {
+    ruleGeneration.current++;
     setRuleExitAllowed(false);
     setRuleReview(undefined); setRulePreviewRef(undefined); setError(undefined);
     setRuleDraft(rule ? { ...rule, start: time(rule.startMinute), end: time(rule.endMinute), dirty: false }
       : { selectionRef: '', weekdays: [1, 2, 3, 4, 5], start: '21:00', end: '23:00', nextDay: false, enabled: true, dirty: false });
-  }, [setRuleExitAllowed]);
-  return <Context.Provider value={{ snapshot, error, loading, busy, legacyActive, refreshKey, historyEpoch, historyChangeOrigin, invalidateHistory, run, refresh, clearError: () => setError(undefined),
+  }, [setRuleExitAllowed, setRuleDraft]);
+  return <Context.Provider value={{ snapshot, ruleDetailsState: getRuleDetailsState(snapshot), error, loading, busy, legacyActive, refreshKey, historyEpoch, historyChangeOrigin, invalidateHistory, run, refresh, clearError: () => setError(undefined),
     ruleDraft, setRuleDraft, beginRule, rulePreviewRef, setRulePreviewRef, ruleReview, setRuleReview, unlockDraft, setUnlockDraft, unlockReview, setUnlockReview,
+    ruleSession: () => ruleGeneration.current, ownsRuleSession: session => ruleGeneration.current === session,
+    unlockSession: () => unlockGeneration.current, ownsUnlockSession: session => unlockGeneration.current === session,
     ruleExitAllowed, unlockExitAllowed, canExitRule: () => ruleExitRef.current, canExitUnlock: () => unlockExitRef.current,
     setRuleExitAllowed, setUnlockExitAllowed,
-    resetUnlock: () => { setUnlockExitAllowed(false); setUnlockDraft({ reason: '', minutes: String(latest.current?.defaultMinutes ?? 5) }); setUnlockReview(undefined); setError(undefined); } }}>{children}</Context.Provider>;
+    resetUnlock: () => { unlockGeneration.current++; setUnlockExitAllowed(false); setUnlockDraft({ reason: '', minutes: String(latest.current?.defaultMinutes ?? 5) }); setUnlockReview(undefined); setError(undefined); } }}>{children}</Context.Provider>;
 }
 
 export function useScreenTime() { const value = useContext(Context); if (!value) throw new Error('ScreenTimeProvider missing'); return value; }

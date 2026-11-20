@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
-import { Body, Heading, LinkRow, Notice, useFlowTheme } from '@/components/flow/ui';
+import Svg, { Circle, Path } from 'react-native-svg';
+import { Body, Heading, Notice, useFlowTheme } from '@/components/flow/ui';
 import { HomeLayout } from '@/constants/theme';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { PeriodSelector, PeriodTransition } from './period-transition';
@@ -21,10 +21,14 @@ function Trend({ buckets }: { buckets: ReflectionBucket[] }) {
   }).join(' ');
   const description = buckets.map(b => `${shortDay(b.day)}、${reflectionDuration(b.knownSeconds)}${b.coverage !== 'recorded' ? '、一部不明または未記録' : ''}`).join('。');
   return <View accessible accessibilityRole="image" accessibilityLabel={`これまでの推移。${description}。不明な区間は線をつないでいません。`}>
-    <Svg width="100%" height={52} viewBox="0 0 320 52" accessible={false}>
+    <View accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+    <Svg width="100%" height={52} viewBox="0 0 320 52" aria-hidden>
       <Path d="M0 51H320" stroke={theme.line} strokeWidth={1} />
       {path ? <Path d={path} fill="none" stroke={theme.accent} strokeWidth={2} /> : null}
-    </Svg>
+      {buckets.map((b, n) => b.knownSeconds === undefined ? null : <Circle key={n}
+        cx={buckets.length === 1 ? 160 : n * 320 / (buckets.length - 1)} cy={44 - b.knownSeconds / max * 38}
+        r={2.5} fill={theme.accent} />)}
+    </Svg></View>
   </View>;
 }
 
@@ -86,11 +90,23 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
   const describe = (bucket: ReflectionBucket) => !prototype && bucket.coverage === 'partial' && bucket.knownSeconds === undefined
     ? '制限を続けた時間は、まだ確定できません。' : coverageText(bucket);
   const max = Math.max(1, ...(snapshot?.buckets.map(b => b.knownSeconds ?? 0) ?? []));
+  const refreshLabel = visibleError && !visibleError.empty ? '集計を再読み込み' : '集計を更新';
+  const calculated = snapshot?.proofScope === 'ruleScheduleLogs';
+  const hasTimeBasis = calculated || snapshot?.proofScope === 'nativeRecordedIntervals';
   const content = <>
     {prototype && <Notice title="検証用プレビュー">合成データまたは点の観測を使う実装検証です。実機の制限時間との接続はまだ行っていません。</Notice>}
     {!embedded && <Heading>これまでの自分の時間</Heading>}
+    <View style={styles.refreshActions}>
+      <Pressable accessibilityRole="button" accessibilityLabel={busy ? '集計を確認中' : refreshLabel} accessibilityHint="この画面の集計を読み直します。画面は移動しません。"
+        accessibilityState={{ disabled: blocked, busy }} disabled={blocked} testID="reflection-refresh"
+        onPress={() => { latest.current = undefined; setOwned(undefined); setBusy(true); setRetry(n => n + 1); }}
+        style={({ pressed }) => [styles.refreshButton, { opacity: pressed ? 0.75 : 1 }]}>
+        <Text accessible={false} style={{ color: theme.muted, fontSize: 20 }}>↻</Text>
+        <Text style={[styles.caption, { color: theme.muted }]}>{busy ? '集計を確認中' : refreshLabel}</Text>
+      </Pressable>
+    </View>
     <View style={[styles.totalCard, { backgroundColor: theme.background }]}>
-      <Text style={[styles.caption, { color: theme.muted }]}>これまでに制限を続けた時間</Text>
+      <Text style={[styles.caption, { color: theme.muted }]}>{calculated ? 'ルールから計算した時間' : snapshot?.proofScope === 'nativeRecordedIntervals' ? '制限の適用を記録した時間' : 'これまでに制限を続けた時間'}</Text>
       <Text testID="reflection-total" style={[styles.total, { color: theme.text }]}>{reflectionDuration(snapshot?.total.knownSeconds)}</Text>
       <Text style={[styles.caption, { color: theme.muted }]}>記録全体の累計 · 一時解除を除く</Text>
       {snapshot && <>
@@ -98,7 +114,7 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
         {snapshot.total.knownSeconds !== undefined && snapshot.total.knownSeconds > 0 && <Body>自分の時間を、少しずつ積み重ねています。</Body>}
         <Trend buckets={snapshot.trend} />
       </>}
-      {!prototype && <Text style={[styles.caption, { color: theme.text }]}>時間の集計は準備中です</Text>}
+      {!prototype && !hasTimeBasis && <Text style={[styles.caption, { color: theme.text }]}>時間の記録を確認できていません</Text>}
     </View>
     {!prototype && <>
       {snapshot?.incomplete && <Body muted>記録の一部が欠けている可能性があります。</Body>}
@@ -143,18 +159,21 @@ export function ReflectionContent({ source, initialAnchor = '', onDay, prototype
       </Pressable>)}</View>
     </PeriodTransition>}
     {!prototype && <View style={styles.metadata}>
-      <Text style={[styles.caption, { color: theme.muted }]}>制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。</Text>
-      <Text style={[styles.caption, { color: theme.muted }]}>一時解除中と、制限を確認できない時間は加算しません。</Text>
+      {hasTimeBasis && <Text style={[styles.caption, { color: theme.muted }]}>{calculated ? '集計時刻：' : '記録の確認時刻：'}{new Intl.DateTimeFormat('ja-JP', {
+        timeZone: snapshot.timeZone, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
+      }).format(snapshot.total.until * 1000)}</Text>}
+      <Text style={[styles.caption, { color: theme.muted }]}>{calculated ? '設定したルールの時間から、一時解除と停止の時間を除いて集計しています。' : snapshot?.proofScope === 'nativeRecordedIntervals'
+        ? '端末で制限の適用を確認してから、解除や停止までの記録です。OS内部の遮断状態を常時観測した値ではありません。'
+        : '制限を続けた時間はまだ集計できません。保存した操作の記録は確認できます。'}</Text>
+      <Text style={[styles.caption, { color: theme.muted }]}>{calculated ? '記録がない期間は集計に含みません。' : '一時解除中と、制限を確認できない時間は加算しません。'}</Text>
     </View>}
-    <LinkRow label="最新の記録を確認する" disabled={blocked} onPress={() => {
-      latest.current = undefined; setOwned(undefined); setBusy(true); setRetry(n => n + 1);
-    }} />
     {controls}
   </>;
   return embedded ? <View style={styles.embedded}>{content}</View> : <ScrollView testID="reflection-preview-scroll" style={{ backgroundColor: theme.background }} contentContainerStyle={styles.content}>{content}</ScrollView>;
 }
 const styles = StyleSheet.create({
   embedded: { gap: 20 },
+  refreshActions: { alignItems: 'flex-end' }, refreshButton: { minHeight: 44, minWidth: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8 },
   content: { width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center', paddingHorizontal: HomeLayout.gutter, paddingTop: 24, paddingBottom: 44, gap: 20 },
   totalCard: { padding: 18, borderRadius: 18, gap: 8 }, total: { fontSize: 36, lineHeight: 52, fontWeight: '400', fontVariant: ['tabular-nums'], flexShrink: 1 },
   metadata: { gap: 4 }, caption: { fontSize: 13, lineHeight: 21 }, sectionTitle: { fontSize: 15, lineHeight: 24, fontWeight: '600', marginTop: 4 },

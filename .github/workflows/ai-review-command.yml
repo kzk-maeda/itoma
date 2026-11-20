@@ -1,0 +1,32 @@
+name: AI review command
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+# No shared concurrency here: an untrusted comment cannot cancel a valid review.
+jobs:
+  receive:
+    if: github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Authorize slash command before dispatching
+        run: node scripts/ai-review.mjs command
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AI_REVIEW_PR_NUMBER: ${{ github.event.issue.number }}
+          AI_REVIEW_DEFAULT_BRANCH: main

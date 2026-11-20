@@ -11,7 +11,7 @@ import Glibc
 /// iOS protection/backup attributes to the DB and sidecars; this portable layer cannot verify them.
 /// Non-Sendable, synchronous, and locally serialized. No public callback can hold its writer open.
 public final class HistoryRepository {
-    static let schemaVersion: Int64 = 4
+    static let schemaVersion: Int64 = 5
     static let applicationID: Int64 = 0x49544849
     let database: SQLiteDatabase
     let capacityPolicy: HistoryCapacityPolicy
@@ -21,6 +21,7 @@ public final class HistoryRepository {
     // inside a pinned read transaction. SQLite data_version excludes our own commits.
     var reflectionValidationDataVersion: Int64?
     var reflectionReadValidationAllowed = false
+    var ruleLogTimelineCache: (revision: Int64, dataVersion: Int64, asOf: Instant, hasFutureRecords: Bool, builders: [UUID: RuleLogTimelineBuilder])?
 
     public static func create(
         at url: URL, capacity: HistoryCapacityPolicy, busyTimeoutMilliseconds: Int32 = 100
@@ -55,6 +56,7 @@ public final class HistoryRepository {
                     """)
                 try repository.createPrivateHistoryTables()
                 try repository.createReadIndex()
+                try repository.createChoiceIndex()
                 try repository.createReflectionTables()
                 try repository.database.execute("PRAGMA application_id=0x49544849")
                 try repository.database.execute("PRAGMA user_version=\(Self.schemaVersion)")
@@ -97,6 +99,7 @@ public final class HistoryRepository {
     public func close() throws {
         lock.lock(); defer { lock.unlock() }
         reflectionValidationDataVersion = nil
+        ruleLogTimelineCache = nil
         try HistoryError.translating { try database.close() }
     }
 
@@ -217,6 +220,7 @@ public final class HistoryRepository {
                 try database.execute("SELECT singleton,revision FROM history_read_state LIMIT 0")
             } catch SQLiteFailure.failure { throw HistoryError.corrupt }
         }
+        if expected >= 5 { try validateChoiceSchema() }
         if expected >= 4 {
             do {
                 try database.execute("SELECT singleton,dataset_id,revision,deleted FROM reflection_state LIMIT 0")
@@ -224,6 +228,12 @@ public final class HistoryRepository {
                 try database.execute("SELECT cursor,event_id,source_id,sequence,committed_at,record,payload_bytes FROM reflection_facts LIMIT 0")
             } catch SQLiteFailure.failure { throw HistoryError.corrupt }
         }
+    }
+
+    func validateChoiceSchema() throws {
+        do {
+            try database.execute("SELECT group_key,record_key,occurred_at,source_id,first_sequence,latest_key,latest_sequence FROM history_choice_index LIMIT 0")
+        } catch SQLiteFailure.failure { throw HistoryError.corrupt }
     }
 
     func logicalBytes() throws -> Int64 {

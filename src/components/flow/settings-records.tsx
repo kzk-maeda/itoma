@@ -1,26 +1,45 @@
-import { router, useFocusEffect } from 'expo-router';
+import type { HistoryResponse } from '../../../modules/itoma-native';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, AppState, View } from 'react-native';
+import { useScreenTime } from '@/state/screen-time';
 import { useHistoryRecords } from '@/state/history';
 import { useReflection } from '@/state/reflection';
-import { back } from './navigation';
+import { useAppNavigation } from '@/state/navigation';
 import { RecordStoragePanel } from './record-storage';
 import { Body, Button, FlowScreen, Heading, LinkRow, Notice, Panel } from './ui';
 
 export function RecordSettingsScreen() {
-  return <FlowScreen title="記録とプライバシー" onBack={back}>
+  const navigation = useAppNavigation(), history = useHistoryRecords();
+  return <FlowScreen title="記録とプライバシー" backLabel="‹ 設定" onBack={() => navigation.finish({ screen: 'settings' })}>
     <Body muted>記録は端末内で確認・管理できます。</Body>
     <Panel>
-      <LinkRow label="選択の記録を見る" detail="保存した操作と、自分の言葉" onPress={() => router.navigate('/history')} />
-      <LinkRow label="保存状況と取込" detail="使用量・上限・未取込の記録" onPress={() => router.navigate('/settings-storage')} />
-      <LinkRow label="記録を削除する" detail="削除する範囲と、残るものを比較" onPress={() => router.navigate('/settings-delete')} />
+      <LinkRow label="選択の記録を見る" detail="振り返りで全期間の記録を開く" onPress={() => { history.choose('event', ''); navigation.open({ screen: 'history' }); }} />
+      <LinkRow label="保存状況と取込" detail="使用量・上限・未取込の記録" onPress={() => navigation.open({ screen: 'settings-storage' })} />
+      <LinkRow label="記録を削除する" detail="削除する範囲と、残るものを比較" onPress={() => navigation.open({ screen: 'settings-delete' })} />
     </Panel>
   </FlowScreen>;
 }
 export function RecordStorageScreen() {
-  const history = useHistoryRecords(), reflection = useReflection(), { refresh } = history;
-  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
-  return <FlowScreen title="保存状況と取込" onBack={back}>
+  const source = useHistoryRecords(), reflection = useReflection(), navigation = useAppNavigation(), { historyEpoch } = useScreenTime();
+  const { readStorage } = source;
+  const [view, setView] = useState<{ response?: HistoryResponse; epoch: number; reader: typeof readStorage; busy: boolean }>();
+  const refreshRef = useRef<() => void>(() => {});
+  useFocusEffect(useCallback(() => {
+    let mounted = true, generation = 0;
+    const read = () => {
+      const ticket = ++generation;
+      setView(previous => ({ ...previous, epoch: historyEpoch, reader: readStorage, busy: true }));
+      void readStorage().then(response => { if (mounted && ticket === generation) setView({ response, epoch: historyEpoch, reader: readStorage, busy: false }); });
+    };
+    refreshRef.current = read; read();
+    const listener = AppState.addEventListener('change', state => { if (state === 'active') read(); else generation++; });
+    return () => { mounted = false; generation++; listener.remove(); refreshRef.current = () => {}; };
+  }, [readStorage, historyEpoch]));
+  const response = view?.epoch === historyEpoch && view.reader === readStorage ? view.response : undefined;
+  const history = { page: response?.page, storage: response?.storage, error: response?.code, busy: !!view?.busy || source.busy };
+  const refresh = () => refreshRef.current();
+  return <FlowScreen title="保存状況と取込" backLabel="‹ 記録とプライバシー" onBack={() => navigation.finish({ screen: 'settings-records' })}>
     {history.busy && <Body muted>保存状況を確認しています。</Body>}
     {history.error && <Notice title="保存状況を確認できません">{history.error === 'unavailable' ? 'この環境では記録の保存状況を利用できません。iPhone版で確認できます。' : '端末のロックを解除してから、もう一度確認できます。'}確認できない量を0 MBとは扱いません。</Notice>}
     {history.storage === 'not-created' && !history.error && <Body>まだ記録の保存先が作られていません。容量と上限は保存先を確認できると表示します。</Body>}
@@ -36,11 +55,11 @@ export function RecordStorageScreen() {
       <Button label="新しい記録を取り込む" secondary disabled={reflection.busy || history.busy} onPress={() => reflection.mutate('import')} />
     </Panel>
     <Button label="保存状況を確認し直す" secondary disabled={history.busy || reflection.busy} onPress={refresh} />
-    <LinkRow label="記録を削除する" onPress={() => router.navigate('/settings-delete')} />
+    <LinkRow label="記録を削除する" onPress={() => navigation.open({ screen: 'settings-delete' })} />
   </FlowScreen>;
 }
 export function RecordDeletionScreen() {
-  const history = useHistoryRecords(), reflection = useReflection();
+  const history = useHistoryRecords(), reflection = useReflection(), navigation = useAppNavigation();
   const pending = useRef(false), mounted = useRef(true);
   const [result, setResult] = useState<string>();
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -62,13 +81,13 @@ export function RecordDeletionScreen() {
     ]);
   };
   const busy = history.busy || reflection.busy;
-  return <FlowScreen title="記録を削除する" onBack={back}>
+  return <FlowScreen title="記録を削除する" backLabel="‹ 記録とプライバシー" onBack={() => navigation.finish({ screen: 'settings-records' })}>
     <Body>削除する範囲を選んだ後、最後に確認します。どの範囲でもルールと現在の一時解除は残ります。</Body>
     {result && <View accessibilityLiveRegion="polite"><Body>{result}</Body></View>}
     {(history.error || reflection.response?.status === 'error') && <Notice title="操作結果を確認してください">完了したとは扱わず、保存状況や記録を確認してから再試行できます。</Notice>}
     <Panel><Heading>理由本文のみ</Heading><Body>削除：保存した理由の文章。残るもの：操作と振り返りの記録・累計。</Body><Button label="理由本文のみの削除を確認" secondary disabled={busy} onPress={() => confirm('reasons')} /></Panel>
     <Panel><Heading>操作履歴と理由</Heading><Body>削除：操作の一覧と理由本文。残るもの：振り返りの記録・累計。</Body><Button label="操作履歴と理由の削除を確認" secondary disabled={busy} onPress={() => confirm('history')} /></Panel>
     <Panel><Heading>全記録と累計</Heading><Body>削除：理由・操作・振り返りの記録と累計。削除前の記録を取り込んでも復活させません。</Body><Button label="全記録と累計を削除する" secondary disabled={busy} onPress={() => confirm('all')} /></Panel>
-    <LinkRow label="保存状況を確認する" onPress={() => router.navigate('/settings-storage')} />
+    <LinkRow label="保存状況を確認する" onPress={() => navigation.open({ screen: 'settings-storage' })} />
   </FlowScreen>;
 }

@@ -1,0 +1,33 @@
+import { type ReactNode, useEffect } from 'react';
+import { Text, View } from 'react-native';
+import { ScreenTimeProvider, useScreenTime } from '@/state/screen-time';
+import { controlSnapshots } from '@/state/control-snapshot';
+import { useFlowTheme } from '@/components/flow/ui';
+import { unavailableSnapshot, type ScreenTimeResponse, type ScreenTimeSnapshot } from '../../modules/itoma-native/src/screen-time';
+const selection = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', ruleID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+const now = Date.parse('2026-11-16T21:30:00Z') / 1000;
+const snapshot: ScreenTimeSnapshot = { ...unavailableSnapshot('device'), storage: 'ready', authorization: 'approved', sequence: '1', revision: '1', schedulesReady: true,
+ observation: 'applied', validUntil: now + 1800, ruleDetailsStatus: 'ready', ruleDetailsRevision: '10',
+ rules: [{ id: ruleID, title: 'テスト用ルール', goal: 'テスト用の行動目標', selectionRef: selection, weekdays: [1,2,3,4,5,6,7], startMinute: 1260, endMinute: 1380, nextDay: false, enabled: true }],
+ selections: [{ref:selection,count:2}], periods:[{ruleID,startsAt:now-1800,endsAt:now+5400}], targets:[
+ {ref:'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',selectionRef:selection,ruleID,restricted:true,unlockable:true},
+ {ref:'cccccccc-cccc-cccc-cccc-cccccccccccc',selectionRef:selection,ruleID,restricted:true,unlockable:true}] };
+let held = false;
+const waiting: ((value: ScreenTimeResponse) => void)[] = [];
+const client = { run: async (): Promise<ScreenTimeResponse> => held ? new Promise(resolve => { waiting.push(resolve); }) : ({status:'ok',impacts:[],snapshot}) };
+function Controls() {
+ const state = useScreenTime();
+ useEffect(() => { (window as any).privateDetailsProof = {
+ checking() { held = true; controlSnapshots.setActive(false); controlSnapshots.setActive(true); void state.refresh(); },
+ finish(outcome: 'ready' | 'unavailable' | 'transport') { held = false; const result: ScreenTimeResponse = outcome === 'transport'
+ ? {status:'error',code:'unavailable',impacts:[]} : {status:'ok',impacts:[],snapshot:{...snapshot,ruleDetailsStatus:outcome}};
+ for(const resolve of waiting.splice(0)) resolve(result); },
+ state() { return {phase:state.ruleDetailsState,title:state.snapshot?.rules[0]?.title,goal:state.snapshot?.rules[0]?.goal}; }
+ }; }, [state]);
+ return null;
+}
+export function ProofProvider({children}:{children:ReactNode}) {
+ const theme=useFlowTheme();
+ return <View style={{flex:1,backgroundColor:theme.background}}><Text testID="proof-banner" style={{fontSize:11,padding:5,color:theme.text}}>合成データのWeb QA・実機の制限は未検証</Text>
+ <ScreenTimeProvider client={client}><Controls/>{children}</ScreenTimeProvider></View>;
+}

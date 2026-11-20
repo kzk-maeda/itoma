@@ -37,6 +37,10 @@ extension ProductHistoryController {
             let control: ControlRepository? = try action == "read" ? nil : controlRepository()
             if action == "import", let control { try? prepareReflectionCapture(in: control) }
             return try withHistory(createIfMissing: action != "read") { history in
+                if action == "read", request.expectedToken == nil {
+                    let latest = try controlRepository()
+                    try latest.transferReflection(to: history, limit: 100)
+                }
                 if action == "import", let control {
                     _ = try control.transferHistory(to: history, limit: 100)
                     try control.transferReflection(to: history, limit: 100)
@@ -79,6 +83,13 @@ extension ProductUI {
               let request = try? JSONDecoder().decode(ProductReflectionRequest.self, from: data) else {
             complete(ProductReflectionResponse(status: "error", code: "invalid-input", storage: "unknown").json()); return
         }
-        Task { let result = await ProductHistoryController.shared.performReflection(action, request: request); complete(result.json()) }
+        Task {
+            if action == "read", request.expectedToken == nil {
+                // Best-effort rule baseline; importing logs retains any existing missing/pending markers.
+                try? await ProductController.shared.checkpointReflectionRules()
+            }
+            let result = await ProductHistoryController.shared.performReflection(action, request: request)
+            complete(result.json())
+        }
     }
 }

@@ -152,7 +152,7 @@ private func reflectionReason(_ history: HistoryRepository) throws -> CommandID 
     #expect(try f.control.reflectionBatch()?.facts.isEmpty == true)
 }
 
-@Test func reflectionFullDeleteBeforeFirstImportKeepsCutoffAndFreshBaselineRemainsUnknown() throws {
+@Test func reflectionFullDeleteBeforeFirstImportKeepsCutoffAndRecalculationStartsAtFreshBaseline() throws {
     let f = try ReflectionFixture(); defer { f.remove() }; try f.install()
     let old = try #require(try f.control.reflectionBatch())
     try f.history.deleteAllRecords(from: f.control)
@@ -165,7 +165,7 @@ private func reflectionReason(_ history: HistoryRepository) throws -> CommandID 
     try f.control.recordReflectionBaseline()
     try f.control.transferReflection(to: f.history)
     let baseline = try f.read()
-    #expect(baseline.observationCount == 1 && baseline.total.knownSeconds == nil)
+    #expect(baseline.observationCount == 1 && baseline.total.knownSeconds == 0)
     #expect(try f.control.readSnapshot().activation == .enabled)
     #expect(throws: HistoryError.conflict) { try f.read(deleted.token) }
 }
@@ -184,7 +184,7 @@ private func reflectionReason(_ history: HistoryRepository) throws -> CommandID 
     try pause(f.control); try f.control.transferReflection(to: f.history)
     #expect(throws: HistoryError.conflict) { try f.read(new.token) }
     let latest = try f.read()
-    #expect(latest.total.knownSeconds == nil && latest.buckets.allSatisfy { $0.knownSeconds == nil })
+    #expect(latest.total.knownSeconds == 0 && latest.buckets.allSatisfy { ($0.knownSeconds ?? 0) == 0 })
     let json = String(data: try JSONEncoder().encode(latest), encoding: .utf8)!
     #expect(!json.contains("syntheticFixture") && !json.contains("prototype-v1"))
 }
@@ -203,7 +203,7 @@ private func reflectionReason(_ history: HistoryRepository) throws -> CommandID 
 @Test func reflectionSchemaThreeMigrationPreservesReasonAndStartsWithoutInventedPast() throws {
     let f = try ReflectionFixture(); defer { f.remove() }
     let command = try reflectionReason(f.history); try f.history.close()
-    try reflectionSQL(f.historyURL, "DROP TABLE reflection_facts; DROP TABLE reflection_sources; DROP TABLE reflection_state; PRAGMA user_version=3")
+    try reflectionSQL(f.historyURL, "DROP TABLE history_choice_index; DROP TABLE reflection_facts; DROP TABLE reflection_sources; DROP TABLE reflection_state; PRAGMA user_version=3")
     #expect(throws: HistoryError.unsupportedSchema(3)) { try HistoryRepository.open(at: f.historyURL, capacity: HistoryCapacityPolicy(warningBytes: 1_000, maximumBytes: 10_000)) }
     let migrated = try HistoryRepository.migrate(at: f.historyURL, capacity: HistoryCapacityPolicy(warningBytes: 1_000, maximumBytes: 10_000))
     defer { try? migrated.close() }
@@ -238,7 +238,9 @@ private func reflectionReason(_ history: HistoryRepository) throws -> CommandID 
     #expect(ended.expiresAt == accepted.grant.effectiveExpiresAt)
     #expect(!(String(data: try JSONEncoder().encode(baseline), encoding: .utf8)!).contains("fixture-secret-reason"))
     try f.control.transferReflection(to: f.history)
-    #expect(try f.read().total.knownSeconds == nil)
+    let recalculated = try f.read()
+    #expect(recalculated.total.from >= baseline.committedAt.secondsSince1970)
+    #expect(recalculated.proofScope == "ruleScheduleLogs")
 }
 
 @Test func reflectionDefaultCalendarDayUsesPinnedAsOfAcrossMonthBoundary() throws {
@@ -287,7 +289,7 @@ private func reflectionReason(_ history: HistoryRepository) throws -> CommandID 
         }
     }
     let after = try f.read(first.token, period: .month)
-    #expect(after.observationCount == 1 && after.token == first.token && after.total.knownSeconds == nil)
+    #expect(after.observationCount == 1 && after.token == first.token && after.total == first.total)
 }
 
 @Test func reflectionValidationPinsDataVersionToItsSnapshotDuringExternalCommit() throws {

@@ -29,6 +29,16 @@ test('point zero/positive injection is rejected in cumulative, period, buckets a
   }
 });
 
+test('native intervals require their own metric; legacy points cannot be relabelled by metric alone', () => {
+  const value = observed();
+  value.proofScope = 'nativeRecordedIntervals'; value.metricVersion = 'native-restricted-excluding-unlocks-v2';
+  value.total.from = value.asOf - 7200; value.total.until = value.asOf;
+  value.total.knownSeconds = 6900; value.total.coverage = 'recorded';
+  expect(parseReflectionResponse(ok(value)).snapshot?.total.knownSeconds).toBe(6900);
+  expect(() => parseReflectionResponse(ok({ ...value, proofScope: 'pointObservations' }))).toThrow();
+  expect(() => parseReflectionResponse(ok({ ...value, metricVersion: 'restricted-excluding-unlocks-v1' }))).toThrow();
+});
+
 test('prototype scope, metric and token cannot enter a production response', () => {
   for (const patch of [
     { proofScope: 'syntheticFixture' }, { metricVersion: 'restricted-excluding-unlocks-prototype-v1' }, { token: 'prototype-v1:fixture' },
@@ -66,4 +76,15 @@ test('not-created, deleted and capacity failure stay distinct through the real c
   expect((await client.run('import')).code).toBe('capacity-full');
   native.mockResolvedValueOnce('{broken');
   expect((await client.run('read')).status).toBe('error');
+});
+
+test('rule-log calculation has its own scope and metric and cannot masquerade as a native measurement', () => {
+  const value = observed();
+  value.proofScope = 'ruleScheduleLogs'; value.metricVersion = 'rule-schedule-excluding-unlocks-v1';
+  value.total = { ...value.total, from: value.asOf - 14400, until: value.asOf, knownSeconds: 14100, coverage: 'recorded' };
+  expect(parseReflectionResponse(ok(value)).snapshot?.total.knownSeconds).toBe(14100);
+  for (const patch of [
+    { proofScope: 'nativeRecordedIntervals' }, { proofScope: 'pointObservations' },
+    { metricVersion: 'native-restricted-excluding-unlocks-v2' },
+  ]) expect(() => parseReflectionResponse(ok({ ...value, ...patch }))).toThrow();
 });

@@ -1,0 +1,151 @@
+name: AI code review
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: PR number (normally dispatched by /ai-review)
+        required: true
+        type: string
+      mode:
+        description: Force full review or reassess impact
+        type: choice
+        options: [force, reassess]
+        default: force
+      comment_id:
+        description: Source PR comment ID (command receiver only)
+        type: string
+      expected_sha:
+        description: Head SHA accepted by command receiver
+        type: string
+  pull_request_target:
+    # Branch eligibility is checked below, so retargeting away from main is seen too.
+    types: [opened, labeled, unlabeled, synchronize, reopened, ready_for_review, edited, closed, converted_to_draft]
+
+permissions: {}
+
+# Unrelated labels/body edits must not cancel a valid, paid review request.
+concurrency:
+  group: >-
+    ai-review-${{ github.event.pull_request.number || inputs.pull_request_number }}-${{
+      (github.event_name == 'workflow_dispatch' ||
+       contains(fromJSON('["opened","synchronize","reopened","ready_for_review","closed","converted_to_draft"]'), github.event.action) ||
+       ((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name == 'ai-review') ||
+       (github.event.action == 'edited' && github.event.changes.base)) && 'active' || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  AI_REVIEW_PR_NUMBER: ${{ github.event.pull_request.number || inputs.pull_request_number }}
+  AI_REVIEW_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || inputs.expected_sha }}
+  AI_REVIEW_DEFAULT_BRANCH: main
+  AI_REVIEW_REQUIRE_LABEL: 'true'
+  AI_REVIEW_MODE: ${{ inputs.mode || 'force' }}
+  AI_REVIEW_COMMENT_ID: ${{ inputs.comment_id }}
+
+jobs:
+  prepare:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request_target' &&
+       (github.event.pull_request.base.ref == 'main' || github.event.changes.base.ref.from == 'main') &&
+       (contains(fromJSON('["opened","synchronize","reopened","ready_for_review","closed","converted_to_draft"]'), github.event.action) ||
+        ((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name == 'ai-review') ||
+        (github.event.action == 'edited' && github.event.changes.base)))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      run: ${{ steps.request.outputs.run }}
+      request_artifact_id: ${{ steps.request_evidence.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Register request, automatic label, or invalidation
+        id: request
+        run: node scripts/ai-review.mjs prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v7
+        id: request_evidence
+        if: steps.request.outputs.run == 'true'
+        with:
+          name: ai-review-request-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ai-review/request.json
+          retention-days: 14
+          if-no-files-found: error
+
+  review:
+    needs: prepare
+    if: needs.prepare.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+      actions: read
+    outputs:
+      artifact_id: ${{ steps.evidence.outputs.artifact-id }}
+    steps:
+      # Execute only the trusted workflow revision. PR files are API data, never code.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.prepare.outputs.request_artifact_id }}
+          path: artifacts/ai-review/
+      - name: Assess impact and run full review only when required
+        run: node scripts/ai-review.mjs execute
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_REVIEW_MODEL: ${{ vars.OPENAI_REVIEW_MODEL || 'gpt-5.4' }}
+      - name: Save structured review evidence
+        id: evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ai-review-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/ai-review/review.json
+            artifacts/ai-review/review.md
+          retention-days: 14
+          if-no-files-found: warn
+
+  publish:
+    needs: review
+    if: ${{ always() && !cancelled() && needs.review.outputs.artifact_id != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.review.outputs.artifact_id }}
+          path: artifacts/ai-review/
+      - name: Publish only the current request result
+        run: node scripts/ai-review.mjs publish
+        env:
+          GH_TOKEN: ${{ github.token }}

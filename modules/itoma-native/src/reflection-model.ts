@@ -3,11 +3,11 @@ export type ReflectionPeriod = 'week' | 'month';
 export type ReflectionCoverage = 'recorded' | 'partial' | 'notRecorded' | 'deleted';
 export type ReflectionBucket = { day: string; from: number; until: number; knownSeconds?: number; coverage: ReflectionCoverage };
 export type ReflectionSnapshot = {
-  version: 1; metricVersion: 'restricted-excluding-unlocks-prototype-v1' | 'restricted-excluding-unlocks-v1'; token: string;
+  version: 1; metricVersion: 'restricted-excluding-unlocks-prototype-v1' | 'restricted-excluding-unlocks-v1' | 'native-restricted-excluding-unlocks-v2' | 'rule-schedule-excluding-unlocks-v1'; token: string;
   historyRevision?: string; observationCount?: number; lastObservedAt?: number; incomplete?: boolean;
   transfer?: 'current' | 'pending' | 'unavailable';
   sharedIncomplete?: boolean;
-  proofScope: 'syntheticFixture' | 'pointObservations'; timeZone: string; asOf: number;
+  proofScope: 'syntheticFixture' | 'pointObservations' | 'nativeRecordedIntervals' | 'ruleScheduleLogs'; timeZone: string; asOf: number;
   total: ReflectionBucket; trend: ReflectionBucket[]; period: ReflectionPeriod; anchor: string;
   previousAnchor?: string; nextAnchor?: string; selected: ReflectionBucket; buckets: ReflectionBucket[];
 };
@@ -33,10 +33,13 @@ function bucket(v: unknown): ReflectionBucket {
 function parse(json: string, prototype: boolean): ReflectionSnapshot {
   if (json.length > 250_000) throw new Error('bound');
   const s = object(JSON.parse(json));
-  if (s.version !== 1 || s.metricVersion !== (prototype ? 'restricted-excluding-unlocks-prototype-v1' : 'restricted-excluding-unlocks-v1')) throw new Error('version');
+  if (s.version !== 1) throw new Error('version');
+  const metricVersion = choice(s.metricVersion, prototype ? ['restricted-excluding-unlocks-prototype-v1'] : ['restricted-excluding-unlocks-v1', 'native-restricted-excluding-unlocks-v2', 'rule-schedule-excluding-unlocks-v1']);
   const period = choice(s.period, ['week', 'month']);
   if (!Array.isArray(s.buckets) || s.buckets.length > (period === 'week' ? 7 : 6) || !Array.isArray(s.trend) || s.trend.length > 64) throw new Error('bound');
-  const proofScope = choice(s.proofScope, prototype ? ['syntheticFixture', 'pointObservations'] : ['pointObservations']);
+  const proofScope = choice(s.proofScope, prototype ? ['syntheticFixture', 'pointObservations'] : ['pointObservations', 'nativeRecordedIntervals', 'ruleScheduleLogs']);
+  const metrics: Record<string, string> = { pointObservations: 'restricted-excluding-unlocks-v1', nativeRecordedIntervals: 'native-restricted-excluding-unlocks-v2', ruleScheduleLogs: 'rule-schedule-excluding-unlocks-v1' };
+  if (!prototype && metrics[proofScope] !== metricVersion) throw new Error('scope');
   const total = bucket(s.total), selected = bucket(s.selected), buckets = s.buckets.map(bucket), trend = s.trend.map(bucket);
   if (proofScope === 'pointObservations' && [total, selected, ...buckets, ...trend].some(b => b.knownSeconds !== undefined)) throw new Error('unqualified');
   const timeZone = text(s.timeZone); new Intl.DateTimeFormat('ja-JP', { timeZone }).format(0);
@@ -54,7 +57,7 @@ function parse(json: string, prototype: boolean): ReflectionSnapshot {
       metadata.sharedIncomplete = s.sharedIncomplete;
     }
   }
-  return { ...metadata, version: 1, metricVersion: prototype ? 'restricted-excluding-unlocks-prototype-v1' : 'restricted-excluding-unlocks-v1', token, proofScope, timeZone, asOf: number(s.asOf), total, trend, period,
+  return { ...metadata, version: 1, metricVersion, token, proofScope, timeZone, asOf: number(s.asOf), total, trend, period,
     anchor: day(s.anchor), previousAnchor: s.previousAnchor == null ? undefined : day(s.previousAnchor),
     nextAnchor: s.nextAnchor == null ? undefined : day(s.nextAnchor), selected, buckets };
 }

@@ -77,6 +77,16 @@ For changes to `packages/itoma-control`, also run `swift test --package-path pac
 
 Report what was tested on Simulator and what was tested on a physical device separately. Do not claim physical-device behavior is verified without testing it on a device. Explicitly identify native behaviors that remain unverified.
 
+## AI review maintenance
+
+- Read `docs/ai-review.md` and `docs/ai-review-triage.md` before changing AI review workflows, `.github/ai-review/`, or the `scripts/ai-review.mjs` / `scripts/lib/ai-review*.mjs` modules. Update affected prompts/policy, schemas, validators, tests, and the runbook together; run `npm run test:ai-review`.
+- The Secret-bearing review job executes only the trusted workflow revision (`github.workflow_sha`). PR event `base.sha` can predate the workflow and must not select executable code. Treat PR contents as data; never check out or run PR scripts/dependencies in that job. Keep OpenAI credentials separate from the comment publisher's GitHub write permission, and preserve the head/base checks before API use and publication. Publish only when an artifact ID exists, and download that exact ID when retrying failed jobs.
+- AI findings are advisory. Do not treat missing configuration, partial input, API failure, a stale result, or zero findings as passed tests, human approval, or physical-device verification.
+- Automatic impact assessment happens once per PR; pushes invalidate evidence without new paid calls. Preserve the claimed initial slot and comment/run watermarks. `/ai-review` forces a full review; `/ai-review reassess` requests impact assessment. Authenticate the original comment author's current write permission before dispatch and again before paid work/publication. A dispatching bot is not the requester. Keep the comment receiver outside shared concurrency and without an OpenAI secret.
+- Thresholds are provisional in `.github/ai-review/triage-policy.json`. Model scores are allocation signals, not merge-safety probabilities. Update the policy version and evaluation evidence when changing them; mocked routing tests do not establish empirical model accuracy.
+- Keep PR comments focused on actionable findings, unreviewed changes that need human attention, and the next operation for the current status. Keep full diagnostics in Actions summaries/artifacts; preserve the hidden request state and the distinction between zero findings, skipped review, failure, and stale results. Update the comment renderer and its regression tests together.
+- Preserve the last completed review across PR updates, Draft/label changes, failed reruns, and close/merge. Keep its immutable revision and result separate from the current request, and never ask users to reopen a merged PR to recover it. Retain bounded history without resetting watermarks or making paid calls; reject altered historical bodies and maintain regression coverage for publication races and legacy comments.
+
 ## Navigation & Routing
 
 - Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.

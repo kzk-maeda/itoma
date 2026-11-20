@@ -1,0 +1,41 @@
+const { chromium } = require('/tmp/itoma-ui-tools/node_modules/playwright');
+const fs = require('node:fs');
+(async () => {
+  const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
+  const out = '/tmp/itoma-duration-evidence'; fs.mkdirSync(out, { recursive: true });
+  const results = [];
+  for (const colorScheme of ['light', 'dark']) for (const width of [320, 390, 768]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 }, colorScheme, reducedMotion: 'reduce' });
+    const errors = []; page.on('pageerror', e => errors.push(String(e)));
+    await page.goto('http://127.0.0.1:8768/duration-qa');
+    await page.getByText('制限の適用を記録した時間', { exact: true }).waitFor();
+    const enlarge = async () => {
+      if (width !== 320) return;
+      await page.evaluate(() => {
+        const nodes = Array.from(document.querySelectorAll('[dir="auto"]')).filter(e => !e.hasAttribute('data-qa-scaled'));
+        const sizes = nodes.map(e => [e, getComputedStyle(e).fontSize, getComputedStyle(e).lineHeight]);
+        for (const [e, font, line] of sizes) {
+          e.style.fontSize = `${parseFloat(font) * 2}px`;
+          e.style.lineHeight = `${parseFloat(line === 'normal' ? font : line) * 2}px`;
+          e.setAttribute('data-qa-scaled', '1');
+        }
+      });
+    };
+    await enlarge();
+    if (await page.getByTestId('reflection-total').innerText() !== '1時間55分') throw Error('wrong cumulative duration');
+    await page.screenshot({ path: `${out}/week-${colorScheme}-${width}.png`, fullPage: true });
+    await page.getByText(/OS内部の遮断状態を常時観測した値ではありません/).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${out}/scope-${colorScheme}-${width}.png`, fullPage: true });
+    await page.getByRole('button', { name: '月次', exact: true }).click();
+    await page.getByText('2026年11月', { exact: true }).waitFor();
+    await enlarge();
+    if (await page.getByTestId('reflection-total').innerText() !== '1時間55分') throw Error('cumulative duration changed on month switch');
+    await page.screenshot({ path: `${out}/month-${colorScheme}-${width}.png`, fullPage: true });
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+    if (overflow || errors.length) throw Error(JSON.stringify({ width, colorScheme, overflow, errors }));
+    results.push({ width, colorScheme, textScale: width === 320 ? 2 : 1, overflow, errors });
+    await page.close();
+  }
+  fs.writeFileSync(`${out}/results.json`, JSON.stringify({ runtime: 'Linux Chromium', data: 'synthetic native intervals; production component; temporary QA route', results }, null, 2));
+  console.log(JSON.stringify(results)); await browser.close();
+})().catch(e => { console.error(e); process.exit(1); });

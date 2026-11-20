@@ -111,6 +111,28 @@ test('a private save error hides saved text while preserving the person’s RAM 
   expect(screen.getByText('保存した内容を読み取れません')).toBeOnTheScreen();
 });
 
+test('the name editor keeps RAM input during reconfirmation and shows a warning only after read failure', async () => {
+  let emit!: (state: AppStateStatus) => void;
+  const listener = jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, callback) => { emit = callback; return { remove: jest.fn() }; });
+  const read = deferred<ScreenTimeResponse>(); let hold = false;
+  const client = { run: async (): Promise<ScreenTimeResponse> => hold ? read.promise : response(ready()) };
+  const view = await render(<ScreenTimeProvider client={client}><RuleDetailsScreen ruleID={ref} /><Probe /></ScreenTimeProvider>);
+  try {
+    await waitFor(() => expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue('saved synthetic title'));
+    await fireEvent.changeText(screen.getByLabelText('ルール名（任意）'), 'unsaved synthetic title');
+    await act(async () => { emit('inactive'); }); hold = true;
+    await act(async () => { emit('active'); });
+    expect(screen.getByText('ルール名と行動目標を確認しています。')).toBeOnTheScreen();
+    expect(screen.queryByText('保存した内容を読み取れません')).toBeNull();
+    expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue('unsaved synthetic title');
+    expect(screen.getByRole('button', { name: '保存する' })).toBeDisabled();
+    await act(async () => { read.resolve({ status: 'error', code: 'unavailable', impacts: [] }); });
+    expect(screen.getByText('保存した内容を読み取れません')).toBeOnTheScreen();
+    expect(screen.queryByText('ルール名と行動目標を確認しています。')).toBeNull();
+    expect(screen.getByLabelText('ルール名（任意）')).toHaveDisplayValue('unsaved synthetic title');
+  } finally { await view.unmount(); listener.mockRestore(); }
+});
+
 test('a Provider remount retains revision protection and rejects the previous lifetime’s pending read', async () => {
   const old = deferred<ScreenTimeResponse>(); let reads = 0;
   const client = { run: async (): Promise<ScreenTimeResponse> => ++reads === 1 ? response(ready()) : reads === 2 ? old.promise : response(ready('10', 'recovered after remount')) };

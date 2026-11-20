@@ -1,0 +1,11 @@
+{
+  "settingsDetailOneTab": true,
+  "settingsStackKeysRetained": true,
+  "warmLinkClearsPreviousOrigin": true,
+  "modalTabsHidden": true,
+  "internalBackPreservesInput": true,
+  "closeDiscardFailureRetains": true,
+  "externalExitGuarded": true,
+  "editReturnsToDetail": true,
+  "errors": []
+}

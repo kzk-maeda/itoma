@@ -1,4 +1,5 @@
-import { router, useFocusEffect } from 'expo-router';
+import { useAppNavigation } from '@/state/navigation';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useVisibleClock } from '@/hooks/use-visible-clock';
@@ -14,7 +15,7 @@ import { Body, Button, FlowScreen, Heading, LinkRow, Notice, Panel, useFlowTheme
 import { endTime, grantRemaining, ruleText } from './presentation';
 
 export function ProductHome() {
-  const state = useScreenTime(), setup = useOptionalOnboarding(), theme = useFlowTheme(), now = useVisibleClock();
+  const state = useScreenTime(), setup = useOptionalOnboarding(), theme = useFlowTheme(), now = useVisibleClock(), navigation = useAppNavigation();
   const s = state.snapshot;
   const { refresh } = state;
   const boundary = useRef('');
@@ -29,9 +30,9 @@ export function ProductHome() {
     } else if (!setupProgress.seenIntro && !ruleCount) {
       visited.current = true;
       // Mark the introduction seen before navigation; returning never forces it repeatedly.
-      void setupRun('onboardingDefer').then(result => { if (result.status === 'ok' && focused.current) router.navigate('/onboarding'); });
+      void setupRun('onboardingDefer').then(result => { if (result.status === 'ok' && focused.current) navigation.start({ screen: 'onboarding' }, { screen: 'index' }); });
     }
-  }, [setupRun, setupProgress, availability, ruleCount, state.loading]));
+  }, [setupRun, setupProgress, availability, ruleCount, state.loading, navigation]));
   useFocusEffect(useCallback(() => { focused.current = true; completeNativeHomeSmoke(); return () => { focused.current = false; }; }, []));
   useEffect(() => {
     if (!s) return;
@@ -45,13 +46,14 @@ export function ProductHome() {
   const observed = s?.authorization === 'approved' && s.activation === 'enabled'
     && s.observation === 'applied' && !!s.validUntil && s.validUntil * 1000 > now && !state.error;
   const firstRun = !!setup && !setup.progress?.completed;
-  const create = () => { if (firstRun) { router.navigate('/onboarding'); return; } if (!state.ruleDraft?.dirty) state.beginRule(); router.navigate(s?.authorization === 'approved' ? '/rule' : '/onboarding'); };
-  const unlock = () => { if (!state.unlockDraft.reason && !state.unlockDraft.targetRef) state.resetUnlock(); router.push('/unlock'); };
+  const create = () => { if (firstRun) { navigation.start({ screen: 'onboarding' }, { screen: 'index' }); return; } if (!state.ruleDraft?.dirty) state.beginRule(); navigation.start({ screen: s?.authorization === 'approved' ? 'rule' : 'onboarding' }, { screen: 'index' }); };
+  const unlock = () => { if (!state.unlockDraft.reason && !state.unlockDraft.targetRef) state.resetUnlock(); navigation.start({ screen: 'unlock' }, { screen: 'index' }); };
   const stopLegacy = () => Alert.alert('手動検証の制限を停止しますか', '以前の手動検証で指定した制限だけを停止します。通常のルールと保存した対象は削除しません。', [
     { text: '戻る', style: 'cancel' }, { text: '手動検証の制限を停止', onPress: () => { void state.run('stopLegacy'); } },
   ]);
   return <FlowScreen title="いとま" tab="home">
-    {s?.ruleDetailsStatus === 'unavailable' && <Notice title="ルール名と行動目標を確認できません">制限の設定は引き続き確認できます。設定タブからもう一度読み直せます。</Notice>}
+    {state.ruleDetailsState === 'unavailable' && <Notice title="ルール名と行動目標を確認できません">制限の設定は引き続き確認できます。設定タブからもう一度読み直せます。</Notice>}
+    {state.ruleDetailsState === 'checking' && !state.loading && !!s?.rules.length && <Body muted>ルール名と行動目標を確認しています。</Body>}
     {state.loading && <Body muted>現在の設定を確認しています。</Body>}
     {device && setup?.draft && setup.busy && <Notice title="初回設定の結果を確認しています">受け付けた操作は、画面を離れても続きます。同じ操作を重ねず、処理結果を確認してください。</Notice>}
     {!state.loading && !device && <Notice title="iPhoneのITOMAで設定できます">
@@ -63,7 +65,7 @@ export function ProductHome() {
     </Notice>}
     {state.legacyActive && <Button label="手動検証の制限を確認して停止" secondary disabled={!!state.busy} onPress={stopLegacy} />}
     {device && !!s.rules.length && s.authorization !== 'approved' && <Notice title="スクリーンタイムの許可が必要です">設定を残したまま、許可を確認できます。再開前に対象アプリと保存したルールを確認できます。</Notice>}
-    {device && !!s.rules.length && s.authorization !== 'approved' && <Button label="許可を確認する" onPress={() => router.push('/onboarding')} />}
+    {device && !!s.rules.length && s.authorization !== 'approved' && <Button label="許可を確認する" onPress={() => navigation.start({ screen: 'onboarding' }, { screen: 'index' })} />}
     {s?.activation === 'paused' && <Notice title="ルールの停止を保存しています">ルールは保存されています。再開にはご自身の操作が必要です。設定タブから現在の状態を確認できます。</Notice>}
     {s?.activation === 'awaitingReauthorizationConfirmation' && <Notice title="再開前に対象を確認してください">ルールの対象アプリを選び直してから、設定画面で明示的に再開できます。</Notice>}
     {device && !!s.rules.length && s.activation === 'enabled' && (!s.schedulesReady || !observed) && <Notice title="制限の状態を確認してください">
@@ -94,8 +96,8 @@ export function ProductHome() {
       <Body muted>必要なときは、自分の言葉で理由を書いて一時解除できます。</Body>
     </Panel>}
     {!s?.rules.length && <Button label={firstRun ? setup.draft ? setup.busy || setup.draft.submitted ? '初回設定の結果を確認する' : '初回設定を続ける' : '初回設定を始める' : 'ルールをつくる'} disabled={!device || !!state.busy || !!setup?.busy || !!setup?.loading} onPress={create} />}
-    {device && !!s?.rules.length && !!setup?.draft && <Button label="初回設定の結果を確認する" secondary onPress={() => router.navigate('/onboarding')} />}
-    {!!s?.rules.length && state.ruleDraft?.dirty && <Button label="編集中のルールに戻る" secondary onPress={() => router.navigate('/rule')} />}
+    {device && !!s?.rules.length && !!setup?.draft && <Button label="初回設定の結果を確認する" secondary onPress={() => navigation.start({ screen: 'onboarding' }, { screen: 'index' })} />}
+    {!!s?.rules.length && state.ruleDraft?.dirty && <Button label="編集中のルールに戻る" secondary onPress={() => navigation.start(state.ruleDraft?.createdRuleID ? { screen: 'rule-details', ruleID: state.ruleDraft.createdRuleID } : { screen: 'rule' }, { screen: 'index' })} />}
     {!!s?.rules.length && <View style={styles.targets}><Heading>対象のアプリ</Heading>
       {s.authorization === 'approved' ? s.targets.map((target) => <View key={target.ref} style={[styles.target, { borderColor: theme.line }]}>
         <View style={styles.targetLine}>
@@ -108,7 +110,7 @@ export function ProductHome() {
         {target.grantCommandID && <Text style={[styles.caption, { color: theme.muted }]}>{target.grantStatus === 'active' && observed && (target.grantEndsAt ?? 0) * 1000 > now
           ? `一時解除の残り ${grantRemaining(target.grantEndsAt!, now)} · ${endTime(target.grantEndsAt!, now)}まで`
           : '解除の要求・再制限の状態を確認できます。'}</Text>}
-        {target.grantCommandID && <LinkRow label="解除の状況を見る" onPress={() => router.navigate('/grant')} />}
+        {target.grantCommandID && <LinkRow label="解除の状況を見る" onPress={() => navigation.open({ screen: 'grant' })} />}
       </View>) : <Body muted>許可を確認すると、保存した対象を確認できます。</Body>}
       {s.targets.length === 0 && <Body muted>対象のアプリはありません。</Body>}
     </View>}

@@ -87,9 +87,9 @@ test('explicit refresh releases old token and typed changed failure does not cau
   await screen.findByLabelText('この週の記録：1時間55分'); changed = true;
   await press('月次'); await screen.findByText('記録が更新されました');
   expect(screen.getByTestId('reflection-total').props.children).toBe('—');
-  await press('最新の記録を確認する'); await screen.findByText('2026年11月');
+  await press('集計を再読み込み'); await screen.findByText('2026年11月');
   expect(client.read.mock.calls.at(-1)![0].expectedToken).toBeUndefined();
-  await press('最新の記録を確認する'); await screen.findByText('2026年11月');
+  await press('集計を更新'); await screen.findByText('2026年11月');
   expect(client.read.mock.calls.at(-1)![0].expectedToken).toBeUndefined();
 });
 test('malformed and synchronous source failures remain errors rather than empty history', async () => {
@@ -98,7 +98,7 @@ test('malformed and synchronous source failures remain errors rather than empty 
   await render(<ReflectionPrototypePreview source={client} initialAnchor="2026-11-09" />);
   await screen.findByText('記録を読み取れませんでした');
   expect(screen.queryByText(/raw error stays private/)).toBeNull();
-  fail = false; await press('最新の記録を確認する'); await screen.findByLabelText('この週の記録：1時間55分');
+  fail = false; await press('集計を再読み込み'); await screen.findByLabelText('この週の記録：1時間55分');
 });
 test('source replacement hides old cumulative immediately and ignores a delayed old response', async () => {
   let resolve: ((value: string) => void) | undefined;

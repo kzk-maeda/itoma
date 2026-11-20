@@ -2,6 +2,7 @@ import CSQLiteTest
 import Foundation
 import ItomaCore
 import ItomaStorage
+import ItomaHistory
 @testable import ItomaControl
 import Testing
 
@@ -449,4 +450,33 @@ func authorizationLossAfterApplyDoesNotTranslateTheCoreGateIntoAStoreClear(statu
     #expect(result.disposition == .uncertain)
     for n in 1...2 { #expect(try f.repository.grant(id(n))?.hasEnded == true) }
     #expect(try f.repository.readSnapshot().application?.observation.status != .applied)
+}
+
+@Test @ItomaControlActor func oneUnlockExecutionProducesOneChoiceDespiteMultipleOperationalFacts() async throws {
+    let f = try Fixture(); defer { f.remove() }
+    let history = try HistoryRepository.create(at: f.directory.appendingPathComponent("history.sqlite"),
+        capacity: HistoryCapacityPolicy(warningBytes: 500_000, maximumBytes: 1_000_000))
+    defer { try? history.close() }
+    _ = try history.prepareReason(reasonRef: id(101), commandID: id(1), body: "synthetic reason", at: f.contexts.now)
+    let accepted = try f.accept()
+    _ = try await f.service.executeAcceptedGrant(commandID: id(1))
+    _ = try f.repository.transferHistory(to: history)
+    let activePage = try history.readPage(kind: .event)
+    #expect(activePage.rows.count == 1)
+    guard case let .control(active) = activePage.rows.first?.record else { Issue.record("Missing active choice"); return }
+    #expect(active.command.status == .succeeded && active.grant?.status == .active)
+    f.contexts.now = accepted.effectiveExpiresAt
+    _ = await f.service.reconcile()
+    let firstBatch = try f.repository.historyBatch()
+    #expect(firstBatch.entries.count == 2) // Real service stages, not hand-made display rows.
+    _ = try f.repository.transferHistory(to: history)
+    #expect(try history.history().count == 3)
+    let page = try history.readPage(kind: .event)
+    #expect(page.rows.count == 1)
+    guard case let .control(event) = page.rows.first?.record else { Issue.record("Missing choice"); return }
+    #expect(event.command.id == id(1) && event.command.status == .succeeded && event.grant?.status == .reconciled)
+    #expect(try history.readReason(for: event.command.id).reason?.body == "synthetic reason")
+    // A lost ack/replayed import cannot add another visible operation.
+    _ = try history.commitHistoryBatch(firstBatch)
+    #expect(try history.readPage(kind: .event).rows.count == 1)
 }

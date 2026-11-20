@@ -1,0 +1,6 @@
+import { useLocalSearchParams } from 'expo-router';
+import { ProductHome } from '@/components/flow/home';
+import { ScheduleDetailScreen } from '@/components/flow/settings';
+import { RuleDetailsScreen } from '@/components/flow/rule-details';
+export default function Proof() { const { screen } = useLocalSearchParams<{screen?: string}>();
+ return screen === 'settings' ? <ScheduleDetailScreen /> : screen === 'editor' ? <RuleDetailsScreen ruleID="dddddddd-dddd-dddd-dddd-dddddddddddd" /> : <ProductHome />; }

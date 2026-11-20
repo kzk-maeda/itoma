@@ -16,6 +16,8 @@
 
 ## 資料と検討Issue
 
+- [閲覧Stackと作業フロー](navigation.md) — #217。タブ維持・論理的な親・型付き帰還と未保存退出保護。実装レビューと実機受入を区別する。
+
 - [初回設定・途中保存・再開](onboarding.md) — #118 / #149。本人の実装依頼に基づくレビュー対象。実機確認は別ゲート。
 
 - [MVPの利用シナリオ・範囲・解除体験を決定する](mvp.md) — https://github.com/kzk-maeda/itoma/issues/21
@@ -61,3 +63,11 @@ PR #36で状態・ルール・責務・保存の設計を採用しました。�
 - [Screen Time native runtime](screen-time-runtime.md) — #125。CNG/署名不要ビルドと、実機の署名・OS成立を分けた実装境界。
 
 - [保存済み検証対象の表示と再制限](poc-saved-targets.md) — [#119](https://github.com/kzk-maeda/itoma/issues/119)。限定PoC提案。製品の再認可/再開仕様や実機合格を確定しない。
+
+## #222: 通常ルールの背景実行の変更提案
+
+[Extensionの通常ルール実行資格（ADR0011）](../adr/0011-host-confirmed-rule-execution.md)はProposed（実装を含むレビュー対象、実機未検証）。生の認可観測と、hostで確認した現在policyの実行資格を分ける。Extensionのunknownをapprovedへ変えず、新しい解除・resumeには従来の認可確認を要求する。任意journalはhostだけが導入し、停止/変更/deniedで失効させる。unknown区間の時間集計除外は維持する。採用済み設計・PR228の専用PoC実機結果とは区別する。
+
+## #98: ルール・解除ログによる集計への変更
+
+2026-11-19 JST、本人指定で当時のルール設定と解除ログから再計算する方式へ変更する。[ADR0012](../adr/0012-rule-log-time-aggregation.md) に式・旧metricとの区別・過去ログ/欠測/削除・UI契約を記載。新指標をOS遮断の実測とは扱わず、通常制御の認可/P1/P2を緩めない。実装レビューと新buildでの実機確認は別に行う。

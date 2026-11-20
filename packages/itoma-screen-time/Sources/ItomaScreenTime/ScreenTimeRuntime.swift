@@ -7,7 +7,8 @@ import ItomaStorage
 
 @ItomaControlActor public final class ScreenTimeRuntime {
     public let repository: ControlRepository
-    public let contexts = AppleEvaluationContexts()
+    public let contexts: AppleEvaluationContexts
+    private let origin: ControlOrigin
     public let directory: URL
     private var monitorRepository: PolicyMonitorRepository?
     private var coordinator: PolicyScheduleCoordinator?
@@ -28,7 +29,11 @@ import ItomaStorage
         }
     }
 
-    public init(createIfMissing: Bool, allowMonitorCreation: Bool = false) throws {
+    public init(createIfMissing: Bool, allowMonitorCreation: Bool = false, origin: ControlOrigin = .host,
+                callbackAuthorization: AuthorizationObservation? = nil) throws {
+        guard origin == .host || (!createIfMissing && !allowMonitorCreation) else { throw ScreenTimeRuntimeError.unavailable }
+        self.origin = origin
+        contexts = AppleEvaluationContexts(origin: origin, callbackAuthorization: callbackAuthorization)
         mayCreateMonitor = createIfMissing || allowMonitorCreation
         guard let limit = Bundle.main.object(forInfoDictionaryKey: "ITOMAPendingEventLimit") as? Int else { throw ScreenTimeRuntimeError.unavailable }
         outboxCapacity = try HistoryOutboxCapacity(maximumPendingEvents: limit)
@@ -42,11 +47,28 @@ import ItomaStorage
             // No destructive recovery; migrations belong to the host and must be explicit.
             repository = try ControlRepository.open(at: controlURL)
         }
+        if origin == .host && mayCreateMonitor { try? repository.installRuleExecutionAuthorization() }
         try protectFiles()
     }
 
     public func protectFiles() throws {
         for file in ["control.sqlite", "monitors.sqlite"] { try ScreenTimeFiles.protectDatabase(directory.appendingPathComponent(file)) }
+    }
+
+    /// Explicit foreground checkpoint only; no timer, schedule registration or shield mutation.
+    /// A mismatch revokes the preceding unconfirmed span instead of reporting it as success.
+    public func recordDurationCheckpoint() throws {
+        let snapshot = try repository.readSnapshot()
+        let context = contexts.context(activation: snapshot.activation)
+        let registry = try ProductTokenRegistry(selections: snapshot.selections)
+        let store = ManagedSettingsStore(named: AppleRestrictionAdapter.storeName)
+        let desired = snapshot.application?.evaluation.desiredTargets ?? []
+        let tokens = Set(desired.compactMap { registry.tokens[$0] })
+        var confirmed = context.authorization.status == .approved
+            && tokens.count == desired.count && (store.shield.applications ?? []) == tokens
+        if #available(iOS 26.5, *) { confirmed = confirmed && store.isActive }
+        try repository.recordReflectionBaseline(durationConfirmed: confirmed, expectedSequence: snapshot.snapshotSequence)
+        try protectFiles()
     }
 
     public func makeService(additionalPolicy: PolicySnapshot? = nil, stopping: Bool = false) throws -> CommandService {
@@ -60,7 +82,7 @@ import ItomaStorage
         }
         let restriction = AppleRestrictionAdapter(registry: registry, plans: plans, scheduler: policyScheduler, contexts: contexts)
         return CommandService(repository: repository, scheduler: AppleDeadlineScheduler(), restriction: restriction,
-            contexts: contexts, historyCapacity: outboxCapacity)
+            contexts: contexts, historyCapacity: outboxCapacity, origin: origin)
     }
 
     public func saveSelection(tokensData: Data) throws -> SelectionRef {
@@ -88,19 +110,22 @@ import ItomaStorage
     }
 
     /// Called only by the synchronous OS callback bridge, on ItomaControlActor.
-    public static func handleActivity(_ name: String, ended: Bool) {
+    public static func handleActivity(_ name: String, ended: Bool, authorization: AuthorizationObservation?) {
         guard name.hasPrefix("itoma.rule.") || name.hasPrefix("itoma.deadline.") else { return }
         // An interval already in progress can start immediately after registration. It must not
         // consume a deadline receipt before the grant's end.
         if name.hasPrefix("itoma.deadline."), !ended { return }
         do {
-            let runtime = try ScreenTimeRuntime(createIfMissing: false)
+            let runtime = try ScreenTimeRuntime(createIfMissing: false, origin: .activityExtension, callbackAuthorization: authorization)
             let service = try runtime.makeService()
+            let result: ReconciliationResult
             if let (id, generation) = AppleDeadlineScheduler.identity(name) {
-                _ = service.reconcileSynchronously(registrationID: id, generation: generation)
-            } else { _ = service.reconcileSynchronously() }
+                result = service.reconcileSynchronously(registrationID: id, generation: generation)
+            } else { result = service.reconcileSynchronously() }
+            NormalRuleDiagnostics.result(result)
             try runtime.protectFiles()
         } catch {
+            NormalRuleDiagnostics.unavailable()
             // No database recreation, stale plan, empty-store fallback or user-data logging.
             // The durable last intent and any existing own-store restrictions remain available.
         }
