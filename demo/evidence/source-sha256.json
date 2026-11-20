@@ -1,0 +1,25 @@
+{
+  "base": "3367a43eec49abff84429e46881c4c33f3cf4ddc",
+  "productBase": "281be275374b3f0d6438bf8fefe1c2cb11b3326f",
+  "files": {
+    "demo/app/app.config.ts": "5bc994e5da04eb41888e653d2b0e52c0117643dd09f05f999de578ab67b847f3",
+    "demo/app/metro.config.cjs": "166fd819c8d285b3a8d2974538ce5ad324fb08b8fdce26a4592cf66c15536f3b",
+    "demo/app/package.json": "847195b33d7f2e4fb03d42c4797db2b71f5ffc8a99dd518f6b9342cb07560819",
+    "demo/app/src/app/_layout.tsx": "e1b57c8d0cf86a4159727fc99e98970d1fb3b57d30b509d54f112445b2804205",
+    "demo/app/src/app/index.tsx": "d908f753ee173625bc2d1620ea0495e706990534d4ac479843bbce675908a551",
+    "demo/app/src/app/reflection.tsx": "3aa709425a993b4c1ad24c80825b6ca0382106fd5c2706607c80cc8f3d482d92",
+    "demo/app/src/app/settings.tsx": "a262e4eeb64e77874f5074e441ca22308e1e4ef0b591e2ea2d26d6bc3ca82637",
+    "demo/app/src/components/cumulative-chart.tsx": "fe978f091945d27f77734f7862884fb0b7827b7d9b1359f4e85c3926c396449c",
+    "demo/app/src/components/demo-toolbar.tsx": "e8b2bd789f6161b3b8e5c9a180f022934e7e146f42fa2ec22e1bb8479b8accbf",
+    "demo/app/src/components/frame.tsx": "62f4f316f3a318a388db368ec806bb2c2238ce78da648a2dfcf0ed3b1bbe458d",
+    "demo/app/src/components/reflection-preview.tsx": "8b01573ebf3ea8c39d9ae7f9eb8fb06ced0cd0b237d8ab126b4eb74ce7117036",
+    "demo/app/src/scenarios/records.ts": "02d6b8030d0587136c6d4dc4fbbd2d9ea7a3f9617ca2a91a36be4807441097f3",
+    "demo/app/src/state/demo.tsx": "1eec0ca347cd5a29bbf47798dbfbd9e54239187762f5684a07dc794819eaee84",
+    "demo/app/tsconfig.json": "521a8b3f94eecb508657d701fc467d7769b42727cbaf2590705227656c2903d5",
+    "src/components/flow/ui.tsx": "07d3518a1ebc29b3e92bab5ecbba0883e9589a1eae26fe1b36e2428269a11540",
+    "src/components/flow/period-transition.tsx": "d1c9a792c1478b431744823b9a40251d6753276860b6b79f617036bb22626b9f",
+    "src/components/flow/product-navigation.tsx": "bac05f088135348785fba384c4db6f278213630ceaac498fc768a48d00588346",
+    "src/constants/theme.ts": "5007ff58698f159a0ae7dda6786906a12ab60d1e761efa0bf0e07e26eaa1e980",
+    "modules/itoma-native/src/reflection-model.ts": "d0407daafb2aebea25894e83561f01fa3d0adbd21c9b2ca94cebea37f4288c3f"
+  }
+}

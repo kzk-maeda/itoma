@@ -1,0 +1,5 @@
+{
+  "name": "itoma-reflection-demo",
+  "private": true,
+  "main": "expo-router/entry"
+}
