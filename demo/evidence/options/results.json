@@ -1,0 +1,91 @@
+{
+  "url": "http://127.0.0.1:8801/demos/demo-reflection-visual-options-99c0f4050111/",
+  "browser": "155.0.8059.79",
+  "scope": "synthetic Web; DOM text scaling is not iOS Dynamic Type; no native verification",
+  "results": [
+    {
+      "name": "light-390",
+      "width": 390,
+      "colorScheme": "light",
+      "scale": 1,
+      "reducedMotion": "no-preference",
+      "routes": 5,
+      "datasetsPerOption": 6,
+      "stableGlobalTotal": true,
+      "calendarHitTarget": {
+        "x": 4,
+        "y": 689,
+        "width": 54.5625,
+        "height": 78
+      },
+      "calendarToDayAndBack": true,
+      "zeroVersusUnknown": true,
+      "keyboard": "PASS",
+      "noHorizontalOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "name": "dark-390",
+      "width": 390,
+      "colorScheme": "dark",
+      "scale": 1,
+      "reducedMotion": "reduce",
+      "routes": 5,
+      "datasetsPerOption": 6,
+      "stableGlobalTotal": true,
+      "calendarHitTarget": {
+        "x": 4,
+        "y": 689,
+        "width": 54.5625,
+        "height": 78
+      },
+      "calendarToDayAndBack": true,
+      "zeroVersusUnknown": true,
+      "keyboard": "PASS",
+      "noHorizontalOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "name": "light-320",
+      "width": 320,
+      "colorScheme": "light",
+      "scale": 1,
+      "reducedMotion": "reduce",
+      "routes": 5,
+      "datasetsPerOption": 6,
+      "stableGlobalTotal": true,
+      "calendarHitTarget": {
+        "x": 4,
+        "y": 689,
+        "width": 44.5625,
+        "height": 78
+      },
+      "calendarToDayAndBack": true,
+      "zeroVersusUnknown": true,
+      "keyboard": "PASS",
+      "noHorizontalOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "name": "large-dark-320",
+      "width": 320,
+      "colorScheme": "dark",
+      "scale": 2,
+      "reducedMotion": "reduce",
+      "routes": 5,
+      "datasetsPerOption": 6,
+      "stableGlobalTotal": true,
+      "calendarHitTarget": {
+        "x": 4,
+        "y": 492,
+        "width": 44.5625,
+        "height": 78
+      },
+      "calendarToDayAndBack": true,
+      "zeroVersusUnknown": true,
+      "keyboard": "PASS",
+      "noHorizontalOverflow": true,
+      "pageErrors": []
+    }
+  ]
+}
