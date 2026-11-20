@@ -1,13 +1,30 @@
-# 時間がまとまるサークル
+# 積み重ねのサークル：テイスト3案
 
 2026-11-21 JST / #258。本人が求めたのは、時間のグラフの種類を変えることよりも、「日々の時間が積み重なり、日・月・年の長さに育った」と実感できる体験。前の4案 #257 を残し、新しいデモ専用ブランチで提案する。採用済みの製品仕様ではない。
+
+## 今回の比較（#260）
+
+本人が評価した「時間が日・月・年へまとまる」数字と情報設計を保ち、カウントダウンと見分けられる表現を3案追加する。
+
+| 案 | 直リンク末尾 | 表現と意味 |
+| --- | --- | --- |
+| A 重なる輪 | `/reflection?look=rings` | 越えてきた1時間/1日/約1か月/約1年の節目を、内側から1本ずつ重ねる。1本が1日を表すわけではない |
+| B 粒の輪 | `/reflection?look=ticks` | 均一な粒を2重に並べた固定の模様。長短の時計目盛り・針・進捗弧を使わない。1粒の時間や割合は定義しない |
+| C まるい余白 | `/reflection?look=disc` | ほのかに温かい円の面を背景に、数字を主役にする。面積を時間の量へ対応させない |
+| 比較 元のサークル | `/reflection?look=original` | 前回#259の太い円弧。中央はまとまり、弧は端数 |
+
+上部「デザイン」から同じ時間・選択期間のまま比較できる。「場面を切替」では従来どおり時間/日/月/年・境目・0/未記録を選ぶ。直接URLは初期デザインを指定し、操作で選んだ案もURLへ反映する。不明なlook値は既定Aへフォールバックする。ホーム/設定から戻っても選択した案を保持する。
+
+新案は数字の意味を変えず、Aの輪だけが既存の節目と対応する。B/Cの模様を読んで時間を計算する設計ではない。詳細と読み上げ文にも意味を添える。新しい3案には進捗の円弧を描かず、カウントダウンの見え方と区別する。
+
+実装は #259 head `9c1e1d9a182838846002889a455299c86989b09c` から `demo/reflection-circle-styles` を作る積み上げPR。新規差分はdemo/のみ。#259の公開URLを更新しない。今回の案は未採用で、実機の確認とも区別する。
 
 ## 体験の提案
 
 `/reflection` が今回の画面。ホームから「新しい振り返りを見る」、または振り返りタブから開ける。
 
 - 大きな時間の単位で、すでにまとまった長さを表示。初期30時間は「1日分 ＋6時間」。960時間は「約1か月分 ＋10日」、10,512時間は「約1年分 ＋73日」。
-- サークル中央はまとまった時間、円弧は端数。時間単位の間だけ、円は24時間内に積み重ねた長さを示す。意味を下の凡例と読み上げ文で明示。端数が0なら弧を描かない。
+- 中央はまとまった時間と端数を全案で共通表示する。円弧の意味と端数0での非表示は「比較 元のサークル」に限る。新3案の表現は上表の意味を使う。
 - 「時間の内訳・換算方法」から正確な時間数と基準を確認。1日24時間、1か月30日/1年365日を目安とし、月/年には「約」を付ける。12か月換算は360日なので、365日まで自動で1年へ切り上げない。暦の経過月数とは区別する。
 - 記録の累計が初めて1時間・1日・1か月・1年分になった日を「節目」として添える。未到達の空枠や次の目標/達成率を置かない。
 - 週/月・過去の内訳を動かしても、上段の全記録累計は変えない。期間ごとの選択位置を保持する。別のデモデータへ切り替えると確認時点の期間に戻す。
@@ -23,7 +40,7 @@
 
 合成日別記録を1日最大4時間として生成し、全体合計・期間・節目を同じ記録から算出。年単位の例は2019〜2026年に及ぶ架空の長期利用で、短期間で1年分が貯まったようには見せない。固定確認日は2026/11/20、UTC日付キーを使うfixtureであり、native/時差/DSTの評価器ではない。
 
-数値の変更にだけ220msの短いフェードを使い、Reduce Motionでは静止。常時timerや自動加算はない。文字の表示領域が大きくなった場合は数値を円の下へ移し、字を小さくして押し込めない。
+数値とデザインの変更にだけ220msの短いフェードを使い、Reduce Motionでは静止。常時timerや自動加算はない。文字の表示領域が大きくなった場合は数値を円の下へ移し、字を小さくして押し込めない。
 
 ## 以前の案
 
@@ -41,11 +58,11 @@
 
 ## コードと配信の境界
 
-`demo/reflection-visual-options` の `d62aeaa7c35aa86f8782e6a13b17be59420216d3` から `demo/reflection-time-growth` を作成。今回の差分はdemo/のみ。
+`demo/reflection-time-growth` の `9c1e1d9a182838846002889a455299c86989b09c` から `demo/reflection-circle-styles` を作成。今回の差分はdemo/のみ。
 
 本体のBody/Button/useFlowTheme、Graphite/HomeLayout、ProductNavigation、PeriodSelector、reflectionDurationと型を読み取り参照する。独立Web入口・Router・記録・状態・可視化はデモが所有。本体src/modules/packages/assets/app config・依存関係・サイト・CI・OSを変更せず、モジュールの差替えもない。CIによる境界強制の新設は含まない。
 
-PRは#257をbaseにした積み上げ。#247→#255→#257の依存があり、mainへ保存するときは別途baseとシナリオ統合を整理する。本デモをそのまま製品へ一括移植する指示ではない。既存Cloudflare Accessを維持し、新しい専用Worker/URLだけへ配信。mainマージ・署名・アプリ配布・サイトのデプロイはしない。
+PRは#259をbaseにした積み上げ。#247→#255→#257→#259の依存があり、mainへ保存するときは別途baseとシナリオ統合を整理する。本デモをそのまま製品へ一括移植する指示ではない。既存Cloudflare Accessを維持し、新しい専用Worker/URLだけへ配信。mainマージ・署名・アプリ配布・サイトのデプロイはしない。
 
 ## 検証
 
@@ -57,12 +74,12 @@ npm test -- --ci --runInBand
 npm run test:demo
 node --test --test-reporter=spec demo/qa/growth.test.mjs demo/qa/options.test.mjs demo/qa/records.test.mjs
 XDG_CONFIG_HOME=/tmp/itoma-growth-config npm run demo:package
-DEMO_QA_PORT=8802 node demo/qa/serve.mjs
+DEMO_QA_PORT=8803 node demo/qa/serve.mjs
 # 別ターミナル
-node demo/qa/check-growth.mjs
+node demo/qa/check-circle-styles.mjs
 ```
 
-`DEMO_QA_URL` / `DEMO_QA_OUTPUT` / `PLAYWRIGHT_MODULE` でURL・出力先・一時的なPlaywrightの場所を指定可能。今回の画像・操作結果は [evidence/growth](evidence/growth/)。以前の案の証跡はevidence/optionsとevidence直下に区別する。
+`DEMO_QA_URL` / `DEMO_QA_OUTPUT` / `PLAYWRIGHT_MODULE` でURL・出力先・一時的なPlaywrightの場所を指定可能。今回の画像・操作結果は [evidence/circle-styles](evidence/circle-styles/)。前回の成長案の証跡はevidence/growth、以前の案はevidence/optionsとevidence直下に区別する。
 
 単位境界の±1秒、端数の秒保存、月/年の概算区別、全fixtureの合計と日順、欠測と0、節目の成立をモデルで検証。Webでは390/320、Light/Dark、DOM文字2倍、Reduce Motion、全4段階/3境目/欠測/0、期間の独立、ホーム/設定帰還、キーボード、旧5ルートを確認。
 

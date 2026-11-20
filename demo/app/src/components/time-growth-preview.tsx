@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import { circleStyles, isCircleStyle } from '../scenarios/circle-styles';
 import { Pressable, Text, View } from 'react-native';
 import { Body, useFlowTheme } from '@/components/flow/ui';
 import { PeriodSelector } from '@/components/flow/period-transition';
@@ -23,7 +25,10 @@ function GrowthPeriod() {
   </View>;
 }
 export function TimeGrowthPreview() {
-  const { records, scene } = useGrowth(), theme = useFlowTheme(), [details, setDetails] = useState(false);
+  const { records, scene, look, chooseLook } = useGrowth(), theme = useFlowTheme(), [details, setDetails] = useState(false);
+  const params = useLocalSearchParams<{ look?: string }>();
+  useEffect(() => { if (isCircleStyle(params.look)) chooseLook(params.look); }, [params.look, chooseLook]);
+  const variant = circleStyles.find(value => value.id === look)!;
   const total = sumKnown(records), readout = growthReadout(total), milestones = growthMilestones(records), partial = records.some(value => value.seconds === undefined);
   const message = total === undefined ? 'これから、自分の時間を。' : total === 0 ? 'ここから、少しずつ。' : readout!.kind === 'hours' ? '少しずつ、自分の時間へ。' : readout!.kind === 'days' ? `まる${readout!.whole}日分にもなる、自分の時間。` : readout!.kind === 'months' ? 'ひと月分にもなる、自分の時間。' : '一年分にもなる、自分の時間。';
   return <Frame title="振り返り" tab="reflection">
@@ -32,7 +37,7 @@ export function TimeGrowthPreview() {
     <View style={{ alignItems: 'center', gap: 7 }}><Caption>記録した制限時間の累計 · 一時解除を除く</Caption>{partial && <Text testID="growth-partial" style={{ color: theme.text, fontSize: 14, lineHeight: 23, textAlign: 'center' }}>一部未記録のため、確認できた時間だけです。</Text>}<Text style={{ color: theme.muted, fontSize: 13, lineHeight: 22, textAlign: 'center' }}>{total === undefined ? 'まだ記録がありません。' : total === 0 ? '記録はあります。集計対象の時間は0分です。' : readout!.kind === 'hours' ? '離れた時間が重なって、やがて1日分に。' : '日々の小さな時間が、まとまった長さに。'}</Text></View>
     <View style={{ padding: 18, borderRadius: 18, backgroundColor: theme.purposeSurface, gap: 10 }}><Text style={{ color: theme.text, fontSize: 15, lineHeight: 25 }}>{total === undefined || total === 0 ? '自分で決めた時間を、ここに重ねていけます。' : readout!.kind === 'hours' ? '1時間、また1時間。自分のために使える時間を、少しずつ。' : `いくつもの日常の中で、${readout!.approximate ? '約' : ''}${readout!.whole}${readout!.label}${readout!.remainder ? `と${durationWords(readout!.remainder)}` : ''}の長さになりました。`}</Text><Caption>少しずつ離れた時間を合算して、長さに換算しています。</Caption></View>
     <View style={{ borderBottomWidth: 1, borderColor: theme.line, paddingBottom: 16 }}><Pressable accessibilityRole="button" accessibilityLabel="時間の内訳と換算方法" accessibilityState={{ expanded: details }} onPress={() => setDetails(!details)} style={{ minHeight: 44, justifyContent: 'center' }}><View style={styles.navigation}><Text style={{ color: theme.text, fontSize: 14, lineHeight: 23 }}>時間の内訳・換算方法</Text><Text style={{ color: theme.muted, fontSize: 18 }}>{details ? '−' : '＋'}</Text></View></Pressable>
-      {details && <View testID="growth-details" style={{ gap: 12, paddingTop: 8 }}><Text testID="growth-exact-total" style={{ color: theme.text, fontSize: 20, lineHeight: 32 }}>{reflectionDuration(total)}</Text><Caption>1日分＝24時間。月は30日、年は365日を目安に換算するため「約」を付けています。暦の月数・年数ではありません。</Caption><Caption>中央はまとまった時間、円弧はその端数です。「時間分」の間は、24時間の中に積み重ねた長さを示します。</Caption><Caption>記録が示すのは制限の適用を確認した時間です。その時間を何に使ったかは記録していません。</Caption><Caption>このデモでは1日最大4時間の合成記録を使用。確認日は2026/11/20、月/年の換算方式は提案段階です。</Caption></View>}
+      {details && <View testID="growth-details" style={{ gap: 12, paddingTop: 8 }}><Text testID="growth-exact-total" style={{ color: theme.text, fontSize: 20, lineHeight: 32 }}>{reflectionDuration(total)}</Text><Caption>1日分＝24時間。月は30日、年は365日を目安に換算するため「約」を付けています。暦の月数・年数ではありません。</Caption><Caption>{variant.explanation}</Caption><Caption>記録が示すのは制限の適用を確認した時間です。その時間を何に使ったかは記録していません。</Caption><Caption>このデモでは1日最大4時間の合成記録を使用。確認日は2026/11/20、月/年の換算方式は提案段階です。</Caption></View>}
     </View>
     {!!milestones.length && <View style={{ gap: 14 }}><SectionTitle>時間がまとまった節目</SectionTitle><Caption>{partial ? '確認できた記録で、この長さになった日です。' : '累計が、この長さになった日です。'}</Caption><View testID="growth-milestones" style={{ gap: 0 }}>{milestones.map((value, index) => <View key={value.label} style={{ minHeight: 54, flexDirection: 'row', gap: 16 }}><View accessible={false} style={{ alignItems: 'center', width: 16 }}><View style={{ marginTop: 7, width: 11, height: 11, borderRadius: 6, borderWidth: 2, borderColor: theme.accent, backgroundColor: index === milestones.length - 1 ? theme.accent : theme.surface }} />{index < milestones.length - 1 && <View style={{ width: 1, flex: 1, backgroundColor: theme.line }} />}</View><View style={[styles.navigation, { flex: 1, alignItems: 'flex-start', paddingBottom: 16 }]}><Text style={{ color: theme.text, fontSize: 16, lineHeight: 26 }}>{value.label}</Text><Caption>{value.day.replaceAll('-', '/')}</Caption></View></View>)}</View></View>}
     <GrowthPeriod />
