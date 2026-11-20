@@ -1,0 +1,78 @@
+{
+  "url": "http://127.0.0.1:8803/demos/demo-reflection-circle-styles-54c2ab75f200/",
+  "browser": "155.0.8059.79",
+  "scope": "synthetic Web; DOM scaling is not Dynamic Type; no native verification",
+  "results": [
+    {
+      "name": "light-390",
+      "width": 390,
+      "colorScheme": "light",
+      "scale": 1,
+      "reducedMotion": "no-preference",
+      "styles": 4,
+      "stagesPerStyle": 4,
+      "partialZeroEmpty": true,
+      "stylePreservesValueAndPeriod": true,
+      "newStylesHaveNoProgressArc": true,
+      "keyboard": "PASS",
+      "tabReturnStyle": "PASS",
+      "noHorizontalOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "name": "dark-390",
+      "width": 390,
+      "colorScheme": "dark",
+      "scale": 1,
+      "reducedMotion": "reduce",
+      "styles": 4,
+      "stagesPerStyle": 4,
+      "partialZeroEmpty": true,
+      "stylePreservesValueAndPeriod": true,
+      "newStylesHaveNoProgressArc": true,
+      "keyboard": "PASS",
+      "tabReturnStyle": "PASS",
+      "noHorizontalOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "name": "light-320",
+      "width": 320,
+      "colorScheme": "light",
+      "scale": 1,
+      "reducedMotion": "reduce",
+      "styles": 4,
+      "stagesPerStyle": 4,
+      "partialZeroEmpty": true,
+      "stylePreservesValueAndPeriod": true,
+      "newStylesHaveNoProgressArc": true,
+      "keyboard": "PASS",
+      "tabReturnStyle": "PASS",
+      "noHorizontalOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "name": "large-dark-320",
+      "width": 320,
+      "colorScheme": "dark",
+      "scale": 2,
+      "reducedMotion": "reduce",
+      "styles": 4,
+      "stagesPerStyle": 4,
+      "partialZeroEmpty": true,
+      "stylePreservesValueAndPeriod": true,
+      "newStylesHaveNoProgressArc": true,
+      "keyboard": "PASS",
+      "tabReturnStyle": "PASS",
+      "noHorizontalOverflow": true,
+      "pageErrors": []
+    }
+  ],
+  "directLinks": [
+    "rings",
+    "ticks",
+    "disc",
+    "original"
+  ],
+  "invalidStyleFallback": "rings"
+}
