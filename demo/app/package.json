@@ -1,0 +1,5 @@
+{
+  "name": "itoma-home-demo",
+  "private": true,
+  "main": "expo-router/entry"
+}

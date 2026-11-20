@@ -1,0 +1,22 @@
+{
+  "demo/app/app.config.ts": "4166a0f105664828f7094fb5b6797fdabe3ae1560ec6e74e9c53a0319480b9b1",
+  "demo/app/metro.config.cjs": "166fd819c8d285b3a8d2974538ce5ad324fb08b8fdce26a4592cf66c15536f3b",
+  "demo/app/package.json": "b1fe6ace6c4d62b2749c83599da9cf32df552d234e812f400b1ef512655159eb",
+  "demo/app/src/app/_layout.tsx": "e382335adb8843766d1bd787b90f9ac43acf34238ad26ad1ceb56fe38cf2fa2a",
+  "demo/app/src/app/index.tsx": "271d6b3a669a04a3b2556d6ab7c46fc8e97ae55000152725121412e79c9e0e82",
+  "demo/app/src/app/reflection.tsx": "69b29bf767bd94e7c15111aabfd1332c90cfc8705ef31fa2fbf31edfb818d715",
+  "demo/app/src/app/settings.tsx": "e051f3c9c3fe56b1023bbeab4ad39bf208d08b03446db2489243649b91b51d5e",
+  "demo/app/src/components/demo-toolbar.tsx": "6f6a834d612fa31e63f5ee8f5d33f16959479e44ad286abe06a69315e820c815",
+  "demo/app/src/components/home-preview.tsx": "4ba38472e36c2358b8a33d9e57d200fddf172d468b87a34b1ddaa2c65c8e651a",
+  "demo/app/src/components/off-hours-circle.tsx": "37c972472c98b46802954d6bd81e408acf208344abaa6ba5bce164b55ff01605",
+  "demo/app/src/components/secondary-preview.tsx": "01b4175cced414a5ac5fa665d2f557016a55736b02dd7830934a661d5d263b71",
+  "demo/app/src/scenarios/home.ts": "9cd5a36e2ffdeb60f908e92163a79ab7557d308d1d59d0f61d75ca0cf6c020fa",
+  "demo/app/src/state/demo.tsx": "d99d688cb5fc184d6585a5e5f1e0fdec456cb71764cfe80f9b6fc6c2fbf913bf",
+  "demo/app/tsconfig.json": "521a8b3f94eecb508657d701fc467d7769b42727cbaf2590705227656c2903d5",
+  "src/components/flow/ui.tsx": "07d3518a1ebc29b3e92bab5ecbba0883e9589a1eae26fe1b36e2428269a11540",
+  "src/components/flow/rule-identity.tsx": "465c94bb06e267b2171eb1fb6aefe27610ed1022047f6855e2cf495b5d220bb2",
+  "src/components/flow/product-navigation.tsx": "bac05f088135348785fba384c4db6f278213630ceaac498fc768a48d00588346",
+  "src/components/home/period-ring.tsx": "d4e53ee4c2bcf6d1c13d06e893056d22a5c091d97a2c1beb9cadfb616e9e4118",
+  "src/components/home/open-circle.tsx": "15b635ed5a84c727a98a65dac179e904e6facf7b64f4f06b712532dc96368def",
+  "src/constants/theme.ts": "4ac603b648bb90274a99fa4ebf2666f13d81dbeda143d18d82b11fbc0b747101"
+}

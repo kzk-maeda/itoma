@@ -1,0 +1,55 @@
+{
+  "url": "http://127.0.0.1:8788/demos/demo-home-off-hours-circle-86d6764f1fba/",
+  "browser": "155.0.8059.79",
+  "scope": "synthetic Web; DOM text scaling is not Dynamic Type; not iOS/OS evidence",
+  "results": [
+    {
+      "name": "light-390",
+      "width": 390,
+      "colorScheme": "light",
+      "reducedMotion": "no-preference",
+      "scale": 1,
+      "scenarios": 6,
+      "keyboard": "PASS",
+      "navigation": "PASS",
+      "noHorizontalOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "name": "dark-390",
+      "width": 390,
+      "colorScheme": "dark",
+      "reducedMotion": "reduce",
+      "scale": 1,
+      "scenarios": 6,
+      "keyboard": "PASS",
+      "navigation": "PASS",
+      "noHorizontalOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "name": "light-320",
+      "width": 320,
+      "colorScheme": "light",
+      "reducedMotion": "reduce",
+      "scale": 1,
+      "scenarios": 6,
+      "keyboard": "PASS",
+      "navigation": "PASS",
+      "noHorizontalOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "name": "large-dark-320",
+      "width": 320,
+      "colorScheme": "dark",
+      "reducedMotion": "reduce",
+      "scale": 2,
+      "scenarios": 6,
+      "keyboard": "PASS",
+      "navigation": "PASS",
+      "noHorizontalOverflow": true,
+      "pageErrors": []
+    }
+  ]
+}
