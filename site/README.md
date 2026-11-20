@@ -12,6 +12,12 @@ Expoアプリとdemoから独立した静的サイト。配信対象は `src/` �
 - `scripts/build.mjs`: 出力を清掃し `dist/` へコピー。内部文案の差込欄混入を拒否
 - `wrangler.jsonc`: 専用Worker `itoma-site` / Custom Domain `itoma.app`
 
+## ブランドマークの向き
+
+2026-11-20の本人指定（#251 / #252）に合わせ、サイトのOPEN CIRCLEも左上の開きに統一する（#253）。トップ・privacy・404のheader/footer、LPの画面イメージ内ロゴ、faviconの計8か所。ロゴは半径15、faviconは従来の余白を保つ半径13で、どちらも12時→右→下→左の270度の弧。残量リングの描画・レイアウト・色・本文は変更しない。
+
+サイトは本体のPNG/React部品を直接参照しないため、ブランド変更時は`src/`内の全ページと`assets/site-mark.svg`を照合する。図形の向きの比較・範囲監査・ブラウザ確認は[QA記録](qa/logo-direction.md)を参照。
+
 ## ローカル
 
 Node 24推奨。アプリ側のnpm installやExpo exportは不要です。

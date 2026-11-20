@@ -1,15 +1,50 @@
-const {chromium}=require('playwright'),fs=require('fs');
-(async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const context=await browser.newContext();const p=await context.newPage(),errors=[],requests=[];p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:8788/'))requests.push(r.url());});const cases=[];try{
-for(const path of ['/','/privacy/'])for(const width of [320,390,768,1440])for(const size of [16,32]){
-await p.setViewportSize({width,height:1000});await p.goto('http://127.0.0.1:8788'+path);await p.evaluate(size=>document.documentElement.style.fontSize=`${size}px`,size);
-if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('overflow '+path+width+size);
-cases.push({path,width,textPercent:size/16*100});
-if(size===16&&[390,1440].includes(width))await p.screenshot({path:`/workspace/itoma/site/qa/${path==='/'?'home':'privacy'}-${width}.png`,fullPage:true});
-}
-await p.goto('http://127.0.0.1:8788/');await p.locator('footer').getByRole('link',{name:'プライバシーポリシー'}).click();if(!p.url().endsWith('/privacy/'))throw Error('privacy navigation');await p.goBack();if(!p.url().endsWith('/'))throw Error('back');
-await p.keyboard.press('Tab');await p.keyboard.press('Enter');
-if(await p.locator('footer a[href="mailto:support@itoma.app"]').count()!==1)throw Error('email');
-for(const path of ['/','/privacy/']){await p.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});await p.goto('http://127.0.0.1:8788'+path);if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('dark overflow');}
-if(errors.length||requests.length)throw Error(JSON.stringify({errors,requests}));
-fs.writeFileSync('/workspace/itoma/site/qa/verification.json',JSON.stringify({browser:browser.version(),cases,errors,externalRequests:requests,physicalDevice:false},null,2)+'\n');console.log('PASS: 16 viewport/text cases, dark/reduce-motion, footer navigation/back/mailto, no overflow/errors/external requests');
-}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});
+// Run as CommonJS with Playwright supplied through NODE_PATH; no site dependency is added.
+const { chromium } = require('playwright');
+const fs = require('node:fs');
+const path = require('node:path');
+const base = process.env.SITE_QA_BASE || 'http://127.0.0.1:8788';
+const output = process.env.SITE_QA_OUTPUT || path.resolve('site/qa');
+(async () => {
+  const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', args: ['--no-sandbox'] });
+  const context = await browser.newContext();
+  const page = await context.newPage(), errors = [], requests = [], cases = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => { if (!request.url().startsWith(base + '/')) requests.push(request.url()); });
+  fs.mkdirSync(output, { recursive: true });
+  try {
+    for (const colorScheme of ['light', 'dark']) {
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+      for (const route of ['/', '/privacy/', '/missing']) for (const width of [320, 390, 768, 1440]) for (const size of [16, 32]) {
+        await page.setViewportSize({ width, height: 1000 });
+        const response = await page.goto(base + route);
+        if (response.status() !== (route === '/missing' ? 404 : 200)) throw Error('status: ' + route);
+        await page.evaluate(size => { document.documentElement.style.fontSize = `${size}px`; }, size);
+        if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw Error('overflow: ' + route + width + size);
+        cases.push({ path: route, width, textPercent: size / 16 * 100, colorScheme });
+        if (size === 16 && [390, 1440].includes(width)) {
+          const name = route === '/' ? 'home' : route === '/privacy/' ? 'privacy' : '404';
+          await page.screenshot({ path: path.join(output, `${name}-${width}${colorScheme === 'dark' ? '-dark' : ''}.png`), fullPage: true });
+        }
+      }
+    }
+    await page.goto(base + '/');
+    await page.locator('footer').getByRole('link', { name: 'プライバシーポリシー' }).click();
+    if (!page.url().endsWith('/privacy/')) throw Error('privacy navigation');
+    await page.goBack();
+    if (!page.url().endsWith('/')) throw Error('back');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    if (await page.locator('footer a[href="mailto:support@itoma.app"]').count() !== 1) throw Error('email');
+    const favicon = await context.newPage();
+    favicon.on('pageerror', error => errors.push(error.message));
+    favicon.on('request', request => { if (!request.url().startsWith(base + '/')) requests.push(request.url()); });
+    await favicon.setViewportSize({ width: 320, height: 180 });
+    await favicon.setContent(`<html><body style="margin:0;padding:24px;background:#292b27;color:#f0f0e9;font:14px sans-serif"><p>Favicon: 16 / 32 px</p><img src="${base}/assets/site-mark.svg" width="16" height="16" alt=""><img src="${base}/assets/site-mark.svg" width="32" height="32" alt="" style="margin-left:32px"></body></html>`);
+    await favicon.locator('img').evaluateAll(images => Promise.all(images.map(image => image.decode())));
+    await favicon.screenshot({ path: path.join(output, 'favicon-16-32.png') });
+    await favicon.close();
+    if (errors.length || requests.length) throw Error(JSON.stringify({ errors, requests }));
+    fs.writeFileSync(path.join(output, 'verification.json'), JSON.stringify({ browser: browser.version(), cases, errors, externalRequests: requests, physicalDevice: false }, null, 2) + '\n');
+    console.log('PASS: 48 viewport/text/theme cases; real 404; navigation/back/mailto; favicon 16/32; no overflow/errors/external requests');
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error); process.exit(1); });

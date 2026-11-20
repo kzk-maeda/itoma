@@ -1,0 +1,36 @@
+{
+  "base": "2cf9b525a2d14d180131db14b58121f416a99ea0",
+  "scope": [
+    {
+      "path": "site/src/index.html",
+      "marks": 3,
+      "sha256": "2be191f926ed3d5730d78ba95d8ab3e3955e1e90669f751b83440523825cfbf5",
+      "onlyLogoPathChanged": true
+    },
+    {
+      "path": "site/src/privacy/index.html",
+      "marks": 2,
+      "sha256": "8d543d3591c5ef0f2c2529c0b057155e41a06c7695d7776582b6a291bc07b2b1",
+      "onlyLogoPathChanged": true
+    },
+    {
+      "path": "site/src/404.html",
+      "marks": 2,
+      "sha256": "d04adb2264276438979b1cb215d91620fa3305f6851caa44bc499698134f85a3",
+      "onlyLogoPathChanged": true
+    },
+    {
+      "path": "site/src/assets/site-mark.svg",
+      "marks": 1,
+      "sha256": "2a56bc27e048575ee286ebe019ae464ad39ece7e998b36d38c7909dc75332c20",
+      "onlyLogoPathChanged": true
+    }
+  ],
+  "unchanged": [
+    "site/src/assets/site.css",
+    "site/scripts/build.mjs",
+    "site/wrangler.jsonc",
+    ".github/workflows/deploy-site.yml",
+    "site/content/privacy-decisions.md"
+  ]
+}
