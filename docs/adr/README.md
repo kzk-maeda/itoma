@@ -24,3 +24,4 @@ ADR 0002はPR #31のmainマージ（2026-11-04 JST）、0003〜0006はPR #36のm
 | [0010: native操作を追跡した制限区間を接続する](0010-native-recorded-restriction-intervals.md) | Proposed（実装を含むレビュー対象） | [#97](https://github.com/kzk-maeda/itoma/issues/97) / [#98](https://github.com/kzk-maeda/itoma/issues/98) |
 | [0011: host確認済みpolicyのExtension実行資格](0011-host-confirmed-rule-execution.md) | Proposed（実装を含むレビュー対象） | [#222](https://github.com/kzk-maeda/itoma/issues/222) / [#227](https://github.com/kzk-maeda/itoma/issues/227) |
 | [0012: ルール設定・解除ログによる再計算](0012-rule-log-time-aggregation.md) | 本人指定に基づく実装レビュー対象 | [#98](https://github.com/kzk-maeda/itoma/issues/98) |
+| [0013: 正式サイトの独立配信と公開前の本人限定Access](0013-service-site-private-prelaunch.md) | Proposed（限定セットアップ実施済み） | [#191](https://github.com/kzk-maeda/itoma/issues/191) / [#182](https://github.com/kzk-maeda/itoma/issues/182) |
