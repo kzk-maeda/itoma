@@ -1,4 +1,30 @@
-# Cloudflare デモ環境の設定・リソース一覧
+# Cloudflare 環境の設定・リソース一覧
+
+## 正式サイトの本人限定セットアップ（2026-11-20）
+
+本人がPR192の準備と「公開まではZero Trust配下」を指定。正式サイトはデモと別Worker/別Accessに配信した。一般公開・mainマージは実施していない。判断と公開への移行は[ADR0013](adr/0013-service-site-private-prelaunch.md)、手順は[site/README](../site/README.md)。以下の古いデモ記録は各作業時点の履歴。
+
+| 種別 | 対象 | ID / 状態 |
+| --- | --- | --- |
+| 新規Worker | `itoma-site` | `f5dd108f59ee432ea0affa4c53fd3771`。静的Assetsのみ、bindingsなし、observability無効 |
+| 初回Worker Version | PR192のサイト | `03988819-9881-4e73-9689-757c2f910e81`。source `b963469040413ea2c1c2f9706da3bb6e47b8a075`（PR192へmain `4817056`を取り込んだコミット） |
+| 新規Custom Domain | `itoma.app` | `587b4a946cc888f73d70aa777d571dfa20b79a8d`。DNS/証明書はCloudflare管理 |
+| 新規Access Application | `ITOMA site prelaunch` | `9ba56752-2e29-4d47-9087-81e351b651ac`。self_hosted、`itoma.app`全パス |
+| 新規Access reusable policy | `ITOMA site owner only` | `5be1505d-360c-4efe-897d-badbb5616af2`。本人のメール1件のみallow、Everyone/Bypassなし、デモのポリシーとは独立 |
+| 再利用zone | `itoma.app` | `493c4d50c15352c342db90956a5bff3a`。同アカウントでactive。zone/ドメイン購入/NS変更なし |
+| 再利用IdP | メールOTP | `a71139fd-1d30-43f4-a83a-ea7d1b01acd1`。既存設定は変更なし |
+
+Accessは24hセッション、HTTP-only Cookie有効、preflight bypassなし。許可メールの具体値・認証コード・Cookie/トークンはリポジトリに記載しない。Workerのworkers.dev/Version previewは両方false。新しいIdP・Pages・DB・KV・R2・Workers Builds・有料プランは作成/変更していない。
+
+`support@itoma.app`は既存Email Routingがready、有効なforwardルール1件と認証済み転送先1件を確認。既存MX/SPF、転送ルール・転送先は変更していない。実受信と返信元アドレスの運用は未検証。
+
+初回はAccessを先に作成し、APIで単一メールallowと専用ポリシーを読戻してからローカルcf認証を用いて配信。トップ・privacy・CSS/SVG・未知パスはすべて、このAccessのaudに一致するログインへ302を確認した。通常DNS `172.20.10.1` はANSWER 0/SOA（負の応答TTL1800秒）を返した。一方、両権威NS・Cloudflare/Google DNSとDoHはAを返したため、権威DNSのAを指定し実hostnameでTLS証明書を検証した。標準DNSでの配信guard成功とは区別する。認証後閲覧と拒否メールでの実試験は別ゲート。
+
+CI/通常ローカル配信へ匿名Access確認を追加。mainへマージしても本人限定配信が継続する。GitHubの既存Secret/アカウント変数を維持し、値は取得していない。CIトークン権限とActions配信は別の確認事項で、ローカル認証成功を転用しない。一般公開への移行でこのサイト専用Accessを解除するまでは、認証を外して配信エラーを解消しない。
+
+検査結果: 型/Lint/Jest280件（29 suites）/demo32件/サイト7件/ローカルHTTPとWrangler dry-runはPASS。Expo Doctorは19/20（推奨依存との差分、更新なし）。標準DNSのlive guardはENOTFOUNDで失敗したが、QA限定で権威DNSのAを使い実hostnameのTLS検証を保った同じguardコードは6パス全てPASS。これらの差を残し、初回Actions成功や認証後閲覧を未確認のまま合格にしない。
+
+private原本・API応答・配信ログはGit管理外 `.tmp/qa/site-private-20261120/` に保存する。
 
 確認日: 2026-11-04（JST）。ユーザーの依頼で作成・配信したデモ用リソースです。ADRの採用判断とは別の、限定的なセットアップ・動作確認の記録です。
 閲覧・更新手順は [demo-environment.md](demo-environment.md)、判断案は [ADR 0001](adr/0001-cloudflare-web-demo.md) を参照してください。

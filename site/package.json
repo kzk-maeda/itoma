@@ -11,8 +11,9 @@
     "test": "node --test test/*.test.mjs",
     "preview": "npm run build && wrangler dev --ip 127.0.0.1 --port 8788",
     "check:deploy": "npm run build && wrangler deploy --dry-run",
-    "deploy": "npm run build && wrangler deploy",
-    "test:http": "node test/http-smoke.mjs"
+    "deploy": "npm run check:access && npm run build && wrangler deploy && npm run check:access",
+    "test:http": "node test/http-smoke.mjs",
+    "check:access": "node scripts/check-access.mjs"
   },
   "devDependencies": {
     "wrangler": "4.157.0"
