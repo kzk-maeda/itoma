@@ -1,18 +1,24 @@
 import { useSyncExternalStore } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import { useFlowTheme } from '@/components/flow/ui';
 
 const subscribe = () => () => {};
 const client = () => true;
 const server = () => false;
+type NextStart = { date: string; time: string };
 
-/** A static outline, never a progress fraction, loading spinner or time until next start. */
-export function OffHoursCircle() {
+/** A static outline with the next start, never progress or a countdown to that start. */
+export function OffHoursCircle({ next }: { next?: NextStart }) {
   const theme = useFlowTheme(), { fontScale, width } = useWindowDimensions();
   const hydrated = useSyncExternalStore(subscribe, client, server);
   const expanded = hydrated && fontScale > 1.5;
-  const label = <Text accessibilityRole="header" style={[styles.label, { color: theme.text }]}>制限時間外</Text>;
+  const copy = <View style={styles.copy}>
+    {next && <Text style={[styles.caption, { color: theme.muted }]}>次は</Text>}
+    <Text testID="next-start" accessibilityRole="header" style={[styles.time, next && next.date.length > 3 && styles.longDate, !next && styles.empty, { color: theme.text }]}>
+      {next ? `${next.date} ${next.time}` : '次の予定なし'}
+    </Text>
+  </View>;
   return <View testID="off-hours-circle" style={styles.group}>
     <View style={[styles.ring, hydrated && width <= 340 && styles.narrowRing]}>
       <View style={StyleSheet.absoluteFill} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -20,23 +26,18 @@ export function OffHoursCircle() {
           <Circle cx={112} cy={112} r={104} fill="none" stroke={theme.muted} strokeOpacity={0.55} strokeWidth={1.6} strokeDasharray="1 9" strokeLinecap="round" />
         </Svg>
       </View>
-      <View style={styles.center}>
-        <View testID="off-hours-motif" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <Svg width={72} height={72} viewBox="0 0 72 72" aria-hidden fill="none" stroke={theme.purposeMotif} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-            <Path d="M34 42C19 44 16 32 21 22C32 23 39 30 34 42Z" fill={theme.purposeSurface} />
-            <Path d="M39 33C35 19 45 12 58 14C58 27 51 35 39 33Z" fill={theme.purposeSurface} />
-            <Path d="M26 55C31 43 37 33 49 23M28 32L34 42" />
-          </Svg>
-        </View>
-        {!expanded && label}
-      </View>
+      {!expanded && <View style={styles.center}>{copy}</View>}
     </View>
-    {expanded && label}
+    {expanded && copy}
+    <Text style={[styles.status, { color: theme.muted }]}>制限時間外</Text>
   </View>;
 }
 const styles = StyleSheet.create({
-  group: { alignItems: 'center', paddingVertical: 12, gap: 16 },
+  group: { alignItems: 'center', paddingVertical: 12, gap: 8 },
   ring: { width: 240, maxWidth: '100%', aspectRatio: 1 }, narrowRing: { width: 224 },
-  center: { position: 'absolute', inset: 24, alignItems: 'center', justifyContent: 'center', gap: 14 },
-  label: { fontSize: 16, lineHeight: 25, fontWeight: '400', textAlign: 'center', flexShrink: 1 },
+  center: { position: 'absolute', inset: 24, alignItems: 'center', justifyContent: 'center' },
+  copy: { alignItems: 'center', gap: 8, maxWidth: '100%' },
+  caption: { fontSize: 13, lineHeight: 21 }, status: { fontSize: 13, lineHeight: 21 },
+  time: { fontSize: 26, lineHeight: 36, fontWeight: '400', textAlign: 'center', fontVariant: ['tabular-nums'] },
+  longDate: { fontSize: 18, lineHeight: 28 }, empty: { fontSize: 20, lineHeight: 30 },
 });

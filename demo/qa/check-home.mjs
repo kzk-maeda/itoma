@@ -25,7 +25,7 @@ try {
     // Wait for React's external-store hydration and web theme update.
     await page.waitForFunction(dark => {
       const label = [...document.querySelectorAll('*')].find(el => el.childElementCount === 0 && el.textContent === '制限時間外');
-      return label && getComputedStyle(label).color === (dark ? 'rgb(240, 240, 233)' : 'rgb(48, 49, 47)');
+      return label && getComputedStyle(label).color === (dark ? 'rgb(189, 191, 182)' : 'rgb(102, 103, 98)');
     }, test.colorScheme === 'dark');
     const enlarge = async () => {
       if (test.scale === 1) return;
@@ -52,9 +52,11 @@ try {
     };
     assert.equal(await page.getByTestId('off-hours-circle').count(), 1);
     assert.equal(await page.getByTestId('period-ring').count(), 0);
-    assert.equal(await page.getByTestId('off-hours-motif').count(), 1);
+    assert.equal(await page.getByTestId('off-hours-motif').count(), 0);
     assert.equal(await page.getByText('アプリの制限はありません', { exact: true }).count(), 0);
     assert.equal(await page.getByTestId('rule-goal').count(), 1);
+    assert.equal(await page.getByTestId('next-start').innerText(), '今日 21:00');
+    assert.doesNotMatch(await page.getByTestId('next-rule').innerText(), /21:00/);
     await checkWidth();
     await page.screenshot({ path: `${output}/${test.name}.png`, fullPage: true });
     const circle = page.getByTestId('off-hours-circle').locator('svg circle');
@@ -64,11 +66,13 @@ try {
     await page.waitForTimeout(120);
     assert.equal(await circle.getAttribute('style'), first, 'idle ring must stay static');
     await select('翌日の予定');
-    assert.match(await page.getByTestId('next-rule').innerText(), /明日 07:00〜08:00/);
+    assert.equal(await page.getByTestId('next-start').innerText(), '明日 07:00');
+    assert.match(await page.getByTestId('next-rule').innerText(), /08:00に終了/);
+    assert.doesNotMatch(await page.getByTestId('next-rule').innerText(), /07:00/);
     await checkWidth();
     if (test.name === 'light-390') await page.screenshot({ path: `${output}/tomorrow.png`, fullPage: true });
     await select('来週の予定');
-    assert.match(await page.getByTestId('next-rule').innerText(), /11月27日（金）/);
+    assert.equal(await page.getByTestId('next-start').innerText(), '11月27日（金） 21:00');
     await checkWidth();
     await select('目標の登録なし');
     assert.equal(await page.getByTestId('rule-goal').count(), 0);
@@ -76,6 +80,7 @@ try {
     await checkWidth();
     await select('次の予定なし');
     assert.equal(await page.getByTestId('next-rule').count(), 0);
+    assert.equal(await page.getByTestId('next-start').innerText(), '次の予定なし');
     assert.equal(await page.getByTestId('off-hours-circle').count(), 1);
     await checkWidth();
     if (test.name === 'light-390') await page.screenshot({ path: `${output}/no-next.png`, fullPage: true });

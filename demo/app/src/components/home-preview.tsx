@@ -25,17 +25,17 @@ export function HomePreview() {
         <View style={styles.appRow}><Body>X</Body><Body>Instagram</Body></View>
         <Text style={[styles.caption, { color: theme.muted }]}>制限中の表示比較です。解除操作は元のルール別デモで確認できます。</Text>
       </View> : <>
-        <OffHoursCircle />
+        <OffHoursCircle next={scenario.date && scenario.startTime ? { date: scenario.date, time: scenario.startTime } : undefined} />
         {scenario.title ? <View testID="next-rule" style={[styles.next, { backgroundColor: theme.background, borderColor: theme.line }]}>
           <View style={styles.nextLabel}><View style={[styles.dot, { backgroundColor: theme.muted }]} /><Text style={[styles.caption, { color: theme.muted }]}>次のルール</Text></View>
           <View style={{ gap: 6 }}><Text accessibilityRole="header" style={[styles.ruleTitle, { color: theme.text }]}>{scenario.title}</Text>
-            <Text style={[styles.ruleTime, { color: theme.text }]}>{scenario.date} {scenario.time}</Text></View>
+            <Text style={[styles.ruleTime, { color: theme.text }]}>{scenario.endTime}に終了</Text></View>
           <View style={styles.appRow}>{scenario.apps.map(name => <View key={name} style={[styles.app, { backgroundColor: theme.surface }]}>
             <Text style={{ color: theme.muted, fontSize: 14, lineHeight: 22 }}>{name}</Text>
           </View>)}</View>
           <RuleGoal goal={scenario.goal} />
         </View> : <View testID="no-next-rule" style={[styles.next, { backgroundColor: theme.background, borderColor: theme.line }]}>
-          <Heading>次の予定はありません</Heading><Body muted>設定したルールは、設定タブで確認できます。</Body>
+          <Heading>ルールの設定</Heading><Body muted>設定したルールは、設定タブで確認できます。</Body>
           <Button secondary label="ルールを確認する" onPress={() => router.navigate('/settings')} />
         </View>}
       </>}
