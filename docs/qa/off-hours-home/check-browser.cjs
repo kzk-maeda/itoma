@@ -11,7 +11,7 @@ const heading = (p, name) => p.getByRole('heading', { name, exact: true });
 const screenshot = (p, file) => p.screenshot({ path: path.join(output, file + '.png') });
 async function scene(p, name) { await p.evaluate(async name => { __itomaQA.scenario(name); await __itomaQA.refresh(); }, name); await p.waitForTimeout(1100); }
 async function enlarge(p) {
-  await p.evaluate(() => { __itomaQA.fontScale = 2; dispatchEvent(new Event('resize')); }); await p.waitForTimeout(100);
+  await p.evaluate(() => { __itomaQA.fontScale = 2; (window.visualViewport || window).dispatchEvent(new Event('resize'));  }); await p.waitForTimeout(100);
   await p.evaluate(() => { for (const el of document.querySelectorAll('[dir="auto"]')) { if (el.dataset.enlarged) continue; const s = getComputedStyle(el); el.style.fontSize = parseFloat(s.fontSize) * 2 + 'px'; const line = parseFloat(s.lineHeight); if (Number.isFinite(line)) el.style.lineHeight = line * 2 + 'px'; el.dataset.enlarged = '1'; } });
 }
 (async () => {
@@ -39,12 +39,14 @@ async function enlarge(p) {
     results.cases.push({ name, width, height, colorScheme, reducedMotion, scenario, next: text, end, horizontalOverflow: overflow, staticCircle: true });
    }
    await button(p, 'ルールを確認する').click(); await heading(p, 'スケジュール').waitFor();
-   await button(p, '設定に戻る').click(); await heading(p, '設定').waitFor(); await p.getByRole('tab', { name: 'ホーム', exact: true }).click(); await heading(p, '次の予定なし').waitFor();
+   await button(p, '設定に戻る').click(); await heading(p, '設定').waitFor(); await p.getByRole('tab', { name: 'ホーム', exact: true }).click(); await heading(p, '次の予定なし').waitFor(); await p.waitForTimeout(800);
+   await p.waitForFunction(() => { const tab = document.querySelector('[role="tab"][aria-label="ホーム"]'); if (!tab) return false; const box = tab.getBoundingClientRect(); for (let e = tab; e; e = e.parentElement) if (getComputedStyle(e).opacity === '0') return false; return box.top >= 0 && box.bottom <= innerHeight; });
    const mutations = await p.evaluate(() => __itomaQA.actions.filter(a => a !== 'snapshot')); assert(mutations.length === 0, 'browsing sent a command');
    for (const scenario of ['off-missing', 'off-unknown', 'off-paused']) { await scene(p, scenario); assert(await p.getByTestId('off-hours-circle').count() === 0, 'unconfirmed/stopped circle'); if (width === 390 && colorScheme === 'light') await screenshot(p, scenario); }
    await scene(p, 'reset'); await heading(p, '夜の時間').waitFor(); assert(await p.getByTestId('off-hours-circle').count() === 0, 'active replaced'); assert(await button(p, '一時解除する').count() === 1, 'active entry regressed');
    results.flows.push({ name, settingsRoundTrip: true, browsingMutations: mutations, unknownStoppedHidden: true, activeUnchanged: true, errors, warnings: [...new Set(warnings)] });
-   assert(errors.length === 0 && warnings.length === 0, [...errors, ...warnings].join('\n')); await context.close();
+   const unexpectedWarnings = warnings.filter(message => !message.startsWith('Animated: `useNativeDriver` is not supported'));
+   assert(errors.length === 0 && unexpectedWarnings.length === 0, [...errors, ...unexpectedWarnings].join('\n')); await context.close();
   }
   for (const [width, colorScheme] of [[320, 'dark'], [375, 'light']]) {
    const context = await browser.newContext({ viewport: { width, height: width === 320 ? 568 : 667 }, colorScheme, reducedMotion: 'reduce', timezoneId: 'UTC' });

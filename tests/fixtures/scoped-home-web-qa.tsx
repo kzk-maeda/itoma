@@ -5,9 +5,12 @@ import { useScreenTime } from '../../src/state/screen-time';
 import { offHoursSnapshot, offHoursNow } from './off-hours';
 import { scopedSnapshot, at2130, at2205, ids } from './scoped-rules';
 const realNow = Date.now; let clockBase = realNow();
+let offHoursClock = false;
 let snapshot = scopedSnapshot(), selected = ids.x, sequence = 10;
 const qa = (globalThis as any).__itomaQA = { at: at2130, fontScale: 1, actions: [] as string[], alert: undefined as any,
   scenario(name: string) {
+    const continuingOffHours = offHoursClock && name.startsWith('off-'), currentClock = Date.now();
+    offHoursClock = name.startsWith('off-');
     if (name.startsWith('off-')) {
       qa.at = offHoursNow; snapshot = offHoursSnapshot();
       if (name === 'off-tomorrow') snapshot = { ...snapshot, nextPeriod: { ruleID: ids.night, startsAt: Date.parse('2026-11-21T07:00:00Z') / 1000, endsAt: Date.parse('2026-11-21T08:00:00Z') / 1000 } };
@@ -26,6 +29,7 @@ const qa = (globalThis as any).__itomaQA = { at: at2130, fontScale: 1, actions: 
     else if (name === 'paused') snapshot = { ...snapshot, activation: 'paused' };
     else if (name === 'granted') snapshot = { ...snapshot, targets: snapshot.targets.map(t => ({ ...t, restricted: false, unlockable: false, grantCommandID: ids.command, grantStatus: 'active', grantEndsAt: Date.now() / 1000 + 300 })) };
     else { qa.at = at2130; snapshot = scopedSnapshot(); }
+    if (continuingOffHours) qa.at = currentClock; // Do not rewind an SDK Web animation between cases on the same synthetic day.
     clockBase = realNow(); snapshot = { ...snapshot, sequence: String(++sequence) };
   },
 };
