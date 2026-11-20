@@ -1,19 +1,21 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { demoTarget } from './lib/demo-target.mjs';
 import { demoRepo } from './lib/demo-repo.mjs';
 
-const root = fileURLToPath(new URL('../', import.meta.url));
 const { sha, branch, dirty: changes } = demoRepo();
 const dirty = changes.length > 0;
 const target = demoTarget(branch);
+// An isolated demo owns its router/config; it imports product code in one direction.
+// Keep the legacy root export for branches that have not introduced this entry yet.
+const project = existsSync(new URL('../demo/app/package.json', import.meta.url)) ? 'demo/app' : '.';
 // Only clear this generated export, so switching branches cannot package old files.
 rmSync(new URL('../dist/demo/', import.meta.url), { recursive: true, force: true });
 rmSync(new URL('../dist/demo-export/', import.meta.url), { recursive: true, force: true });
 
-execFileSync(process.execPath, ['node_modules/expo/bin/cli', 'export', '--platform', 'web', '--output-dir', 'dist/demo-export'], {
-  cwd: root,
+execFileSync(process.execPath, [fileURLToPath(new URL('../node_modules/expo/bin/cli', import.meta.url)), 'export', '--platform', 'web', '--output-dir', fileURLToPath(new URL('../dist/demo-export/', import.meta.url))], {
+  cwd: new URL(project + '/', new URL('../', import.meta.url)),
   env: { ...process.env, ITOMA_DEMO_BUILD: '1', ITOMA_DEMO_BASE_PATH: target.basePath },
   stdio: 'inherit',
 });

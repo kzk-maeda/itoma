@@ -4,6 +4,12 @@
 
 ## URLと環境の単位
 
+### 本体を変更しない独立デモの入口
+
+`demo/app/package.json`がある場合、`demo:build`は`demo/app`を独立したExpo Webプロジェクトとしてexportする。本体の`src/app`や`app.config.ts`はデモのために変更しない。画面・fixture・検証資料は`demo/`へ置き、本体の部品とテーマを一方向に参照する。入口がない従来ブランチは以前と同じルートのexportを使う。
+
+独立デモでも配信先・Access・branch/SHA照合・manifestは既存処理を使い、配信は引き続き`demo/**`のみ。本変更は入口の分離であり、変更パスや依存方向を必須CIで強制する仕組みの導入ではない。#245の画面PRと基盤PRは分けてレビューする。
+
 ```text
 https://itoma-demo.kzk-maeda.com/demos/<branch-key>/
 ```
