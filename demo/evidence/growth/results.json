@@ -1,0 +1,94 @@
+{
+  "url": "http://127.0.0.1:8802/demos/demo-reflection-time-growth-6298931a0a49/",
+  "browser": "155.0.8059.79",
+  "scope": "synthetic Web; DOM scaling is not Dynamic Type; no native verification",
+  "results": [
+    {
+      "name": "light-390",
+      "width": 390,
+      "colorScheme": "light",
+      "reducedMotion": "no-preference",
+      "scale": 1,
+      "stages": 4,
+      "boundaries": [
+        "日分",
+        "か月分",
+        "年分"
+      ],
+      "exactSecondsConserved": "model tests",
+      "unknownVersusZero": true,
+      "periodDoesNotChangeGlobal": true,
+      "keyboard": "PASS",
+      "tabReturnState": "PASS",
+      "pageErrors": [],
+      "noHorizontalOverflow": true
+    },
+    {
+      "name": "dark-390",
+      "width": 390,
+      "colorScheme": "dark",
+      "reducedMotion": "reduce",
+      "scale": 1,
+      "stages": 4,
+      "boundaries": [
+        "日分",
+        "か月分",
+        "年分"
+      ],
+      "exactSecondsConserved": "model tests",
+      "unknownVersusZero": true,
+      "periodDoesNotChangeGlobal": true,
+      "keyboard": "PASS",
+      "tabReturnState": "PASS",
+      "pageErrors": [],
+      "noHorizontalOverflow": true
+    },
+    {
+      "name": "light-320",
+      "width": 320,
+      "colorScheme": "light",
+      "reducedMotion": "reduce",
+      "scale": 1,
+      "stages": 4,
+      "boundaries": [
+        "日分",
+        "か月分",
+        "年分"
+      ],
+      "exactSecondsConserved": "model tests",
+      "unknownVersusZero": true,
+      "periodDoesNotChangeGlobal": true,
+      "keyboard": "PASS",
+      "tabReturnState": "PASS",
+      "pageErrors": [],
+      "noHorizontalOverflow": true
+    },
+    {
+      "name": "large-dark-320",
+      "width": 320,
+      "colorScheme": "dark",
+      "reducedMotion": "reduce",
+      "scale": 2,
+      "stages": 4,
+      "boundaries": [
+        "日分",
+        "か月分",
+        "年分"
+      ],
+      "exactSecondsConserved": "model tests",
+      "unknownVersusZero": true,
+      "periodDoesNotChangeGlobal": true,
+      "keyboard": "PASS",
+      "tabReturnState": "PASS",
+      "pageErrors": [],
+      "noHorizontalOverflow": true
+    }
+  ],
+  "legacyDirectRoutes": [
+    "blocks",
+    "weeks",
+    "calendar",
+    "day",
+    "cumulative"
+  ]
+}
