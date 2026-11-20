@@ -24,7 +24,7 @@ try {
     await page.getByRole('tab', { name: 'ホーム', exact: true }).waitFor();
     // Wait for React's external-store hydration and web theme update.
     await page.waitForFunction(dark => {
-      const label = [...document.querySelectorAll('*')].find(el => el.textContent === '制限時間外');
+      const label = [...document.querySelectorAll('*')].find(el => el.childElementCount === 0 && el.textContent === '制限時間外');
       return label && getComputedStyle(label).color === (dark ? 'rgb(240, 240, 233)' : 'rgb(48, 49, 47)');
     }, test.colorScheme === 'dark');
     const enlarge = async () => {
@@ -52,6 +52,8 @@ try {
     };
     assert.equal(await page.getByTestId('off-hours-circle').count(), 1);
     assert.equal(await page.getByTestId('period-ring').count(), 0);
+    assert.equal(await page.getByTestId('off-hours-motif').count(), 1);
+    assert.equal(await page.getByText('アプリの制限はありません', { exact: true }).count(), 0);
     assert.equal(await page.getByTestId('rule-goal').count(), 1);
     await checkWidth();
     await page.screenshot({ path: `${output}/${test.name}.png`, fullPage: true });

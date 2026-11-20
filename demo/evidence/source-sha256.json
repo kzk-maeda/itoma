@@ -8,7 +8,7 @@
   "demo/app/src/app/settings.tsx": "e051f3c9c3fe56b1023bbeab4ad39bf208d08b03446db2489243649b91b51d5e",
   "demo/app/src/components/demo-toolbar.tsx": "6f6a834d612fa31e63f5ee8f5d33f16959479e44ad286abe06a69315e820c815",
   "demo/app/src/components/home-preview.tsx": "4ba38472e36c2358b8a33d9e57d200fddf172d468b87a34b1ddaa2c65c8e651a",
-  "demo/app/src/components/off-hours-circle.tsx": "37c972472c98b46802954d6bd81e408acf208344abaa6ba5bce164b55ff01605",
+  "demo/app/src/components/off-hours-circle.tsx": "5e4a69181aff6b9eee75e8cac689e2bf0327ea7b650d6bcb2718cecdd116dc7c",
   "demo/app/src/components/secondary-preview.tsx": "01b4175cced414a5ac5fa665d2f557016a55736b02dd7830934a661d5d263b71",
   "demo/app/src/scenarios/home.ts": "9cd5a36e2ffdeb60f908e92163a79ab7557d308d1d59d0f61d75ca0cf6c020fa",
   "demo/app/src/state/demo.tsx": "d99d688cb5fc184d6585a5e5f1e0fdec456cb71764cfe80f9b6fc6c2fbf913bf",
