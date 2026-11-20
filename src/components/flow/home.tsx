@@ -2,6 +2,7 @@ import { useAppNavigation } from '@/state/navigation';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
+import { useHomeTimeContext } from '@/hooks/use-home-time-context';
 import { useVisibleClock } from '@/hooks/use-visible-clock';
 import { useScreenTime } from '@/state/screen-time';
 import { useOptionalOnboarding } from '@/state/onboarding';
@@ -14,6 +15,7 @@ import { hasFreshRestrictionState, targetScope, unlockCandidates } from '../home
 export function ProductHome() {
   const state = useScreenTime(), setup = useOptionalOnboarding(), now = useVisibleClock(), navigation = useAppNavigation();
   const s = state.snapshot;
+  const clockConfirmed = useHomeTimeContext(now);
   const { refresh } = state;
   const boundary = useRef('');
   const visited = useRef(false);
@@ -79,7 +81,7 @@ export function ProductHome() {
       {s.schedulesReady ? '反映を確認できていません。以下の時間帯は保存した設定です。設定タブから現在の状態を確認できます。' : '自動切替の予定を確認できていません。設定タブから現在の状態を確認できます。'}
     </Notice>}
     {!!state.unlockDraft.reason && <Body muted>一時解除の入力を残しています。ルールを選ぶと続きを入力できます。</Body>}
-    {!!s?.rules.length && <CurrentRules snapshot={s} now={now} onUnlock={ruleID => { void unlock(ruleID); }} />}
+    {!!s?.rules.length && <CurrentRules snapshot={s} now={now} clockConfirmed={clockConfirmed} ready={!state.loading && !state.busy && !state.error && !state.legacyActive && state.ruleDetailsState !== 'checking' && !setup?.loading && !setup?.draft && (!setup?.progress || setup.progress.completed)} onUnlock={ruleID => { void unlock(ruleID); }} />}
     {!s?.rules.length && <Heading>自分の時間を、ここから。</Heading>}
     {!s?.rules.length && setup?.draft && !setup.busy && <Notice title={setup.draft.submitted ? '初回設定の反映を確認してください' : '初回設定は途中です'}>{setup.draft.submitted
       ? '前の要求は完了を確認できていません。入力は残っています。設定を続けて、結果と再試行する内容を確認できます。'

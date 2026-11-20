@@ -135,3 +135,11 @@ Sources: [Expo SDK 58](https://docs.expo.dev/versions/v58.0.0/),
 ## #222: 通常ルールの背景実行の変更提案
 
 [ADR0011](../adr/0011-host-confirmed-rule-execution.md)はProposed（実装を含むレビュー対象、実機未検証）。生の認可観測と、hostで確認した現在policyの実行資格を分ける。Extensionのunknownをapprovedへ変えず、新しい解除・resumeには従来の認可確認を要求する。任意journalはhostだけが導入し、停止/変更/deniedで失効させる。unknown区間の時間集計除外は維持する。採用済み設計・PR228の専用PoC実機結果とは区別する。
+
+## 次区間の表示契約（#250）
+
+ProductController.snapshotはRuleEvaluatorを現在から8日間評価し、現在区間をperiods、startsAtが未来の最小の区間をnextPeriodとして返す。同時開始ではEvaluatorのoccurrences順（開始同時刻はpolicyの優先順）を踏襲する。UIは渡された代表1区間を表示し、全予定一覧/全対象の勝者とは扱わない。
+
+nextPeriodのnilは有限探索内の未発見を含み、将来永久に予定がない証明ではない。#250のUIは有効ルールが残るnilを確認状態とし、全て無効な保存済みルールとfreshな正常snapshotでだけ「次の予定なし」を表示する。古い区間/次回境界、ruleID/selection不一致、不明/失敗を予定なしへ変換しない。
+
+未来の対象表示はnextPeriod.ruleID→rule.selectionRef→既存のsaved selection/nativeラベル表示を使用し、現在のtargetsから未来の所属を推測しない。日付/zoneの表示は確定instantから行い、JSに曜日/DST/優先順評価器を追加しない。native DTO/ABI/探索範囲/保存/OS操作は変更しない。
