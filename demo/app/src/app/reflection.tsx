@@ -1,1 +1,1 @@
-export { ReflectionPreview as default } from '../components/reflection-preview';
+export { TimeGrowthPreview as default } from "../components/time-growth-preview";

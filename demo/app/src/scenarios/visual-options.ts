@@ -5,7 +5,7 @@ export const viewOptions = [
   { path: '/weeks', label: '02 週ごとの積み上げ', short: '02 週の積み上げ' },
   { path: '/calendar', label: '03 カレンダー', short: '03 カレンダー' },
   { path: '/day', label: '04 1日の時間帯', short: '04 時間帯' },
-  { path: '/reflection', label: '比較：累積グラフ', short: '比較：累積グラフ' },
+  { path: '/cumulative', label: '比較：累積グラフ', short: '比較：累積グラフ' },
 ] as const;
 export function timeBlocks(seconds: number) {
   const unit = [3600, 18000, 36000, 86400].find(value => Math.ceil(seconds / value) <= 12) ?? Math.ceil(seconds / 12 / 3600) * 3600;

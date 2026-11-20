@@ -19,7 +19,7 @@ try {
     const context = await browser.newContext({ viewport: { width: test.width, height: 844 }, colorScheme: test.colorScheme, reducedMotion: test.reducedMotion });
     const page = await context.newPage(), errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.goto(root + 'reflection');
+    await page.goto(root + 'cumulative');
     await page.locator('[data-testid="reflection-total"]:visible').waitFor();
     await page.getByRole('button', { name: 'デモの記録を切り替える', exact: true }).click();
     await page.getByRole('button', { name: '通常 · 4時間13分', exact: true }).click();
@@ -100,6 +100,9 @@ try {
     assert.match(await page.locator('[data-testid="period-title"]:visible').innerText(), /11\/9/);
     await page.getByRole('tab', { name: '設定', exact: true }).click();
     await page.getByRole('button', { name: '振り返りに戻る', exact: true }).click();
+    await page.locator('[data-testid="growth-whole"]:visible').waitFor();
+    await page.getByRole('tab', { name: 'ホーム', exact: true }).click();
+    await page.getByRole('button', { name: '比較：累積グラフ', exact: true }).click();
     assert.equal(await page.locator('[data-testid="reflection-total"]:visible').innerText(), '85時間13分');
     await page.getByRole('button', { name: '集計を更新', exact: true }).click();
     assert.equal(await page.locator('[data-testid="reflection-total"]:visible').innerText(), '85時間13分');
