@@ -10,11 +10,12 @@ import { PeriodRing } from './period-ring';
 import { presentPeriod } from './period-presentation';
 import { currentRulePeriods, currentRuleTargets, hasFreshRestrictionState, nextScheduleChanges, unlockCandidates } from './rule-status';
 import { RuleDeck } from './rule-deck';
+import { OffHoursHome } from './off-hours-home';
 
-export function CurrentRules({ snapshot: s, now, onUnlock }: { snapshot: ScreenTimeSnapshot; now: number; onUnlock: (ruleID: string) => void }) {
+export function CurrentRules({ snapshot: s, now, onUnlock, ready = true, clockConfirmed = true }: { snapshot: ScreenTimeSnapshot; now: number; ready?: boolean; clockConfirmed?: boolean; onUnlock: (ruleID: string) => void }) {
   const theme = useFlowTheme(), state = useScreenTime(), navigation = useAppNavigation();
   const current = currentRulePeriods(s, now), targets = currentRuleTargets(s, now);
-  const fresh = hasFreshRestrictionState(s, now) && !state.error && !state.legacyActive, running = s.activation === 'enabled';
+  const fresh = hasFreshRestrictionState(s, now) && !state.error && !state.legacyActive && clockConfirmed, running = s.activation === 'enabled';
   const changes = nextScheduleChanges(s, now);
   return <>
     {running && current.length > 0 && <View style={styles.section}>
@@ -43,15 +44,13 @@ export function CurrentRules({ snapshot: s, now, onUnlock }: { snapshot: ScreenT
         </Panel> };
       })} />
     </View>}
-      {running && changes.length > 0 && <View style={[styles.next, { borderColor: theme.line }]}>
+      {running && current.length > 0 && changes.length > 0 && <View style={[styles.next, { borderColor: theme.line }]}>
         <Text style={[styles.caption, { color: theme.muted }]}>次の切替（予定） · {endTime(changes[0].at, now)}</Text>
         {changes.map(change => <Text key={change.kind + change.ruleID} style={[styles.caption, { color: theme.text }]}>
           {ruleTitle(s.rules.find(rule => rule.id === change.ruleID), s.rules.findIndex(rule => rule.id === change.ruleID))}が{change.kind === 'start' ? '始まります' : '終了します'}
         </Text>)}
       </View>}
-    {running && current.length === 0 && <Panel><Heading>次の時間まで</Heading>
-      <Body>{s.nextPeriod ? `${endTime(s.nextPeriod.startsAt, now)}から予定しています。` : '有効な次の時間帯はありません。設定タブでルールを確認できます。'}</Body>
-    </Panel>}
+    {running && current.length === 0 && <OffHoursHome snapshot={s} now={now} ready={ready} clockConfirmed={clockConfirmed} />}
     {s.targets.some(target => target.grantCommandID) && <LinkRow label="一時解除の状況を見る" detail="選んだアプリだけを解除しています" onPress={() => navigation.open({ screen: 'grant' })} />}
   </>;
 }
