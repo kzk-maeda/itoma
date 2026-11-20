@@ -1,0 +1,30 @@
+{
+  "path": "M 20 5 A 15 15 0 1 1 5 20",
+  "assets": {
+    "light": {
+      "width": 1024,
+      "height": 1024,
+      "space": "srgb",
+      "hasAlpha": false,
+      "gap": "upper-left",
+      "pngSHA256": "3ecb8c329744ac37124eb91f3d9e0feaac8242e55eb7d3ade1e823c9f89e6af8"
+    },
+    "dark": {
+      "width": 1024,
+      "height": 1024,
+      "space": "srgb",
+      "hasAlpha": false,
+      "gap": "upper-left",
+      "pngSHA256": "bdd4e0180c183bd68246f7ebd83782ec5120e8bcbb17a1f8b6e71c493252bebb"
+    }
+  },
+  "baseCommit": "48170566fbb4ff78014255d267b33c31da0e3489",
+  "cng": "PASS: Screen Time opt-in; universal Light/Dark 1024px; opaque pixels match sources; Debug/Release AppIcon",
+  "sources": {
+    "assets/brand/app-icon-light.svg": "40a7612bd1d42796cce83b6e497907897d832003631db7adae69122376882a93",
+    "assets/brand/app-icon-dark.svg": "a29f5448aa817c9d595921dac57eac2580b4e98e91ba4d9d4d91e3d4b825b769",
+    "src/components/home/open-circle.tsx": "1c47c71f234589f011a83cd84d2402c155cee9b0aab6110131c7c38fa5901e17",
+    "src/components/home/period-ring.tsx": "d4e53ee4c2bcf6d1c13d06e893056d22a5c091d97a2c1beb9cadfb616e9e4118",
+    "src/components/home/period-presentation.ts": "fd6b7df76b2533053a0a1d88ae75c70a3e81a6d2dbb27d490a51d98eebb87fc0"
+  }
+}

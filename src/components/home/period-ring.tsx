@@ -5,19 +5,19 @@ import { type GraphiteTheme, HomeLayout } from '@/constants/theme';
 
 import type { PeriodPresentation } from './period-presentation';
 
-export function PeriodRing({ period, theme }: {
-  period: Extract<PeriodPresentation, { state: 'current' }>; theme: GraphiteTheme;
+export function PeriodRing({ period, theme, compact = false }: {
+  period: Extract<PeriodPresentation, { state: 'current' }>; theme: GraphiteTheme; compact?: boolean;
 }) {
   const { fontScale, width } = useWindowDimensions();
-  const expandedText = fontScale > 1.2 || width <= 340;
+  const expandedText = compact || fontScale > 1.2 || width <= 340;
   const radius = 104, circumference = 2 * Math.PI * radius;
   const angle = -Math.PI / 2 + 2 * Math.PI * period.fraction;
-  const text = <View style={expandedText ? styles.expandedText : styles.centerText}>
+  const text = <View style={[expandedText ? styles.expandedText : styles.centerText, compact && styles.compactText]}>
     <Text style={[styles.label, expandedText && styles.expandedAlignment, { color: theme.muted }]}>この時間帯の終了まで</Text>
     <Text style={[styles.time, expandedText && styles.expandedAlignment, { color: theme.text }]}>{period.remaining}</Text>
     <Text style={[styles.label, expandedText && styles.expandedAlignment, { color: theme.muted }]}>{period.endLabel}</Text>
   </View>;
-  return <View style={[styles.group, expandedText && styles.expandedGroup]}>
+  return <View style={[styles.group, expandedText && styles.expandedGroup, compact && styles.compactGroup]}>
     <View testID="period-ring" style={[styles.ring, expandedText && styles.expandedRing]}>
       <View style={styles.svg} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Svg width="100%" height="100%" viewBox="0 0 224 224" aria-hidden>
@@ -41,6 +41,8 @@ const styles = StyleSheet.create({
   centerText: { position: 'absolute', inset: 22, alignItems: 'center', justifyContent: 'center', gap: 8 },
   expandedGroup: { alignItems: 'flex-start' }, expandedRing: { width: 72 },
   expandedText: { width: '100%', gap: 8 }, expandedAlignment: { textAlign: 'left' },
+  compactGroup: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 0 },
+  compactText: { width: undefined, flex: 1, minWidth: 130, paddingVertical: 8 },
   label: { fontSize: 13, lineHeight: 20, textAlign: 'center' },
   time: { fontSize: 32, lineHeight: 44, fontWeight: '400', fontVariant: ['tabular-nums'], textAlign: 'center' },
 });

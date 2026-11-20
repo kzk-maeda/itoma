@@ -24,6 +24,14 @@ RootのScreenTime/Onboarding/History/Reflection Providerは各1つのまま。`(
 
 受理済みnative処理は画面が消えても継続する。UIのsession世代とmounted lifetimeを照合し、古い応答で新しいdraftを消したり、新しい画面を古い完了先へ移動したりしない。private保存は既存のCAS/追加UUID照合を使う。
 
+## ホームのルール選択（#233）
+
+ScreenTimeProviderはUIのRAM状態として表示カードidentity（ruleID/startsAt）、解除入力のruleID/targetScope、所有previewRefを保持する。永続化・native DTO・勝者評価は追加しない。カードを切り替えるだけではcommandを送らない。
+
+「ホームでルールを選び直す」は所有previewの取消ackを待ち、理由/時間を残してtyped finishする。別カードの入口で新しいsessionを開始し、対象/区間/selectionが一致する場合だけ既存の選択を保持する。cold linkの未選択scopeから全アプリを提示しない。
+
+入力破棄・受理後・選び直しの帰還は、dirty/退出許可とroot guardがcommitされた後に一度だけ実行する。非表示/旧sessionの応答はnative状態の更新に使えても遷移させず、新入力を消さない。確認から戻った入力は再び退出確認を有効にする。
+
 ## SDK58との境界
 
 Expo58/Router58.0.30の公式versioned Stack/Modal/Custom Tabs資料と配布型定義を確認した。`unstable_settings.anchor` で初期親を設定する。SDK58のRESETは部分的なNavigator treeを補完しないため、Rootを手作りしてresetしない。

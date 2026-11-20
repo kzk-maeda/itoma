@@ -1,0 +1,296 @@
+{
+  "browser": "155.0.8059.79",
+  "cases": [
+    {
+      "path": "/",
+      "width": 320,
+      "textPercent": 100,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/",
+      "width": 320,
+      "textPercent": 200,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/",
+      "width": 390,
+      "textPercent": 100,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/",
+      "width": 390,
+      "textPercent": 200,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/",
+      "width": 768,
+      "textPercent": 100,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/",
+      "width": 768,
+      "textPercent": 200,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/",
+      "width": 1440,
+      "textPercent": 100,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/",
+      "width": 1440,
+      "textPercent": 200,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/privacy/",
+      "width": 320,
+      "textPercent": 100,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/privacy/",
+      "width": 320,
+      "textPercent": 200,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/privacy/",
+      "width": 390,
+      "textPercent": 100,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/privacy/",
+      "width": 390,
+      "textPercent": 200,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/privacy/",
+      "width": 768,
+      "textPercent": 100,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/privacy/",
+      "width": 768,
+      "textPercent": 200,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/privacy/",
+      "width": 1440,
+      "textPercent": 100,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/privacy/",
+      "width": 1440,
+      "textPercent": 200,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/missing",
+      "width": 320,
+      "textPercent": 100,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/missing",
+      "width": 320,
+      "textPercent": 200,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/missing",
+      "width": 390,
+      "textPercent": 100,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/missing",
+      "width": 390,
+      "textPercent": 200,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/missing",
+      "width": 768,
+      "textPercent": 100,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/missing",
+      "width": 768,
+      "textPercent": 200,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/missing",
+      "width": 1440,
+      "textPercent": 100,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/missing",
+      "width": 1440,
+      "textPercent": 200,
+      "colorScheme": "light"
+    },
+    {
+      "path": "/",
+      "width": 320,
+      "textPercent": 100,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/",
+      "width": 320,
+      "textPercent": 200,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/",
+      "width": 390,
+      "textPercent": 100,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/",
+      "width": 390,
+      "textPercent": 200,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/",
+      "width": 768,
+      "textPercent": 100,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/",
+      "width": 768,
+      "textPercent": 200,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/",
+      "width": 1440,
+      "textPercent": 100,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/",
+      "width": 1440,
+      "textPercent": 200,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/privacy/",
+      "width": 320,
+      "textPercent": 100,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/privacy/",
+      "width": 320,
+      "textPercent": 200,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/privacy/",
+      "width": 390,
+      "textPercent": 100,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/privacy/",
+      "width": 390,
+      "textPercent": 200,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/privacy/",
+      "width": 768,
+      "textPercent": 100,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/privacy/",
+      "width": 768,
+      "textPercent": 200,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/privacy/",
+      "width": 1440,
+      "textPercent": 100,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/privacy/",
+      "width": 1440,
+      "textPercent": 200,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/missing",
+      "width": 320,
+      "textPercent": 100,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/missing",
+      "width": 320,
+      "textPercent": 200,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/missing",
+      "width": 390,
+      "textPercent": 100,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/missing",
+      "width": 390,
+      "textPercent": 200,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/missing",
+      "width": 768,
+      "textPercent": 100,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/missing",
+      "width": 768,
+      "textPercent": 200,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/missing",
+      "width": 1440,
+      "textPercent": 100,
+      "colorScheme": "dark"
+    },
+    {
+      "path": "/missing",
+      "width": 1440,
+      "textPercent": 200,
+      "colorScheme": "dark"
+    }
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "physicalDevice": false
+}

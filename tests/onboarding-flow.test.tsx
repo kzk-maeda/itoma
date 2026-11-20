@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
 import { OnboardingProvider } from '../src/state/onboarding';
@@ -170,13 +170,14 @@ test('an accepted operation outlives its screen and the home shows processing in
   expect(screen.getByText('初回設定の結果を確認しています')).toBeTruthy();
   expect(screen.queryByText('初回設定は途中です')).toBeNull();
   expect(screen.getByRole('button', { name: '初回設定の結果を確認する' })).toBeDisabled();
-  await act(async () => release()); await screen.findByText('次の時間まで');
+  await act(async () => release()); await screen.findByText('次の予定を確認しています');
   expect(b.snapshot().rules).toHaveLength(1); expect(b.setupActions.filter(a => a === 'onboardingCommit')).toHaveLength(1);
   expect(screen.queryByText('初回設定の結果を確認しています')).toBeNull();
 });
 test('existing installations adopt initial completion without being sent through the introduction', async () => {
   const b = onboardingFixture(); b.replace({ rules: [{ id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', selectionRef: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', weekdays: [1], startMinute: 0, endMinute: 1, nextDay: false, enabled: true }] });
-  await mount(b, true); await screen.findByText('対象のアプリ');
+  await mount(b, true); await waitFor(() => expect(b.setupActions).toContain('onboardingAdopt'));
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
   expect(b.setupActions).toContain('onboardingAdopt'); expect(router.navigate).not.toHaveBeenCalled(); expect(b.nativeActions).not.toContain('authorize');
 });
 test('the first device launch sees the introduction once, while a later launch and Simulator do not force it', async () => {
