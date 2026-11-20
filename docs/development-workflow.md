@@ -63,7 +63,30 @@ PR #36は2026-11-06 JSTに人間がmainへマージした。採用版は`6c17ac9
 
 Swift Packageは現在ローカルpath依存のみ、modules/itoma-native/package.jsonは外部依存を宣言していないため、個別の更新ジョブは作らない。外部依存や別のlockfileを追加したら設定の監視対象も見直す。
 
-npmの通常更新はminor/patchを対象に、Expo/React Native/関連テストツールとその他の依存へ分けてグループ化する。グループ化はSDK互換性の保証ではないため、quality CIのSDK互換性チェックと既存テストを確認する。互換性チェックは`EXPO_OFFLINE=1 CI=1 npx expo install --check`で、lockfileが固定したインストール済みSDKの対応表を参照する。オンラインの最新推奨版との差分は、依存更新とは無関係なPRの必須条件にしない。不一致が出たら、利用中SDKの公式資料で対応版を確認し、必要な調整は`npx expo install`で行う。major/SDK更新は別の明示的な作業として扱う。Swiftのmajor更新も別作業とする。開発時のExpo Doctorによる全体診断は、AGENTS.mdの手順どおり別途実行する。
+npmは更新の単位を次のように分ける。通常のmajor更新とSwiftのmajor更新は、個別の作業として扱う。
+
+| 対象 | 更新方法 |
+| --- | --- |
+| Expo SDKが指定する依存・React関連の型定義 | 通常のDependabot更新から外す。`expo`、`@expo/*`、`expo-*`、React/React Native関連、`eslint-config-expo`・`jest-expo`をSDK対応版へ手動で揃える |
+| `cf` / `wrangler` | 更新候補を`cloudflare-toolchain`グループの同じPRへまとめる。`cf`のプレリリースも含めるため、グループの`update-types`は指定しない |
+| その他のnpm依存 | `other-dependencies`グループでminor/patchを継続。Jest、Testing Library、TypeScript等もCIで確認する |
+
+Expoの通常更新は、SemVerのminor/patchを無視する指定と共通のmajor除外を組み合わせる。依存名だけの全更新除外にはせず、セキュリティ更新を別途レビューできる状態にする。設定ファイルはSDKの対応表を自動追跡しないため、依存追加・SDK更新時に手動管理対象も見直す。
+
+SDK関連の更新手順:
+
+1. 利用するExpo SDKとそのバージョンの公式資料を確認する。SDKを上げる場合は、通常の依存更新と分けて変更範囲を決める。
+2. `npx expo install <package>`で対応版を導入し、必要なら`npx expo install --fix`で揃える。`package.json`とlockfileを同じPRで更新し、変更された依存を確認する。
+3. quality CIのSDK互換性チェックを通す。`EXPO_OFFLINE=1 CI=1 npx --no-install expo install --check`は、lockfileが固定したインストール済みSDKの対応表を参照する。オンラインの最新推奨版への追随は、依存更新とは無関係なPRの必須条件にしない。
+4. AGENTS.mdのExpo Doctorを含む全体チェックと、依存変更を含むiOSビルド・該当する実機確認を行う。互換性ゲートを除外して更新を通さない。
+
+Cloudflareは現在Build Output v0を使用する。対応する更新の組み合わせは`cf 1.0.0-beta.32` / `wrangler 4.161.0`。Dependabotは`cf >=1.0.0-rc.0`と`wrangler >=4.163.0`を候補から外す。Wrangler 4.163.0が出力するv1は、beta.32の`cf build`と、v0を読む`scripts/deploy-demo.mjs`では扱えない。v1へ進むときは、両CLI・成果物の参照・配信前の照合をまとめて移行し、ビルドと配信手順を再検証してから除外範囲を見直す。
+
+更新候補が片方だけの場合、グループPRに含まれる更新も1パッケージになる。グループ化は両方の変更を強制する機能ではない。最終的な組み合わせは既存quality CIの`npm ci`と`npm run demo:package`で検証する。許可範囲内の更新でも、実際のパッケージ作成が失敗したPRはマージせず、対応版へ揃え直す。
+
+Cloudflareの`versions`による範囲指定はセキュリティ更新にも適用される。範囲外に修正が必要な場合は、v1移行と合わせて個別に対応する。Expo等の`update-types`による通常更新の抑制とは区別する。
+
+初回の失敗PR #236はSDKの対応版を維持する方針へ置き換える。Cloudflareの#237/#238は、対応する2依存を揃えた代替PRの全CI・レビューを確認し、人間がマージした後にクローズする。mainに設定が入る前に、旧PRの再作成を繰り返さない。
 
 初回確認・運用:
 
