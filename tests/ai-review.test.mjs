@@ -73,6 +73,39 @@ function fixture() {
 }
 const openaiCalls = state => state.requests.filter(request => new URL(request.url).host === 'api.openai.com');
 
+test('CI and dependency changes include immutable manifests, Docker definitions and a bounded direct-lockfile summary', async () => {
+  const f = fixture();
+  f.state.files[0].filename = '.github/dependabot.yml';
+  f.state.sources[`${HEAD}:package.json`] = JSON.stringify({ dependencies: { expo: '~58.0.23' } });
+  f.state.sources[`${HEAD}:.github/workflows/ci.yml`] = 'run: npm ci';
+  f.state.sources[`${HEAD}:.github/docker/swift-tests.Dockerfile`] = 'FROM swift:6.2.3-jammy';
+  f.state.sources[`${HEAD}:package-lock.json`] = JSON.stringify({ lockfileVersion: 3, packages: {
+    '': { dependencies: { expo: '~58.0.23' } }, 'node_modules/expo': { version: '58.0.23' },
+    'node_modules/indirect': { version: '1.2.3', resolved: 'https://not-requested.example' },
+  } });
+  const { input } = await collectInput(f.state.pr, f.github);
+  for (const path of ['package.json', '.github/workflows/ci.yml', '.github/docker/swift-tests.Dockerfile']) {
+    assert.ok(input.source.some(source => source.path === path && source.revision === 'head' && source.related_config));
+  }
+  const lock = input.source.find(source => source.path === 'package-lock.json');
+  assert.equal(lock.summary, true);
+  assert.deepEqual(JSON.parse(lock.content).resolved_direct_versions, { expo: '58.0.23' });
+  assert.ok(!lock.content.includes('indirect')); assert.ok(!lock.content.includes('not-requested.example'));
+  assert.ok(Buffer.byteLength(JSON.stringify(input)) <= MAX_INPUT_BYTES);
+  assert.equal(openaiCalls(f.state).length, 0);
+  for (const request of f.state.requests.filter(r => r.url.includes('/contents/package'))) assert.ok(request.url.endsWith(`ref=${HEAD}`));
+});
+
+test('unavailable or oversized dependency context stays explicit without consuming the full review budget', async () => {
+  const f = fixture(); f.state.files[0].filename = '.github/workflows/ci.yml';
+  f.state.sources[`${HEAD}:package-lock.json`] = 'x'.repeat(1_000_001);
+  const { input } = await collectInput(f.state.pr, f.github);
+  assert.ok(input.omissions.includes('package.json: related configuration could not be supplied'));
+  assert.ok(input.omissions.includes('package-lock.json: related configuration could not be supplied'));
+  assert.ok(!input.source.some(source => source.path === 'package-lock.json'));
+  assert.ok(Buffer.byteLength(JSON.stringify(input)) <= MAX_INPUT_BYTES);
+});
+
 test('collects immutable PR data, base rules, surrounding code and same-SHA checks for one structured API request', async () => {
   const f = fixture();
   const report = await f.run();
