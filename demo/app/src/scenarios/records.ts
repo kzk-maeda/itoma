@@ -8,7 +8,10 @@ const normal = [50, 70, 13, 80, 40].map((minutes, n) => ({ day: moveDay('2026-11
 const longValues: Record<string, number> = { '2026-09-01': 480, '2026-09-08': 450, '2026-09-15': 630, '2026-09-22': 500, '2026-10-01': 720, '2026-10-08': 660, '2026-10-15': 400, '2026-10-22': 520, '2026-11-01': 300, '2026-11-09': 200 };
 for (const record of normal) longValues[record.day] = record.seconds / 60;
 const longDays = Array.from({ length: 81 }, (_, n) => { const date = moveDay('2026-09-01', n); return { day: date, seconds: (longValues[date] ?? 0) * 60 }; });
+const multiValues: Record<string, number> = { '2026-11-02': 25, '2026-11-09': 45, '2026-11-16': 30, '2026-11-17': 40, '2026-11-18': 13, '2026-11-19': 60, '2026-11-20': 40 };
+const multiDays = Array.from({ length: 19 }, (_, n) => { const date = moveDay('2026-11-02', n); return { day: date, seconds: (multiValues[date] ?? 0) * 60 }; });
 export const datasets: Dataset[] = [
+  { id: 'multiweek', label: '複数週 · 4時間13分', days: multiDays },
   { id: 'normal', label: '通常 · 4時間13分', days: normal },
   { id: 'gap', label: '一部の記録なし', days: normal.map((record, n) => n === 2 ? { day: record.day } : record) },
   { id: 'empty', label: 'まだ記録なし', days: [] },

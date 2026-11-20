@@ -21,6 +21,8 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(root + 'reflection');
     await page.locator('[data-testid="reflection-total"]:visible').waitFor();
+    await page.getByRole('button', { name: 'デモの記録を切り替える', exact: true }).click();
+    await page.getByRole('button', { name: '通常 · 4時間13分', exact: true }).click();
     await page.waitForFunction(dark => getComputedStyle(document.querySelector('[data-testid="reflection-total"]')).color === (dark ? 'rgb(240, 240, 233)' : 'rgb(48, 49, 47)'), test.colorScheme === 'dark');
     const enlarge = async () => {
       if (test.scale === 1) return;
@@ -93,7 +95,7 @@ try {
     await check();
     if (['light-390', 'large-dark-320'].includes(test.name)) { await page.locator('[data-testid="cumulative-chart"]:visible').scrollIntoViewIfNeeded(); await page.screenshot({ path: `${output}/long-${test.name}.png`, fullPage: true }); }
     await page.getByRole('tab', { name: 'ホーム', exact: true }).click();
-    await page.getByRole('button', { name: '振り返りを見る', exact: true }).click();
+    await page.getByRole('button', { name: '比較：累積グラフ', exact: true }).click();
     assert.equal(await page.locator('[data-testid="reflection-total"]:visible').innerText(), '85時間13分');
     assert.match(await page.locator('[data-testid="period-title"]:visible').innerText(), /11\/9/);
     await page.getByRole('tab', { name: '設定', exact: true }).click();
