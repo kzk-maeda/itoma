@@ -1,0 +1,73 @@
+.leaf-screen { display:flex; flex:1; flex-direction:column; min-height:0; color:var(--ink); background:var(--paper); font-family:var(--font-display); }
+.leaf-scroll { min-height:0; flex:1; overflow-y:auto; overscroll-behavior-y:contain; }
+.leaf-page, .leaf-page * { box-sizing:border-box; }
+.leaf-page { max-width:480px; margin:auto; padding:16px 20px 36px; }
+.leaf-page h1, .leaf-page h2, .leaf-page p, .leaf-page ul { margin:0; }
+.leaf-page button, .leaf-page summary { font:inherit; color:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.leaf-page button { border:0; background:transparent; padding:0; }
+.leaf-page :focus-visible { outline:2px solid currentColor; outline-offset:2px; }
+.leaf-header, .leaf-section-head, .leaf-period-nav, .leaf-inspect-head, .print-meta, .print-axis { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px 12px; }
+.leaf-header { margin-bottom:17px; }
+.leaf-header h1 { font-size:1.35rem; letter-spacing:.07em; font-weight:570; }
+.leaf-demo-button { min-height:44px; font-size:.75rem !important; color:var(--muted) !important; }
+.leaf-demo-button span { margin-left:2px; }
+.leaf-scenes { background:var(--wash); padding:15px; border-radius:12px; margin-bottom:16px; }
+.leaf-scenes h2 { font-size:.9rem; margin-bottom:8px; }
+.leaf-scenes div { display:flex; flex-wrap:wrap; gap:5px; }
+.leaf-scenes button { padding:0 10px; min-height:44px; border:1px solid var(--rule); border-radius:7px; font-size:.85rem; }
+.leaf-scenes button[aria-pressed=true] { border:2px solid var(--ink); }
+.time-print { background:var(--print-ground); color:var(--print-ink); padding:22px 0 17px; border-radius:14px; }
+.print-inside { padding:0 22px; }
+.print-meta { font-size:.71rem; line-height:1.6; letter-spacing:.08em; color:var(--print-quiet); }
+.print-dates, .print-axis { font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+.print-dates { font-size:.65rem; letter-spacing:.015em; }
+.print-inside h2 { font-size:.98rem; font-weight:500; letter-spacing:.12em; margin-top:25px; }
+.print-amount { display:flex; align-items:baseline; flex-wrap:wrap; gap:0 .25em; margin-top:2px; }
+.print-number { font-family:var(--font-serif); font-size:5.2rem; line-height:1.1; font-weight:400; letter-spacing:-.045em; }
+.print-unit { font-family:ui-serif,'Hiragino Mincho ProN','Noto Serif CJK JP',serif; font-size:1.7rem; line-height:1.5; }
+.print-small, .print-tail { font-size:1rem; color:var(--print-quiet); }
+.print-tail { margin-left:.25em; }
+.print-caveat, .print-empty { line-height:1.75; font-size:.83rem; color:var(--print-quiet); }
+.print-empty { padding:25px 22px; }
+.print-plot { position:relative; margin:3px 17px 0; aspect-ratio:2.25; color:var(--print-ink); }
+.print-plot svg { width:100%; height:100%; position:absolute; }
+.print-plot input { display:block; appearance:none; -webkit-appearance:none; position:absolute; inset:0; width:100%; height:100%; background:transparent; border:0; margin:0; border-radius:4px; cursor:ew-resize; touch-action:pan-y; }
+.print-plot input::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:8px; height:44px; background:transparent; }
+.print-plot input::-moz-range-thumb { border:0; width:8px; height:44px; background:transparent; }
+.print-plot input::-moz-range-track { background:transparent; border:0; }
+.print-plot input:focus-visible { outline-color:var(--print-ink); }
+.print-axis { margin:0 20px; color:var(--print-quiet); font-size:.68rem; line-height:1.5; }
+.print-imprint { margin:15px 22px 0; color:var(--print-quiet); display:flex; gap:.55em; align-items:center; font-size:.71rem; line-height:1.6; }
+.imprint-line { flex:none; width:17px; height:1.5px; background:currentColor; }
+.leaf-inspect { padding:15px 4px 16px; }
+.leaf-inspect h2, .leaf-section-head h2 { font-size:1.05rem; letter-spacing:.03em; font-weight:590; }
+.leaf-inspect h2 span { margin-left:.15em; font-weight:400; font-size:.88rem; }
+.leaf-arrows { display:flex; align-items:center; }
+.leaf-arrow { width:44px; min-height:44px; display:grid; place-items:center; }
+.leaf-arrow:disabled { opacity:.3; cursor:default; }
+.leaf-day-value { display:flex; flex-wrap:wrap; align-items:baseline; gap:3px 6px; font-size:.86rem; }
+.leaf-day-value strong, .leaf-period-nav strong { font-size:1.18rem; font-weight:520; }
+.leaf-page .leaf-latest { margin-left:auto; min-height:44px; padding-inline:5px; text-decoration:underline; text-underline-offset:3px; font-size:.8rem; color:var(--muted); }
+.leaf-note, .leaf-label, .leaf-details { font-size:.79rem; line-height:1.7; color:var(--muted); }
+.leaf-inspect .leaf-note { margin-top:6px; }
+.leaf-details { border-block:1px solid var(--rule); margin:0 4px; }
+.leaf-details summary { min-height:44px; display:flex; justify-content:space-between; align-items:center; list-style:none; }
+.leaf-details summary::-webkit-details-marker { display:none; }
+.leaf-details summary:after { content:'＋'; padding:0 9px; }
+.leaf-details[open] summary:after { content:'−'; }
+.leaf-details div { padding-bottom:14px; }
+.leaf-details p + p { margin-top:.5em; }
+.leaf-period { padding:23px 4px 0; }
+.leaf-section-head { padding-bottom:14px; }
+.leaf-segment { display:flex; padding:2px; background:var(--wash); border-radius:22px; }
+.leaf-segment button { min-width:44px; min-height:44px; border-radius:22px; font-size:.83rem; }
+.leaf-segment button[aria-pressed=true] { font-weight:650; background:var(--paper); box-shadow:0 0 0 1px var(--rule); }
+.leaf-period-nav { margin-bottom:6px; }
+.leaf-day-list { padding:0; list-style:none; }
+.leaf-day-list li { display:flex; align-items:center; gap:12px; min-height:38px; padding:4px 0; color:var(--muted); font-size:.81rem; font-variant-numeric:tabular-nums; }
+.leaf-day-list li span:first-child { min-width:3.25em; }
+.leaf-day-list li span:last-child { min-width:4.7em; text-align:end; }
+.leaf-day-track { flex:1; height:3px; background:var(--wash); }
+.leaf-day-track i { display:block; height:100%; background:var(--muted); }
+@media(min-width:600px) { .leaf-page { padding-top:27px; } }
+@media(max-width:350px) { .leaf-page { padding-inline:14px; } .print-inside { padding-inline:17px; } }
