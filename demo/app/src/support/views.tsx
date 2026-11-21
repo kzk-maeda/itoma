@@ -23,8 +23,8 @@ function CardMark() {
 export function Settings() {
   const { monthly, select } = useSupport();
   return <section className="page slim"><Title text="設定" /><p className="intro">自分で決めた時間と、記録の扱いを確認できます。</p>
-    <div className="rows">{items.map(([label, detail], i) => <LinkRow key={label} label={label} detail={detail} onPress={() => router.push({ pathname: '/detail', params: { item: String(i) } })} />)}</div>
-    <div className="support-entry"><LinkRow label="いとまを支える" detail={monthly ? '毎月の支援を確認・管理' : '開発と運営への任意の支援'} onPress={() => { select(undefined); router.push('/support'); }} /></div>
+    <div className="rows">{items.map(([label, detail], i) => <LinkRow key={label} label={label} detail={detail} onPress={() => router.push({ pathname: './detail', params: { item: String(i) } })} />)}</div>
+    <div className="support-entry"><LinkRow label="いとまを支える" detail={monthly ? '毎月の支援を確認・管理' : '開発と運営への任意の支援'} onPress={() => { select(undefined); router.push('./support'); }} /></div>
   </section>;
 }
 export function Detail() {
@@ -44,23 +44,23 @@ export function Support() {
       <footer>いとま開発者　Kazuki Maeda</footer>
     </article><div className="picker"><h2>支援のしかた</h2><p className="muted">金額は自分で選べます。どなたも同じ機能を使えます。</p>
       <fieldset className="segment"><legend className="sr">支援の頻度</legend>{(['once', 'monthly'] as const).map(f => <label key={f}><input type="radio" name="frequency" checked={frequency === f} onChange={() => switchFrequency(f)} /><span>{f === 'once' ? '今回だけ' : '毎月'}</span></label>)}</fieldset>
-      {recurring && monthly ? <div className="card"><h3>毎月 {yen(monthly)} の支援を設定中</h3><button className="plain" onClick={() => router.push('/manage')}>毎月の支援を管理する</button></div> :
+      {recurring && monthly ? <div className="card"><h3>毎月 {yen(monthly)} の支援を設定中</h3><button className="plain" onClick={() => router.push('./manage')}>毎月の支援を管理する</button></div> :
       <><fieldset className="amounts"><legend>{recurring ? 'ひと月の支援額' : '今回の支援額'}</legend><div>{amounts.map(n => <label key={n}><input type="radio" name="amount" checked={choice?.amount === n} onChange={() => select({ frequency, amount: n })} /><span>{yen(n)}</span></label>)}</div></fieldset>
         <p className="fine">{recurring ? '毎月自動で更新する想定のデモです。設定から次回の更新を停止できます。' : '1回限りの支援です。自動更新はありません。'}</p>
-        <button className="primary" disabled={!choice} onClick={() => router.push('/confirm')}>支援内容を確認する</button></>}
-      {monthly && !recurring && <button className="plain" onClick={() => router.push('/manage')}>毎月の支援を管理する</button>}
+        <button className="primary" disabled={!choice} onClick={() => router.push('./confirm')}>支援内容を確認する</button></>}
+      {monthly && !recurring && <button className="plain" onClick={() => router.push('./manage')}>毎月の支援を管理する</button>}
       <button className="plain" onClick={() => router.dismissTo('/')}>設定に戻る</button>
     </div></div></section>;
 }
 export function Confirm() {
   const { choice, confirm, monthly } = useSupport();
-  if (!choice || (choice.frequency === 'monthly' && monthly)) return <Redirect href="/support" />;
+  if (!choice || (choice.frequency === 'monthly' && monthly)) return <Redirect href="./support" />;
   const periodic = choice.frequency === 'monthly';
-  return <section className="page slim"><Back label="金額の選択に戻る" onClick={() => router.dismissTo('/support')} /><Title text="支援内容の確認" />
+  return <section className="page slim"><Back label="金額の選択に戻る" onClick={() => router.dismissTo('./support')} /><Title text="支援内容の確認" />
     <div className="receipt"><CardMark /><p>いとまの開発と運営へ</p><strong>{yen(choice.amount)}</strong><p>{periodic ? '毎月 · 自動更新' : '今回だけ · 自動更新なし'}</p></div>
     <p className="intro">{periodic ? '毎月同じ金額で更新する想定です。次回からの停止は設定で試せます。' : '選んだ金額で、今回の支援を試します。'}</p>
     <p className="fine">模擬決済です。請求や契約は発生しません。</p>
-    <button className="primary" onClick={() => { confirm(); router.replace('/thanks'); }}>{periodic ? '毎月 ' : ''}{yen(choice.amount)} の支援を試す</button>
+    <button className="primary" onClick={() => { confirm(); router.replace('./thanks'); }}>{periodic ? '毎月 ' : ''}{yen(choice.amount)} の支援を試す</button>
     <button className="plain" onClick={() => router.dismissTo('/')}>支援せず設定に戻る</button>
   </section>;
 }
