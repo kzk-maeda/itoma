@@ -1,0 +1,5 @@
+{
+  "name": "itoma-unlock-choices",
+  "private": true,
+  "main": "expo-router/entry"
+}
