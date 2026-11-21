@@ -100,7 +100,7 @@ try {
     const page = await browser.newPage(); assert.equal((await page.goto(root + 'reflection?look=' + id)).status(), 200);
     await page.locator(`[data-testid="growth-visual-${id}"]:visible`).waitFor(); await page.close();
   }
-  const invalid = await browser.newPage(); await invalid.goto(root + 'reflection?look=unknown'); await invalid.locator('[data-testid="growth-visual-rings"]:visible').waitFor(); await invalid.close();
-  writeFileSync(`${output}/results.json`, JSON.stringify({ url: root, browser: browser.version(), scope: 'synthetic Web; DOM scaling is not Dynamic Type; no native verification', results, directLinks: styles.map(([id]) => id), invalidStyleFallback: 'rings' }, null, 2) + '\n');
+  const invalid = await browser.newPage(); await invalid.goto(root + 'reflection?look=unknown'); await invalid.locator('[data-testid="growth-visual-layers"]:visible').waitFor(); await invalid.close();
+  writeFileSync(`${output}/results.json`, JSON.stringify({ url: root, browser: browser.version(), scope: 'synthetic Web; DOM scaling is not Dynamic Type; no native verification', results, directLinks: styles.map(([id]) => id), invalidStyleFallback: 'layers' }, null, 2) + '\n');
   console.log(JSON.stringify(results, null, 2));
 } finally { await browser.close(); }

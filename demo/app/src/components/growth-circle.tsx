@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Text, View } from 'react-native';
+import { LayeredTimeHero } from './layered-time-hero';
 import { GrowthArtwork } from './growth-artwork';
 import { circleStyles } from '../scenarios/circle-styles';
 import { useGrowth } from '../state/time-growth';
@@ -11,7 +12,7 @@ export function GrowthCircle({ seconds }: { seconds?: number }) {
   const theme = useFlowTheme(), reduced = useReducedMotion(), opacity = useRef(new Animated.Value(1)).current, readout = growthReadout(seconds);
   useEffect(() => {
     opacity.stopAnimation();
-    if (reduced) { opacity.setValue(1); return; }
+    if (reduced || look === 'layers') { opacity.setValue(1); return; }
     opacity.setValue(0.5);
     const animation = Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true });
     animation.start(); return () => animation.stop();
@@ -20,6 +21,7 @@ export function GrowthCircle({ seconds }: { seconds?: number }) {
   const layers = [HOUR, DAY, MONTH, YEAR].filter(value => seconds !== undefined && seconds >= value).length;
   const tail = readout?.remainder ? durationWords(readout.remainder) : undefined;
   const description = seconds === undefined ? 'まだ記録がありません' : seconds === 0 ? '記録した時間は0分です' : `${readout!.approximate ? '約' : ''}${readout!.whole}${readout!.label}${tail ? `と${tail}` : ''}。${look === 'original' ? `円弧は${durationWords(readout!.ringValue)}。1周は${durationWords(readout!.ringSize)}。` : variant.explanation}`;
+  if (look === 'layers') return <LayeredTimeHero seconds={seconds} />;
   return <Animated.View testID="growth-hero" style={{ opacity, gap: 20, alignItems: 'center' }}>
     <View testID="growth-ring" accessible accessibilityRole="image" accessibilityLabel={description} style={{ width: '100%', maxWidth: 278, minHeight: outside ? undefined : 278, justifyContent: 'center', gap: outside ? 16 : 0 }}>
       <View accessible={false} aria-hidden style={outside ? { width: 160, height: 160, alignSelf: 'center' } : { position: 'absolute', inset: 0 }}>
