@@ -12,6 +12,22 @@ cp "$root/tests/ios/support/"{Host.swift,SupportTests.swift,project.yml} "$proje
 cp "$root/modules/itoma-native/ios/SupportPurchases.swift" "$root/docs/qa/support-purchases/Support.storekit" "$project/"
 cd "$project"
 xcodegen generate
-read -r model runtime <<< "$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(d["deviceTypeIdentifier"]+" "+r for r,ds in json.load(sys.stdin)["devices"].items() for d in ds if d["name"].startswith("iPhone")))')"
+# Hosted iOS 26.4.1 rejects SKTestSession configuration with SKInternalErrorDomain Code=3.
+# Only the StoreKit test pins a runtime in CI. Local developers may select an installed runtime.
+read -r model runtime <<< "$(xcrun simctl list devices available --json | python3 -c '
+import json, os, sys
+expected = os.environ.get("ITOMA_STOREKIT_RUNTIME")
+for runtime, devices in json.load(sys.stdin)["devices"].items():
+    if expected and runtime != expected:
+        continue
+    for device in devices:
+        if device["name"].startswith("iPhone"):
+            print(device["deviceTypeIdentifier"], runtime)
+            sys.exit(0)
+sys.exit("No iPhone simulator for " + (expected or "StoreKit Test"))
+')"
+echo "StoreKit Test runtime $runtime"
 device=$(xcrun simctl create "ITOMA support test $(uuidgen)" "$model" "$runtime")
-xcodebuild test -scheme SupportHost -project SupportHost.xcodeproj -destination "id=$device" -parallel-testing-enabled NO
+xcrun simctl boot "$device"
+xcrun simctl bootstatus "$device" -b
+xcodebuild test -scheme SupportHost -project SupportHost.xcodeproj -destination "id=$device" -parallel-testing-enabled NO -test-timeouts-enabled YES -maximum-test-execution-time-allowance 120

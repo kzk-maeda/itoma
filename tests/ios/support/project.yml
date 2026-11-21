@@ -38,5 +38,7 @@ schemes:
     build:
       targets:
         SupportHost: all
+    run:
+      storeKitConfiguration: Support.storekit
     test:
       targets: [SupportTests]

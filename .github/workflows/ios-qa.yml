@@ -53,6 +53,8 @@ jobs:
       - run: npm ci
       - run: npm run test:ios-tools
       - name: Verify consumable purchases with local StoreKit Test
+        env:
+          ITOMA_STOREKIT_RUNTIME: com.apple.CoreSimulator.SimRuntime.iOS-26-2
         run: |
           command -v xcodegen >/dev/null || brew install xcodegen
           bash tests/ios/support/run.sh
