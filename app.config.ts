@@ -17,9 +17,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ],
   ios: {
     ...config.ios,
+    infoPlist: {
+      ...config.ios?.infoPlist,
+      ITOMASupportProducts: [...new Set((process.env.ITOMA_SUPPORT_PRODUCT_IDS ?? '').split(',').map(id => id.trim()).filter(Boolean))],
+      ...(process.env.ITOMA_SCREEN_TIME_POC === '1' ? { ITOMAScreenTimePoC: true } : {}),
+    },
     // Local build opt-in only. This neither selects a Team nor registers/signs an App ID.
     ...(process.env.ITOMA_SCREEN_TIME_POC === '1' ? {
-      infoPlist: { ...config.ios?.infoPlist, ITOMAScreenTimePoC: true },
       entitlements: { ...config.ios?.entitlements, 'com.apple.developer.family-controls': true },
     } : {}),
   },

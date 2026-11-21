@@ -52,6 +52,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:ios-tools
+      - name: Verify consumable purchases with local StoreKit Test
+        run: |
+          command -v xcodegen >/dev/null || brew install xcodegen
+          bash tests/ios/support/run.sh
       - name: Build and run unsigned native bridge smoke
         id: qa
         env:

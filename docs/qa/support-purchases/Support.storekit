@@ -1,0 +1,61 @@
+{
+  "identifier": "52C8C9A7-E65C-4EA0-993A-E7B6E9F64605",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "100",
+      "familyShareable": false,
+      "internalID": "28001",
+      "localizations": [
+        {
+          "description": "いとまの開発と運営への1回限りの支援",
+          "displayName": "いとまへの支援",
+          "locale": "ja"
+        }
+      ],
+      "productID": "itoma.test.tip.1",
+      "referenceName": "Test tip 1",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "300",
+      "familyShareable": false,
+      "internalID": "28002",
+      "localizations": [
+        {
+          "description": "いとまの開発と運営への1回限りの支援",
+          "displayName": "いとまへの支援",
+          "locale": "ja"
+        }
+      ],
+      "productID": "itoma.test.tip.2",
+      "referenceName": "Test tip 2",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "500",
+      "familyShareable": false,
+      "internalID": "28003",
+      "localizations": [
+        {
+          "description": "いとまの開発と運営への1回限りの支援",
+          "displayName": "いとまへの支援",
+          "locale": "ja"
+        }
+      ],
+      "productID": "itoma.test.tip.3",
+      "referenceName": "Test tip 3",
+      "type": "Consumable"
+    }
+  ],
+  "settings": {
+    "_locale": "ja_JP",
+    "_storefront": "JPN",
+    "_failTransactionsEnabled": false
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

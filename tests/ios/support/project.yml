@@ -1,0 +1,42 @@
+name: SupportHost
+options:
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  SWIFT_VERSION: "6.0"
+targets:
+  SupportHost:
+    type: application
+    platform: iOS
+    sources: [Host.swift, SupportPurchases.swift]
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: app.itoma.tests.support
+      ENABLE_TESTABILITY: YES
+    info:
+      path: Info.plist
+      properties:
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        ITOMASupportProducts: [itoma.test.tip.1, itoma.test.tip.2, itoma.test.tip.3]
+  SupportTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - SupportTests.swift
+      - path: Support.storekit
+        buildPhase: resources
+    settings:
+      GENERATE_INFOPLIST_FILE: YES
+      PRODUCT_BUNDLE_IDENTIFIER: app.itoma.tests.support.xctests
+    dependencies:
+      - target: SupportHost
+schemes:
+  SupportHost:
+    build:
+      targets:
+        SupportHost: all
+    test:
+      targets: [SupportTests]

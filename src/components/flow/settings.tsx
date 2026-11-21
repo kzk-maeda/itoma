@@ -65,6 +65,7 @@ export function SettingsScreen() {
       <LinkRow label="スクリーンタイム" detail={!device ? '許可と反映はiPhoneで確認できます' : s?.authorization === 'approved' ? s.needsSelectionReview ? '対象の再選択が必要です' : '許可と反映の状態' : '許可の確認が必要です'} onPress={() => navigation.open({ screen: 'settings-screen-time' })} />
       <LinkRow label="記録とプライバシー" detail="選択の記録・保存容量・削除" onPress={() => navigation.open({ screen: 'settings-records' })} />
       <LinkRow label="使い方とこのアプリ" detail="制限と一時解除・端末内の保存" onPress={() => navigation.open({ screen: 'settings-about' })} />
+      <LinkRow label="いとまを支える" detail="開発と運営への任意の支援" onPress={() => navigation.open({ screen: 'settings-support' })} />
     </Panel>
     {s?.needsSelectionReview && <Notice title="再開前の確認が必要です">スクリーンタイムから、許可・対象の選び直し・再開を順に確認できます。</Notice>}
   </FlowScreen>;
