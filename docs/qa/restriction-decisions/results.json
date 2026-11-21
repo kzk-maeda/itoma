@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "browser": "155.0.8059.79",
+  "evidence": "Synthetic native snapshots in the ordinary app routes",
+  "cases": [
+    {
+      "colorScheme": "light",
+      "width": 390,
+      "domTextScale": 1,
+      "unlockRequestsAfterExpiry": 0,
+      "reconcileRequests": 2,
+      "resumeRequests": 1,
+      "stopRequests": 1,
+      "errors": []
+    },
+    {
+      "colorScheme": "dark",
+      "width": 320,
+      "domTextScale": 1.75,
+      "unlockRequestsAfterExpiry": 0,
+      "reconcileRequests": 2,
+      "resumeRequests": 1,
+      "stopRequests": 1,
+      "errors": []
+    }
+  ]
+}
