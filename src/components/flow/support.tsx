@@ -73,7 +73,7 @@ export function SupportScreen() {
     let reading = false;
     const ticket = generation.current;
     async function observe() {
-      if (ticket !== generation.current || displayed.current === 'verified' || AppState.currentState === 'background') return;
+      if (ticket !== generation.current || AppState.currentState === 'background') return;
       if (reading || running.current) { refreshNeeded.current = true; return; }
       refreshNeeded.current = false;
       reading = true;
@@ -84,7 +84,7 @@ export function SupportScreen() {
         // Keep an explicit cancellation, price-change message or catalog error until the user acts.
         if (reply.state === 'idle' && !['pending', 'unknown', 'buying'].includes(displayed.current ?? '')) return;
         if (reply.state === 'idle') await run('load');
-        else if (reply.state !== displayed.current || reply.canLeavePending) accept(reply);
+        else if (reply.state === 'verified' || reply.state !== displayed.current || reply.canLeavePending) accept(reply);
       } catch { /* An explicit purchase/retry reports any error; observation never starts a purchase. */ }
       finally { reading = false; if (refreshNeeded.current && !running.current) void observe(); }
     }
@@ -101,14 +101,18 @@ export function SupportScreen() {
   useEffect(() => {
     if (status === 'verified' && receipt) {
       // Commit the acknowledgement only after React has actually displayed this transaction.
-      void supportRequest('ack', receipt).catch(() => {});
+      const ticket = generation.current;
+      void supportRequest('ack', receipt).then(next => {
+        if (active.current && generation.current === ticket && next.state === 'verified' && next.receipt !== receipt) accept(next);
+      }).catch(() => {});
+
     }
     if (messages[status] && active.current) AccessibilityInfo.announceForAccessibility(messages[status]);
-  }, [status, receipt]);
+  }, [status, receipt, accept]);
 
   const choosing = status === 'idle' || status === 'changed' || status === 'cancelled' || status === 'unavailable';
-  return <FlowScreen title="いとまを支える" backLabel="‹ 設定" onBack={exit}>
-    {choosing && <>
+  return <FlowScreen showControlStatus={false} title="いとまを支える" backLabel="‹ 設定" onBack={exit}>
+    {(choosing || status === 'offline' || status === 'empty' || status === 'loading') && <>
       <Panel><Heading>開発者より</Heading>
         <Body>いとまを使ってくださり、ありがとうございます。いただいた支援は、iOSの更新への対応や、文字と画面を読みやすくする改善に使います。</Body>
       </Panel>
@@ -118,7 +122,7 @@ export function SupportScreen() {
     {choosing && <>
       <Panel><Heading>支援額を選ぶ</Heading>
         {products.map(product => <Pressable accessibilityRole="radio" accessibilityLabel={product.display}
-          accessibilityState={{ checked: product.id === selected?.id }} onPress={() => select(product)} key={product.id}
+          aria-checked={product.id === selected?.id} accessibilityState={{ checked: product.id === selected?.id }} onPress={() => select(product)} key={product.id}
           style={{ minHeight: 48, justifyContent: 'center', borderBottomWidth: 1, borderColor: theme.line }}>
           <Text style={{ color: theme.text, fontSize: 18 }}>{product.id === selected?.id ? '●' : '○'}　{product.display}</Text>
         </Pressable>)}
@@ -134,14 +138,17 @@ export function SupportScreen() {
     <Button secondary label={choosing ? '支援せず設定に戻る' : '設定に戻る'} onPress={exit} />
     <Modal visible={confirm} presentationStyle="pageSheet" animationType="slide" allowSwipeDismissal
       onRequestClose={() => setConfirm(false)}>
-      <FlowScreen title="支援内容の確認" backLabel="‹ 金額の選択" onBack={() => setConfirm(false)}>
+      {status === 'buying' ? <FlowScreen showControlStatus={false} title="購入を確認しています" backLabel="‹ 設定" onBack={exit}>
+        <Body>Appleから結果が届くまでお待ちください。設定に戻っても確認は続きます。</Body>
+        <Button label="設定に戻る" secondary onPress={exit} />
+      </FlowScreen> : <FlowScreen showControlStatus={false} title="支援内容の確認" backLabel="‹ 金額の選択" onBack={() => setConfirm(false)}>
         <Heading>{selected?.display} · 今回だけ</Heading><Body>次にAppleの購入画面で確定します。</Body>
-        <Button label={`${selected?.display ?? ''}の支援に進む`} disabled={!selected || status === 'buying'} onPress={() => {
+        <Button label={`${selected?.display ?? ''}の支援に進む`} disabled={!selected} onPress={() => {
           if (selected) void run('buy', JSON.stringify(selected));
         }} />
         <Button secondary label="金額の選択に戻る" onPress={() => setConfirm(false)} />
         <Button secondary label="支援せず設定に戻る" onPress={exit} />
-      </FlowScreen>
+      </FlowScreen>}
     </Modal>
   </FlowScreen>;
 }

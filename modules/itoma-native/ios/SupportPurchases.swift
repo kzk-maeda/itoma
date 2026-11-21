@@ -34,6 +34,7 @@ private struct SupportLedger: Codable {
         var state: String
     }
     var attempt: Attempt?
+    var purchasedProducts: Set<String> = []
     var processed: Set<String> = []
     var unread: [String] = []
 }
@@ -49,8 +50,11 @@ final class SupportPurchases {
     private var unverified: Set<UInt64> = []
     private var storageProblem = false
 
+    private let storageDirectory: URL?
+    init(storageDirectory: URL? = nil) { self.storageDirectory = storageDirectory }
+
     private func file() throws -> URL {
-        var directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
+        var directory = try storageDirectory ?? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
                                                     appropriateFor: nil, create: true).appendingPathComponent("ItomaSupport", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var values = URLResourceValues()
@@ -77,7 +81,7 @@ final class SupportPurchases {
     }
 
     func start() {
-        guard !ids.isEmpty, listening == nil else { return }
+        guard listening == nil else { return }
         listening = Task {
             for await delivery in Transaction.updates { await self.handle(delivery) }
         }
@@ -97,17 +101,18 @@ final class SupportPurchases {
     private func handle(_ delivery: VerificationResult<Transaction>) async {
         switch delivery {
         case .unverified(let transaction, _):
-            if ids.contains(transaction.productID) {
+            if ids.contains(transaction.productID) || (try? read().purchasedProducts.contains(transaction.productID)) == true {
                 unverified.insert(transaction.id)
                 NotificationCenter.default.post(name: supportChanged, object: nil)
             }
         case .verified(let transaction):
-            guard ids.contains(transaction.productID), transaction.productType == .consumable,
+            guard transaction.productType == .consumable,
                   transaction.appBundleID == Bundle.main.bundleIdentifier else { return }
             unverified.remove(transaction.id)
             let key = transaction.environment.rawValue + "/" + String(transaction.id)
             do {
                 let previous = try read()
+                guard ids.contains(transaction.productID) || previous.purchasedProducts.contains(transaction.productID) else { return }
                 let matches = previous.attempt != nil && previous.attempt?.id == transaction.appAccountToken
                 let isNew = !previous.processed.contains(key)
                 if isNew || matches {
@@ -142,7 +147,9 @@ final class SupportPurchases {
 
     private func catalog() async throws -> [(Product, SupportPrice)] {
         guard !ids.isEmpty, let store = await Storefront.current, store.countryCode == "JPN" else { return [] }
-        return try await Product.products(for: ids).filter { $0.type == .consumable && ids.contains($0.id) }
+        let products = try await Product.products(for: ids)
+        guard await Storefront.current?.id == store.id else { return [] }
+        return products.filter { $0.type == .consumable && ids.contains($0.id) }
             .sorted { ($0.price, $0.id) < ($1.price, $1.id) }.map { ($0, SupportPrice($0, store: store)) }
     }
 
@@ -153,7 +160,9 @@ final class SupportPurchases {
             purchasing = false
             NotificationCenter.default.post(name: supportChanged, object: nil)
         }
-        let available = try await catalog()
+        let available: [(Product, SupportPrice)]
+        do { available = try await catalog() }
+        catch { return SupportReply(state: "offline") }
         guard let (product, _) = available.first(where: { $0.1 == quote }) else {
             return SupportReply(state: "changed", products: available.map { $0.1 })
         }
@@ -161,7 +170,10 @@ final class SupportPurchases {
         let current = try read()
         guard current.unread.isEmpty, current.attempt == nil, !storageProblem, unverified.isEmpty else { return try snapshot() }
         let attempt = SupportLedger.Attempt(id: UUID(), started: Date(), state: "unknown")
-        try save { $0.attempt = attempt }
+        try save {
+            $0.attempt = attempt
+            $0.purchasedProducts.insert(product.id)
+        }
         let result: Product.PurchaseResult
         do {
             let options: Set<Product.PurchaseOption> = [.appAccountToken(attempt.id)]
@@ -177,8 +189,7 @@ final class SupportPurchases {
         } catch StoreKitError.userCancelled {
             if try read().attempt?.id == attempt.id { try save { $0.attempt = nil } }
             return SupportReply(state: "cancelled")
-        }
-        catch {
+        } catch {
             // Delivery can still arrive via updates. Reconciliation never starts a second purchase.
             return SupportReply(state: "unknown")
         }
@@ -197,7 +208,6 @@ final class SupportPurchases {
     }
 
     func request(_ action: String, value: String) async throws -> SupportReply {
-        guard !ids.isEmpty else { return SupportReply(state: "empty", products: []) }
         start()
         switch action {
         case "load":

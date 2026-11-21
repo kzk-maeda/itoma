@@ -12,7 +12,9 @@ final class SupportTests: XCTestCase {
         session.disableDialogs = true
         session.storefront = "JPN"
 
-        let controller = SupportPurchases.shared
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let backup = directory.appendingPathExtension("saved")
+        let controller = SupportPurchases(storageDirectory: directory)
         let initial = try await controller.request("load", value: "")
         let prices = try XCTUnwrap(initial.products)
         XCTAssertEqual(prices.map(\.id), ["itoma.test.tip.1", "itoma.test.tip.2", "itoma.test.tip.3"])
@@ -40,14 +42,29 @@ final class SupportTests: XCTestCase {
         let pendingAgain = try await controller.request("buy", value: quote)
         XCTAssertEqual(pendingAgain.state, "pending")
         let last = try XCTUnwrap(session.allTransactions().max { $0.identifier < $1.identifier })
+        // Simulate failure after Apple approves but before the durable receipt can be written.
+        try FileManager.default.moveItem(at: directory, to: backup)
+        try Data().write(to: directory)
         try session.approveAskToBuyTransaction(identifier: last.identifier)
+        var failedSafely = false
+        for _ in 0..<100 {
+            if try await controller.request("status", value: "").state == "unknown" {
+                failedSafely = true
+                break
+            }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(failedSafely, "Storage failure must not produce a success or finish the purchase")
+        try FileManager.default.removeItem(at: directory)
+        try FileManager.default.moveItem(at: backup, to: directory)
+        _ = try await controller.request("retry", value: "")
         for _ in 0..<100 {
             let reply = try await controller.request("status", value: "")
             if reply.state == "verified" {
                 XCTAssertNotEqual(try XCTUnwrap(reply.receipt), firstID)
                 _ = try await controller.request("ack", value: try XCTUnwrap(reply.receipt))
                 // No more writes on the original coordinator. Read the durable state afresh.
-                let restored = try await SupportPurchases().request("load", value: "")
+                let restored = try await SupportPurchases(storageDirectory: directory).request("load", value: "")
                 XCTAssertEqual(restored.state, "idle")
                 return
             }

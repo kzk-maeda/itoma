@@ -68,3 +68,15 @@ test('an unavailable catalog leaves the purchase path disabled and can reload', 
   await press('支援額を読み直す');
   await screen.findByRole('radio', { name: '￥300' });
 });
+
+test('each distinct unread verified receipt is acknowledged before returning to settings', async () => {
+  request.mockImplementation(async (action, receipt) => {
+    if (action === 'load') return { state: 'verified', receipt: 'Sandbox/first' };
+    if (action === 'ack' && receipt === 'Sandbox/first') return { state: 'verified', receipt: 'Sandbox/second' };
+    return { state: 'idle' };
+  });
+  await render(<SupportScreen />);
+  await waitFor(() => expect(request).toHaveBeenCalledWith('ack', 'Sandbox/second'));
+  expect(screen.getByText('ご支援ありがとうございます')).toBeOnTheScreen();
+  expect(request.mock.calls.filter(([action]) => action === 'buy')).toHaveLength(0);
+});
