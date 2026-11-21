@@ -36,7 +36,7 @@ try {
     const top = async () => { await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); for (const el of document.querySelectorAll('*')) if (el instanceof HTMLElement && el.scrollTop) el.scrollTo({ top: 0, behavior: 'instant' }); }); await page.waitForTimeout(300); };
     const choose = async name => { await page.getByRole('button', { name: 'デモの時間を切り替える', exact: true }).click(); await page.getByRole('button', { name, exact: true }).click(); await check(); };
     const shot = async name => { await top(); await page.screenshot({ path: `${output}/${config.name}-${name}.png` }); };
-    await page.goto(root + 'reflection');
+    await page.goto(root + 'reflection?look=original');
     await visible('growth-whole').waitFor();
     await page.waitForFunction(dark => getComputedStyle(document.querySelector('[data-testid="growth-whole"]')).color === (dark ? 'rgb(240, 240, 233)' : 'rgb(48, 49, 47)'), config.colorScheme === 'dark');
     await check();
