@@ -6,7 +6,7 @@ import { GraphiteColors } from '@/constants/theme';
 import { reflectionDuration } from '../../../../modules/itoma-native/src/reflection-model';
 import { periodRows, selectedDays, shiftAnchor, shortDate, sumKnown, weekStart } from '../scenarios/records';
 import { GROWTH_AS_OF } from '../scenarios/time-growth';
-import { durationType, editions, landscapeDays, landscapeSeries, type Edition } from '../scenarios/time-landscape';
+import { durationType, editions, landscapeDays, landscapeSeries } from '../scenarios/time-landscape';
 import { LandscapePrint } from './landscape-print';
 import './landscape.css';
 
@@ -43,14 +43,13 @@ function PeriodLedger({ days }: { days: ReturnType<typeof landscapeDays> }) {
   </section>;
 }
 
-function TimePrint({ id }: { id: Edition }) {
-  const days = useMemo(() => landscapeDays(id), [id]);
+function TimePrint({ days }: { days: ReturnType<typeof landscapeDays> }) {
   const series = useMemo(() => landscapeSeries(days), [days]);
   const [selection, setSelection] = useState<number | undefined>();
   const last = days.length - 1, index = selection ?? last, current = series[index];
-  const total = sumKnown(days), historical = index < last;
+  const total = useMemo(() => sumKnown(days), [days]), historical = index < last;
   const amount = durationType(historical ? current.total : total);
-  const partial = historical ? current.partial && current.total !== undefined : days.some(day => day.seconds === undefined);
+  const partial = historical ? current.partial && current.total !== undefined : series[last]?.partial;
   return <>
     <section className="time-print" aria-labelledby="print-title">
       <div className="print-inside">
@@ -82,13 +81,13 @@ function TimePrint({ id }: { id: Edition }) {
       <p>制限が適用されていた時間を合計しています。一時解除中の時間は除いています。</p>
       {total !== undefined && <p>記録全体で{reflectionDuration(total)}です。24時間を1日分、30日を約1か月分、365日を約1年分として表示します。</p>}
     </div></details>
-    <PeriodLedger days={days} />
   </>;
 }
 
 export function LandscapeScreen({ scene }: { scene?: string }) {
   const theme = useFlowTheme();
   const id = editions.find(option => option.id === scene)?.id ?? 'days';
+  const days = useMemo(() => landscapeDays(id), [id]);
   const [settings, setSettings] = useState(false);
   const variables = { '--ink': theme.text, '--muted': theme.muted, '--rule': theme.line, '--paper': theme.surface,
     '--wash': theme.background, '--tint': theme.soft, '--print-ground': theme === GraphiteColors.dark ? theme.background : GraphiteColors.dark.surface,
@@ -97,7 +96,8 @@ export function LandscapeScreen({ scene }: { scene?: string }) {
     <div className="leaf-scroll" data-testid="demo-scroll"><main className="leaf-page">
       <header className="leaf-header"><h1>振り返り</h1><button type="button" className="leaf-demo-button" aria-expanded={settings} onClick={() => setSettings(!settings)}>デモ設定 <span aria-hidden="true">{settings ? '−' : '＋'}</span></button></header>
       {settings && <section className="leaf-scenes" aria-label="デモ設定"><h2>架空の記録を選ぶ</h2><div>{editions.map(option => <button key={option.id} type="button" aria-pressed={id === option.id} onClick={() => { router.setParams({ scene: option.id }); setSettings(false); }}>{option.label}</button>)}</div></section>}
-      <TimePrint key={id} id={id} />
+      <TimePrint key={id} days={days} />
+      <PeriodLedger key={'period-' + id} days={days} />
     </main></div>
     <ProductNavigation current="reflection" theme={theme} />
   </div>;
