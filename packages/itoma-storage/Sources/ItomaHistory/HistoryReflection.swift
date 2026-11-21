@@ -16,12 +16,18 @@ public struct ReflectionReadSnapshot: Encodable, Sendable {
     public let incomplete: Bool
     public let total: ReflectionPrototypeBucket
     public let trend: [ReflectionPrototypeBucket]
+    public let landscape: ReflectionLandscape?
+    public let inspectionWeek: ReflectionInspectionWeek?
     public let period: ReflectionPrototypePeriod
     public let anchor: String
     public let previousAnchor: String?
     public let nextAnchor: String?
     public let selected: ReflectionPrototypeBucket
     public let buckets: [ReflectionPrototypeBucket]
+}
+public struct ReflectionWeekRead: Encodable, Sendable {
+    public let token: String
+    public let week: ReflectionInspectionWeek
 }
 private struct ReflectionReadToken: Codable {
     let datasetID: UUID
@@ -107,6 +113,7 @@ extension HistoryRepository: ReflectionFactSink {
     /// Recalculates historical rule time; it is distinct from native enforcement measurement.
     public func readReflection(period: ReflectionPrototypePeriod, day: String, timeZone: String,
                                expectedToken: String? = nil, clippedTo: ReflectionPrototypeInterval? = nil,
+                               includeLandscape: Bool? = nil,
                                now: Instant = try! Instant(secondsSince1970: Date().timeIntervalSince1970)) throws -> ReflectionReadSnapshot {
         try transaction(writer: false) {
             try validateReflectionPayloads()
@@ -120,25 +127,13 @@ extension HistoryRepository: ReflectionFactSink {
             } else {
                 token = ReflectionReadToken(datasetID: state.id, ledgerRevision: state.revision, historyRevision: historyRevision, asOf: now, timeZone: timeZone)
             }
-            let rows = try database.rows("SELECT count(*),min(committed_at),max(committed_at) FROM reflection_facts WHERE record IS NOT NULL AND committed_at<=?",
-                [.real(token.asOf.secondsSince1970)])
-            guard let row = rows.first, case let .integer(count) = row[0], count >= 0 else { throw HistoryError.corrupt }
-            func real(_ value: SQLValue) throws -> Double? {
-                if value == .null { return nil }
-                guard case let .real(number) = value, number.isFinite else { throw HistoryError.corrupt }; return number
-            }
-            let first = try real(row[1]), last = try real(row[2])
-            let range = try first.flatMap { start in start < token.asOf.secondsSince1970
-                ? try ReflectionPrototypeInterval(from: Instant(secondsSince1970: start), until: token.asOf) : nil }
-            let coverage: ReflectionPrototypeCoverage = count > 0 ? .partial : state.deleted ? .deleted : .notRecorded
-            let legacy = try ReflectionPrototypeDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf,
-                timeZone: timeZone, scope: .ruleScheduleLogs, coverage: coverage, recordedRange: range,
-                gaps: range.map { [$0] } ?? []) // Reconstruction failure is missing data, never known zero.
-            let input = try ruleLogRestrictionDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf, timeZone: timeZone) ?? legacy
-            let metric: String? = "rule-schedule-excluding-unlocks-v1"
+            let metric = "rule-schedule-excluding-unlocks-v1"
             if expectedToken != nil {
                 guard token.metricVersion == metric else { throw HistoryError.conflict }
             } else { token.metricVersion = metric }
+            let stamp = try expectedToken ?? token.string()
+            let (count, first, last) = try reflectionFactBounds(asOf: token.asOf)
+            let index = try reflectionIndex(token, stamp: stamp, count: count, first: first)
             let anchor: String
             if day.isEmpty {
                 var calendar = Calendar(identifier: .gregorian)
@@ -147,14 +142,55 @@ extension HistoryRepository: ReflectionFactSink {
                 let parts = calendar.dateComponents([.year, .month, .day], from: token.asOf.date)
                 anchor = String(format: "%04d-%02d-%02d", parts.year!, parts.month!, parts.day!)
             } else { anchor = day }
-            let view = try ReflectionPrototypeCalculator.snapshot(input, period: period, day: anchor, clippedTo: clippedTo)
+            let view = try ReflectionPrototypeCalculator.snapshot(index, period: period, day: anchor, clippedTo: clippedTo, includeLandscape: includeLandscape)
             let incomplete = try !database.rows("SELECT 1 FROM reflection_sources WHERE incomplete=1 LIMIT 1").isEmpty
-            return try ReflectionReadSnapshot(metricVersion: metric ?? "restricted-excluding-unlocks-v1",
-                proofScope: input.scope.rawValue, token: expectedToken ?? token.string(), historyRevision: String(historyRevision),
+            return ReflectionReadSnapshot(metricVersion: metric,
+                proofScope: view.proofScope.rawValue, token: stamp, historyRevision: String(historyRevision),
                 timeZone: timeZone, asOf: token.asOf.secondsSince1970, observationCount: count, lastObservedAt: last, incomplete: incomplete,
-                total: view.total, trend: view.trend, period: view.period, anchor: view.anchor,
+                total: view.total, trend: view.trend, landscape: view.landscape, inspectionWeek: view.inspectionWeek, period: view.period, anchor: view.anchor,
                 previousAnchor: view.previousAnchor, nextAnchor: view.nextAnchor, selected: view.selected, buckets: view.buckets)
         }
+    }
+
+    public func readReflectionWeek(day: String, timeZone: String, expectedToken: String,
+                                   now: Instant = try! Instant(secondsSince1970: Date().timeIntervalSince1970)) throws -> ReflectionWeekRead {
+        try transaction(writer: false) {
+            try validateReflectionPayloads()
+            let state = try reflectionState(), token = try ReflectionReadToken.parse(expectedToken)
+            guard token.datasetID == state.id, token.ledgerRevision == state.revision,
+                  token.historyRevision == (try readRevision()), token.timeZone == timeZone,
+                  token.metricVersion == "rule-schedule-excluding-unlocks-v1", token.asOf <= now else { throw HistoryError.conflict }
+            let index = try reflectionIndex(token, stamp: expectedToken)
+            return ReflectionWeekRead(token: expectedToken, week: try index.week(day: day))
+        }
+    }
+
+    private func reflectionFactBounds(asOf: Instant) throws -> (Int64, Double?, Double?) {
+        let rows = try database.rows("SELECT count(*),min(committed_at),max(committed_at) FROM reflection_facts WHERE record IS NOT NULL AND committed_at<=?",
+            [.real(asOf.secondsSince1970)])
+        guard let row = rows.first, case let .integer(count) = row[0], count >= 0 else { throw HistoryError.corrupt }
+        func real(_ value: SQLValue) throws -> Double? {
+            if value == .null { return nil }
+            guard case let .real(number) = value, number.isFinite else { throw HistoryError.corrupt }; return number
+        }
+        return try (count, real(row[1]), real(row[2]))
+    }
+
+    private func reflectionIndex(_ token: ReflectionReadToken, stamp: String, count: Int64? = nil, first: Double? = nil) throws -> ReflectionIntervalIndex {
+        guard case let .integer(dataVersion) = try database.rows("PRAGMA main.data_version").first?.first else { throw HistoryError.corrupt }
+        if let cached = reflectionIndexCache, cached.token == stamp, cached.dataVersion == dataVersion { return cached.value }
+        let state = try reflectionState(), timeZone = token.timeZone
+        let bounds = try count.map { ($0, first) } ?? { let (count, first, _) = try reflectionFactBounds(asOf: token.asOf); return (count, first) }()
+        let range = try bounds.1.flatMap { start in start < token.asOf.secondsSince1970
+            ? try ReflectionPrototypeInterval(from: Instant(secondsSince1970: start), until: token.asOf) : nil }
+        let coverage: ReflectionPrototypeCoverage = bounds.0 > 0 ? .partial : state.deleted ? .deleted : .notRecorded
+        let legacy = try ReflectionPrototypeDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf,
+            timeZone: timeZone, scope: .ruleScheduleLogs, coverage: coverage, recordedRange: range,
+            gaps: range.map { [$0] } ?? []) // Reconstruction failure is missing data, never known zero.
+        let input = try ruleLogRestrictionDataset(sourceID: state.id, revision: state.revision, asOf: token.asOf, timeZone: timeZone) ?? legacy
+        let index = ReflectionIntervalIndex(input)
+        reflectionIndexCache = (stamp, dataVersion, index)
+        return index
     }
 
     /// Reuses immutable log projections, but calculates the open last policy through pinned as-of.

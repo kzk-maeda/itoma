@@ -104,3 +104,57 @@ private func snapshot(_ input: ReflectionPrototypeDataset) throws -> ReflectionP
     let result = try snapshot(dataset(restricted: Array(repeating: range, count: 10_000)))
     #expect(result.total.knownSeconds == 7200); #expect(result.buckets.count == 7); #expect(result.trend.count <= 64)
 }
+
+@Test func longLandscapeUses64CumulativePointsAndAWeekOfExactValues() throws {
+    let from = try rt("2006-09-13T00:00:00Z")
+    let length = Double(7_384 * 86_400), end = try Instant(secondsSince1970: from.secondsSince1970 + length)
+    let range = try ReflectionPrototypeInterval(from: from, until: end)
+    let gap = try ReflectionPrototypeInterval(from: Instant(secondsSince1970: from.secondsSince1970 + 120 * 86_400),
+        until: Instant(secondsSince1970: from.secondsSince1970 + 120 * 86_400 + 60))
+    let unlock = try ReflectionPrototypeInterval(from: Instant(secondsSince1970: end.secondsSince1970 - 600),
+        until: Instant(secondsSince1970: end.secondsSince1970 - 300))
+    let input = try ReflectionPrototypeDataset(sourceID: source, revision: 1, asOf: end, timeZone: "UTC",
+        scope: .ruleScheduleLogs, coverage: .recorded, recordedRange: range, restricted: [range, range], unlocked: [unlock, unlock], gaps: [gap])
+    let index = ReflectionIntervalIndex(input)
+    let latest = try ReflectionPrototypeCalculator.snapshot(index, period: .month, day: "2026-11-09", includeLandscape: true)
+    let landscape = try #require(latest.landscape)
+    let week = try #require(latest.inspectionWeek)
+    #expect(landscape.points.count == 64)
+    #expect(landscape.points.filter { !$0.connected }.count == 1)
+    #expect(landscape.points.last?.at == latest.asOf)
+    #expect(landscape.points.last?.cumulativeSeconds == length - 360)
+    #expect(week.days.count <= 7)
+    #expect(week.days.last?.day == landscape.latestDay)
+    #expect(week.days.last?.knownSeconds == nil) // Pinned exactly at local midnight.
+    #expect(week.before?.coverage == .partial)
+    #expect((week.before?.knownSeconds ?? 0) + week.days.reduce(0) { $0 + ($1.knownSeconds ?? 0) } == latest.total.knownSeconds)
+    #expect(latest.trend.isEmpty)
+    let caughtUp = try ReflectionPrototypeCalculator.snapshot(index, period: .week, day: "2026-11-09", includeLandscape: false)
+    #expect(caughtUp.landscape == nil && caughtUp.inspectionWeek == nil && caughtUp.trend.isEmpty)
+}
+
+@Test func anEntireGapDayStaysUnknownWhileLaterDaysKeepTheKnownPrefix() throws {
+    let range = try ri("2026-11-07T00:00:00Z", "2026-11-11T18:00:00Z")
+    let gap = try ri("2026-11-09T00:00:00Z", "2026-11-10T00:00:00Z")
+    let policyTime = try ri("2026-11-10T09:00:00Z", "2026-11-10T13:00:00Z")
+    let unlock = try ri("2026-11-10T10:00:00Z", "2026-11-10T10:05:00Z")
+    let index = try ReflectionIntervalIndex(.init(sourceID: source, revision: 1, asOf: range.until, timeZone: "UTC",
+        scope: .ruleScheduleLogs, coverage: .recorded, recordedRange: range, restricted: [policyTime], unlocked: [unlock], gaps: [gap]))
+    let week = try index.week(day: "2026-11-09")
+    #expect(week.before?.knownSeconds == 0)
+    #expect(week.days.map(\.knownSeconds) == [nil, 14_100, 0])
+    #expect(week.days.first?.coverage == .partial)
+}
+
+@Test func selectedWeekUsesCivilDaysAtBothDSTBoundaries() throws {
+    for (start, end, day, hours) in [("2026-03-08T05:00:00Z", "2026-03-09T04:00:00Z", "2026-03-08", 23),
+                                    ("2026-11-01T04:00:00Z", "2026-11-02T05:00:00Z", "2026-11-01", 25)] {
+        let range = try ri(start, end)
+        let index = try ReflectionIntervalIndex(.init(sourceID: source, revision: 1, asOf: range.until, timeZone: "America/New_York",
+            scope: .nativeRecordedIntervals, coverage: .recorded, recordedRange: range, restricted: [range]))
+        let week = try index.week(day: day)
+        let bucket = try #require(week.days.first { $0.day == day })
+        #expect(bucket.until - bucket.from == Double(hours * 3600))
+        #expect(bucket.knownSeconds == Double(hours * 3600))
+    }
+}

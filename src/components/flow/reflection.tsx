@@ -16,7 +16,7 @@ export function ReflectionScreen() {
   const onRead = useCallback((value: 'ready' | 'not-created' | 'error') => {
     completeNativeReflectionSmoke(value === 'not-created');
   }, []);
-  return <FlowScreen title="振り返り" eyebrow="自分の時間を、振り返る" tab="reflection">
+  return <FlowScreen title="振り返り" tab="reflection">
     <ReflectionContent source={state.source} embedded initialMemory={state.memory} onMemory={state.remember} onRead={onRead} disabled={state.busy}
       visible={!tabs || (tabs.active && tabs.current === 'reflection')}
       onDay={(day, snapshot) => {

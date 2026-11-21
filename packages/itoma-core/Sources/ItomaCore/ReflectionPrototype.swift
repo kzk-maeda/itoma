@@ -68,6 +68,8 @@ public struct ReflectionPrototypeSnapshot: Encodable, Sendable {
     public let asOf: Double
     public let total: ReflectionPrototypeBucket
     public let trend: [ReflectionPrototypeBucket]
+    public let landscape: ReflectionLandscape?
+    public let inspectionWeek: ReflectionInspectionWeek?
     public let period: ReflectionPrototypePeriod
     public let anchor: String
     public let previousAnchor: String?
@@ -82,6 +84,14 @@ public enum ReflectionPrototypeCalculator {
     public static func snapshot(_ input: ReflectionPrototypeDataset, period: ReflectionPrototypePeriod,
                                 day: String, expectedToken: String? = nil,
                                 clippedTo: ReflectionPrototypeInterval? = nil) throws -> ReflectionPrototypeSnapshot {
+        try snapshot(ReflectionIntervalIndex(input), period: period, day: day, expectedToken: expectedToken,
+                     clippedTo: clippedTo)
+    }
+
+    public static func snapshot(_ index: ReflectionIntervalIndex, period: ReflectionPrototypePeriod,
+                                day: String, expectedToken: String? = nil, clippedTo: ReflectionPrototypeInterval? = nil,
+                                includeLandscape: Bool? = nil) throws -> ReflectionPrototypeSnapshot {
+        let input = index.input
         let token = "prototype-v1:\(input.sourceID.uuidString):\(input.revision):\(input.asOf.secondsSince1970.bitPattern):\(input.timeZone)"
         if let expectedToken, expectedToken != token { throw ReflectionPrototypeError.changed }
         var calendar = Calendar(identifier: .gregorian)
@@ -98,27 +108,8 @@ public enum ReflectionPrototypeCalculator {
             guard let clipped = intersection(requested, clippedTo) else { throw ReflectionPrototypeError.invalidInput }
             selectedRange = clipped
         } else { selectedRange = requested }
-        let effective = input.recordedRange.flatMap { clipAtAsOf($0, input.asOf) }
-        let restricted = effective.map { range in union(input.restricted.compactMap { intersection($0, range) }) } ?? []
-        let excluded = union(input.unlocked + input.gaps)
-        let gaps = union(input.gaps)
-        let known = subtract(restricted, excluded)
-        func bucket(_ range: ReflectionPrototypeInterval, label: String? = nil) -> ReflectionPrototypeBucket {
-            let overlap = effective.flatMap { intersection(range, $0) }
-            let coverage: ReflectionPrototypeCoverage
-            if input.coverage == .deleted { coverage = .deleted }
-            else if input.scope == .pointObservations && input.coverage == .partial { coverage = .partial }
-            else if overlap == nil { coverage = .notRecorded }
-            else if input.scope == .pointObservations || input.coverage == .partial || overlap != range || input.gaps.contains(where: { intersection($0, range) != nil }) { coverage = .partial }
-            else { coverage = .recorded }
-            let hasKnownRange = overlap.map { !subtract([$0], gaps).isEmpty } ?? false
-            let seconds: Double? = input.scope != .pointObservations && hasKnownRange && input.coverage != .deleted
-                ? known.compactMap { intersection($0, range) }.reduce(0) { $0 + $1.until.secondsSince1970 - $1.from.secondsSince1970 } : nil
-            return ReflectionPrototypeBucket(day: label ?? formatDay(range.from.date, calendar),
-                from: range.from.secondsSince1970, until: range.until.secondsSince1970, knownSeconds: seconds, coverage: coverage)
-        }
-        let total = effective.map { bucket($0) } ?? ReflectionPrototypeBucket(day: "", from: input.asOf.secondsSince1970,
-            until: input.asOf.secondsSince1970, knownSeconds: nil, coverage: input.coverage == .recorded ? .notRecorded : input.coverage)
+        let effective = index.range
+        let total = index.total
         var buckets: [ReflectionPrototypeBucket] = []
         var cursor = bounds.start
         while cursor < bounds.end {
@@ -127,23 +118,26 @@ public enum ReflectionPrototypeCalculator {
             if period == .week { end = calendar.date(byAdding: .day, value: 1, to: cursor)! }
             else { end = calendar.dateInterval(of: bucketComponent, for: cursor)!.end }
             let raw = try interval(cursor, min(end, bounds.end))
-            if let clipped = intersection(raw, selectedRange) { buckets.append(bucket(clipped)) }
+            if let clipped = intersection(raw, selectedRange) { buckets.append(index.bucket(clipped)) }
             cursor = end
         }
         var trend: [ReflectionPrototypeBucket] = []
-        if let effective {
+        if includeLandscape == nil, let effective {
             let length = effective.until.secondsSince1970 - effective.from.secondsSince1970
             let count = min(64, max(1, Int(ceil(min(length / 86_400, 64)))))
             for n in 0..<count {
                 let from = effective.from.secondsSince1970 + length * Double(n) / Double(count)
                 let until = n == count - 1 ? effective.until.secondsSince1970 : effective.from.secondsSince1970 + length * Double(n + 1) / Double(count)
-                trend.append(bucket(try .init(from: Instant(secondsSince1970: from), until: Instant(secondsSince1970: until))))
+                trend.append(index.bucket(try .init(from: Instant(secondsSince1970: from), until: Instant(secondsSince1970: until))))
             }
         }
         return ReflectionPrototypeSnapshot(token: token, proofScope: input.scope, timeZone: input.timeZone,
-            asOf: input.asOf.secondsSince1970, total: total, trend: trend, period: period,
+            asOf: input.asOf.secondsSince1970, total: total, trend: trend,
+            landscape: includeLandscape == true ? index.landscape() : nil,
+            inspectionWeek: includeLandscape == true && effective != nil ? try index.week(day: formatDay(input.asOf.date, calendar)) : nil,
+            period: period,
             anchor: formatDay(bounds.start, calendar), previousAnchor: validAnchor(previous, calendar),
-            nextAnchor: validAnchor(next, calendar), selected: bucket(selectedRange), buckets: buckets)
+            nextAnchor: validAnchor(next, calendar), selected: index.bucket(selectedRange), buckets: buckets)
     }
 
     static func parseDay(_ day: String, _ calendar: Calendar) throws -> Date {
