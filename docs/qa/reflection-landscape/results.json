@@ -1,0 +1,213 @@
+{
+  "browser": "155.0.8059.79",
+  "evidence": "Synthetic responses through the normal product providers and Expo Router",
+  "cases": [
+    {
+      "name": "light",
+      "width": 390,
+      "height": 844,
+      "colorScheme": "light",
+      "domTextScale": 1,
+      "loadedMs": 10837,
+      "actionSize": {
+        "x": 24,
+        "y": 635,
+        "width": 48.015625,
+        "height": 44
+      },
+      "reads": [
+        {
+          "action": "read",
+          "day": "",
+          "elapsedMs": 0.3999999761581421,
+          "bytes": 3610
+        },
+        {
+          "action": "read",
+          "day": "",
+          "elapsedMs": 0.19999992847442627,
+          "bytes": 3610
+        },
+        {
+          "action": "readWeek",
+          "day": "2026-11-13",
+          "elapsedMs": 0.2999999523162842,
+          "bytes": 901
+        },
+        {
+          "action": "readWeek",
+          "day": "2026-11-08",
+          "elapsedMs": 0.10000002384185791,
+          "bytes": 897
+        },
+        {
+          "action": "read",
+          "day": "",
+          "elapsedMs": 0.20000004768371582,
+          "bytes": 651
+        },
+        {
+          "action": "readWeek",
+          "day": "2026-11-20",
+          "elapsedMs": 0.10000002384185791,
+          "bytes": 700
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "dark",
+      "width": 390,
+      "height": 844,
+      "colorScheme": "dark",
+      "domTextScale": 1,
+      "loadedMs": 8391,
+      "actionSize": {
+        "x": 24,
+        "y": 635,
+        "width": 48.015625,
+        "height": 44
+      },
+      "reads": [
+        {
+          "action": "read",
+          "day": "",
+          "elapsedMs": 0.6000000238418579,
+          "bytes": 3610
+        },
+        {
+          "action": "read",
+          "day": "",
+          "elapsedMs": 0.2999999523162842,
+          "bytes": 3610
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "large",
+      "width": 320,
+      "height": 750,
+      "colorScheme": "dark",
+      "domTextScale": 1.75,
+      "loadedMs": 8969,
+      "actionSize": {
+        "x": 24,
+        "y": 1065.5,
+        "width": 67.5,
+        "height": 44
+      },
+      "reads": [
+        {
+          "action": "read",
+          "day": "",
+          "elapsedMs": 1.2999999523162842,
+          "bytes": 3610
+        },
+        {
+          "action": "read",
+          "day": "",
+          "elapsedMs": 0.19999992847442627,
+          "bytes": 3610
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "long",
+      "width": 390,
+      "height": 844,
+      "colorScheme": "light",
+      "domTextScale": 1,
+      "loadedMs": 10425,
+      "actionSize": {
+        "x": 24,
+        "y": 635,
+        "width": 48.015625,
+        "height": 44
+      },
+      "reads": [
+        {
+          "action": "read",
+          "day": "",
+          "elapsedMs": 0.7000000476837158,
+          "bytes": 5899
+        },
+        {
+          "action": "read",
+          "day": "",
+          "elapsedMs": 0.20000004768371582,
+          "bytes": 5899
+        },
+        {
+          "action": "readWeek",
+          "day": "2021-11-02",
+          "elapsedMs": 0.10000002384185791,
+          "bytes": 903
+        },
+        {
+          "action": "readWeek",
+          "day": "2021-01-18",
+          "elapsedMs": 0.09999990463256836,
+          "bytes": 903
+        },
+        {
+          "action": "readWeek",
+          "day": "2020-04-06",
+          "elapsedMs": 0.20000004768371582,
+          "bytes": 903
+        },
+        {
+          "action": "readWeek",
+          "day": "2019-06-23",
+          "elapsedMs": 0.10000002384185791,
+          "bytes": 903
+        },
+        {
+          "action": "readWeek",
+          "day": "2018-09-08",
+          "elapsedMs": 0.09999990463256836,
+          "bytes": 903
+        },
+        {
+          "action": "readWeek",
+          "day": "2017-11-24",
+          "elapsedMs": 0.09999990463256836,
+          "bytes": 903
+        },
+        {
+          "action": "readWeek",
+          "day": "2017-02-10",
+          "elapsedMs": 0.20000004768371582,
+          "bytes": 903
+        },
+        {
+          "action": "readWeek",
+          "day": "2016-04-28",
+          "elapsedMs": 0.19999992847442627,
+          "bytes": 903
+        },
+        {
+          "action": "readWeek",
+          "day": "2015-07-15",
+          "elapsedMs": 0,
+          "bytes": 903
+        },
+        {
+          "action": "read",
+          "day": "",
+          "elapsedMs": 0.10000002384185791,
+          "bytes": 654
+        },
+        {
+          "action": "readWeek",
+          "day": "2026-11-20",
+          "elapsedMs": 0.09999990463256836,
+          "bytes": 703
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "passed": true
+}
