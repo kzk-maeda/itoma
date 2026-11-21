@@ -46,7 +46,11 @@ function useSettings() {
     { text: '戻る', style: 'cancel' }, { text: 'すべて停止する', onPress: () => { void state.run('stop'); } },
   ]);
   const resume = () => Alert.alert('保存したルールを再開しますか', '現在の曜日・時間帯の設定を確認して反映します。終了した一時解除は復活しません。', [
-    { text: '戻る', style: 'cancel' }, { text: '確認して再開する', onPress: () => { void state.run('resume'); } },
+    { text: '戻る', style: 'cancel' }, { text: '確認して再開する', onPress: () => {
+      const current = state.currentSnapshot();
+      if (current?.availability === 'device' && current.storage === 'ready' && current.rules.length
+        && current.activation !== 'enabled' && current.authorization === 'approved' && !current.needsSelectionReview) void state.run('resume');
+    } },
   ]);
   return { state, setup, s, device, firstRun, edit, prepareRemoval, withDraftChoice, stop, resume, navigation };
 }
@@ -68,19 +72,26 @@ export function SettingsScreen() {
 
 export function ScheduleListScreen() {
   const { state, setup, s, device, firstRun, edit, stop, resume, navigation } = useSettings();
-  const known = device && !['storage-failed', 'unavailable'].includes(state.error ?? '');
+  const count = s?.rules.length ?? 0;
+  const known = device && !state.error && !state.loading && (s?.storage === 'ready' || (!count && s?.storage === 'not-created'));
+  const needsResumeCheck = s && (s.needsSelectionReview || s.authorization !== 'approved');
+  const scheduled = s?.activation === 'enabled' && !needsResumeCheck;
   return <FlowScreen title="スケジュール" backLabel="‹ 設定" onBack={() => navigation.finish({ screen: 'settings' })}>
-    <Body muted>各行は保存した曜日・時間・対象の設定です。現在の反映状態は「スクリーンタイム」で確認できます。</Body>
-    {s?.rules.map((rule, index) => <LinkRow key={rule.id} label={ruleTitle(rule, index)} detail={`${ruleText(rule)} · ${rule.enabled ? '有効' : '無効'}`}
-      onPress={() => navigation.open({ screen: 'settings-schedule', ruleID: rule.id })} />)}
-    {!s?.rules.length && <Body>{!s && state.loading ? '保存状態を確認しています。' : known ? '保存したルールはありません。' : 'この環境では保存状態を確認できません。iPhoneアプリで確認できます。'}</Body>}
-    <Button label={firstRun ? setup?.draft ? '初回設定を続ける' : '初回設定を始める' : 'ルールを追加する'} disabled={!device || !!state.busy || !!setup?.loading || !!setup?.busy} onPress={() => edit()} />
-    {!!s?.rules.length && <Panel><Heading>全体の操作</Heading>
-      <Body>{s.activation === 'paused' ? '全体の停止を保存しています。' : s.activation === 'awaitingReauthorizationConfirmation' ? '再開前の確認待ちです。' : '全体の停止はすべてのルールに作用します。'}各ルールの設定は残ります。</Body>
-      {s.activation === 'enabled' ? <Button label="すべてのルールの停止を確認" secondary disabled={!device || !!state.busy} onPress={stop} />
-        : <Button label="保存したルールの再開を確認" disabled={!device || !!state.busy || !!s.needsSelectionReview || s.authorization !== 'approved'} onPress={resume} />}
-      {(s.needsSelectionReview || s.authorization !== 'approved') && <LinkRow label="再開に必要な確認をする" onPress={() => navigation.open({ screen: 'settings-screen-time' })} />}
+    {!!s?.rules.length && <Panel>
+      <Body muted>ルール全体の状態</Body>
+      {!known ? <Heading>{state.loading ? '保存状態を確認しています' : '全体の状態を確認できません'}</Heading> : <>
+        <Heading>{s.activation === 'paused' ? 'すべて停止中' : s.activation === 'awaitingReauthorizationConfirmation' ? '再開前の確認待ち' : scheduled ? '時間帯に合わせて実行' : 'スクリーンタイムの確認が必要です'}</Heading>
+        <Body>{scheduled ? '各ルールの曜日・時間帯に従う設定です。現在の反映は「スクリーンタイム」で確認できます。' : `${count}件の設定は保存されています。`}</Body>
+        {s.activation === 'enabled' ? <Button label="すべてのルールの停止を確認" secondary disabled={!!state.busy} onPress={stop} />
+          : <Button label="保存したルールの再開を確認" secondary disabled={!!state.busy || !!needsResumeCheck} onPress={resume} />}
+        {needsResumeCheck && <LinkRow label="再開に必要な確認をする" onPress={() => navigation.open({ screen: 'settings-screen-time' })} />}
+      </>}
     </Panel>}
+    {!!count && <Heading>保存したルール</Heading>}
+    {s?.rules.map((rule, index) => <LinkRow key={rule.id} label={ruleTitle(rule, index)} detail={`${ruleText(rule)} · 設定は${rule.enabled ? '有効' : '無効'}`}
+      onPress={() => navigation.open({ screen: 'settings-schedule', ruleID: rule.id })} />)}
+    {!count && <Body>{state.loading ? '保存状態を確認しています。' : known ? '保存したルールはありません。' : device ? '保存状態を確認できません。' : 'この環境では保存状態を確認できません。iPhoneアプリで確認できます。'}</Body>}
+    <Button label={firstRun ? setup?.draft ? '初回設定を続ける' : '初回設定を始める' : 'ルールを追加する'} disabled={!device || !!state.busy || !!setup?.loading || !!setup?.busy} onPress={() => edit()} />
   </FlowScreen>;
 }
 
@@ -112,7 +123,7 @@ export function ScreenTimeSettingsScreen() {
     <Panel><Heading>許可と反映</Heading>
       <Body>{!device ? 'この環境では制限機能を利用できません' : s?.authorization === 'approved' ? 'スクリーンタイムは許可されています' : 'スクリーンタイムの許可を確認してください'}</Body>
       <Body>{s?.activation === 'paused' ? '全体の停止を保存しています' : s?.activation === 'awaitingReauthorizationConfirmation' ? '再開前の確認待ちです' : '保存した設定と、OSへの反映は別の状態です。'}</Body>
-      <Body>{device && s?.observation === 'applied' && s.evaluatedAt !== undefined ? '取得時点でITOMAの設定を反映した記録があります。' : '制限の反映を確認できていません。'}</Body>
+      <Body>{device && !state.error && s?.observation === 'applied' && s.evaluatedAt !== undefined ? '取得時点でITOMAの設定を反映した記録があります。' : '制限の反映を確認できていません。'}</Body>
       {s?.evaluatedAt !== undefined && <Body muted>反映の記録時刻：{new Date(s.evaluatedAt * 1000).toLocaleString('ja-JP')}。</Body>}
       <Body muted>この記録は取得時点のものです。端末全体の制限や、その後も制限が続いていることを保証するものではありません。</Body>
       <Body muted>確認操作は、保存した設定の読み直しに加えて、自動切替の予定準備・反映の再試行・記録の取込を行います。</Body>

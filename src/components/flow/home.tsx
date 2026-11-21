@@ -41,7 +41,7 @@ export function ProductHome() {
     if (passed.length && boundary.current !== key) { boundary.current = key; void refresh(); }
   }, [now, s, refresh]);
   const device = s?.availability === 'device';
-  const observed = hasFreshRestrictionState(s, now) && !state.error;
+  const observed = hasFreshRestrictionState(s, now) && !state.error && clockConfirmed;
   const firstRun = !!setup && !setup.progress?.completed;
   const create = () => { if (firstRun) { navigation.start({ screen: 'onboarding' }, { screen: 'index' }); return; } if (!state.ruleDraft?.dirty) state.beginRule(); navigation.start({ screen: s?.authorization === 'approved' ? 'rule' : 'onboarding' }, { screen: 'index' }); };
   const unlock = async (ruleID: string) => {
@@ -77,8 +77,10 @@ export function ProductHome() {
     {device && !!s.rules.length && s.authorization !== 'approved' && <Button label="許可を確認する" onPress={() => navigation.start({ screen: 'onboarding' }, { screen: 'index' })} />}
     {s?.activation === 'paused' && <Notice title="ルールの停止を保存しています">ルールは保存されています。再開にはご自身の操作が必要です。設定タブから現在の状態を確認できます。</Notice>}
     {s?.activation === 'awaitingReauthorizationConfirmation' && <Notice title="再開前に対象を確認してください">ルールの対象アプリを選び直してから、設定画面で明示的に再開できます。</Notice>}
-    {device && !!s.rules.length && s.activation === 'enabled' && (!s.schedulesReady || !observed) && <Notice title="制限の状態を確認してください">
-      {s.schedulesReady ? '反映を確認できていません。以下の時間帯は保存した設定です。設定タブから現在の状態を確認できます。' : '自動切替の予定を確認できていません。設定タブから現在の状態を確認できます。'}
+    {device && !!s.rules.length && !state.loading && s.activation === 'enabled' && s.authorization === 'approved'
+      && !s.needsSelectionReview && !observed && <Notice title="制限の状態を確認してください"
+        action={<Button label="スクリーンタイムで確認する" secondary onPress={() => navigation.open({ screen: 'settings-screen-time' })} />}>
+      {s.schedulesReady ? '制限の反映を確認できていません。画面の時間帯は保存した設定です。' : '自動切替の予定を確認できていません。'}
     </Notice>}
     {!!state.unlockDraft.reason && <Body muted>一時解除の入力を残しています。ルールを選ぶと続きを入力できます。</Body>}
     {!!s?.rules.length && <CurrentRules snapshot={s} now={now} clockConfirmed={clockConfirmed} ready={!state.loading && !state.busy && !state.error && !state.legacyActive && state.ruleDetailsState !== 'checking' && !setup?.loading && !setup?.draft && (!setup?.progress || setup.progress.completed)} onUnlock={ruleID => { void unlock(ruleID); }} />}

@@ -696,7 +696,10 @@ test('reauthorization keeps existing rules awaiting explicit review/resume and d
   await press('許可を確認する'); await press('スクリーンタイムを許可する');
   expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy(); await openSettings();
   expect(screen.getByRole('header', { name: 'スケジュール' })).toBeTruthy();
+  expect(screen.getByRole('header', { name: '再開前の確認待ち' })).toBeTruthy();
   expect(screen.getByRole('button', { name: '保存したルールの再開を確認' })).toBeDisabled();
+  await press('再開に必要な確認をする');
+  expect(screen.getByRole('header', { name: 'スクリーンタイム' })).toBeTruthy();
   expect(b.client.run.mock.calls.some(([name]) => name === 'resume' || name === 'previewRule' || name === 'commitRule')).toBe(false);
 });
 
@@ -716,6 +719,84 @@ test('home keeps its primary flow and settings expose explicit reconciliation in
   expect(screen.queryByText('取得時点でITOMAの設定を反映した記録があります。')).toBeNull();
 });
 
+
+test.each(['success', 'failure'] as const)('home opens Screen Time without reconciling and reflects the %s on return', async result => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  b.replace({ observation: 'unknown' });
+  b.client.run.mockImplementation(async (action, request) => {
+    if (action === 'reconcile') {
+      if (result === 'failure') return { status: 'error', code: 'application-uncertain', impacts: [] };
+      b.replace({ sequence: '1', observation: 'applied', evaluatedAt: now / 1000 });
+    }
+    return original(action, request);
+  });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  expect(screen.getByText('制限の反映を確認できていません。画面の時間帯は保存した設定です。')).toBeTruthy();
+  await press('スクリーンタイムで確認する');
+  expect(screen.getByRole('header', { name: 'スクリーンタイム' })).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([action]) => action === 'reconcile')).toBe(false);
+  await press('保存した設定を再確認・反映する');
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'reconcile')).toHaveLength(1);
+  expect(screen.getByText(result === 'success' ? '取得時点でITOMAの設定を反映した記録があります。' : '制限の反映を確認できていません。')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('tab', { name: 'ホーム' }));
+  expect(screen.getByRole('header', { name: 'いとま' })).toBeTruthy();
+  const entry = screen.queryByRole('button', { name: 'スクリーンタイムで確認する' });
+  if (result === 'success') { expect(entry).toBeNull(); expect(screen.getByRole('button', { name: '一時解除する' })).toBeTruthy(); }
+  else { expect(entry).toBeTruthy(); expect(screen.queryByRole('button', { name: '一時解除する' })).toBeNull(); }
+});
+
+test.each(['schedule', 'permission', 'off-hours', 'paused', 'reauthorization', 'unsupported'] as const)('home recovery uses the saved %s state', async scenario => {
+  const b = backend();
+  const cases: Record<typeof scenario, Partial<ScreenTimeSnapshot>> = {
+    schedule: { schedulesReady: false }, permission: { authorization: 'denied', observation: 'unknown' },
+    'off-hours': { periods: [], targets: [], nextPeriod: { ruleID, startsAt: now / 1000 + 3600, endsAt: now / 1000 + 7200 } },
+    paused: { activation: 'paused', observation: 'unknown' }, reauthorization: { activation: 'awaitingReauthorizationConfirmation', needsSelectionReview: true },
+    unsupported: { availability: 'simulator', observation: 'unknown' },
+  };
+  b.replace(cases[scenario]); await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>);
+  if (scenario === 'schedule') {
+    expect(screen.getByText('自動切替の予定を確認できていません。')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'スクリーンタイムで確認する' })).toBeTruthy();
+  } else expect(screen.queryByRole('button', { name: 'スクリーンタイムで確認する' })).toBeNull();
+  if (scenario === 'permission') expect(screen.getByRole('button', { name: '許可を確認する' })).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([action]) => action === 'reconcile')).toBe(false);
+});
+
+test('global schedule stop and resume ask once and retain the mixed rule settings', async () => {
+  const b = backend(), alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  const rules = [{ ...b.current().rules[0], title: '夜の読書' }, { ...b.current().rules[0], id: addedRuleID, title: '朝の支度', enabled: false }];
+  b.replace({ rules });
+  await render(<ScreenTimeProvider client={b.client}><Pages /></ScreenTimeProvider>); await openSettings();
+  expect(screen.getByRole('header', { name: '時間帯に合わせて実行' })).toBeTruthy();
+  await press('すべてのルールの停止を確認');
+  expect(b.client.run.mock.calls.some(([action]) => action === 'stop')).toBe(false);
+  await act(async () => alert.mock.calls.at(-1)?.[2]?.[1].onPress?.());
+  expect(screen.getAllByRole('header', { name: 'すべて停止中' })).toHaveLength(1);
+  expect(screen.getByText('2件の設定は保存されています。')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '夜の読書' }).props.accessibilityHint).toContain('設定は有効');
+  expect(screen.getByRole('button', { name: '朝の支度' }).props.accessibilityHint).toContain('設定は無効');
+  await press('保存したルールの再開を確認');
+  expect(alert.mock.calls.at(-1)?.[1]).toContain('終了した一時解除は復活しません');
+  await act(async () => alert.mock.calls.at(-1)?.[2]?.[0].onPress?.());
+  expect(screen.getByRole('header', { name: 'すべて停止中' })).toBeTruthy();
+  expect(b.client.run.mock.calls.some(([action]) => action === 'resume')).toBe(false);
+  await press('保存したルールの再開を確認'); await act(async () => alert.mock.calls.at(-1)?.[2]?.[1].onPress?.());
+  expect(screen.getByRole('header', { name: '時間帯に合わせて実行' })).toBeTruthy();
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'resume')).toHaveLength(1);
+  expect(b.current().rules).toEqual(rules);
+});
+
+test('cached rules with a failed status read show no inferred activation or stop/resume actions', async () => {
+  const b = backend(), original = b.client.run.getMockImplementation()!;
+  let failed = false, refresh!: ReturnType<typeof useScreenTime>['refresh'];
+  function Capture() { const state = useScreenTime(); useEffect(() => { refresh = state.refresh; }, [state.refresh]); return null; }
+  b.client.run.mockImplementation((action, request) => action === 'snapshot' && failed ? Promise.resolve({ status: 'error', code: 'storage-failed', impacts: [] }) : original(action, request));
+  await render(<ScreenTimeProvider client={b.client}><Capture /><Pages /></ScreenTimeProvider>);
+  await openSettings(); failed = true; await act(async () => { await refresh(); });
+  expect(screen.getByRole('header', { name: '全体の状態を確認できません' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'すべてのルールの停止を確認' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '保存したルールの再開を確認' })).toBeNull();
+});
 
 test('eight saved schedules keep settings top compact and expose one detail before edit actions', async () => {
   const b = backend();

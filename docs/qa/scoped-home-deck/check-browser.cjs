@@ -59,7 +59,7 @@ async function scenario(p, name) { await p.evaluate(async name => { globalThis._
         assert(await p.getByLabel('いま使う理由', { exact: true }).inputValue() === '合成の入力：連絡を確認する', 'reason lost');
         await button(p, 'ホームでルールを選び直す').click(); await heading(p, '夜の時間').waitFor({ timeout: 90000 }); await button(p, '次のルール').click(); await heading(p, 'おやすみ前').waitFor(); await button(p, '一時解除する').click(); await candidates(p, ['X', 'TikTok']);
         assert(await p.getByLabel('解除時間（1〜30分）', { exact: true }).inputValue() === '7', 'minutes lost'); await p.getByRole('radio', { name: 'X', exact: true }).click();
-        await button(p, '解除内容を確認する').click(); await heading(p, 'この内容で一時解除しますか').waitFor(); await snap(p, 'confirmation');
+        await button(p, '解除内容を確認する').click(); await heading(p, '一時解除の確認').waitFor(); await snap(p, 'confirmation');
         await button(p, '理由を保存して一時解除する').click(); await heading(p, '一時解除の状況').waitFor();
         assert(!await p.evaluate(() => !!__itomaQA.alert), 'root guard double prompt after accepted grant');
         await button(p, 'ホームへ戻る').click(); await heading(p, 'おやすみ前').waitFor(); await button(p, '一時解除する').click(); await candidates(p, ['TikTok']);
@@ -78,7 +78,7 @@ async function scenario(p, name) { await p.evaluate(async name => { globalThis._
       const p = await ctx.newPage(); await p.goto('http://localhost:8086', { waitUntil: 'domcontentloaded', timeout: 120000 }); await heading(p, '夜の時間').waitFor({ timeout: 90000 }); await scenario(p, 'long'); await enlarge(p); await snap(p, `large-long-${width}-home`);
       const overflow = await p.evaluate(() => document.documentElement.scrollWidth > innerWidth); assert(!overflow, 'long text overflow'); await button(p, '一時解除する').click(); await candidates(p, ['Instagram']); await enlarge(p);
       await p.getByRole('radio', { name: 'Instagram' }).click(); await p.getByLabel('いま使う理由').fill('合成の長い日本語の理由です。'.repeat(12)); await enlarge(p);
-      await snap(p, `large-long-${width}-input`); await button(p, '解除内容を確認する').click(); await heading(p, 'この内容で一時解除しますか').waitFor();
+      await snap(p, `large-long-${width}-input`); await button(p, '解除内容を確認する').click(); await heading(p, '一時解除の確認').waitFor();
       results.cases.push({ name: `large-long-${width}`, width, artificialTextScale: 2, horizontalOverflow: overflow, confirmationReachable: true }); await ctx.close();
     }
     results.passed = true;
