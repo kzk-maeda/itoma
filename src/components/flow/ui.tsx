@@ -84,7 +84,7 @@ function FlowRecordList<T>({ list, header, footer }: { list: FlowList<T>; header
     scrollEventThrottle={16} onScroll={event => { if (restored.current) onScrollOffset?.(event.nativeEvent.contentOffset.y); }}
     ListHeaderComponent={<View style={styles.listHeader}>{header}</View>} ListFooterComponent={<View style={styles.listFooter}>{footer}</View>} />;
 }
-export function FlowScreen<T>({ title, children, onBack, backLabel = '‹ 戻る', showClose = true, footer, tab, eyebrow, list }: { title: string; children: ReactNode; onBack?: () => void; backLabel?: string; showClose?: boolean; footer?: ReactNode; tab?: ProductTab; eyebrow?: string; list?: FlowList<T> }) {
+export function FlowScreen<T>({ title, children, onBack, backLabel = '‹ 戻る', showClose = true, showControlStatus = true, footer, tab, eyebrow, list }: { title: string; children: ReactNode; onBack?: () => void; backLabel?: string; showClose?: boolean; showControlStatus?: boolean; footer?: ReactNode; tab?: ProductTab; eyebrow?: string; list?: FlowList<T> }) {
   const theme = useFlowTheme(), state = useScreenTime(), hosted = useProductTabs(), work = useWorkScope();
   const close = showClose ? work?.close : undefined;
   const header = <>
@@ -92,8 +92,8 @@ export function FlowScreen<T>({ title, children, onBack, backLabel = '‹ 戻る
           {eyebrow && <Text style={[styles.caption, { color: theme.muted }]}>{eyebrow}</Text>}
           {tab === 'home' ? <Wordmark theme={theme} label={title} heading /> : <Text accessibilityRole="header" style={[styles.title, tab && styles.productTitle, { color: theme.text }]}>{title}</Text>}
         </View>
-        {state.error && <View accessibilityLiveRegion="polite"><Notice title="状態を確認してください">{errorText[state.error]}</Notice></View>}
-        {state.busy && <Body muted>操作の結果を確認しています。画面を離れても、受け付けた処理は続きます。</Body>}
+        {showControlStatus && state.error && <View accessibilityLiveRegion="polite"><Notice title="状態を確認してください">{errorText[state.error]}</Notice></View>}
+        {showControlStatus && state.busy && <Body muted>操作の結果を確認しています。画面を離れても、受け付けた処理は続きます。</Body>}
         {children}
   </>;
   return <SafeAreaView edges={hosted ? [] : undefined} style={[styles.screen, { backgroundColor: tab ? theme.surface : theme.background }]}>
