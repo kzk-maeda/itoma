@@ -7,6 +7,7 @@ import { ids, scopedSnapshot } from './scoped-rules';
 
 const start = Date.parse('2026-11-19T22:57:00Z'), expiry = start / 1000 + 180;
 let clock = start, revision = 0, snapshot: ScreenTimeSnapshot, allowReconcile = true;
+let omitPreviewSnapshot = false;
 let lastAlert: AlertButton[] | undefined;
 const actions: ScreenTimeAction[] = [];
 function scenario(name: 'review' | 'unconfirmed' | 'schedules', long = false) {
@@ -25,6 +26,7 @@ if (typeof window !== 'undefined') {
   Alert.alert = (_title, _message, buttons) => { lastAlert = buttons; };
 }
 const qa = { actions, scenario, setClock: (secondsAfterStart: number) => { clock = start + secondsAfterStart * 1000; },
+  omitNextPreviewSnapshot: () => { omitPreviewSnapshot = true; },
   reconcilesSuccessfully: (value: boolean) => { allowReconcile = value; },
   choose: (index: number) => { const action = lastAlert?.[index]; lastAlert = undefined; action?.onPress?.(); },
   refresh: undefined as ReturnType<typeof useScreenTime>['refresh'] | undefined,
@@ -32,7 +34,11 @@ const qa = { actions, scenario, setClock: (secondsAfterStart: number) => { clock
 export const qaSetup = { run: async () => ({ status: 'ok' as const, impacts: [], onboarding: { revision: '1', seenIntro: true, completed: true, selectionReady: false, canEdit: true } }) };
 export const qaClient = { async run(action: ScreenTimeAction, request: ScreenTimeRequest = {}): Promise<ScreenTimeResponse> {
   if (typeof window !== 'undefined') actions.push(action);
-  if (action === 'previewUnlock') return { status: 'confirmation-required', impacts: [], snapshot, ref: ids.preview, minutes: request.minutes, previewEndsAt: expiry, shortened: true };
+  if (action === 'previewUnlock') {
+    const previewSnapshot = omitPreviewSnapshot ? undefined : snapshot;
+    omitPreviewSnapshot = false;
+    return { status: 'confirmation-required', impacts: [], snapshot: previewSnapshot, ref: ids.preview, minutes: request.minutes, previewEndsAt: expiry, shortened: true };
+  }
   if (action === 'reconcile' && !allowReconcile) return { status: 'error', code: 'application-uncertain', impacts: [] };
   if (action === 'reconcile') snapshot = { ...snapshot, sequence: String(++revision), observation: 'applied' };
   if (action === 'stop' || action === 'resume') snapshot = { ...snapshot, sequence: String(++revision), activation: action === 'stop' ? 'paused' : 'enabled' };

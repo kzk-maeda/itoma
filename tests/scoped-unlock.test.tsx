@@ -161,6 +161,32 @@ test('two confirmation presses before the result accept the same preview only on
   await act(async () => resolve());
   expect(mockPath).toBe('/grant');
 });
+
+test('a preview without its snapshot keeps the draft and requires a fresh preview before submission', async () => {
+  const b = await mount(), original = b.client.run.getMockImplementation()!;
+  let omitSnapshot = true;
+  b.client.run.mockImplementation(async (action, request) => {
+    const result = await original(action, request);
+    return action === 'previewUnlock' && omitSnapshot ? { ...result, snapshot: undefined } : result;
+  });
+  await startReading(); await fill(); await press('解除内容を確認する');
+  expect(mockPath).toBe('/unlock');
+  expect(screen.getByRole('header', { name: '解除内容を確認できませんでした' })).toBeTruthy();
+  expect(screen.getByLabelText('いま使う理由')).toHaveDisplayValue('合成の入力\n連絡を確認');
+  expect(screen.getByLabelText('解除時間（1〜30分）')).toHaveDisplayValue('7');
+  expect(state.unlockReview).toBeUndefined(); expect(state.unlockPreviewRef).toBeUndefined();
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'cancelUnlock')).toHaveLength(1);
+  expect(b.client.run.mock.calls.some(([action]) => action === 'unlock')).toBe(false);
+
+  omitSnapshot = false;
+  await press('解除内容を確認する');
+  expect(mockPath).toBe('/unlock-confirm');
+  expect(screen.getByText('合成の入力\n連絡を確認')).toBeTruthy();
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'previewUnlock')).toHaveLength(2);
+  await press('理由を保存して一時解除する');
+  expect(mockPath).toBe('/grant');
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'unlock')).toHaveLength(1);
+});
 test('period/selection changes during confirmation block acceptance, and a failed request keeps the root dirty guard', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {}), b = await mount(), original = b.client.run.getMockImplementation()!;
   b.client.run.mockImplementation((action, request) => action === 'unlock' ? Promise.resolve({ status: 'error', code: 'changed', impacts: [], snapshot: b.current() }) : original(action, request));
