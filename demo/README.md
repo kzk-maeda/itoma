@@ -12,3 +12,5 @@
 - 日本のiOS 26.2以降のiPhoneでデジタル商品・サービスの別決済や外部購入リンクをアプリ内に出す場合は、対象契約・エンタイトルメント、IAPの同時提示、告知・報告などが必要です。アプリ外で独立して行う案内とは条件が異なります。
 
 [Apple審査ガイドライン](https://developer.apple.com/app-store/review/guidelines/) · [日本の決済オプション](https://developer.apple.com/jp/support/payment-options-on-the-app-store-in-japan/)
+
+[公開デモ](https://itoma-demo.kzk-maeda.com/demos/demo-support-itoma-b824ec2baa92/) · [設定](evidence/settings.png) · [支援額の選択](evidence/support.png) · [模擬購入前の確認](evidence/confirm.png)
