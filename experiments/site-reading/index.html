@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f8f6f1">
+  <meta name="description" content="つい開いてしまうアプリから少し離れて、自分で選んだ時間を過ごす。iPhone向けアプリ「いとま」の使い方。">
+  <title>スマホを置いて、自分の時間へ。｜いとま</title>
+  <link rel="icon" href="./mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./reading.css">
+</head>
+<body id="top">
+  <a class="skip" href="#main">本文へ移動</a>
+  <header class="mast frame">
+    <a class="wordmark" href="#top" aria-label="いとま トップ">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 5A15 15 0 1 1 5 20"/></svg>
+      <span>いとま</span>
+    </a>
+    <nav aria-label="メインナビゲーション">
+      <a href="#how">使い方</a>
+      <a href="#contact">お問い合わせ</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="intro-title">
+      <div class="hero-photo">
+        <img src="./reading-1440.webp" srcset="./reading-800.webp 800w, ./reading-1440.webp 1440w"
+             sizes="(max-width: 740px) 100vw, 58vw" width="1440" height="960" fetchpriority="high"
+             alt="朝の光が差すテーブルに、開いた文庫本とコーヒー。">
+      </div>
+      <div class="intro">
+        <p class="platform">iPhone 向けアプリ</p>
+        <h1 id="intro-title"><span>スマホを置いて、</span><span>自分の時間へ。</span></h1>
+        <p class="lead">つい開いてしまうアプリに、休み時間を。<br>曜日と時間帯を決めて、必要なときは<br class="wide-break">理由を書いてから開けます。</p>
+        <div class="hero-action">
+          <a class="cta" href="#how">使い方を見る <span aria-hidden="true">↓</span></a>
+          <span class="release">配信準備中</span>
+        </div>
+      </div>
+      <div class="caption">
+        <span class="caption-title"><span class="example">時間帯の例</span> 朝の読書</span>
+        <span class="period"><time>07:30</time><span class="time-line" aria-hidden="true"></span><span class="sr">から</span><time>08:00</time></span>
+      </div>
+    </section>
+
+    <section class="how" id="how" aria-labelledby="how-title">
+      <div class="frame">
+        <div class="how-head">
+          <h2 id="how-title">いとまの使い方</h2>
+          <span class="how-note">朝の読書を例に</span>
+        </div>
+        <div class="walk">
+          <fieldset class="choices">
+            <legend class="sr">画面例を選ぶ</legend>
+            <label class="choice">
+              <input id="choose-plan" type="radio" name="scene" checked aria-controls="plan">
+              <span class="row-content"><span class="step-num">01</span><span class="row-text"><strong>離れる時間を決める</strong><span>曜日、時間帯、対象のアプリを選びます。</span></span><span class="switch-icon" aria-hidden="true">→</span></span>
+            </label>
+            <label class="choice">
+              <input id="choose-pause" type="radio" name="scene" aria-controls="pause">
+              <span class="row-content"><span class="step-num">02</span><span class="row-text"><strong>開く前に、ひと呼吸</strong><span>使いたいときは、理由を書いて一時解除できます。</span></span><span class="switch-icon" aria-hidden="true">→</span></span>
+            </label>
+            <label class="choice">
+              <input id="choose-reflect" type="radio" name="scene" aria-controls="reflect">
+              <span class="row-content"><span class="step-num">03</span><span class="row-text"><strong>あとから振り返る</strong><span>一時解除した理由や、そのときの操作を見返せます。</span></span><span class="switch-icon" aria-hidden="true">→</span></span>
+            </label>
+          </fieldset>
+          <div class="viewer" aria-label="架空の設定を使った画面例">
+            <div class="screen" id="plan">
+              <div class="screen-bar"><span>ホーム</span><span>画面例</span></div>
+              <p class="screen-rule">朝の読書</p>
+              <div class="clock"><div><span class="clock-small">終了まで</span><b>18<span> 分</span></b><span class="clock-small">08:00 に終了</span></div></div>
+              <p class="goal">この時間にしたいこと<span>コーヒーを飲みながら、本を読む。</span></p>
+            </div>
+            <div class="screen" id="pause">
+              <div class="screen-bar"><span>一時解除</span><span>画面例</span></div>
+              <p class="screen-rule">いま使う理由</p>
+              <div class="sample-field"><span>メッセージを開く理由</span><p>待ち合わせの時間を<br>友人に伝えるため。</p></div>
+              <dl class="screen-details"><div><dt>一時解除する時間</dt><dd>5分</dd></div></dl>
+            </div>
+            <div class="screen" id="reflect">
+              <div class="screen-bar"><span>操作履歴</span><span>画面例</span></div>
+              <p class="screen-rule">朝の読書</p>
+              <ol class="timeline">
+                <li><time>07:45</time><div>メッセージを一時解除<p>待ち合わせの時間を友人に伝えるため。</p></div></li>
+                <li><time>07:50</time><div>一時解除の期限終了</div></li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="contact" class="foot frame">
+    <div class="signature">
+      <a class="wordmark" href="#top" aria-label="いとま ページの先頭へ"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 5A15 15 0 1 1 5 20"/></svg><span>いとま</span></a>
+      <small>© Kazuki Maeda</small>
+    </div>
+    <nav aria-label="フッター">
+      <a href="https://itoma.app/privacy/">プライバシーポリシー</a>
+      <div class="contact"><span>お問い合わせ</span><a lang="en" href="mailto:support@itoma.app">support@itoma.app</a></div>
+    </nav>
+  </footer>
+</body>
+</html>

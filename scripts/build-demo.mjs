@@ -22,6 +22,9 @@ mkdirSync(new URL('../dist/demo/', import.meta.url), { recursive: true });
 const mounted = new URL(`../dist/demo${target.basePath}/`, import.meta.url);
 mkdirSync(mounted, { recursive: true });
 cpSync(new URL('../dist/demo-export/', import.meta.url), mounted, { recursive: true });
+if (branch === 'demo/site-reading') {
+  cpSync(new URL('../experiments/site-reading/', import.meta.url), mounted, { recursive: true });
+}
 const manifest = JSON.stringify({
   kind: 'web-demo',
   ...target,
