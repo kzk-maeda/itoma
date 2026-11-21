@@ -49,7 +49,6 @@ export function Support() {
         <p className="fine">{recurring ? '毎月自動で更新する想定のデモです。設定から次回の更新を停止できます。' : '1回限りの支援です。自動更新はありません。'}</p>
         <button className="primary" disabled={!choice} onClick={() => router.push('./confirm')}>支援内容を確認する</button></>}
       {monthly && !recurring && <button className="plain" onClick={() => router.push('./manage')}>毎月の支援を管理する</button>}
-      <button className="plain" onClick={() => router.dismissTo('/')}>設定に戻る</button>
     </div></div></section>;
 }
 export function Confirm() {
@@ -77,5 +76,5 @@ export function Manage() {
   return <section className="page slim"><SettingsBack /><Title text="毎月の支援" />
     <div className="card"><h2>{monthly ? '毎月 ' + yen(monthly) : stopped ? '次回の更新を停止しました' : '毎月の支援はありません'}</h2><p>{monthly ? '毎月の模擬支援を設定しています。' : 'いつも通りいとまを使えます。'}</p></div>
     {monthly && <button className="secondary" onClick={() => { stop(); setStopped(true); }}>次回の更新を停止する</button>}
-    <button className="plain" onClick={() => router.dismissTo('/')}>設定に戻る</button></section>;
+    </section>;
 }
