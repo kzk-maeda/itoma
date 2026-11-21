@@ -2,21 +2,19 @@
 
 **2026-11-20時点は一般公開前の本人限定配信です。** `https://itoma.app/` 全体をCloudflare Accessで保護し、既存デモと独立した本人メール1件だけを許可します。一般公開への切替は別の明示依頼・レビューで行います。[リソース実績](../docs/cloudflare-resources.md) / [ADR0013](../docs/adr/0013-service-site-private-prelaunch.md)。
 
-Expoアプリとdemoから独立した静的サイト。配信対象は `src/` とビルド生成ヘッダーだけです。`content/` とこのREADMEは配信しません。API・フォーム・JavaScript・独自解析はありません。
+Expoアプリとdemoから独立した静的サイト。ビルドは `src/` と共通ブランド定義から静的ファイルと配信ヘッダーを作ります。`content/` とこのREADMEは配信しません。API・フォーム・JavaScript・独自解析はありません。
 
 - `src/index.html`: 大枠の使い方、footerのポリシーリンク・メール窓口
 - `src/privacy/index.html`: 正式ポリシー確定までの案内（正式な全文ではない）
 - `src/404.html`: 不明なURLの404
-- `src/assets/`: CSS、固定OPEN CIRCLE
+- `src/assets/`: ページ用CSS、写真
 - `content/privacy-decisions.md`: 採用事項・未決事項。#182を正本として追跡
-- `scripts/build.mjs`: 出力を清掃し `dist/` へコピー。内部文案の差込欄混入を拒否
+- `scripts/build.mjs`: 出力を清掃し、ロゴを展開して `dist/` を生成。内部文案の差込欄混入を拒否
 - `wrangler.jsonc`: 専用Worker `itoma-site` / Custom Domain `itoma.app`
 
-## ブランドマークの向き
+## ブランド
 
-2026-11-20の本人指定（#251 / #252）に合わせ、サイトのOPEN CIRCLEも左上の開きに統一する（#253）。トップ・privacy・404のheader/footer、LPの画面イメージ内ロゴ、faviconの計8か所。ロゴは半径15、faviconは従来の余白を保つ半径13で、どちらも12時→右→下→左の270度の弧。残量リングの描画・レイアウト・色・本文は変更しない。
-
-サイトは本体のPNG/React部品を直接参照しないため、ブランド変更時は`src/`内の全ページと`assets/site-mark.svg`を照合する。図形の向きの比較・範囲監査・ブラウザ確認は[QA記録](qa/logo-direction.md)を参照。
+トップ・プライバシー・404のヘッダー／フッターでB案の文字組みを共用する。ビルド時にリポジトリの `assets/brand/identity.json` と `assets/brand/render.mjs` からロゴHTML・CSS・faviconを生成する。この2ファイルはサイトCIの変更検知対象。左上の開きと小サイズ用faviconの余白は[ブランド方針](../docs/brand/README.md)を参照。
 
 ## ローカル
 

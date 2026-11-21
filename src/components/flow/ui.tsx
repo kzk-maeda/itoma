@@ -7,7 +7,7 @@ import { useScreenTime } from '@/state/screen-time';
 import { useProductTabs } from '@/state/product-tabs';
 import { useWorkScope } from '@/state/work-scope';
 import type { ScreenTimeCode } from '../../../modules/itoma-native';
-import { OpenCircle } from '../home/open-circle';
+import { Wordmark } from '../home/wordmark';
 import { ProductNavigation, type ProductTab } from './product-navigation';
 
 export function useFlowTheme() { return GraphiteColors[useColorScheme() === 'dark' ? 'dark' : 'light']; }
@@ -89,7 +89,7 @@ export function FlowScreen<T>({ title, children, onBack, backLabel = '‹ 戻る
   const header = <>
         <View style={{ gap: 6 }}>
           {eyebrow && <Text style={[styles.caption, { color: theme.muted }]}>{eyebrow}</Text>}
-          <View style={tab === 'home' ? styles.brand : undefined}>{tab === 'home' && <OpenCircle color={theme.accent} size={28} />}<Text accessibilityRole="header" style={[styles.title, tab && styles.productTitle, tab === 'home' && styles.homeTitle, { color: theme.text }]}>{title}</Text></View>
+          {tab === 'home' ? <Wordmark theme={theme} label={title} heading /> : <Text accessibilityRole="header" style={[styles.title, tab && styles.productTitle, { color: theme.text }]}>{title}</Text>}
         </View>
         {state.error && <View accessibilityLiveRegion="polite"><Notice title="状態を確認してください">{errorText[state.error]}</Notice></View>}
         {state.busy && <Body muted>操作の結果を確認しています。画面を離れても、受け付けた処理は続きます。</Body>}
@@ -114,8 +114,8 @@ const styles = StyleSheet.create({
   backChevron: { fontSize: 30, lineHeight: 36, fontWeight: '400' },
   screen: { flex: 1 }, content: { flexGrow: 1, width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center', paddingHorizontal: HomeLayout.gutter, paddingTop: 20, paddingBottom: 40, gap: HomeLayout.sectionGap },
   listContent: { gap: 0 }, listHeader: { gap: HomeLayout.sectionGap, marginBottom: HomeLayout.sectionGap }, listFooter: { gap: HomeLayout.sectionGap },
-  productContent: { gap: 20, paddingBottom: 28 }, productTitle: { fontSize: 24, lineHeight: 36 }, homeTitle: { fontSize: 22, letterSpacing: 3 }, caption: { fontSize: 13, lineHeight: 20 },
-  top: { minHeight: 44, alignItems: 'flex-start' }, brand: { flexDirection: 'row', gap: 12, alignItems: 'center' }, brandName: { fontSize: 22, fontWeight: '500', letterSpacing: 2 },
+  productContent: { gap: 20, paddingBottom: 28 }, productTitle: { fontSize: 24, lineHeight: 36 }, caption: { fontSize: 13, lineHeight: 20 },
+  top: { minHeight: 44, alignItems: 'flex-start' },
   title: { fontSize: 28, lineHeight: 40, fontWeight: '500' }, heading: { fontSize: 20, lineHeight: 30, fontWeight: '500' }, body: { fontSize: 16, lineHeight: 26 },
   panel: { padding: 20, borderWidth: 1, borderRadius: 20, gap: 12 }, notice: { gap: 8, paddingLeft: 16, borderLeftWidth: 3 },
   button: { minHeight: 50, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, justifyContent: 'center' }, buttonText: { fontSize: 16, lineHeight: 26, fontWeight: '600', textAlign: 'center' },

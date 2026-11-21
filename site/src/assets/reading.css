@@ -21,10 +21,9 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 .skip, .sr, .choice input { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .skip:focus { z-index: 3; inset: .5rem auto auto .5rem; width: auto; height: auto; clip-path: none; padding: .7rem 1rem; background: var(--paper); }
 .frame { padding-inline: var(--gutter); }
-.mast, .foot, .mast nav, .foot nav, .wordmark, .hero-action, .caption, .period, .how-head, .screen-bar { display: flex; align-items: center; }
+.mast, .foot, .mast nav, .foot nav, .brand-link, .hero-action, .caption, .period, .how-head, .screen-bar { display: flex; align-items: center; }
 .mast { justify-content: space-between; min-block-size: 5.1rem; border-bottom: 1px solid var(--line); }
-.wordmark { width: fit-content; gap: .34em; text-decoration: none; min-height: 44px; font-size: 1.42rem; font-weight: 600; letter-spacing: .11em; }
-.wordmark svg { width: 1.38em; height: 1.38em; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
+.brand-link { width: fit-content; text-decoration: none; min-height: 44px; }
 .mast nav, .foot nav { gap: clamp(1.5rem, 3.3vw, 3.75rem); }
 .mast nav a, .foot nav a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
 .mast nav a { font-size: .84rem; letter-spacing: .06em; }
@@ -114,7 +113,6 @@ input:focus-visible + .row-content { outline: 2px solid var(--chalk); outline-of
   .mast { min-height: 3.8rem; flex-wrap: wrap; gap: .3rem; }
   .mast nav { gap: 1.15rem; }
   .mast nav a { font-size: .78rem; }
-  .wordmark { font-size: 1.22rem; }
   .hero { display: flex; flex-direction: column; }
   .intro { order: 0; align-self: stretch; padding: 2.45rem var(--gutter) 2rem; }
   .platform { font-size: .74rem; }

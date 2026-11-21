@@ -2,10 +2,12 @@ name: Service site
 
 on:
   pull_request:
-    paths: ['site/**', '.github/workflows/deploy-site.yml']
+    paths: ['site/**', 'assets/brand/identity.json', 'assets/brand/render.mjs', '.github/workflows/deploy-site.yml']
   push:
     branches: [main]
     paths:
+      - 'assets/brand/identity.json'
+      - 'assets/brand/render.mjs'
       - 'site/src/**'
       - 'site/scripts/**'
       - 'site/package.json'
@@ -71,7 +73,7 @@ jobs:
           if (!treeResponse.ok) throw new Error(`Cannot verify site tree: ${treeResponse.status}`);
           const tree = await treeResponse.json();
           if (tree.truncated) throw new Error('Cannot safely compare truncated tree');
-          const relevant = path => /^site\/(src\/|scripts\/|package(?:-lock)?\.json$|wrangler\.jsonc$)/.test(path) || path === '.github/workflows/deploy-site.yml';
+          const relevant = path => ['assets/brand/identity.json', 'assets/brand/render.mjs'].includes(path) || /^site\/(src\/|scripts\/|package(?:-lock)?\.json$|wrangler\.jsonc$)/.test(path) || path === '.github/workflows/deploy-site.yml';
           const latest = tree.tree.filter(item => item.type === 'blob' && relevant(item.path)).map(item => `${item.path} ${item.sha}`).sort();
           const localTree = execFileSync('git', ['ls-tree', '-r', '--full-tree', GITHUB_SHA], { encoding: 'utf8' });
           const local = localTree.trim().split('\n').map(line => {

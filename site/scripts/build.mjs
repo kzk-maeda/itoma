@@ -1,3 +1,4 @@
+import { faviconSVG, wordmarkCSS, wordmarkHTML } from '../../assets/brand/render.mjs';
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -6,6 +7,12 @@ const output = `${root}dist`;
 rmSync(output, { recursive: true, force: true });
 mkdirSync(output, { recursive: true });
 cpSync(`${root}src`, output, { recursive: true });
+writeFileSync(`${output}/assets/wordmark.css`, wordmarkCSS);
+writeFileSync(`${output}/assets/site-mark.svg`, faviconSVG());
+for (const page of ['index.html', 'privacy/index.html', '404.html']) {
+  const file = `${output}/${page}`;
+  writeFileSync(file, readFileSync(file, 'utf8').replaceAll('<!-- itoma-wordmark -->', wordmarkHTML));
+}
 function validate(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const path = `${directory}/${entry.name}`;

@@ -33,32 +33,27 @@
 
 - 開き・線幅・線端をベクターで整え、小サイズでも開きが潰れず識別できるか確認する。
 - Light/DarkとiOSホーム画面で確認する。元画像の角丸タイルをそのまま最終アイコンとして切り出さない。
-- 文字ロゴの書体・利用条件・間隔を確定する。元ボードは生成した比較画像で、正式なフォント指定ではない。
+- 文字ロゴはB案を使用する。端末標準書体・22pt・ウェイト500・字間2pt。28ptのOPEN CIRCLEと文字の間を12pt空ける。Webでは22px相当を基準に文字拡大に追従する。
 
-ホーム内のマークは`src/components/home/open-circle.tsx`で固定の開いた円として描画する。本体アイコンは下記の同じパスへ揃える。スプラッシュ・faviconは今回の置換に含めない。砂時計デモは比較資料として残し、製品の標準にはしない。サークルの既存デモは[配色比較の05](https://itoma-demo.kzk-maeda.com/demos/demo-color-variations-4d21695efd01/design-colors.html?palette=graphite)で確認できる。
+名称・文字組み・マーク形状の正本は [identity.json](../../assets/brand/identity.json)。アプリは Wordmark と OpenCircle、サイトとデモ一覧は [Web用レンダラー](../../assets/brand/render.mjs) で読み出す。faviconは小サイズ用の形を同じ定義からサイトビルド時に生成する。
+
+ホーム内のマークは`src/components/home/open-circle.tsx`で固定の開いた円として描画する。本体アイコンは下記の同じパスへ揃える。スプラッシュは個別の起動画面素材。砂時計デモは比較資料として残し、製品の標準にはしない。サークルの既存デモは[配色比較の05](https://itoma-demo.kzk-maeda.com/demos/demo-color-variations-4d21695efd01/design-colors.html?palette=graphite)で確認できる。
 
 ## 端末ビルド用アセット
 
 [子Issue #240](https://github.com/kzk-maeda/itoma/issues/240) / [親Issue #184](https://github.com/kzk-maeda/itoma/issues/184)。設定・アセットの実装と、実機やストア掲載用画像の検証を分ける。
 
-| 外観 | ベクター原本 | ビルド用PNG | 背景 / 円弧 |
+| 外観 | 生成ベクター | ビルド用PNG | 背景 / 円弧 |
 | --- | --- | --- | --- |
 | Light・共通fallback | [app-icon-light.svg](../../assets/brand/app-icon-light.svg) | [icon.png](../../assets/images/icon.png) | `#F4F3F0` / `#30312F` |
 | Dark | [app-icon-dark.svg](../../assets/brand/app-icon-dark.svg) | [icon-dark.png](../../assets/images/icon-dark.png) | `#1B1C1A` / `#F0F0E9` |
 
 PNGは1024×1024、sRGB、不透明の正方形。角丸はOSに任せ、影や文字は焼き込まない。画面内と同じ40×40座標のパスを20倍し、上下左右112pxの座標余白を取る。円弧の外径は660px、線幅60px。開きと線端は固定する。配色を変更する場合は`GraphiteColors`とSVG/PNGの整合も確認する。
 
-SVGからPNGへの生成例（現在のExpoツリーに含まれる`sharp`を使用、アプリ実行時の依存追加は不要）:
+マークの形や色を変更したら、リポジトリ直下で次を実行し、生成したSVGとPNGを一緒にコミットする。
 
 ```bash
-node --input-type=module <<'JS'
-import sharp from 'sharp';
-for (const [appearance, output] of [['light', 'icon'], ['dark', 'icon-dark']]) {
-  await sharp(`assets/brand/app-icon-${appearance}.svg`)
-    .toColourspace('srgb').removeAlpha().png()
-    .toFile(`assets/images/${output}.png`);
-}
-JS
+node scripts/generate-brand-icons.mjs
 ```
 
 `app.json`の共通`icon`と`ios.icon.light/dark`がこれらを参照する。iOS専用設定は共通設定より優先するため、共通PNGだけの変更では以前の`assets/expo.icon`が残っていた。Expo SDK 58の`IOSIcons`型と`withIosIcons`の生成処理に合わせ、PNG appearance指定を使う。古いIcon Composer素材は参照しないが、この作業で他用途の未使用アセットを一括削除しない。

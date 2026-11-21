@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GraphiteColors, HomeLayout } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-import { OpenCircle } from './open-circle';
+import { Wordmark } from './wordmark';
 import { presentPeriod } from './period-presentation';
 import { PeriodRing } from './period-ring';
 
@@ -34,8 +34,7 @@ export function HomeView({ period, now, recoveryEntry, onUnlock, onCreateRule }:
     <ScrollView contentContainerStyle={styles.content}>
       {recoveryEntry}
       <View style={styles.brand}>
-        <OpenCircle color={theme.accent} />
-        <Text style={[styles.brandName, { color: theme.text }]}>いとま</Text>
+        <Wordmark theme={theme} />
         <Text style={[styles.wordmark, { color: theme.muted }]}>ITOMA</Text>
       </View>
 
@@ -104,7 +103,6 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, width: '100%', maxWidth: HomeLayout.maxWidth, alignSelf: 'center',
     paddingHorizontal: HomeLayout.gutter, paddingTop: 24, paddingBottom: 40, gap: HomeLayout.sectionGap },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 },
-  brandName: { fontSize: 22, lineHeight: 32, fontWeight: '500', letterSpacing: 2 },
   wordmark: { fontSize: 11, lineHeight: 18, letterSpacing: 3 },
   notice: { gap: 8, borderBottomWidth: 1, paddingBottom: 20 },
   noticeTitle: { fontSize: 14, lineHeight: 22, fontWeight: '600' },

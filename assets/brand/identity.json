@@ -1,0 +1,14 @@
+{
+  "name": "いとま",
+  "wordmark": { "size": 22, "weight": 500, "tracking": 2, "gap": 12, "markSize": 28 },
+  "mark": {
+    "viewBox": "0 0 40 40",
+    "path": "M 20 5 A 15 15 0 1 1 5 20",
+    "faviconPath": "M20 7A13 13 0 1 1 7 20",
+    "strokeWidth": 3
+  },
+  "icon": {
+    "light": { "background": "#F4F3F0", "ink": "#30312F" },
+    "dark": { "background": "#1B1C1A", "ink": "#F0F0E9" }
+  }
+}

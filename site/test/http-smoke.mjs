@@ -6,7 +6,7 @@ for (let i = 0; i < 45; i++) {
   await new Promise(resolve => setTimeout(resolve, 1000));
 }
 assert.ok(ready, 'Wrangler preview did not start');
-for (const path of ['/', '/privacy/', '/assets/site.css', '/assets/site-mark.svg', '/assets/reading.css', '/assets/reading-800.webp', '/assets/reading-1440.webp']) {
+for (const path of ['/', '/privacy/', '/assets/site.css', '/assets/wordmark.css', '/assets/site-mark.svg', '/assets/reading.css', '/assets/reading-800.webp', '/assets/reading-1440.webp']) {
   const response = await fetch(base + path);
   assert.equal(response.status, 200, path);
   assert.equal(response.headers.get('cache-control'), 'no-cache', path);
