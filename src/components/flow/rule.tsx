@@ -60,8 +60,8 @@ export function RuleEditorScreen() {
   useFocusEffect(useCallback(() => { setRuleExitAllowed(false); if (!draft) beginRule(); }, [draft, beginRule, setRuleExitAllowed]));
   useDraftGuard(!!draft?.dirty && !state.ruleExitAllowed, state.canExitRule, () => state.setRuleExitAllowed(true), discardRule,
     draft?.creationCommitted ? '名前と行動目標の未保存入力を破棄します。保存済みの時間のルールは残ります。' : undefined);
-  if (!draft) return <FlowScreen title="ルールを確認しています"><Body>保存した設定を確認しています。</Body></FlowScreen>;
-  if (draft.creationCommitted) return <FlowScreen title="名前と行動目標の保存" onBack={previous}>
+  if (!draft) return <FlowScreen title="ルールを確認しています" onBack={previous} showClose={false}><Body>保存した設定を確認しています。</Body></FlowScreen>;
+  if (draft.creationCommitted) return <FlowScreen title="名前と行動目標の保存" onBack={previous} showClose={false}>
     <Notice title="時間のルールは保存済みです">名前と行動目標の入力は残っています。ルールを再作成せず、保存内容を確認できます。</Notice>
     {!draft.createdRuleID && <>
       <Body>{draft.title}</Body><RuleGoal goal={draft.goal} />
@@ -99,7 +99,7 @@ export function RuleEditorScreen() {
     }
   };
   const count = state.snapshot?.selections.find((s) => s.ref === draft.selectionRef)?.count ?? 0;
-  return <FlowScreen title={draft.id ? '時間のルールを編集' : '時間のルールをつくる'} onBack={previous}>
+  return <FlowScreen title={draft.id ? '時間のルールを編集' : '時間のルールをつくる'} onBack={previous} showClose={false}>
     {!draft.id && <View style={flowStyles.section}><Heading>この時間に大切にしたいこと</Heading>
       <Body>このルールで、どんな時間を過ごしたいですか？ 名前と行動目標は任意です。</Body>
       <RuleIdentityFields title={draft.title ?? ''} goal={draft.goal ?? ''} disabled={!!state.busy} onChange={update} />
@@ -195,7 +195,7 @@ export function RuleConfirmationScreen() {
     }
     if (work) work.back(); else back();
   })(); };
-  return <FlowScreen title={draft?.remove ? 'このルールを削除しますか' : 'このルールで保存しますか'} onBack={goBack}>
+  return <FlowScreen title={draft?.remove ? 'このルールを削除しますか' : 'このルールで保存しますか'} onBack={goBack} showClose={!!draft?.remove}>
     {draft && !draft.id && <Panel><Heading>名前と行動目標</Heading><Body>{draft.title?.trim() || 'ルール名は未入力です'}</Body>
       {draft.goal?.trim() ? <RuleGoal goal={draft.goal} /> : <Body muted>行動目標は未入力です。</Body>}
     </Panel>}

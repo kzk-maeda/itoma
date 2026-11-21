@@ -84,8 +84,9 @@ function FlowRecordList<T>({ list, header, footer }: { list: FlowList<T>; header
     scrollEventThrottle={16} onScroll={event => { if (restored.current) onScrollOffset?.(event.nativeEvent.contentOffset.y); }}
     ListHeaderComponent={<View style={styles.listHeader}>{header}</View>} ListFooterComponent={<View style={styles.listFooter}>{footer}</View>} />;
 }
-export function FlowScreen<T>({ title, children, onBack, backLabel = '‹ 戻る', footer, tab, eyebrow, list }: { title: string; children: ReactNode; onBack?: () => void; backLabel?: string; footer?: ReactNode; tab?: ProductTab; eyebrow?: string; list?: FlowList<T> }) {
+export function FlowScreen<T>({ title, children, onBack, backLabel = '‹ 戻る', showClose = true, footer, tab, eyebrow, list }: { title: string; children: ReactNode; onBack?: () => void; backLabel?: string; showClose?: boolean; footer?: ReactNode; tab?: ProductTab; eyebrow?: string; list?: FlowList<T> }) {
   const theme = useFlowTheme(), state = useScreenTime(), hosted = useProductTabs(), work = useWorkScope();
+  const close = showClose ? work?.close : undefined;
   const header = <>
         <View style={{ gap: 6 }}>
           {eyebrow && <Text style={[styles.caption, { color: theme.muted }]}>{eyebrow}</Text>}
@@ -96,9 +97,9 @@ export function FlowScreen<T>({ title, children, onBack, backLabel = '‹ 戻る
         {children}
   </>;
   return <SafeAreaView edges={hosted ? [] : undefined} style={[styles.screen, { backgroundColor: tab ? theme.surface : theme.background }]}>
-    {(onBack || work) && <View style={styles.navigation}>
+    {(onBack || close) && <View style={styles.navigation}>
       {onBack ? <BackButton label={backLabel} onPress={onBack} /> : <View />}
-      {work && <Button label="閉じる" secondary onPress={work.close} />}
+      {close && <Button label="閉じる" secondary onPress={close} />}
     </View>}
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {list ? <FlowRecordList key={list.viewKey} list={list} header={header} footer={footer} />
