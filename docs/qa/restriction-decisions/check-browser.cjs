@@ -66,7 +66,7 @@ async function checkLayout(page, large, labels) {
       assert.equal(await actions(page, 'cancelUnlock'), 1);
       assert.equal(await actions(page, 'unlock'), 0);
       if (!large) {
-        await previewFailure.scrollIntoViewIfNeeded();
+        await button(page, '解除内容を確認する').scrollIntoViewIfNeeded();
         await shot(page, 'light-preview-retry');
       }
       await button(page, '解除内容を確認する').click();
