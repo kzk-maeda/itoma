@@ -8,6 +8,12 @@ import { createReflectionClient } from '../modules/itoma-native/src/reflection';
 jest.mock('../src/global.css', () => ({}));
 const label = () => screen.getByTestId('reflection-total').props.accessibilityLabel;
 const press = (name: string) => fireEvent.press(screen.getByRole('button', { name }));
+const step = (actionName: 'decrement' | 'increment') => act(() => {
+  const { accessibilityActions, onAccessibilityAction } = screen.getByRole('adjustable', { name: '累計図の日付' }).props;
+  expect(accessibilityActions).toContainEqual({ name: actionName });
+  // Native delivers this action independently of the chart's touch responder.
+  onAccessibilityAction({ nativeEvent: { actionName } });
+});
 const amount = (value?: number) => {
   const { number, unit, prefix, tail } = cumulativeAmount(value);
   return prefix + number + unit + tail;
@@ -53,15 +59,19 @@ test('long history uses the local week, skips intermediate requests and keeps th
   await render(<ReflectionContent source={source} />);
   await screen.findByText('全期間');
   expect(label()).toBe('約1年分と73日');
+  expect(screen.queryByRole('header', { name: /\d{4}年\d+月\d+日の記録/ })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^(前日|翌日|集計について)$/ })).toBeNull();
+  expect(screen.getByRole('header', { name: '期間ごとに見る' })).toBeTruthy();
   expect(source.readWeek).not.toHaveBeenCalled();
-  for (let i = 0; i < 4; i++) await press('前日');
+  for (let i = 0; i < 4; i++) await step('decrement');
+  expect(screen.getByRole('adjustable', { name: '累計図の日付' })).toHaveAccessibilityValue({ text: '2026年11月16日' });
   expect(source.readWeek).not.toHaveBeenCalled();
-  for (let i = 0; i < 15; i++) await press('前日');
+  for (let i = 0; i < 15; i++) await step('decrement');
   expect(source.readWeek).toHaveBeenCalledTimes(1);
-  expect(screen.getAllByText('確認中')).toHaveLength(2);
+  expect(screen.getByText('確認中')).toBeTruthy();
   await act(async () => pending[0].resolve({ token: f.token, week: f.week(pending[0].day) }));
   expect(source.readWeek).toHaveBeenCalledTimes(2);
-  expect(screen.getAllByText('確認中')).toHaveLength(2);
+  expect(screen.getByText('確認中')).toBeTruthy();
   await act(async () => pending[1].resolve({ token: f.token, week: f.week(pending[1].day) }));
   expect(screen.queryByText('確認中')).toBeNull();
   const selected = label();
@@ -77,12 +87,12 @@ test('a dismissed week cannot restore values after a reset and a changed token r
   const { f, pending, source } = makeSource();
   await render(<ReflectionContent source={source} />);
   await screen.findByText('全期間');
-  for (let i = 0; i < 5; i++) await press('前日');
+  for (let i = 0; i < 5; i++) await step('decrement');
   await press('最新に戻す');
   await act(async () => pending[0].resolve({ token: f.token, week: f.week(pending[0].day) }));
   expect(label()).toBe('約1年分と73日');
   expect(screen.getByText('全期間')).toBeTruthy();
-  for (let i = 0; i < 5; i++) await press('前日');
+  for (let i = 0; i < 5; i++) await step('decrement');
   const next = landscapeFixture(30, 30 * 3600, 'reflection-v1:new-data');
   source.read.mockImplementation(async () => JSON.stringify(next.snapshot()));
   await act(async () => pending[1].reject(new ReflectionReadError('changed')));
@@ -90,17 +100,17 @@ test('a dismissed week cannot restore values after a reset and a changed token r
   expect(screen.getByText('全期間')).toBeTruthy();
 });
 
-test('a full-day gap shows no number for the day or historical total and later dates carry partial coverage', async () => {
+test('a full-day gap leaves the historical total unknown and later dates carry partial coverage', async () => {
   const f = landscapeFixture(), snapshot = f.snapshot();
   const rows = snapshot.inspectionWeek!.days;
   rows[0] = { ...rows[0], knownSeconds: undefined, coverage: 'partial' };
   const source = { read: async () => JSON.stringify(snapshot), readWeek: jest.fn() };
   await render(<ReflectionContent source={source} />);
   await screen.findByText('全期間');
-  for (let i = 0; i < 4; i++) await press('前日');
+  for (let i = 0; i < 4; i++) await step('decrement');
   expect(label()).toBe('—');
   expect(screen.getByText(/この日は未記録です/)).toBeTruthy();
-  await press('翌日');
+  await step('increment');
   expect(screen.getByText('一部未記録のため、確認できた分の累計です。')).toBeTruthy();
   expect(source.readWeek).not.toHaveBeenCalled();
 });
