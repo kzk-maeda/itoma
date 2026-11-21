@@ -5,6 +5,7 @@ import { ScreenTimeProvider, useScreenTime } from '../src/state/screen-time';
 import { WorkFlowBoundary } from '../src/state/work-flow';
 import { ProductHome } from '../src/components/flow/home';
 import { UnlockScreen, UnlockConfirmationScreen } from '../src/components/flow/unlock';
+import { endTime } from '../src/components/flow/presentation';
 import { GrantScreen } from '../src/components/flow/grant';
 import { SettingsScreen } from '../src/components/flow/settings';
 import { BrowseTestShell } from './fixtures/browse-shell';
@@ -113,6 +114,52 @@ test('continue restrictions asks once, retains input on keep/failure, then leave
   fail = false; await press('制限を続ける'); await act(async () => alert.mock.calls.at(-1)?.[2]?.[1].onPress?.());
   expect(mockPath).toBe('/'); expect(alert).toHaveBeenCalledTimes(3); expect(state.unlockDraft.reason).toBe(''); expect(mockDismiss).toHaveBeenCalledTimes(1);
   expect(b.client.run.mock.calls.some(([a]) => a === 'unlock')).toBe(false);
+});
+test.each(['rule-end', 'rule-switch', 'requested'] as const)('confirmation shows the fixed native %s deadline and counts down to expiration', async cap => {
+  const at2257 = Date.parse('2026-11-19T22:57:00Z'), ruleEnd = at2257 / 1000 + 180;
+  const expiry = cap === 'requested' ? at2257 / 1000 + 600 : ruleEnd;
+  const b = scopedBackend(), original = b.client.run.getMockImplementation()!;
+  const night = { ...b.current().rules[0], title: '夜の読書', endMinute: cap === 'rule-end' ? 1380 : 1410 };
+  const [instagram, x, youtube] = b.current().targets;
+  b.replace({ rules: [night], periods: [{ ruleID: night.id, startsAt: at2257 / 1000 - 1800, endsAt: cap === 'rule-end' ? ruleEnd : ruleEnd + 1800 }],
+    validUntil: expiry + 60, nextPeriod: undefined, targets: [instagram, { ...x, ruleID: night.id }, { ...youtube, ruleID: night.id, restricted: false, grantCommandID: ids.command }] });
+  b.client.run.mockImplementation(async (action, request) => {
+    const result = await original(action, request);
+    return action === 'previewUnlock' ? { ...result, previewEndsAt: expiry, shortened: cap !== 'requested' } : result;
+  });
+  jest.setSystemTime(at2257);
+  await mount(b); await press('一時解除する'); await fill();
+  await fireEvent.changeText(screen.getByLabelText('解除時間（1〜30分）'), '10');
+  await press('解除内容を確認する');
+  expect(screen.getByText('X')).toBeTruthy(); expect(screen.getByText('Instagram')).toBeTruthy(); expect(screen.queryByText('YouTube')).toBeNull();
+  const fixedDeadline = `${endTime(expiry, at2257)}まで`;
+  expect(screen.getByText(fixedDeadline)).toBeTruthy();
+  expect(screen.getByText(`いま確定すると最大${cap === 'requested' ? 10 : 3}分`)).toBeTruthy();
+  if (cap === 'rule-end') expect(screen.getByText(/希望は10分ですが、「夜の読書」は.*に終了します。/)).toBeTruthy();
+  else if (cap === 'rule-switch') expect(screen.getByText(/希望は10分です。時間帯の終了または優先ルールの切替/)).toBeTruthy();
+  else expect(screen.queryByText(/希望は10分/)).toBeNull();
+
+  await act(async () => { jest.setSystemTime((expiry - 59) * 1000); await jest.advanceTimersByTimeAsync(1000); });
+  expect(screen.getByText(fixedDeadline)).toBeTruthy(); expect(screen.getByText('いま確定すると1分未満')).toBeTruthy();
+  // The command also checks actual wall time before the next display tick.
+  jest.setSystemTime(expiry * 1000);
+  await press('理由を保存して一時解除する');
+  expect(b.client.run.mock.calls.some(([action]) => action === 'unlock')).toBe(false);
+  await act(async () => { await jest.advanceTimersByTimeAsync(1000); });
+  expect(screen.getByText(/確認した期限を過ぎました/)).toBeTruthy();
+  expect(screen.queryByText(fixedDeadline)).toBeNull();
+  expect(screen.getByRole('button', { name: '理由を保存して一時解除する' })).toBeDisabled();
+  await press('入力に戻る'); expect(screen.getByLabelText('いま使う理由')).toHaveDisplayValue('合成の入力\n連絡を確認');
+});
+test('two confirmation presses before the result accept the same preview only once', async () => {
+  const b = await mount(), original = b.client.run.getMockImplementation()!; let resolve!: () => void;
+  b.client.run.mockImplementation(async (action, request) => { if (action === 'unlock') await new Promise<void>(done => { resolve = done; }); return original(action, request); });
+  await startReading(); await fill(); await press('解除内容を確認する');
+  const submit = screen.getByTestId('unlock-submit');
+  await act(async () => { await Promise.all([fireEvent.press(submit), fireEvent.press(submit)]); });
+  expect(b.client.run.mock.calls.filter(([action]) => action === 'unlock')).toHaveLength(1);
+  await act(async () => resolve());
+  expect(mockPath).toBe('/grant');
 });
 test('period/selection changes during confirmation block acceptance, and a failed request keeps the root dirty guard', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {}), b = await mount(), original = b.client.run.getMockImplementation()!;

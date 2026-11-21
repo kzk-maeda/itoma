@@ -52,9 +52,9 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
       style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.muted, color: theme.text }, props.multiline && styles.multiline, props.style]} />
   </View>;
 }
-export function Notice({ title, children }: { title: string; children: ReactNode }) {
+export function Notice({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   const theme = useFlowTheme(); return <View style={[styles.notice, { borderColor: theme.muted }]}>
-    <Text accessibilityRole="header" style={[styles.label, { color: theme.text }]}>{title}</Text><Body>{children}</Body>
+    <Text accessibilityRole="header" style={[styles.label, { color: theme.text }]}>{title}</Text><Body>{children}</Body>{action}
   </View>;
 }
 export const errorText: Record<ScreenTimeCode, string> = {

@@ -8,10 +8,10 @@ import { Applications } from './applications';
 import { back, useDraftGuard } from './navigation';
 import { endTime, ruleText } from './presentation';
 import { ruleTitle } from './rule-identity';
-import { Body, Button, Field, FlowScreen, Heading, LinkRow, Notice, Panel, flowStyles } from './ui';
-import { Alert, View } from 'react-native';
+import { Body, Button, Field, FlowScreen, Heading, LinkRow, Notice, Panel, flowStyles, useFlowTheme } from './ui';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useVisibleClock } from '@/hooks/use-visible-clock';
-import { currentRulePeriods, hasFreshRestrictionState, targetScope, unlockCandidates } from '../home/rule-status';
+import { currentRulePeriods, currentRuleTargets, hasFreshRestrictionState, targetPeriod, targetScope, unlockCandidates } from '../home/rule-status';
 
 /** An async response may update native state, but a hidden/old flow cannot redirect. */
 function useUnlockLifetime() {
@@ -150,46 +150,62 @@ export function UnlockConfirmationScreen() {
   const continueRestrictions = useContinueRestrictions();
   const finish = useFinishUnlock('grant');
   const [failed, setFailed] = useState(false);
+  const submitting = useRef(false), theme = useFlowTheme();
   const now = useVisibleClock();
-  const [openedAt] = useState(now);
-  const confirmed = review?.snapshot ?? state.snapshot;
+  const confirmed = review?.snapshot;
   const target = confirmed?.targets.find((t) => t.ref === draft.targetRef);
-  const rule = confirmed?.rules.find((r) => r.id === target?.ruleID);
+  const ruleIndex = confirmed?.rules.findIndex(r => r.id === target?.ruleID) ?? -1;
+  const rule = confirmed?.rules[ruleIndex], ruleName = rule && ruleTitle(rule, ruleIndex);
+  const expiry = review?.previewEndsAt ?? 0, remaining = expiry - now / 1000;
+  const period = targetPeriod(confirmed, target, now);
   const current = (!state.legacyActive ? unlockCandidates(state.snapshot, now, draft.ruleID) : []).find(candidate => candidate.ref === draft.targetRef);
-  const stillValid = !!current && draft.targetScope === targetScope(confirmed, target, now)
+  const stillValid = !!review?.ref && !!rule && !!period && !!current && draft.targetScope === targetScope(confirmed, target, now)
     && state.snapshot?.revision === confirmed?.revision && targetScope(confirmed, target, now) === targetScope(state.snapshot, current, now)
-    && (review?.previewEndsAt ?? 0) * 1000 > now;
+    && remaining > 0;
+  const otherRestrictions = stillValid && !state.error
+    ? currentRuleTargets(state.snapshot, now).filter(app => app.ref !== target?.ref && app.restricted && !app.grantCommandID) : [];
+  const cappedByRuleEnd = expiry === period?.endsAt && confirmed?.nextPeriod?.startsAt !== expiry;
   const submit = async () => {
     const snapshot = state.currentSnapshot(), at = Date.now();
     const candidate = unlockCandidates(snapshot, at, draft.ruleID).find(t => t.ref === draft.targetRef);
-    if (!review?.ref || !stillValid || !candidate || snapshot?.revision !== confirmed?.revision
-      || draft.targetScope !== targetScope(snapshot, candidate, at) || (review.previewEndsAt ?? 0) * 1000 <= at) return;
+    if (submitting.current || state.busy || !review?.ref || !stillValid || !candidate || snapshot?.revision !== confirmed?.revision
+      || state.currentUnlockDraft() !== draft || draft.targetScope !== targetScope(snapshot, candidate, at) || expiry * 1000 <= at) return;
     const session = state.unlockSession();
-    const result = await state.run('unlock', { ref: review.ref, reason: draft.reason });
-    if (!state.ownsUnlockSession(session)) return;
-    const accepted = !!result.ref && result.snapshot?.targets.some((t) => t.grantCommandID === result.ref);
-    if (result.status === 'ok' || accepted) {
-      state.resetUnlock(); state.setUnlockExitAllowed(true);
-      if (alive()) finish();
-    } else if (alive()) { state.setUnlockExitAllowed(false); setFailed(true); }
+    submitting.current = true;
+    try {
+      const result = await state.run('unlock', { ref: review.ref, reason: draft.reason });
+      if (!state.ownsUnlockSession(session)) return;
+      const accepted = !!result.ref && result.snapshot?.targets.some((t) => t.grantCommandID === result.ref);
+      if (result.status === 'ok' || accepted) {
+        state.resetUnlock(); state.setUnlockExitAllowed(true);
+        if (alive()) finish();
+      } else if (alive()) { state.setUnlockExitAllowed(false); setFailed(true); }
+    } finally { submitting.current = false; }
   };
-  return <FlowScreen title="この内容で一時解除しますか" onBack={previous}>
-    {target && <Panel><Heading>このアプリだけを解除</Heading><Applications selectionRef={target.selectionRef} targetRef={target.ref} refreshKey={state.refreshKey} />
-      <Body>ほかの対象アプリの設定は変更しません。</Body></Panel>}
-    {rule ? <Panel><Heading>この解除に適用するルール</Heading><Body>{ruleTitle(rule, confirmed?.rules.findIndex(r => r.id === rule.id) ?? 0)}</Body><Body>{ruleText(rule)}</Body></Panel>
-      : <Notice title="適用するルールを確認し直してください">入力へ戻って、最新の解除内容を確認できます。</Notice>}
-    <Panel><Heading>あなたの理由</Heading><Body>{draft.reason}</Body></Panel>
-    <Panel><Heading>解除の時間</Heading><Body>最大 {review?.minutes ?? draft.minutes}分</Body>
-      {review?.previewEndsAt && <Body>{endTime(review.previewEndsAt, openedAt)}までが上限です。確定が遅れると、解除できる時間は短くなります。</Body>}
-      {review?.shortened && <Notice title="時間が短くなります">時間帯の終了または優先ルールの切替に合わせて、解除の上限が早まっています。</Notice>}
-    </Panel>
+  return <FlowScreen title="一時解除の確認" onBack={previous}>
+    {stillValid && target && <Panel>
+      <Heading>このアプリだけを一時解除</Heading>
+      <Applications selectionRef={target.selectionRef} targetRef={target.ref} refreshKey={state.refreshKey} />
+      <Body muted>解除の上限</Body>
+      <Text style={[styles.deadline, { color: theme.text }]}>{endTime(expiry, now)}まで</Text>
+      <Body>{remaining < 60 ? 'いま確定すると1分未満' : `いま確定すると最大${Math.floor(remaining / 60)}分`}</Body>
+      {review?.shortened && <Body muted>{cappedByRuleEnd ? `希望は${draft.minutes}分ですが、「${ruleName}」は${endTime(expiry, now)}に終了します。`
+        : `希望は${draft.minutes}分です。時間帯の終了または優先ルールの切替に合わせて、解除の上限が早まっています。`}</Body>}
+    </Panel>}
+    {!state.busy && !state.unlockExitAllowed && !stillValid && <Notice title="解除内容を確認し直してください">{expiry > 0 && remaining <= 0 ? '確認した期限を過ぎました。' : '対象アプリ、適用ルール、または期限を確認できません。'}入力に戻って、最新の内容を確認できます。</Notice>}
+    {stillValid && rule && <View style={flowStyles.section}><Heading>この解除に適用するルール</Heading><Body>{ruleName}</Body><Body muted>{ruleText(rule)}</Body></View>}
+    {otherRestrictions.length > 0 && <View style={flowStyles.section}><Heading>引き続き制限するアプリ</Heading>
+      {otherRestrictions.map(app => <Applications key={app.ref} selectionRef={app.selectionRef} targetRef={app.ref} refreshKey={state.refreshKey} />)}
+    </View>}
+    <View style={flowStyles.section}><Heading>あなたの理由</Heading><Body>{draft.reason}</Body></View>
     <Body muted>再制限の予定を登録できた場合だけ解除を進めます。反映の結果は次の画面で確認できます。</Body>
     <Button label="制限を続ける" disabled={!!state.busy} onPress={continueRestrictions} />
-    {!state.busy && !state.unlockExitAllowed && !stillValid && <Notice title="解除内容を確認し直してください">適用ルールや期限が変わっています。入力に戻って、今の対象と解除時間を確認できます。</Notice>}
-    {!failed && <Button label="理由を保存して一時解除する" testID="unlock-submit" secondary disabled={!review?.ref || !rule || !stillValid || !!state.busy} onPress={() => { void submit(); }} />}
+    {!failed && <Button label="理由を保存して一時解除する" testID="unlock-submit" secondary disabled={!stillValid || !!state.busy} onPress={() => { void submit(); }} />}
     {failed && <Notice title="解除の完了を確認できません">入力は残っています。条件を確認し直せます。</Notice>}
-    {failed && (state.error === 'busy' || state.error === 'storage-failed') && <Button label="同じ上限のまま受理を再試行する" disabled={!!state.busy} onPress={() => { void submit(); }} />}
+    {failed && (state.error === 'busy' || state.error === 'storage-failed') && <Button label="同じ上限のまま受理を再試行する" secondary disabled={!stillValid || !!state.busy} onPress={() => { void submit(); }} />}
     <Button label="入力に戻る" secondary disabled={!!state.busy} onPress={previous} />
     <Button label="現在の解除状況を確認する" secondary onPress={() => navigation.finish({ screen: 'grant' })} />
   </FlowScreen>;
 }
+
+const styles = StyleSheet.create({ deadline: { fontSize: 32, lineHeight: 44, fontVariant: ['tabular-nums'] } });
