@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>いとまを支える · 操作モック</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f4f3f0; --panel: #fff; --text: #30312f; --muted: #666762;
+    --line: #ddddd6; --accent: #444842; --on-accent: white;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1b1c1a; --panel: #292b27; --text: #f0f0e9; --muted: #bdbfb6;
+      --line: #4d5048; --accent: #cdd2c4; --on-accent: #23271f; }
+  }
+  * { box-sizing: border-box; }
+  body { max-width: 30rem; margin: auto; padding: 1rem; color: var(--text); background: var(--bg);
+    font: 1rem/1.6 system-ui, sans-serif; overflow-wrap: anywhere; }
+  main, h1, fieldset { margin: 0; }
+  h1 { font-size: 1.6rem; line-height: 1.4; }
+  h2, legend { font-size: 1.1rem; font-weight: 650; }
+  p { margin: .7rem 0; }
+  header, aside, small { color: var(--muted); }
+  header { margin: .5rem 0 1.2rem; }
+  article, fieldset { background: var(--panel); padding: 1rem; border: 1px solid var(--line);
+    border-radius: .75rem; margin: 1rem 0; min-inline-size: 0; }
+  button, select, label { font: inherit; color: inherit; }
+  button, select, .choice { min-height: 44px; max-width: 100%; }
+  button { width: 100%; margin: .25rem 0; padding: .6rem; background: var(--panel);
+    border: 1px solid var(--line); border-radius: .5rem; cursor: pointer; }
+  .primary { background: var(--accent); color: var(--on-accent); }
+  button:disabled { opacity: .55; cursor: default; }
+  .back { width: 44px; background: none; border: 0; font-size: 1.6rem; }
+  .entry { text-align: start; padding: .8rem 1rem; }
+  small { display: block; font-size: .9em; }
+  .choice { display: flex; gap: .6rem; align-items: center; border-bottom: 1px solid var(--line); }
+  input { accent-color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  aside { border-top: 1px solid var(--line); margin-top: 2rem; padding-top: .75rem; }
+  select { width: 100%; }
+</style>
+<header>設計モック · 実請求はありません</header>
+<main></main>
+<aside aria-label="レビュー用操作">
+  <label for="scenario">レビュー用の模擬応答</label>
+  <select id="scenario">
+    <option value="verified">検証済み</option><option value="empty">商品なし</option>
+    <option value="offline">商品通信失敗</option><option value="changed">確定前の価格変更</option>
+    <option value="removed">確定前の商品取り下げ</option><option value="cancelled">本人取消</option>
+    <option value="pending">保留</option><option value="unverified">検証失敗</option>
+    <option value="failed">購入処理エラー</option>
+  </select>
+  <button id="receive" hidden>模擬の取引結果を受け取る</button>
+</aside>
+<script>
+  const main = document.querySelector('main');
+  const scenario = document.querySelector('#scenario');
+  const receive = document.querySelector('#receive');
+  const prices = ['￥100', '￥300', '￥500'];
+  let selected = null;
+  let page = 'settings';
+  let transaction = null;
+  let loadSequence = 0;
+
+  function button(text, action, style, disabled = false) {
+    const element = document.createElement('button');
+    element.textContent = text;
+    element.onclick = action;
+    element.className = style || '';
+    element.disabled = disabled;
+    main.append(element);
+    return element;
+  }
+
+  function screen(name, title, back, backLabel = '設定に戻る') {
+    page = name;
+    main.replaceChildren();
+    if (back) button('‹', back, 'back').setAttribute('aria-label', backLabel);
+    const heading = document.createElement('h1');
+    heading.textContent = title;
+    heading.tabIndex = -1;
+    main.append(heading);
+    heading.focus();
+  }
+
+  function copy(text) {
+    const paragraph = document.createElement('p');
+    paragraph.textContent = text;
+    main.append(paragraph);
+  }
+
+  function settings(restoreFocus = true) {
+    ++loadSequence;
+    selected = null;
+    screen('settings', '設定');
+    copy('使い方とこのアプリ');
+    const entry = button('いとまを支える', () => transaction ? status() : load(), 'entry');
+    entry.insertAdjacentHTML('beforeend', '<small>開発と運営への任意の支援</small>');
+    if (restoreFocus) entry.focus();
+    if (transaction === 'verified') transaction = null;
+  }
+
+  function load() {
+    const sequence = ++loadSequence;
+    screen('loading', 'いとまを支える', settings);
+    copy('支援額を読み込んでいます。');
+    setTimeout(() => {
+      if (sequence !== loadSequence) return;
+      if (['empty', 'offline'].includes(scenario.value) || !prices.some(Boolean)) {
+        screen('unavailable', 'いとまを支える', settings);
+        copy(scenario.value !== 'offline' ? '現在、選べる支援額がありません。' : '支援額を読み込めませんでした。');
+        button('支援額を読み直す', load);
+      } else choose();
+    }, 300);
+  }
+
+  function choose(note) {
+    screen('choose', 'いとまを支える', settings);
+    main.insertAdjacentHTML('beforeend', '<article><h2>開発者より</h2><p>いとまを使ってくださり、ありがとうございます。いただいた支援は、iOSの更新への対応や、文字と画面を読みやすくする改善に使います。</p></article>');
+    copy('支援は1回限りで、自動更新はありません。支援の有無で使える機能は同じです。');
+    if (note) copy(note);
+    const group = document.createElement('fieldset');
+    group.innerHTML = '<legend>支援額を選ぶ</legend>';
+    main.append(group);
+    const confirm = button('支援内容を確認する', confirmation, 'primary', selected === null);
+    prices.forEach((price, index) => {
+      if (!price) return;
+      const label = document.createElement('label');
+      label.className = 'choice';
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'amount';
+      radio.checked = selected === index;
+      radio.onchange = () => { selected = index; confirm.disabled = false; };
+      label.append(radio, price);
+      group.append(label);
+    });
+    button('支援せず設定に戻る', settings);
+  }
+
+  function confirmation() {
+    screen('confirm', '支援内容の確認', () => choose(), '金額の選択に戻る');
+    copy(prices[selected] + ' · 今回だけ');
+    copy('次にAppleの購入画面で確定します。');
+    button(prices[selected] + 'の支援に進む', purchase, 'primary');
+    button('金額の選択に戻る', () => choose());
+    button('支援せず設定に戻る', settings);
+  }
+
+  function purchase() {
+    if (transaction || page !== 'confirm') return;
+    if (['changed', 'removed'].includes(scenario.value)) {
+      const removed = scenario.value === 'removed';
+      prices[selected] = removed ? null : '￥' + (Number(prices[selected].slice(1)) + 20);
+      selected = null;
+      scenario.value = 'verified';
+      if (prices.some(Boolean)) choose('選べる商品または価格が変わりました。支援額を選び直してください。');
+      else load();
+      return;
+    }
+    if (['offline', 'empty'].includes(scenario.value)) { selected = null; load(); return; }
+    transaction = 'buying';
+    receive.hidden = false;
+    status();
+  }
+
+  const messages = {
+    buying: ['購入を確認しています', 'Appleからの結果を待っています。'],
+    checking: ['購入結果を確認しています', 'すでに受け取った取引を確認しています。'],
+    pending: ['承認待ちです', 'Appleから結果が届くまでお待ちください。設定に戻れます。'],
+    unverified: ['購入を確認できませんでした', '取引の確認をやり直せます。'],
+    verified: ['ご支援ありがとうございます', 'いとまの開発と運営に役立てます。']
+  };
+
+  function status() {
+    const [title, message] = messages[transaction];
+    screen('status', title, settings);
+    copy(message);
+    if (transaction === 'unverified') button('購入結果を確認し直す', () => {
+      transaction = 'checking'; receive.hidden = false; status();
+    });
+    button('設定に戻る', settings);
+  }
+
+  receive.onclick = () => {
+    if (!['buying', 'pending', 'checking', 'unverified'].includes(transaction)) return;
+    const value = scenario.value;
+    if (value === 'cancelled' || value === 'failed') {
+      if (transaction !== 'buying') return;
+      transaction = null;
+      receive.hidden = true;
+      if (page !== 'settings') choose(value === 'cancelled' ? '購入を取り消しました。' : '購入手続きを進められませんでした。');
+      return;
+    }
+    if (!['pending', 'unverified', 'verified'].includes(value)) return;
+    if (value === 'pending' && transaction !== 'buying') return;
+    transaction = value;
+    receive.hidden = value === 'verified';
+    if (page !== 'settings') status();
+  };
+  settings(false);
+</script>
+</html>
