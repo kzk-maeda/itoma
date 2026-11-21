@@ -53,13 +53,24 @@ async function drag(page, vertical = false) {
         }, scale);
       }
       await shot(page, name);
-      const size = await button(page, '前日').boundingBox();
-      assert(size.width >= 44 && size.height >= 44, 'previous day target too small');
+      const plot = page.getByRole('slider', { name: '累計図の日付' });
+      const size = await plot.boundingBox();
+      assert(size.width >= 44 && size.height >= 44, 'chart target too small');
+      assert(await page.getByRole('button', { name: /^(前日|翌日|集計について)$/ }).count() === 0, 'removed controls are visible');
+      assert(await page.getByRole('heading', { name: /\d{4}年\d+月\d+日の記録/ }).count() === 0, 'daily summary is visible');
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
       assert(!overflow, 'horizontal page overflow');
       if (name === 'light' || name === 'long') {
         const reads = () => page.evaluate(() => window.landscapeReads.filter(r => r.action === 'readWeek').length);
         assert(await reads() === 0, 'latest did not use the seeded week');
+        const latest = await plot.getAttribute('aria-valuetext');
+        await plot.press('ArrowLeft');
+        await page.getByText('この日までの累計', { exact: true }).waitFor();
+        assert(await plot.getAttribute('aria-valuetext') !== latest, 'keyboard did not select the previous day');
+        await plot.press('End');
+        await total(page, expected).waitFor();
+        assert(await plot.getAttribute('aria-valuetext') === latest, 'keyboard did not return to latest');
+        assert(await reads() === 0, 'same-week traversal read a new week');
         const scroll = page.getByTestId('product-tab-scene-reflection').getByTestId('flow-scroll');
         await page.getByTestId('reflection-plot').scrollIntoViewIfNeeded();
         const before = await scroll.evaluate(el => el.scrollTop);
@@ -77,13 +88,13 @@ async function drag(page, vertical = false) {
         await button(page, '月次').click();
         await page.getByRole('heading', { name: '2026年11月', exact: true }).waitFor();
         assert(await page.getByTestId('reflection-total').innerText() === label, 'period changed date');
+        const resetSize = await button(page, '最新に戻す').boundingBox();
+        assert(resetSize.width >= 44 && resetSize.height >= 44, 'reset target too small');
         await button(page, '最新に戻す').click();
         await total(page, expected).waitFor();
-        await button(page, '集計について').click();
-        await page.getByText(/24時間を1日分/).waitFor();
       }
       assert(errors.length === 0, errors.join('\n'));
-      result.cases.push({ name, width, height, colorScheme, domTextScale: scale, loadedMs, actionSize: size, reads: await page.evaluate(() => window.landscapeReads), errors });
+      result.cases.push({ name, width, height, colorScheme, domTextScale: scale, loadedMs, plotSize: size, reads: await page.evaluate(() => window.landscapeReads), errors });
       await context.close();
     }
     result.passed = true;

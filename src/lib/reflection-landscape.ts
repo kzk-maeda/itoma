@@ -33,7 +33,7 @@ export const dayDistance = (from: string, until: string) => ordinal(until) - ord
 export const monday = (day: string) => moveDay(day, -((new Date(day + 'T00:00:00Z').getUTCDay() + 6) % 7));
 
 export function inspectDay(snapshot: ReflectionSnapshot, week: ReflectionInspectionWeek | undefined, day: string) {
-  if (snapshot.proofScope === 'pointObservations') return { seconds: undefined, cumulative: undefined, partial: true };
+  if (snapshot.proofScope === 'pointObservations') return { cumulative: undefined, partial: true };
   const index = week?.days.findIndex(row => row.day === day) ?? -1;
   if (!week || index < 0) return undefined;
   const current = week.days[index], prefix = week.days.slice(0, index + 1);
@@ -41,5 +41,5 @@ export function inspectDay(snapshot: ReflectionSnapshot, week: ReflectionInspect
   const cumulative = (before?.knownSeconds ?? 0) + prefix.reduce((sum, row) => sum + (row.knownSeconds ?? 0), 0);
   const partial = snapshot.incomplete || !!(before && before.coverage !== 'recorded')
     || prefix.some(row => row.until > snapshot.total.from && row.coverage !== 'recorded');
-  return { seconds: current.knownSeconds, cumulative: current.knownSeconds === undefined ? undefined : cumulative, partial };
+  return { cumulative: current.knownSeconds === undefined ? undefined : cumulative, partial };
 }

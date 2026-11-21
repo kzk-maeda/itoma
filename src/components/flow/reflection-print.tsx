@@ -1,13 +1,13 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { PanResponder, Platform, Pressable, StyleSheet, Text, View, type ViewProps } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { dateLabel, moveDay } from '@/lib/history-date';
 import { cumulativeAmount, dayDistance, inspectDay, monday, printLevels } from '@/lib/reflection-landscape';
 import { Fonts, GraphiteColors } from '@/constants/theme';
 import {
-  ReflectionReadError, reflectionDuration, type ReflectionSnapshot, type ReflectionSource,
+  ReflectionReadError, type ReflectionSnapshot, type ReflectionSource,
 } from '../../../modules/itoma-native/src/reflection-model';
-import { Body, Heading, LinkRow, useFlowTheme } from './ui';
+import { Body, useFlowTheme } from './ui';
 
 const plotWidth = 400, baseline = 151, plotHeight = 159, margin = 5;
 const xAt = (fraction: number) => margin + (plotWidth - 2 * margin) * fraction;
@@ -83,11 +83,32 @@ function LandscapePlot({ snapshot, day, select, seconds, disabled }: {
     queueMicrotask(() => { if (mounted) setGesture(responder); });
     return () => { mounted = false; };
   }, []);
-  const latest = day === latestDay, x = xAt(span ? dayDistance(startDay, day) / span : 1);
+  const dayOffset = dayDistance(startDay, day), x = xAt(span ? dayOffset / span : 1);
   const total = snapshot.total.knownSeconds ?? 0, level = printLevels.find(value => value.seconds <= total);
   const levelY = level ? yAt(level.seconds, total) : undefined;
+  const step = (offset: number) => select(moveDay(startDay, Math.max(0, Math.min(span, dayOffset + offset))));
+  const adjust = span > 0 && !disabled;
+  const keyboard = Platform.OS === 'web' && adjust;
+  const onKeyDown: ViewProps['onKeyDown'] = event => {
+    const steps: Partial<Record<string, number>> = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, Home: -dayOffset, End: span - dayOffset };
+    const offset = steps[event.nativeEvent.key];
+    if (offset === undefined) return;
+    event.preventDefault();
+    step(offset);
+  };
   return <>
-    <View testID="reflection-plot" {...gesture?.panHandlers} onLayout={event => setWidth(event.nativeEvent.layout.width)}
+    <View testID="reflection-plot" {...gesture?.panHandlers} tabIndex={keyboard ? 0 : undefined} onKeyDown={keyboard ? onKeyDown : undefined}
+      onLayout={event => setWidth(event.nativeEvent.layout.width)}
+      accessible={span > 0} accessibilityRole={span > 0 ? 'adjustable' : undefined}
+      accessibilityLabel={span > 0 ? '累計図の日付' : undefined}
+      aria-disabled={span > 0 ? disabled : undefined} aria-valuemin={span > 0 ? 0 : undefined}
+      aria-valuemax={span > 0 ? span : undefined} aria-valuenow={span > 0 ? dayOffset : undefined}
+      aria-valuetext={span > 0 ? dateLabel(day) : undefined}
+      accessibilityActions={adjust ? [{ name: 'decrement' }, { name: 'increment' }] : undefined}
+      onAccessibilityAction={adjust ? ({ nativeEvent: { actionName } }) => {
+        if (actionName === 'decrement') step(-1);
+        if (actionName === 'increment') step(1);
+      } : undefined}
       style={Platform.OS === 'web' ? { touchAction: 'pan-y' } : undefined}>
       <View pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden>
         <Svg width="100%" height={144} viewBox={`0 0 ${plotWidth} ${plotHeight}`} preserveAspectRatio="none">
@@ -108,7 +129,7 @@ function LandscapePlot({ snapshot, day, select, seconds, disabled }: {
             {geometry.ridge && <Path d={geometry.ridge} fill="none" stroke={paper.text} strokeWidth={1.6} />}
             {geometry.dots.map(p => <Circle key={p.x} cx={p.x} cy={p.y} r={2} fill={paper.text} />)}
           </G>
-          {!latest && <Path d={`M${x} 12V${baseline + 4}`} stroke={paper.text} opacity={0.65} strokeDasharray="2 4" />}
+          {day !== latestDay && <Path d={`M${x} 12V${baseline + 4}`} stroke={paper.text} opacity={0.65} strokeDasharray="2 4" />}
           {seconds !== undefined && <Circle cx={x} cy={yAt(seconds, total)} r={3.6} stroke={paper.surface} strokeWidth={1.8} fill={paper.text} />}
         </Svg>
       </View>
@@ -182,7 +203,7 @@ function useInspectionWeek(read: WeekReader, snapshot: ReflectionSnapshot, day: 
   };
 }
 
-function DayButton({ label, disabled, onPress }: { label: string; disabled?: boolean; onPress: () => void }) {
+function PrintAction({ label, disabled, onPress }: { label: string; disabled: boolean; onPress: () => void }) {
   const theme = useFlowTheme();
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }}
     disabled={disabled} onPress={onPress} style={[styles.control, { borderColor: theme.line }]}>
@@ -195,7 +216,7 @@ export function ReflectionPrint({ snapshot, readWeek, visible, disabled, onChang
   onChanged: () => void; onSeedUsed: () => void;
 }) {
   const { startDay, latestDay } = snapshot.landscape!;
-  const theme = useFlowTheme(), [day, setDay] = useState(latestDay), [details, setDetails] = useState(false);
+  const [day, setDay] = useState(latestDay);
   const { week, error, retry } = useInspectionWeek(readWeek, snapshot, day, visible, onChanged);
   useEffect(() => { if (snapshot.inspectionWeek) onSeedUsed(); }, [snapshot.inspectionWeek, onSeedUsed]);
   const historical = day !== latestDay, inspected = inspectDay(snapshot, week, day);
@@ -204,7 +225,6 @@ export function ReflectionPrint({ snapshot, readWeek, visible, disabled, onChang
   const partial = historical ? inspected?.partial : (snapshot.total.coverage === 'partial' || snapshot.incomplete);
   const calculated = snapshot.proofScope === 'ruleScheduleLogs';
   const qualified = snapshot.proofScope !== 'pointObservations';
-  const dayText = error ? 'この週を読み取れませんでした' : !inspected ? '確認中' : reflectionDuration(inspected.seconds);
   const caption = calculated ? 'ルールから計算した時間の累計・一時解除を除く'
     : qualified ? '制限の適用を記録した時間の累計・一時解除を除く' : '時間の記録を確認できていません';
   return <>
@@ -223,29 +243,18 @@ export function ReflectionPrint({ snapshot, readWeek, visible, disabled, onChang
           </Text>}
       </View>
       {partial && seconds !== undefined && <Text style={styles.printQuiet}>一部未記録のため、確認できた分の累計です。</Text>}
+      {historical && inspected && seconds === undefined && <Text style={styles.printQuiet}>この日は未記録です。</Text>}
       <LandscapePlot snapshot={snapshot} day={day} select={setDay} seconds={seconds} disabled={disabled || !visible} />
+      {startDay !== latestDay && <Text style={styles.printQuiet}>図をなぞると、日付をたどれます。</Text>}
       <Text style={styles.printQuiet}>{caption}</Text>
     </View>
-    <View style={styles.inspection}>
-      <Heading>{dateLabel(day)}の記録</Heading>
-      <Body>{dayText}{inspected?.seconds === undefined && dayText === '—' ? '　この日は未記録です' : ''}</Body>
-      {inspected?.seconds !== undefined && week?.days.find(row => row.day === day)?.coverage === 'partial' && <Body muted>この日に確認できた分です。</Body>}
+    {historical && <View style={styles.inspection}>
+      {error && <Body muted>選んだ日の累計を読み取れませんでした。</Body>}
       <View style={styles.controls}>
-        <DayButton label="前日" disabled={disabled || day <= startDay} onPress={() => setDay(moveDay(day, -1))} />
-        <DayButton label="翌日" disabled={disabled || day >= latestDay} onPress={() => setDay(moveDay(day, 1))} />
-        {historical && <DayButton label="最新に戻す" disabled={disabled} onPress={() => setDay(latestDay)} />}
-        {error && <DayButton label="選択週を読み直す" disabled={disabled} onPress={retry} />}
+        <PrintAction label="最新に戻す" disabled={disabled} onPress={() => setDay(latestDay)} />
+        {error && <PrintAction label="選択週を読み直す" disabled={disabled} onPress={retry} />}
       </View>
-      {startDay !== latestDay && <Body muted>図をなぞると、日付をたどれます。</Body>}
-    </View>
-    <View style={styles.inspection}>
-      <LinkRow label="集計について" onPress={() => setDetails(!details)} />
-      {details && <>
-        <Text style={[styles.caption, { color: theme.text }]}>{calculated ? '当時のルール設定と一時解除のログから、停止と一時解除を除いた時間を算出しています。'
-          : qualified ? '端末で適用を確認した区間から、一時解除を除いた時間です。' : '操作の観測から、時間は確定できません。'}</Text>
-        <Body>元の時間は {reflectionDuration(seconds)}。24時間を1日分、30日を約1か月分、365日を約1年分としています。</Body>
-      </>}
-    </View>
+    </View>}
   </>;
 }
 
