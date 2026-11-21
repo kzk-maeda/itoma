@@ -1,0 +1,17 @@
+{
+  "wholeFont": "124px",
+  "box": {
+    "x": 24,
+    "y": 455,
+    "width": 272,
+    "height": 258
+  },
+  "scrollViewport": {
+    "x": 0,
+    "y": 281,
+    "width": 320,
+    "height": 432
+  },
+  "wholeUnitAndTailFitTogether": true,
+  "scope": "DOM text scaling only; not iOS Dynamic Type"
+}
