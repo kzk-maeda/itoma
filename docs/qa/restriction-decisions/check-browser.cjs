@@ -57,6 +57,18 @@ async function checkLayout(page, large, labels) {
       await page.getByRole('radio', { name: 'X', exact: true }).click();
       await page.getByLabel('いま使う理由').fill(large ? longReason : reason);
       await page.getByLabel('解除時間（1〜30分）').fill('10');
+      await page.evaluate(() => window.__itomaDecisionQA.omitNextPreviewSnapshot());
+      await button(page, '解除内容を確認する').click();
+      const previewFailure = page.getByRole('heading', { name: '解除内容を確認できませんでした', exact: true });
+      await previewFailure.waitFor();
+      assert.equal(await page.getByLabel('いま使う理由').inputValue(), large ? longReason : reason);
+      assert.equal(await page.getByLabel('解除時間（1〜30分）').inputValue(), '10');
+      assert.equal(await actions(page, 'cancelUnlock'), 1);
+      assert.equal(await actions(page, 'unlock'), 0);
+      if (!large) {
+        await previewFailure.scrollIntoViewIfNeeded();
+        await shot(page, 'light-preview-retry');
+      }
       await button(page, '解除内容を確認する').click();
       await page.getByText('23:00まで', { exact: true }).waitFor();
       await page.getByText('いま確定すると最大3分').waitFor();
@@ -123,7 +135,7 @@ async function checkLayout(page, large, labels) {
       await heading(page, 'すべて停止中');
       assert.equal(await actions(page, 'stop'), 1);
       assert.deepEqual(errors, []);
-      results.cases.push({ colorScheme, width, domTextScale: large ? 1.75 : 1, unlockRequestsAfterExpiry: 0, reconcileRequests: 2, resumeRequests: 1, stopRequests: 1, errors });
+      results.cases.push({ colorScheme, width, domTextScale: large ? 1.75 : 1, invalidPreviewCancelled: true, unlockRequestsAfterExpiry: 0, reconcileRequests: 2, resumeRequests: 1, stopRequests: 1, errors });
       await context.close();
     }
     results.passed = true;

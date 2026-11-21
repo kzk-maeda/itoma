@@ -7,6 +7,8 @@ import { screenTime, type RuleInput, type ScreenTimeAction, type ScreenTimeCode,
 export type RuleDraft = { id?: string; selectionRef: string; weekdays: number[]; start: string; end: string; nextDay: boolean; enabled: boolean; dirty: boolean; remove?: boolean;
   title?: string; goal?: string; createdRuleID?: string; creationCommitted?: boolean };
 export type UnlockDraft = { ruleID?: string; targetScope?: string; targetRef?: string; reason: string; minutes: string };
+// The confirmation screen displays the snapshot and deadline from this preview together.
+type UnlockReview = ScreenTimeResponse & Required<Pick<ScreenTimeResponse, 'ref' | 'snapshot' | 'previewEndsAt'>>;
 type Client = Pick<typeof screenTime, 'run'>;
 type HistoryChangeOrigin = 'history' | 'reflection' | 'settings' | 'external';
 type State = {
@@ -22,7 +24,7 @@ type State = {
   currentSnapshot: () => ScreenTimeSnapshot | undefined; currentUnlockDraft: () => UnlockDraft;
   unlockDraft: UnlockDraft; setUnlockDraft: (draft: UnlockDraft) => void;
   unlockPreviewRef?: string; setUnlockPreviewRef: (ref: string | undefined) => void;
-  unlockReview?: ScreenTimeResponse; setUnlockReview: (review: ScreenTimeResponse | undefined) => void;
+  unlockReview?: UnlockReview; setUnlockReview: (review: UnlockReview | undefined) => void;
   resetUnlock: () => void;
   canExitRule: () => boolean; canExitUnlock: () => boolean;
   setRuleExitAllowed: (value: boolean) => void; setUnlockExitAllowed: (value: boolean) => void;
@@ -59,7 +61,7 @@ export function ScreenTimeProvider({ children, client = screenTime }: { children
   const unlockDraftRef = useRef(unlockDraft);
   const setUnlockDraft = useCallback((draft: UnlockDraft) => { unlockDraftRef.current = draft; setUnlockDraftState(draft); }, []);
   const [homeRuleKey, setHomeRuleKey] = useState<string>();
-  const [unlockReview, setUnlockReview] = useState<ScreenTimeResponse>();
+  const [unlockReview, setUnlockReview] = useState<UnlockReview>();
   const [unlockPreviewRef, setUnlockPreviewRef] = useState<string>();
   const ruleExitRef = useRef(false), unlockExitRef = useRef(false);
   const [ruleExitAllowed, setRuleExit] = useState(false), [unlockExitAllowed, setUnlockExit] = useState(false);

@@ -81,6 +81,7 @@ export function UnlockScreen() {
   };
   const selected = candidates.find(target => target.ref === draft.targetRef);
   const [changed, setChanged] = useState(false);
+  const [previewFailed, setPreviewFailed] = useState(false);
   const scope = targetScope(state.snapshot, selected, now);
   useEffect(() => {
     if (!draft.targetRef || state.loading || (selected && draft.targetScope === scope)) return;
@@ -94,23 +95,29 @@ export function UnlockScreen() {
   }, [scope, selected, draft, state, alive]);
   const valid = !!selected && draft.targetScope === scope && !!draft.reason.trim() && /^(?:[1-9]|[12][0-9]|30)$/.test(draft.minutes);
   const preview = async () => {
-    if (!valid) return;
+    if (!valid || state.busy) return;
+    setPreviewFailed(false);
+    state.setUnlockReview(undefined);
     const session = state.unlockSession();
     const result = await state.run('previewUnlock', { targetRef: draft.targetRef, reason: draft.reason, minutes: Number(draft.minutes) });
-    if (result.status !== 'confirmation-required' || !result.ref || !state.ownsUnlockSession(session)) return;
-    state.setUnlockPreviewRef(result.ref);
+    if (result.status !== 'confirmation-required' || !state.ownsUnlockSession(session)) return;
+    const { ref, snapshot: previewSnapshot, previewEndsAt } = result;
+    if (ref) state.setUnlockPreviewRef(ref);
     const snapshot = state.currentSnapshot(), at = Date.now();
     const current = unlockCandidates(snapshot, at, draft.ruleID).find(t => t.ref === draft.targetRef);
-    const confirmed = result.snapshot?.targets.find(t => t.ref === draft.targetRef);
-    if (alive() && state.currentUnlockDraft() === draft && current && confirmed
+    const confirmed = previewSnapshot?.targets.find(t => t.ref === draft.targetRef);
+    const stillEditing = () => alive() && state.ownsUnlockSession(session) && state.currentUnlockDraft() === draft;
+    if (stillEditing() && ref && previewSnapshot && previewEndsAt !== undefined && current && confirmed
       && draft.targetScope === targetScope(snapshot, current, at)
-      && draft.targetScope === targetScope(result.snapshot, confirmed, at)
-      && snapshot?.revision === result.snapshot?.revision && (result.previewEndsAt ?? 0) * 1000 > at) {
-      state.setUnlockReview(result); router.push('/unlock-confirm');
-    } else if (state.ownsUnlockSession(session)) {
-      const cancelled = await state.run('cancelUnlock');
-      if (cancelled.status === 'ok' && state.ownsUnlockSession(session)) state.setUnlockPreviewRef(undefined);
+      && draft.targetScope === targetScope(previewSnapshot, confirmed, at)
+      && snapshot?.revision === previewSnapshot.revision && previewEndsAt * 1000 > at) {
+      state.setUnlockReview({ ...result, ref, snapshot: previewSnapshot, previewEndsAt });
+      router.push('/unlock-confirm');
+      return;
     }
+    if (stillEditing()) setPreviewFailed(true);
+    const cancelled = await state.run('cancelUnlock');
+    if (cancelled.status === 'ok' && state.ownsUnlockSession(session)) state.setUnlockPreviewRef(undefined);
   };
   return <FlowScreen title="必要な分だけ、一時解除" onBack={previous}>
     <Body>使う目的と時間を、いったん言葉に。解除するかどうかは、内容を確認してから決められます。</Body>
@@ -137,6 +144,7 @@ export function UnlockScreen() {
       onChangeText={(minutes) => { state.setUnlockExitAllowed(false); state.setUnlockDraft({ ...draft, minutes }); state.setUnlockReview(undefined); }} />
     <Body muted>理由は確認後、端末内に保存します。時間帯の終了やルールの切替で、解除時間が短くなる場合があります。</Body>
     {!valid && <Body muted>対象のアプリ・空白以外の理由・1〜30分の時間を指定してください。</Body>}
+    {previewFailed && <Notice title="解除内容を確認できませんでした">理由と希望時間は残っています。対象アプリを確認して、もう一度お試しください。</Notice>}
     <Button label="制限を続ける" disabled={!!state.busy} onPress={continueRestrictions} />
     <Button label="解除内容を確認する" testID="unlock-review" secondary disabled={!valid || !!state.busy} onPress={() => { void preview(); }} />
     {state.snapshot?.targets.some(target => target.grantCommandID) && <Button label="進行中の解除を確認する" secondary onPress={() => navigation.open({ screen: 'grant' })} />}
@@ -159,7 +167,7 @@ export function UnlockConfirmationScreen() {
   const expiry = review?.previewEndsAt ?? 0, remaining = expiry - now / 1000;
   const period = targetPeriod(confirmed, target, now);
   const current = (!state.legacyActive ? unlockCandidates(state.snapshot, now, draft.ruleID) : []).find(candidate => candidate.ref === draft.targetRef);
-  const stillValid = !!review?.ref && !!rule && !!period && !!current && draft.targetScope === targetScope(confirmed, target, now)
+  const stillValid = !!review && !!rule && !!period && !!current && draft.targetScope === targetScope(confirmed, target, now)
     && state.snapshot?.revision === confirmed?.revision && targetScope(confirmed, target, now) === targetScope(state.snapshot, current, now)
     && remaining > 0;
   const otherRestrictions = stillValid && !state.error
@@ -168,7 +176,7 @@ export function UnlockConfirmationScreen() {
   const submit = async () => {
     const snapshot = state.currentSnapshot(), at = Date.now();
     const candidate = unlockCandidates(snapshot, at, draft.ruleID).find(t => t.ref === draft.targetRef);
-    if (submitting.current || state.busy || !review?.ref || !stillValid || !candidate || snapshot?.revision !== confirmed?.revision
+    if (submitting.current || state.busy || !review || !stillValid || !candidate || snapshot?.revision !== review.snapshot.revision
       || state.currentUnlockDraft() !== draft || draft.targetScope !== targetScope(snapshot, candidate, at) || expiry * 1000 <= at) return;
     const session = state.unlockSession();
     submitting.current = true;
