@@ -10,6 +10,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'assets/brand/identity.json'
+      - 'assets/brand/render.mjs'
       - 'scripts/*demo-index*'
       - 'scripts/lib/demo-index.mjs'
       - 'scripts/lib/demo-target.mjs'

@@ -1,3 +1,4 @@
+import identity from '../../../assets/brand/identity.json';
 import { useAppNavigation } from '@/state/navigation';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
@@ -60,7 +61,7 @@ export function ProductHome() {
   const stopLegacy = () => Alert.alert('手動検証の制限を停止しますか', '以前の手動検証で指定した制限だけを停止します。通常のルールと保存した対象は削除しません。', [
     { text: '戻る', style: 'cancel' }, { text: '手動検証の制限を停止', onPress: () => { void state.run('stopLegacy'); } },
   ]);
-  return <FlowScreen title="いとま" tab="home">
+  return <FlowScreen title={identity.name} tab="home">
     {state.ruleDetailsState === 'unavailable' && <Notice title="ルール名と行動目標を確認できません">制限の設定は引き続き確認できます。設定タブからもう一度読み直せます。</Notice>}
     {state.ruleDetailsState === 'checking' && !state.loading && !!s?.rules.length && <Body muted>ルール名と行動目標を確認しています。</Body>}
     {state.loading && <Body muted>現在の設定を確認しています。</Body>}

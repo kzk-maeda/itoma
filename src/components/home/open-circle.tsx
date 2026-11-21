@@ -1,3 +1,4 @@
+import identity from '../../../assets/brand/identity.json';
 import { View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -5,8 +6,8 @@ import Svg, { Path } from 'react-native-svg';
 export function OpenCircle({ color, size = 32 }: { color: string; size?: number }) {
   return (
     <View accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-    <Svg width={size} height={size} viewBox="0 0 40 40" aria-hidden>
-      <Path d="M 20 5 A 15 15 0 1 1 5 20" fill="none" stroke={color} strokeWidth={3} strokeLinecap="round" />
+    <Svg width={size} height={size} viewBox={identity.mark.viewBox} aria-hidden>
+      <Path d={identity.mark.path} fill="none" stroke={color} strokeWidth={identity.mark.strokeWidth} strokeLinecap="round" />
     </Svg>
     </View>
   );

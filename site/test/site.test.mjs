@@ -1,3 +1,4 @@
+import { wordmarkHTML, wordmarkCSS, faviconSVG } from '../../assets/brand/render.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -43,4 +44,14 @@ test('build rejects unresolved drafting placeholders in published source', () =>
     rmSync(fixture, { force: true });
     execFileSync(process.execPath, ['scripts/build.mjs'], { cwd: root });
   }
+});
+
+test('all three published pages share the accessible wordmark and generated assets', () => {
+  for (const page of pages) {
+    const html = readFileSync(`${root}dist/${page}`, 'utf8');
+    assert.equal(html.split(wordmarkHTML).length - 1, 2, page);
+    assert.match(html, /href="\/assets\/wordmark\.css"/);
+  }
+  assert.equal(readFileSync(`${root}dist/assets/wordmark.css`, 'utf8'), wordmarkCSS);
+  assert.equal(readFileSync(`${root}dist/assets/site-mark.svg`, 'utf8'), faviconSVG());
 });
