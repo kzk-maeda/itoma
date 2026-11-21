@@ -1,0 +1,104 @@
+.study {
+  --paper: var(--light-background); --surface: var(--light-surface); --ink: var(--light-text);
+  --muted: var(--light-muted); --line: var(--light-line); --accent: var(--light-accent);
+  --on: var(--light-onAccent); --soft: var(--light-soft); --warm: var(--light-purposeSurface);
+  box-sizing: border-box; background: var(--paper); color: var(--ink); overflow: auto;
+  height: 100dvh; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  line-height: 1.65; -webkit-text-size-adjust: 100%;
+}
+.study *, .study *::before, .study *::after { box-sizing: border-box }
+.study :is(p,h1,h2,fieldset,blockquote,dl,dd) { margin: 0 }
+.study button,.study input,.study textarea { font: inherit; color: inherit }
+.study button { cursor: pointer }
+.study :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px }
+.study h1:focus { outline: none }
+.mast { margin: auto; max-width: 1060px; padding: 24px 6px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 500; letter-spacing: 2px }
+.mast > span,.meta,.study small,.note { font-size: .805rem; color: var(--muted) }
+.spread { display: grid; grid-template-columns: .92fr 1.1fr; width: min(100% - 64px, 980px); align-items: start; margin: clamp(38px,7vh,84px) auto; gap: clamp(30px,6vw,84px) }
+.folio { border-radius: 24px; background: var(--warm); padding: 35px 32px 22px; overflow: hidden; }
+.folio-head,.folio-foot,.section-top,.option,.prices > div { display: flex; align-items: center }
+.folio-head { gap: 15px }
+.folio-head h2 { font-size: 1.65rem; letter-spacing: .04em; font-weight: 550; line-height: 1.4 }
+.book,.method-icon { display: grid; place-items: center; flex: none; width: 46px; height: 46px; border-radius: 14px; background: color-mix(in srgb,var(--surface) 62%, transparent) }
+.dial { width: min(83%, 268px); aspect-ratio: 1; border-radius: 50%; margin: 34px auto 32px; display: grid; place-items: center; position: relative; isolation: isolate; }
+.dial::before,.dial::after { content: ""; position: absolute; inset: 0; border-radius: 50% }
+.dial::before { background: repeating-conic-gradient(from -.5deg,var(--muted) 0deg 1deg, transparent 1deg 6deg); mask: radial-gradient(closest-side,transparent 94%,black 95%); opacity:.65 }
+.dial::after { inset: 10px; background: conic-gradient(var(--accent) 0deg var(--progress),color-mix(in srgb,var(--muted) 23%, transparent) var(--progress) 360deg); mask: radial-gradient(closest-side,transparent calc(100% - 5px), black calc(100% - 4px)) }
+.dialcore { display: grid; text-align: center; gap: 2px; font-variant-numeric: tabular-nums }
+.dialcore span { color: var(--muted); font-size: .8rem }
+.dialcore strong { font-family: Georgia, "Times New Roman",serif; font-weight: 400; font-size: clamp(2.7rem, 5vw, 4rem); line-height: 1.13; letter-spacing: -.045em }
+.purpose p:last-child { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: 1.35rem; margin-top: 4px; letter-spacing: .06em }
+.folio-foot { margin-top: 24px; border-top: 1px solid color-mix(in srgb,var(--ink) 16%, transparent); padding-top: 14px; justify-content: space-between; gap: 8px; font-size: .78rem; color: var(--muted) }
+.sheet { padding: 8px 0 24px; min-width: 0 }
+.section-top { min-height: 38px; gap: 8px }
+.meta { font-weight: 550; letter-spacing: .08em }
+.study h1 { font-size: clamp(1.65rem,3vw,2.25rem); font-weight: 550; line-height: 1.35; letter-spacing: -.03em; margin: 3px 0 12px }
+.study .intro { color: var(--muted); margin-bottom: 22px; line-height: 1.8 }
+.study fieldset { border: 0; min-inline-size: 0; padding: 0 }
+.options { display: grid; gap: 10px }
+.option { gap: 14px; position: relative; cursor: pointer; background: var(--surface); border-radius: 17px; border: 1px solid var(--line); padding: 19px 16px }
+.option:has(:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent) }
+.option input { order: 3; margin-left: auto; width: 19px; height: 19px; flex: none; accent-color: var(--accent) }
+.method-icon,.app-icon { background: var(--paper) }
+.option-copy { display: grid; gap: 4px }
+.option strong { font-size: 1.04rem; font-weight: 600 }
+.prices { margin-top: 20px !important }
+.prices legend,.reason { font-weight: 550; font-size: .94rem }
+.prices > div { gap: 8px; margin: 8px 0 }
+.prices label { position: relative; flex: 1; cursor: pointer }
+.prices input,.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%) }
+.prices label span { display: block; text-align: center; border: 1px solid var(--line); border-radius: 12px; padding: 10px 3px; background: var(--surface) }
+.prices label :checked + span { font-weight: bold; border-color: var(--accent); background: var(--soft); box-shadow: inset 0 0 0 1px var(--accent) }
+.prices :focus-visible + span { outline: 3px solid var(--accent); outline-offset: 3px }
+.primary,.secondary,.quiet { display: block; width: 100%; min-height: 50px; border-radius: 13px; padding: 12px 16px; font-weight: 550 !important }
+.primary { margin-top: 25px; color: var(--on) !important; background: var(--accent); border: 1px solid var(--accent) }
+.secondary { margin-top: 10px; background: transparent; border: 1px solid var(--muted) }
+.quiet,.back { border: 0; background: transparent }
+.quiet { margin-top: 4px; text-decoration: underline; text-underline-offset: 4px; color: var(--muted) !important; font-size: .85rem !important }
+.study button:disabled { opacity: .48; cursor: default }
+.back { display: grid; place-items: center; width: 44px; height: 44px; margin-left: -10px; border-radius: 50% }
+.app-icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center }
+.study blockquote,.ticket { background: var(--warm); border-radius: 15px; padding: 20px 22px; margin: 22px 0; overflow-wrap: anywhere }
+.study blockquote { font-family: "Hiragino Mincho ProN","Yu Mincho",serif; font-size: 1.25rem }
+.study blockquote small { display: block; font: 500 .8rem/1.6 sans-serif; margin-bottom: 6px }
+.reason { display: block; margin: 18px 0 }
+.reason textarea { display: block; width: 100%; resize: vertical; border: 1px solid var(--muted); background: var(--surface); border-radius: 12px; padding: 12px 15px; margin-top: 8px }
+.study dl { border-block: 1px solid var(--line) }
+.study dl > div { display: flex; align-items: baseline; justify-content: space-between; padding: 13px 0; gap: 12px }
+.study dl > div + div { border-top: 1px solid var(--line) }
+.study dt { color: var(--muted); flex-shrink: 0 }
+.study dd { text-align: end; overflow-wrap: anywhere }
+.verbatim { white-space: pre-wrap }
+.ticket { display: grid; gap: 5px; text-align: center; padding: 25px }
+.ticket strong { font: 400 3.5rem/1.25 Georgia,serif }
+.study dialog { width: min(90vw,365px); border: 1px solid var(--line); border-radius: 20px; padding: 24px; background: var(--surface); color: var(--ink) }
+.study dialog h2 { font-size: 1.2rem }
+.study dialog::backdrop { background: #16171570 }
+@media(max-width:1120px) { .mast { margin-inline: 32px } }
+@media(max-width:700px) {
+  .mast { margin: 0 20px; padding: 14px 0 }
+  .mast > span { font-size:.71rem }
+  .brand { font-size: 20px; gap: 5px }
+  .spread { display: flex; flex-direction: column; width: min(calc(100% - 38px),470px); margin: 20px auto 36px; gap: 15px }
+  .folio,.sheet { width: 100% }
+  .folio { padding: 15px 18px; border-radius: 17px; display:grid; grid-template-columns: 1fr auto; align-items:center }
+  .folio-head { gap: 10px }
+  .folio-head h2 { font-size: 1.1rem }
+  .book { width: 38px; height: 38px; border-radius: 11px }
+  .folio .meta { font-size: .69rem }
+  .dial,.purpose { display: none }
+  .folio-foot { flex-direction: column; gap: 1px; align-items: end; margin: 0; border: 0; padding: 0; font-size: .72rem }
+  .home .dial { display: grid; grid-column: 1/-1; width: 155px; margin: 16px auto }
+  .home .purpose { display:block; grid-column:1/-1; text-align:center }
+  .home .folio-foot { grid-row:1; grid-column:2 }
+  .sheet { padding-top: 0 }
+  .section-top { min-height: 30px }
+  .option { padding: 15px 12px; gap: 10px }
+  .option-copy small { line-height: 1.55 }
+  .method-icon { width: 38px; height: 38px }
+  .primary { margin-top: 20px }
+}
+@media(prefers-color-scheme:dark) {
+  .study { color-scheme:dark; --paper: var(--dark-background); --surface: var(--dark-surface); --ink: var(--dark-text); --muted: var(--dark-muted); --line: var(--dark-line); --accent: var(--dark-accent); --on: var(--dark-onAccent); --soft: var(--dark-soft); --warm: var(--dark-purposeSurface) }
+}
