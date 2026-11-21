@@ -66,7 +66,6 @@ try {
       assert.match(await visible('layer-action-status').innerText(), /束になりました/);
       assert.equal(await drawn(unit === '日分' ? 'day' : unit === 'か月分' ? 'month' : 'year').count(), 1);
       if (config.reducedMotion === 'reduce') {
-        const transform = await visible('layer-motion').evaluate(el => getComputedStyle(el).transform);
         assert.equal(await visible('layer-motion').evaluate(el => { const value = getComputedStyle(el).transform; return value === 'none' || new DOMMatrixReadOnly(value).m22 === 1; }), true);
       }
       await shot(unit + '-after');
@@ -81,7 +80,9 @@ try {
     await choose('まだ記録なし');
     assert.equal(await visible('growth-whole').innerText(), '—'); assert(await page.getByRole('button', { name: '1時間を重ねる', exact: true }).isDisabled());
     await choose('1日分になる直前');
-    for (let n = 0; n < 3; n++) await page.getByRole('button', { name: '1時間を重ねる', exact: true }).click();
+    await page.getByRole('button', { name: '1時間を重ねる', exact: true }).evaluate(el => el.click());
+    await page.waitForTimeout(40);
+    await page.getByRole('button', { name: '1時間を重ねる', exact: true }).evaluate(el => { el.click(); el.click(); });
     await check(); assert.equal(await visible('growth-tail').innerText(), '＋2時間50分'); assert.equal(await drawn('hour').count(), 2);
     await page.getByRole('tab', { name: 'ホーム', exact: true }).click();
     await page.getByRole('button', { name: '新しい振り返りを見る', exact: true }).click(); await visible('growth-visual-layers').waitFor(); await check();
@@ -94,6 +95,28 @@ try {
     await choose('1日分になる直前'); await page.getByRole('button', { name: '1時間を重ねる', exact: true }).click();
     await page.getByRole('button', { name: 'デモの時間を切り替える', exact: true }).click(); await page.getByRole('button', { name: 'まだ記録なし', exact: true }).click(); await check();
     assert.equal(await visible('growth-whole').innerText(), '—'); assert.equal(await drawn('day').count(), 0); assert.equal(await drawn('hour').count(), 0);
+    if (config.reducedMotion === 'no-preference') {
+      await choose('1日分になる直前');
+      const atExit = await page.evaluate(async () => {
+        const started = performance.now();
+        document.querySelector('[role="button"][aria-label="1時間を重ねる"]').click();
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const node = [...document.querySelectorAll('[data-testid="layer-motion"]')].find(el => el.getBoundingClientRect().width > 0);
+        const scale = new DOMMatrixReadOnly(getComputedStyle(node).transform).m22;
+        [...document.querySelectorAll('[role="tab"][aria-label="ホーム"]')].find(el => el.getBoundingClientRect().width > 0 && el.getAttribute('aria-selected') !== 'true').click();
+        return { elapsedMs: performance.now() - started, scale };
+      });
+      await page.getByRole('button', { name: '新しい振り返りを見る', exact: true }).waitFor();
+      await page.waitForTimeout(40);
+      const motion = page.locator('[data-testid="layer-motion"]');
+      const before = await motion.count() ? await motion.first().evaluate(el => getComputedStyle(el).transform) : 'unmounted';
+      await page.waitForTimeout(250);
+      const after = await motion.count() ? await motion.first().evaluate(el => getComputedStyle(el).transform) : 'unmounted';
+      assert.equal(before, after, 'animation continued while hidden');
+      await page.getByRole('button', { name: '新しい振り返りを見る', exact: true }).click(); await visible('growth-visual-layers').waitFor(); await check();
+      assert.equal(await visible('growth-tail').innerText(), '＋50分'); assert.equal(await drawn('day').count(), 1);
+      writeFileSync(`${output}/animation-exit.json`, JSON.stringify({ ...atExit, hiddenTransformStable: true, returnLatest: true }, null, 2));
+    }
     assert.deepEqual(errors, []);
     results.push({ ...config, hourAddsRealLayer: true, undoExact: true, dayMonthYearBundle: true, remainderFullyRepresented: true, rapidInputAndSceneCancellation: true, noUnknownAddition: true, tabState: 'PASS', keyboard: 'PASS', noHorizontalOverflow: true, pageErrors: errors });
     await context.close();

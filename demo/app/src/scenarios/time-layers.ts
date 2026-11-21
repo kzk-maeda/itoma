@@ -28,5 +28,5 @@ export const nextLayerStep = (seconds: number) => seconds >= MONTH ? DAY : HOUR;
 export function withAddedTime(scene: GrowthScene, additions: number[]): GrowthScene {
   if (!additions.length || scene.seconds === undefined) return scene;
   const added = additions.reduce((sum, value) => sum + value, 0);
-  return { ...scene, after: undefined, label: `${scene.label} ＋${durationWords(added)}`, seconds: scene.seconds + added };
+  return { ...scene, after: undefined, label: `累計${durationWords(scene.seconds + added)} · 追加${durationWords(added)}`, seconds: scene.seconds + added };
 }
