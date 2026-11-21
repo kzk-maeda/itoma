@@ -356,3 +356,59 @@ private func reflectionReason(_ history: HistoryRepository) throws -> CommandID 
     #expect(try f.control.readSnapshot().activation == .paused)
     #expect(try f.control.reflectionBatch()?.boundary.incomplete == true)
 }
+
+@Test func inspectionWeekSharesTheSnapshotAndRejectsAZoneChangeOrDeletion() throws {
+    let f = try ReflectionFixture(); defer { f.remove() }
+    try f.install()
+    try f.control.recordReflectionBaseline()
+    try f.control.transferReflection(to: f.history)
+    let now = try Instant(secondsSince1970: Date().timeIntervalSince1970 + 60)
+    let result = try f.history.readReflection(period: .month, day: "", timeZone: "UTC", includeLandscape: true, now: now)
+    let landscape = try #require(result.landscape)
+    let week = try f.history.readReflectionWeek(day: landscape.latestDay, timeZone: "UTC", expectedToken: result.token, now: now)
+    #expect(week.token == result.token)
+    #expect(week.week.days == result.inspectionWeek?.days)
+    #expect(throws: HistoryError.conflict) {
+        try f.history.readReflectionWeek(day: landscape.latestDay, timeZone: "Asia/Tokyo", expectedToken: result.token, now: now)
+    }
+    try f.history.deleteAllRecords(from: f.control)
+    #expect(throws: HistoryError.conflict) {
+        try f.history.readReflectionWeek(day: landscape.latestDay, timeZone: "UTC", expectedToken: result.token, now: now)
+    }
+}
+
+@Test func longRuleLogColdAndWarmInspectionStayBounded() throws {
+    let f = try ReflectionFixture(withRule: true); defer { f.remove() }
+    let start = try Instant(secondsSince1970: 1_150_000_000)
+    let end = try Instant(secondsSince1970: start.secondsSince1970 + 7_384 * 86_400)
+    let saved = try f.control.readSnapshot()
+    let id = UUID()
+    let fact = ReflectionControlFact(version: 1, eventID: UUID(), sourceID: id, sequence: 1, committedAt: start,
+        timeZone: "UTC", snapshotSequence: saved.snapshotSequence, policy: saved.policy, activation: .enabled,
+        selections: saved.selections.map { .init(ref: $0.selection.ref, targets: Array($0.selection.targets)) }, grants: [], application: nil)
+    try f.history.commitReflectionBatch(.init(boundary: .init(sourceID: id, highWatermark: 1, acknowledgedThrough: 0, incomplete: false), facts: [fact]))
+    let clock = ContinuousClock(), started = clock.now
+    let snapshot = try f.history.readReflection(period: .week, day: "", timeZone: "UTC", includeLandscape: true, now: end)
+    let initial = started.duration(to: clock.now)
+    let shape = try #require(snapshot.landscape)
+    #expect(shape.points.count == 64)
+    let firstRead = clock.now
+    let first = try f.history.readReflectionWeek(day: shape.startDay, timeZone: "UTC", expectedToken: snapshot.token, now: end)
+    let firstWeek = firstRead.duration(to: clock.now)
+    #expect(first.week.days.count <= 7)
+    let repeated = clock.now
+    for _ in 0..<100 {
+        let week = try f.history.readReflectionWeek(day: shape.startDay, timeZone: "UTC", expectedToken: snapshot.token, now: end)
+        #expect(week.week.days == first.week.days)
+    }
+    let repeatTime = repeated.duration(to: clock.now)
+    let payload = try JSONEncoder().encode(snapshot).count
+    let weekPayload = try JSONEncoder().encode(first).count
+    print("Reflection 7384 days: cold \(initial), first pinned week \(firstWeek), 100 pinned weeks \(repeatTime), initial \(payload) bytes, week \(weekPayload) bytes")
+    #if os(Linux)
+    if let status = try? String(contentsOfFile: "/proc/self/status", encoding: .utf8),
+       let peak = status.split(separator: "\n").first(where: { $0.hasPrefix("VmHWM:") }) {
+        print("Reflection test process \(peak)")
+    }
+    #endif
+}

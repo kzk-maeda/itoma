@@ -9,6 +9,7 @@ struct ProductReflectionRequest: Decodable, Sendable {
     var day: String?
     var expectedToken: String?
     var clippedTo: Clip?
+    var includeLandscape: Bool?
 }
 struct ProductReflectionResponse: Encodable, Sendable {
     var status = "ok"
@@ -17,6 +18,7 @@ struct ProductReflectionResponse: Encodable, Sendable {
     var transfer = "unavailable"
     var sharedIncomplete: Bool?
     var snapshot: ReflectionReadSnapshot?
+    var inspection: ReflectionWeekRead?
     func json() -> String {
         (try? String(data: JSONEncoder().encode(self), encoding: .utf8))
             ?? #"{"status":"error","code":"unavailable","storage":"unknown","transfer":"unavailable"}"#
@@ -27,9 +29,16 @@ extension ProductHistoryController {
     /// Private reads/import/deletion only. This never prompts, schedules, shields or unshields.
     func performReflection(_ action: String, request: ProductReflectionRequest) -> ProductReflectionResponse {
         do {
-            guard ["read", "import", "deleteAll"].contains(action),
+            guard ["read", "readWeek", "import", "deleteAll"].contains(action),
                   let period = ReflectionPrototypePeriod(rawValue: request.period ?? "week"),
                   (request.expectedToken?.utf8.count ?? 0) <= 1_024 else { throw HistoryError.invalidPage }
+            if action == "readWeek" {
+                guard let day = request.day, let token = request.expectedToken else { throw HistoryError.invalidPage }
+                return try withHistory(createIfMissing: false) { history in
+                    let week = try history.readReflectionWeek(day: day, timeZone: TimeZone.current.identifier, expectedToken: token)
+                    return ProductReflectionResponse(inspection: week)
+                }
+            }
             let clip = try request.clippedTo.map {
                 try ReflectionPrototypeInterval(from: Instant(secondsSince1970: $0.from), until: Instant(secondsSince1970: $0.until))
             }
@@ -53,7 +62,8 @@ extension ProductHistoryController {
                 }
                 let snapshot = try history.readReflection(period: action == "read" ? period : .week,
                     day: action == "read" ? request.day ?? "" : "", timeZone: TimeZone.current.identifier,
-                    expectedToken: action == "read" ? request.expectedToken : nil, clippedTo: action == "read" ? clip : nil)
+                    expectedToken: action == "read" ? request.expectedToken : nil, clippedTo: action == "read" ? clip : nil,
+                    includeLandscape: action == "read" ? request.includeLandscape : nil)
                 var transfer = "unavailable"
                 var sharedIncomplete: Bool?
                 if let control = try? controlRepository(), let batch = try? control.reflectionBatch(limit: 1) {

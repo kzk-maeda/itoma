@@ -21,6 +21,7 @@ public final class HistoryRepository {
     // inside a pinned read transaction. SQLite data_version excludes our own commits.
     var reflectionValidationDataVersion: Int64?
     var reflectionReadValidationAllowed = false
+    var reflectionIndexCache: (token: String, dataVersion: Int64, value: ReflectionIntervalIndex)?
     var ruleLogTimelineCache: (revision: Int64, dataVersion: Int64, asOf: Instant, hasFutureRecords: Bool, builders: [UUID: RuleLogTimelineBuilder])?
 
     public static func create(
@@ -100,6 +101,7 @@ public final class HistoryRepository {
         lock.lock(); defer { lock.unlock() }
         reflectionValidationDataVersion = nil
         ruleLogTimelineCache = nil
+        reflectionIndexCache = nil
         try HistoryError.translating { try database.close() }
     }
 
@@ -182,7 +184,7 @@ public final class HistoryRepository {
     func transaction<T>(writer: Bool, _ body: () throws -> T) throws -> T {
         lock.lock()
         reflectionReadValidationAllowed = !writer
-        if writer { reflectionValidationDataVersion = nil }
+        if writer { reflectionValidationDataVersion = nil; reflectionIndexCache = nil }
         defer {
             reflectionReadValidationAllowed = false
             if writer { reflectionValidationDataVersion = nil }

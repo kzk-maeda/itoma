@@ -1,0 +1,10 @@
+diff --git a/src/app/_layout.tsx b/src/app/_layout.tsx
+index 8828920..814186c 100644
+--- a/src/app/_layout.tsx
++++ b/src/app/_layout.tsx
+@@ -14,0 +15,2 @@ import { edgeBackOptions } from '@/lib/stack-options';
++import { landscapeClient } from '../../tests/fixtures/reflection-landscape-web';
++
+@@ -24 +26 @@ export default function RootLayout() {
+-        <ScreenTimeProvider><OnboardingProvider><HistoryProvider><ReflectionProvider><AppNavigationProvider><Stack UNSTABLE_router={rootNavigationRouter} screenOptions={edgeBackOptions}>
++        <ScreenTimeProvider><OnboardingProvider><HistoryProvider><ReflectionProvider client={landscapeClient}><AppNavigationProvider><Stack UNSTABLE_router={rootNavigationRouter} screenOptions={edgeBackOptions}>

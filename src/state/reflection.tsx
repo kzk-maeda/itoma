@@ -23,20 +23,31 @@ export function ReflectionProvider({ children, client = reflectionRecords }: { c
     const listener = AppState.addEventListener('change', state => { sequence.current += 1; if (state === 'active') refresh(); });
     return () => listener.remove();
   }, [refresh]);
-  const source = useMemo<ReflectionSource>(() => ({
-    identity: String(epoch) + ':' + String(historyEpoch),
-    async read(request) {
+  const source = useMemo<ReflectionSource>(() => {
+    const read = async (action: 'read' | 'readWeek', request: Parameters<Client['run']>[1]) => {
       if (writing.current) throw new ReflectionReadError('busy');
       const ticket = sequence.current;
-      const result = await client.run('read', request);
+      const result = await client.run(action, request);
       if (ticket !== sequence.current || writing.current) throw new ReflectionReadError('changed');
       if (result.status === 'error') throw new ReflectionReadError(result.code ?? 'unavailable');
       if (result.storage === 'not-created') throw new ReflectionReadError('not-created');
-      if (!result.snapshot) throw new ReflectionReadError('unavailable');
-      return JSON.stringify({ ...result.snapshot, transfer: result.transfer, sharedIncomplete: result.sharedIncomplete });
-    },
-  // A new source identity hides every old snapshot synchronously on deletion/foreground refresh.
-  }), [client, epoch, historyEpoch]);
+      return result;
+    };
+    return {
+      identity: String(epoch) + ':' + String(historyEpoch),
+      async read(request) {
+        const result = await read('read', request);
+        if (!result.snapshot) throw new ReflectionReadError('unavailable');
+        return JSON.stringify({ ...result.snapshot, transfer: result.transfer, sharedIncomplete: result.sharedIncomplete });
+      },
+      async readWeek(day, token) {
+        const result = await read('readWeek', { day, expectedToken: token });
+        if (!result.inspection) throw new ReflectionReadError('unavailable');
+        return result.inspection;
+      },
+    };
+  // A new source hides old values immediately on deletion or foreground refresh.
+  }, [client, epoch, historyEpoch]);
   const mutate = useCallback((action: 'import' | 'deleteAll') => {
     if (writing.current) return Promise.resolve(undefined);
     writing.current = true; sequence.current += 1; setBusy(true); setResponse(undefined); invalidateHistory('reflection');
