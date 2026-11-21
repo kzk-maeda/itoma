@@ -1,0 +1,68 @@
+.support-demo {
+  --paper:var(--light-background);--card:var(--light-surface);--ink:var(--light-text);--sub:var(--light-muted);--edge:var(--light-line);--warm:var(--light-purposeSurface);--action:var(--light-accent);--action-ink:var(--light-onAccent);
+  background:var(--paper);color:var(--ink);height:100dvh;overflow:auto;font:16px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+}
+.support-demo *,.support-demo *::before {box-sizing:border-box}
+.support-demo :is(h1,h2,h3,p,fieldset) {margin:0}
+.support-demo button,.support-demo input {font:inherit;color:inherit}
+.support-demo button,.support-demo label {cursor:pointer}
+.support-demo :focus-visible {outline:3px solid var(--action);outline-offset:3px}
+.support-demo h1:focus {outline:none}
+.mast {max-width:1040px;margin:auto;padding:20px 0;border-bottom:1px solid var(--edge);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand {display:flex;align-items:center;gap:10px;font-size:22px;letter-spacing:2px;font-weight:500}
+.mast small,.fine,.muted,.intro {color:var(--sub)}
+.mast small,.fine {font-size:.8rem}
+.page {width:calc(100% - 40px);margin:clamp(30px,6vh,62px) auto 48px}
+.slim {max-width:520px}.wide {max-width:976px}
+.support-demo h1 {font-size:clamp(1.75rem,3.4vw,2.4rem);letter-spacing:-.035em;font-weight:550;line-height:1.45;margin-bottom:12px}
+.support-demo h2 {font-size:1.24rem;font-weight:550}
+.support-demo h3 {font-size:1.06rem}
+.support-demo .intro {margin:12px 0 20px}
+.rows,.support-entry,.card,.picker {background:var(--card);border:1px solid var(--edge);border-radius:18px}
+.rows,.support-entry {padding:2px 18px;overflow:hidden}
+.rows [role=button]:last-child,.support-entry [role=button] {border-bottom-width:0!important}
+.support-entry {margin-top:22px}
+.back,.plain {background:transparent;border:0;min-height:44px}
+.back {display:inline-flex;align-items:center;gap:9px;color:var(--sub)!important;padding:0 8px 0 0;margin-bottom:8px;font-size:.86rem!important}
+.back span {font-size:27px;line-height:1}
+.columns {display:grid;grid-template-columns:1fr 1fr;gap:clamp(22px,4vw,42px);align-items:start;margin-top:20px}
+.letter,.thanks {background:var(--warm);border-radius:16px;padding:clamp(22px,3.8vw,40px);box-shadow:0 4px 12px #27251408}
+.letter {position:relative;overflow:hidden;border-top-right-radius:2px}
+.letter::before {content:"";position:absolute;right:0;top:0;border-style:solid;border-width:0 23px 23px 0;border-color:transparent var(--paper) color-mix(in srgb,var(--ink) 14%,var(--warm)) transparent}
+.letterhead {display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.letterhead>span {font-size:.83rem;letter-spacing:.1em}
+.stamp {width:48px;height:56px;display:grid;place-items:center;transform:rotate(5deg);background:color-mix(in srgb,var(--card) 55%,var(--warm));outline:1px dashed var(--sub);outline-offset:-5px}
+.letter h2 {font:500 clamp(1.5rem,2.5vw,2.05rem)/1.6 "Hiragino Mincho ProN","Yu Mincho",serif;letter-spacing:.03em}
+.letter p {margin-top:16px;line-height:1.95}
+.letter footer,.sign {margin-top:24px;text-align:right;font-size:.83rem}
+.picker,.card {padding:clamp(20px,3vw,32px)}
+.picker .muted {margin-top:6px;font-size:.93rem}
+.support-demo fieldset {border:0;padding:0;min-width:0}
+.sr {position:absolute;overflow:hidden;clip-path:inset(50%);width:1px;height:1px}
+.segment,.amounts>div {display:flex;gap:5px}
+.support-demo .segment {margin:20px 0;background:var(--paper);padding:4px;border-radius:14px}
+.picker label {position:relative;display:block;flex:1;text-align:center}
+.picker input {position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.picker label span {min-height:44px;display:grid;place-items:center;border-radius:10px}
+.picker input:focus-visible+span {outline:3px solid var(--action);outline-offset:2px}
+.segment :checked+span {background:var(--card);box-shadow:0 1px 4px #20221b24;font-weight:650}
+.amounts legend {font-size:.91rem;font-weight:550;margin-bottom:8px}
+.amounts>div {gap:8px}
+.amounts label span {border:1px solid var(--edge);font-size:1.06rem;font-variant-numeric:tabular-nums}
+.amounts :checked+span {border:2px solid var(--ink);font-weight:650;background:var(--paper)}
+.support-demo .fine {margin:12px 0}
+.primary,.secondary,.plain {width:100%;padding:12px;border-radius:12px;font-weight:550!important}
+.primary,.secondary {min-height:48px;margin-top:14px}
+.primary {background:var(--action);color:var(--action-ink)!important;border:0}
+.primary:disabled {background:var(--edge);color:var(--sub)!important;cursor:default}
+.secondary {background:var(--card);border:1px solid var(--sub)}
+.plain {color:var(--sub)!important;font-size:.9rem!important;margin-top:4px}
+.receipt,.thanks {text-align:center;padding:30px 24px}
+.receipt {background:var(--card);border:1px solid var(--edge);border-radius:16px}
+.receipt .stamp,.thanks .stamp {margin:0 auto 18px}
+.receipt strong {display:block;font:400 3.25rem/1.3 Georgia,serif;font-variant-numeric:tabular-nums}
+.center {text-align:center}
+.card p {margin-top:8px}
+@media(max-width:1100px){.mast{margin:0 24px}}
+@media(max-width:680px){.mast{padding:13px 0;margin:0 20px}.mast small{font-size:.68rem}.brand{font-size:20px;gap:5px}.columns{grid-template-columns:1fr;gap:16px}.page{margin-top:16px}.slim:has(.rows){margin-top:28px}.letter{padding:18px 22px}.letterhead{margin-bottom:4px}.letter .stamp{width:39px;height:43px}.letter h2{font-size:1.42rem}.letter h2 br{display:none}.letter p{font-size:.92rem;line-height:1.8;margin-top:10px}.letter footer{margin-top:13px}.picker{padding:18px}.columns{margin-top:12px}}
+@media(prefers-color-scheme:dark){.support-demo{color-scheme:dark;--paper:var(--dark-background);--card:var(--dark-surface);--ink:var(--dark-text);--sub:var(--dark-muted);--edge:var(--dark-line);--warm:var(--dark-purposeSurface);--action:var(--dark-accent);--action-ink:var(--dark-onAccent)}}
